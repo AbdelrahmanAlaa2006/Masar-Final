@@ -1,0 +1,331 @@
+.exams-report-page {
+  padding-top: 40px;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px 30px;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+  0% { filter: drop-shadow(0 0 5px rgba(237, 137, 54, 0.3)); }
+  100% { filter: drop-shadow(0 0 20px rgba(237, 137, 54, 0.6)); }
+}
+
+.student-name {
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.exams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.exam-card {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(102, 126, 234, 0.1);
+  animation: slideInUp 0.6s ease-out;
+}
+
+.exam-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.exam-card:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.exam-card:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.exam-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  opacity: 0.05;
+  transition: left 0.5s ease;
+}
+
+.exam-card:hover::before {
+  left: 0;
+}
+
+.exam-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-hover);
+}
+
+.exam-card.exam-pending {
+  opacity: 0.8;
+  border-color: rgba(237, 137, 54, 0.2);
+}
+
+.exam-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.exam-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+}
+
+.exam-icon {
+  font-size: 2.5rem;
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.exam-card:hover .exam-icon {
+  transform: scale(1.2) rotate(10deg);
+}
+
+.exam-info h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.exam-date {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  opacity: 0.6;
+  margin: 0.25rem 0 0 0;
+}
+
+.exam-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  position: relative;
+}
+
+.score-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+}
+
+.score-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.score-max {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.exam-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.exam-card:hover .detail-item {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  transform: translateY(-2px);
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.detail-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.exam-status {
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  position: relative;
+  overflow: hidden;
+  width: fit-content;
+  z-index: 1;
+}
+
+.status-completed {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  color: white;
+  box-shadow: 0 5px 15px rgba(72, 187, 120, 0.3);
+}
+
+.status-pending {
+  background: linear-gradient(135deg, #cbd5e0, #a0aec0);
+  color: #2d3748;
+  box-shadow: 0 5px 15px rgba(107, 114, 128, 0.2);
+}
+
+.exam-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.exam-card:hover .exam-status::before {
+  left: 100%;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+  60% { transform: translateY(-3px); }
+}
+
+/* تحسين المظهر للشاشات الصغيرة */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.8rem;
+  }
+
+  .main-container {
+    padding: 20px 15px;
+  }
+
+  .exam-card {
+    padding: 1.5rem;
+  }
+
+  .exam-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .exam-title {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .exam-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .exam-details {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .detail-item {
+    padding: 0.8rem;
+  }
+
+  .score-circle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .score-text {
+    width: 90px;
+    height: 90px;
+  }
+
+  .score-number {
+    font-size: 1.5rem;
+  }
+}

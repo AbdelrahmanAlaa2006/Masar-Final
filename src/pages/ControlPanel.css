@@ -1,0 +1,421 @@
+.control-panel {
+  width: 100%;
+}
+
+/* Main View */
+.main-view {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.main-view h1 {
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  animation: textGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes textGlow {
+  from {
+    text-shadow: 0 0 20px rgba(118, 75, 162, 0.5);
+  }
+  to {
+    text-shadow: 0 0 30px rgba(118, 75, 162, 0.8);
+  }
+}
+
+.control-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-top: 40px;
+}
+
+/* Control Card */
+.control-card {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.control-card:hover {
+  transform: translateY(-10px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+}
+
+.control-card:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  font-size: 3rem;
+  color: var(--primary);
+  margin-bottom: 15px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.control-card h3 {
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin: 15px 0;
+  font-weight: 700;
+}
+
+.control-card p {
+  color: var(--text-color);
+  opacity: 0.7;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+/* Grade Selection View */
+.grade-selection-view,
+.student-search-view,
+.video-management-view,
+.exams-view {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.section-title {
+  font-size: 2rem;
+  color: var(--primary);
+  text-align: center;
+  margin: 30px 0;
+  font-weight: 700;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+  font-family: 'Cairo', sans-serif;
+}
+
+.back-btn:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.back-btn i {
+  transition: transform 0.3s ease;
+}
+
+.back-btn:hover i {
+  transform: translateX(5px);
+}
+
+/* Grades Grid */
+.grades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.grade-card {
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.grade-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+.grade-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.grade-card p {
+  opacity: 0.8;
+}
+
+/* Search Container */
+.search-container {
+  margin: 30px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 500px;
+  padding: 15px 20px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: var(--card-bg);
+  color: var(--text-color);
+  transition: all 0.3s ease;
+  font-family: 'Cairo', sans-serif;
+}
+
+.search-input:focus {
+  outline: none;
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+  border-color: var(--secondary);
+}
+
+/* Students Grid */
+.students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.student-card {
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.student-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary);
+}
+
+.student-card i {
+  font-size: 3rem;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.student-card h3 {
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin: 10px 0;
+  font-weight: 600;
+}
+
+/* Videos and Exams Lists */
+.videos-list,
+.exams-list {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.video-item,
+.exam-item {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  border-left: 4px solid var(--primary);
+}
+
+.video-item:hover,
+.exam-item:hover {
+  transform: translateX(5px);
+  box-shadow: var(--shadow-hover);
+}
+
+.video-info,
+.exam-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.video-info i,
+.exam-info i {
+  font-size: 1.5rem;
+  color: var(--primary);
+  min-width: 30px;
+}
+
+.video-info h4,
+.exam-info h3 {
+  color: var(--primary);
+  margin: 0;
+  font-weight: 600;
+}
+
+.video-info p {
+  color: var(--text-color);
+  opacity: 0.7;
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+}
+
+.video-controls {
+  display: flex;
+  gap: 10px;
+}
+
+/* Button Styles */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-small {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Cairo', sans-serif;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  color: white;
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #fa709a, #fee140);
+  color: white;
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(250, 112, 154, 0.3);
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+/* Dark mode */
+body.dark .control-card,
+body.dark .grade-card,
+body.dark .student-card,
+body.dark .video-item,
+body.dark .exam-item {
+  background: var(--card-bg);
+  color: var(--text-color);
+}
+
+body.dark .search-input {
+  background: var(--card-bg);
+  color: var(--text-color);
+  border-color: var(--primary);
+}
+
+body.dark .search-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main-view h1 {
+    font-size: 1.8rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .control-cards-grid,
+  .grades-grid,
+  .students-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .video-item,
+  .exam-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .video-controls {
+    width: 100%;
+  }
+
+  .video-controls .btn-small {
+    flex: 1;
+  }
+}

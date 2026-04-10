@@ -1,0 +1,27 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.page-container {
+  animation: fadeIn 0.3s ease-in-out;
+  position: relative;
+  z-index: 0;
+  padding-top: 90px;
+}
+
+.login-page .page-container {
+  padding-top: 0;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

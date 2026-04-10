@@ -1,0 +1,314 @@
+.exams-group-report-page {
+  padding-top: 40px;
+  position: relative;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px 30px;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2rem;
+  background: linear-gradient(45deg, #ed8936, #dd6b20);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+  0% { filter: drop-shadow(0 0 5px rgba(237, 137, 54, 0.3)); }
+  100% { filter: drop-shadow(0 0 20px rgba(237, 137, 54, 0.6)); }
+}
+
+.card {
+  background: var(--card-bg);
+  color: var(--text-color);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+  animation: slideInUp 0.6s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-5px);
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+  color: var(--text-color);
+}
+
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.btn {
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+  box-shadow: var(--shadow);
+  font-family: 'Cairo', sans-serif;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn.active {
+  background: linear-gradient(45deg, #34d399, #10b981);
+  transform: translateY(-1px);
+}
+
+.grade-btn {
+  background: linear-gradient(45deg, #f59e0b, #d97706);
+  margin: 0.5rem;
+}
+
+.grade-btn:hover {
+  background: linear-gradient(45deg, #d97706, #b45309);
+}
+
+.grade-btn.active {
+  background: linear-gradient(45deg, #34d399, #10b981);
+}
+
+.filter-btn {
+  background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+  margin: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.filter-btn:hover {
+  background: linear-gradient(45deg, #7c3aed, #6d28d9);
+}
+
+.filter-btn.active {
+  background: linear-gradient(45deg, #34d399, #10b981);
+}
+
+select {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-family: 'Cairo', sans-serif;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+option {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  padding: 0.5rem;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+th {
+  background: linear-gradient(45deg, #ed8936, #dd6b20);
+  color: white;
+  padding: 1rem;
+  font-weight: bold;
+  text-align: center;
+  font-family: 'Cairo', sans-serif;
+}
+
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+  text-align: center;
+  vertical-align: middle;
+  font-family: 'Cairo', sans-serif;
+}
+
+tr:hover {
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.student-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.status-passed {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.status-failed {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.progress-bar {
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 0.5rem;
+  height: 0.5rem;
+  overflow: hidden;
+  margin: 0.25rem 0;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.progress-high {
+  background: linear-gradient(45deg, #10b981, #34d399);
+}
+
+.progress-medium {
+  background: linear-gradient(45deg, #f59e0b, #fbbf24);
+}
+
+.progress-low {
+  background: linear-gradient(45deg, #ef4444, #f87171);
+}
+
+.percentage-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* الطباعة */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #reportTable,
+  #reportTable * {
+    visibility: visible;
+  }
+  #reportTable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+    background: white;
+    color: black;
+  }
+  table {
+    box-shadow: none;
+  }
+  .btn {
+    display: none;
+  }
+}
+
+/* تحسين المظهر للشاشات الصغيرة */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .container {
+    padding: 20px 15px;
+  }
+
+  .card {
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .button-group {
+    gap: 0.5rem;
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .table-container {
+    font-size: 0.85rem;
+  }
+
+  th,
+  td {
+    padding: 0.5rem;
+  }
+
+  .report-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-header .btn {
+    width: 100%;
+  }
+}
