@@ -1,41 +1,80 @@
-// ===== AUTH (mock — database temporarily disabled) =====
-const MOCK_USERS = [
-  { id: 1, name: 'admin', password: 'admin', email: 'admin@masaar.com', role: 'admin' },
-  { id: 2, name: 'student', password: 'student', email: 'student@masaar.com', role: 'student' },
-]
+import { supabase } from './supabase'
+
+// Convert phone number to a fake email for Supabase auth
+const phoneToEmail = (phone) => `${phone.replace(/\s+/g, '')}@masaar.app`
 
 export const authAPI = {
 
-  // Login
-  login: async (username, password) => {
-    const user = MOCK_USERS.find(u => u.name === username && u.password === password)
-    if (!user) {
-      throw new Error('اسم المستخدم أو كلمة المرور غلط')
-    }
-    return { token: user.id.toString(), user }
+  // Login with phone + password
+  login: async (phone, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: phoneToEmail(phone),
+      password,
+    })
+
+    if (error) throw new Error('رقم الهاتف أو كلمة المرور غلط')
+
+    // Fetch profile (name, role, level)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
+
+    if (profileError) throw new Error('فشل تحميل بيانات المستخدم')
+
+    return { token: data.session.access_token, user: profile }
   },
 
   // Logout
-  logout: () => {
+  logout: async () => {
+    await supabase.auth.signOut()
     tokenAPI.removeToken()
   },
 
-  // Register
-  register: async (username, password, email, role = 'student') => {
-    const existing = MOCK_USERS.find(u => u.email === email)
-    if (existing) {
-      throw new Error('الإيميل ده موجود بالفعل')
-    }
-    const newUser = { id: MOCK_USERS.length + 1, name: username, password, email, role }
-    MOCK_USERS.push(newUser)
-    return { token: newUser.id.toString(), user: newUser }
-  }
+  // Register with name + phone + password (always student role)
+  register: async (name, phone, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: phoneToEmail(phone),
+      password,
+      options: {
+        data: { name, phone: phone.trim(), role: 'student' },
+      },
+    })
+
+    if (error) throw new Error(error.message)
+    if (!data.user) throw new Error('فشل إنشاء الحساب')
+
+    // Upsert profile manually (trigger may or may not have run)
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        name: name.trim(),
+        phone: phone.trim(),
+        role: 'student',
+      }, { onConflict: 'id' })
+
+    if (upsertError) throw new Error('فشل إنشاء الملف الشخصي: ' + upsertError.message)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
+
+    if (profileError) throw new Error('فشل تحميل بيانات المستخدم')
+
+    return { token: data.session?.access_token, user: profile }
+  },
 }
 
-// ===== TOKEN =====
 export const tokenAPI = {
   setToken: (token) => localStorage.setItem('masar-token', token),
   getToken: () => localStorage.getItem('masar-token'),
-  removeToken: () => localStorage.removeItem('masar-token'),
-  isLoggedIn: () => !!localStorage.getItem('masar-token')
+  removeToken: () => {
+    localStorage.removeItem('masar-token')
+    localStorage.removeItem('masar-user')
+  },
+  isLoggedIn: () => !!localStorage.getItem('masar-token'),
 }

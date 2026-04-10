@@ -11,8 +11,8 @@ export default function Home() {
   useEffect(() => {
     try {
       const user = JSON.parse(localStorage.getItem('masar-user'))
-      if (user && user.username) {
-        setUsername(user.username)
+      if (user && user.name) {
+        setUsername(user.name)
       }
     } catch (err) {
       console.error('Error reading user from localStorage:', err)

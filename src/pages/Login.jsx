@@ -6,32 +6,32 @@ import './Login.css'
 const translations = {
   ar: {
     login: 'تسجيل الدخول',
-    username: 'اسم المستخدم',
+    phone: 'رقم الهاتف',
+    name: 'الاسم الكامل',
     password: 'كلمة المرور',
     remember: 'تذكرني',
     forgot: 'نسيت كلمة المرور؟',
     'platform-title': 'منصة مسار التعليمية',
     'platform-description': 'منصة مسار تقدم لك تجربة تعليمية متكاملة تشمل الدروس التفاعلية، التمارين، والاختبارات الإلكترونية. تعلم أينما كنت، وبالطريقة التي تناسبك. انطلق الآن وابدأ مسارك نحو التميز والنجاح.',
-    'demo-hint': 'تجريبي: استخدم أي اسم مستخدم وكلمة مرور (3 أحرف على الأقل)',
   },
   en: {
     login: 'Login',
-    username: 'Username',
+    phone: 'Phone Number',
+    name: 'Full Name',
     password: 'Password',
     remember: 'Remember me',
     forgot: 'Forgot password?',
     'platform-title': 'Masar Educational Platform',
     'platform-description': 'The Masar platform offers you a comprehensive educational experience, including interactive lessons, exercises, and online tests. Learn wherever you are, in the way that suits you. Get started now and begin your path to excellence and success.',
-    'demo-hint': 'Demo: Use any username and password (min 3 characters)',
   },
 }
 
 export default function Login() {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en')
   const [tab, setTab] = useState('login') // 'login' or 'register'
-  const [username, setUsername] = useState('')
+  const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [email, setEmail] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -51,21 +51,20 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
-    if (username.trim().length < 3) {
-      setError(lang === 'ar' ? 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل' : 'Username must be at least 3 characters')
+    if (phone.trim().length < 8) {
+      setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number')
       return
     }
 
-    if (password.length < 3) {
-      setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 3 أحرف على الأقل' : 'Password must be at least 3 characters')
+    if (password.length < 6) {
+      setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters')
       return
     }
 
     setLoading(true)
 
     try {
-      // Call backend login API
-      const response = await authAPI.login(username, password)
+      const response = await authAPI.login(phone.trim(), password)
       
       console.log('Login response:', response)
 
@@ -98,26 +97,25 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
-    if (username.trim().length < 3) {
-      setError(lang === 'ar' ? 'اسم المستخدم يجب أن يكون 3 أحرف على الأقل' : 'Username must be at least 3 characters')
+    if (name.trim().length < 3) {
+      setError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters')
       return
     }
 
-    if (password.length < 3) {
-      setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 3 أحرف على الأقل' : 'Password must be at least 3 characters')
+    if (phone.trim().length < 8) {
+      setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number')
       return
     }
 
-    if (!email.includes('@')) {
-      setError(lang === 'ar' ? 'البريد الإلكتروني غير صحيح' : 'Invalid email')
+    if (password.length < 6) {
+      setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters')
       return
     }
 
     setLoading(true)
 
     try {
-      // Call backend register API
-      const response = await authAPI.register(username, password, email, 'student', 'first-prep')
+      const response = await authAPI.register(name.trim(), phone.trim(), password)
       
       // Store token and user data
       tokenAPI.setToken(response.token)
@@ -172,6 +170,16 @@ export default function Login() {
       msg.style.opacity = '1'
       msg.style.transform = 'translate(-50%, -50%) scale(1)'
     }, 10)
+
+    // Fade out and remove
+    setTimeout(() => {
+      msg.style.opacity = '0'
+      msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
+    }, 1200)
+
+    setTimeout(() => {
+      if (msg.parentNode) msg.parentNode.removeChild(msg)
+    }, 1700)
   }
 
   return (
@@ -189,15 +197,15 @@ export default function Login() {
         <div className="overlay"></div>
         <div className="login modern-login-box">
           <div className="tabs-container">
-            <button 
+            <button
               className={`tab-btn ${tab === 'login' ? 'active' : ''}`}
-              onClick={() => { setTab('login'); setError(''); setPassword(''); setEmail(''); }}
+              onClick={() => { setTab('login'); setError(''); setPassword(''); setName(''); }}
             >
               {lang === 'ar' ? 'دخول' : 'Login'}
             </button>
-            <button 
+            <button
               className={`tab-btn ${tab === 'register' ? 'active' : ''}`}
-              onClick={() => { setTab('register'); setError(''); setPassword(''); setEmail(''); }}
+              onClick={() => { setTab('register'); setError(''); setPassword(''); setName(''); }}
             >
               {lang === 'ar' ? 'تسجيل' : 'Register'}
             </button>
@@ -208,30 +216,31 @@ export default function Login() {
           {error && <div className="error-message show">{error}</div>}
 
           <form onSubmit={tab === 'login' ? handleLogin : handleRegister}>
-            <div className="input-wrapper">
-              <i className="fas fa-user"></i>
-              <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                required
-                placeholder={t.username}
-                minLength="3"
-              />
-            </div>
-
             {tab === 'register' && (
               <div className="input-wrapper">
-                <i className="fas fa-envelope"></i>
+                <i className="fas fa-user"></i>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
                   required
-                  placeholder={lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+                  placeholder={t.name}
+                  minLength="3"
                 />
               </div>
             )}
+
+            <div className="input-wrapper">
+              <i className="fas fa-phone"></i>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                required
+                placeholder={t.phone}
+                dir="ltr"
+              />
+            </div>
 
             <div className="input-wrapper">
               <i className="fas fa-lock"></i>
@@ -275,7 +284,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="demo-hint">{tab === 'login' ? t['demo-hint'] : (lang === 'ar' ? 'أنشئ حسابًا جديدًا للبدء' : 'Create a new account to get started')}</div>
+          <div className="demo-hint">{tab === 'register' ? (lang === 'ar' ? 'أنشئ حسابًا جديدًا للبدء' : 'Create a new account to get started') : ''}</div>
         </div>
       </div>
 

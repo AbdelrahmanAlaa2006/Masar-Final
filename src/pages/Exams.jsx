@@ -6,6 +6,16 @@ export default function Exams() {
   const navigate = useNavigate()
   const [currentLevel, setCurrentLevel] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [userRole, setUserRole] = useState(null)
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('masar-user'))
+      setUserRole(user?.role || null)
+    } catch {
+      setUserRole(null)
+    }
+  }, [])
   const [examData] = useState({
     first: [
       {
@@ -261,9 +271,11 @@ export default function Exams() {
           <span>{levelEmojis[level]}</span>
           {levelTitles[level]}
         </div>
-        <button className="add-exam" onClick={() => addExam(level)}>
-          ➕ إضافة امتحان جديد
-        </button>
+        {userRole === 'admin' && (
+          <button className="add-exam" onClick={() => addExam(level)}>
+            ➕ إضافة امتحان جديد
+          </button>
+        )}
       </div>
       <div className="exam-list">
         {examData[level].map((exam, idx) => renderExamItem(exam, idx, level))}

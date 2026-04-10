@@ -5,6 +5,16 @@ export default function Lectures() {
   const [currentGrade, setCurrentGrade] = useState('')
   const [gradeSelectionVisible, setGradeSelectionVisible] = useState(true)
   const [activeSections, setActiveSections] = useState({})
+  const [userRole, setUserRole] = useState(null)
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('masar-user'))
+      setUserRole(user?.role || null)
+    } catch {
+      setUserRole(null)
+    }
+  }, [])
   const [lectures, setLectures] = useState({
     first: [
       { name: 'مقدمة في الرياضيات - الأسبوع الأول', icon: '📄' },
@@ -232,10 +242,12 @@ export default function Lectures() {
       </button>
       <div className="section-header">
         <h2 className="section-title">📚 {titleAr}</h2>
-        <button className="add-lecture-btn" onClick={() => openAddLectureModal(grade)}>
-          <span>+</span>
-          إضافة محاضرة جديدة
-        </button>
+        {userRole === 'admin' && (
+          <button className="add-lecture-btn" onClick={() => openAddLectureModal(grade)}>
+            <span>+</span>
+            إضافة محاضرة جديدة
+          </button>
+        )}
       </div>
       <div className="lectures" id={grade + 'PrepLectures'}>
         {lectures[grade].map((lecture, idx) => (

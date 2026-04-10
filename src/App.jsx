@@ -30,12 +30,19 @@ function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is logged in
-    const loggedIn = tokenAPI.isLoggedIn()
-    setIsLoggedIn(loggedIn)
+    const token = tokenAPI.getToken()
+    const stored = localStorage.getItem('masar-user')
+    if (token && stored) {
+      setIsLoggedIn(true)
+      setUser(JSON.parse(stored))
+    } else {
+      setIsLoggedIn(false)
+      setUser(null)
+    }
     setIsLoading(false)
   }, [location])
 
@@ -43,27 +50,41 @@ function AppContent() {
     return <div className="app"><div className="page-container">Loading...</div></div>
   }
 
+  // Requires login
+  const ProtectedRoute = ({ children }) => {
+    return isLoggedIn ? children : <Navigate to="/login" replace />
+  }
+
+  // Requires admin role
+  const AdminRoute = ({ children }) => {
+    if (!isLoggedIn) return <Navigate to="/login" replace />
+    if (user?.role !== 'admin') return <Navigate to="/" replace />
+    return children
+  }
+
   return (
-    <div className="app">
+    <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
       {!isLoginPage && <Header />}
 
       <div className="page-container">
         <Routes>
-          <Route path="/" element={isLoggedIn ? <Home /> : <Navigate to="/login" replace />} />
+          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/home" element={isLoggedIn ? <Home /> : <Navigate to="/login" replace />} />
-          <Route path="/lectures" element={isLoggedIn ? <Lectures /> : <Navigate to="/login" replace />} />
-          <Route path="/exams" element={isLoggedIn ? <Exams /> : <Navigate to="/login" replace />} />
-          <Route path="/exam-add" element={isLoggedIn ? <ExamAdd /> : <Navigate to="/login" replace />} />
-          <Route path="/videos" element={isLoggedIn ? <Videos /> : <Navigate to="/login" replace />} />
-          <Route path="/video-add" element={isLoggedIn ? <VideoAdd /> : <Navigate to="/login" replace />} />
-          <Route path="/report" element={isLoggedIn ? <Report /> : <Navigate to="/login" replace />} />
-          <Route path="/videos-report" element={isLoggedIn ? <VideosReport /> : <Navigate to="/login" replace />} />
-          <Route path="/exams-report" element={isLoggedIn ? <ExamsReport /> : <Navigate to="/login" replace />} />
-          <Route path="/videos-group-report" element={isLoggedIn ? <VideosGroupReport /> : <Navigate to="/login" replace />} />
-          <Route path="/exams-group-report" element={isLoggedIn ? <ExamsGroupReport /> : <Navigate to="/login" replace />} />
-          <Route path="/control-panel" element={isLoggedIn ? <ControlPanel /> : <Navigate to="/login" replace />} />
-          <Route path="/exam-taking" element={isLoggedIn ? <ExamTaking /> : <Navigate to="/login" replace />} />
+          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/lectures" element={<ProtectedRoute><Lectures /></ProtectedRoute>} />
+          <Route path="/exams" element={<ProtectedRoute><Exams /></ProtectedRoute>} />
+          <Route path="/exam-taking" element={<ProtectedRoute><ExamTaking /></ProtectedRoute>} />
+          <Route path="/videos" element={<ProtectedRoute><Videos /></ProtectedRoute>} />
+
+          {/* Admin only */}
+          <Route path="/video-add" element={<AdminRoute><VideoAdd /></AdminRoute>} />
+          <Route path="/exam-add" element={<AdminRoute><ExamAdd /></AdminRoute>} />
+          <Route path="/report" element={<AdminRoute><Report /></AdminRoute>} />
+          <Route path="/videos-report" element={<AdminRoute><VideosReport /></AdminRoute>} />
+          <Route path="/exams-report" element={<AdminRoute><ExamsReport /></AdminRoute>} />
+          <Route path="/videos-group-report" element={<AdminRoute><VideosGroupReport /></AdminRoute>} />
+          <Route path="/exams-group-report" element={<AdminRoute><ExamsGroupReport /></AdminRoute>} />
+          <Route path="/control-panel" element={<AdminRoute><ControlPanel /></AdminRoute>} />
         </Routes>
       </div>
     </div>

@@ -4,6 +4,7 @@ import './Videos.css'
 
 export default function Videos() {
   const navigate = useNavigate()
+  const [userRole, setUserRole] = useState(null)
   // State
   const [currentGrade, setCurrentGrade] = useState('')
   const [currentVideo, setCurrentVideo] = useState(null)
@@ -74,8 +75,9 @@ export default function Videos() {
   useEffect(() => {
     try {
       const user = JSON.parse(localStorage.getItem('masar-user'))
-      if (user && user.username) {
+      if (user) {
         setCurrentUser(user)
+        setUserRole(user.role || null)
       }
     } catch (err) {
       console.error('Error loading user:', err)
@@ -234,9 +236,11 @@ export default function Videos() {
               <h1 id="gradeTitle" className="title-main gradient-text">📺 الفيديوهات التعليمية</h1>
             </div>
 
-            <button className="btn btn-primary" onClick={openAddVideoModal}>
-              ➕ إضافة فيديو جديد
-            </button>
+            {userRole === 'admin' && (
+              <button className="btn btn-primary" onClick={openAddVideoModal}>
+                ➕ إضافة فيديو جديد
+              </button>
+            )}
           </div>
 
           <div className="videos-grid" id="videosGrid">
