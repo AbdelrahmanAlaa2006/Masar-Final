@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '../services/api'
 import './Login.css'
@@ -39,6 +39,14 @@ export default function Login() {
   const navigate = useNavigate()
 
   const t = translations[lang]
+
+  useEffect(() => {
+    const wasDark = document.body.classList.contains('dark')
+    document.body.classList.remove('dark')
+    return () => {
+      if (wasDark) document.body.classList.add('dark')
+    }
+  }, [])
 
   const switchLang = newLang => {
     setLang(newLang)
@@ -182,7 +190,34 @@ export default function Login() {
     }, 1700)
   }
 
+  const features = lang === 'ar' ? [
+    { icon: 'fa-book-open', title: 'دروس تفاعلية', desc: 'محتوى تعليمي غني بالشرح والأمثلة لتثبيت المعلومة.' },
+    { icon: 'fa-video', title: 'فيديوهات عالية الجودة', desc: 'شاهد الدروس في أي وقت ومن أي مكان بسهولة.' },
+    { icon: 'fa-file-alt', title: 'اختبارات إلكترونية', desc: 'قس مستواك من خلال امتحانات متنوعة ونتائج فورية.' },
+    { icon: 'fa-chart-line', title: 'تقارير الأداء', desc: 'تابع تقدمك خطوة بخطوة عبر تقارير تفصيلية.' },
+    { icon: 'fa-users', title: 'مجتمع الطلاب', desc: 'تواصل مع زملائك وشارك الخبرات والأسئلة.' },
+    { icon: 'fa-mobile-alt', title: 'متاح على كل الأجهزة', desc: 'تجربة سلسة على الهاتف والتابلت والحاسوب.' },
+  ] : [
+    { icon: 'fa-book-open', title: 'Interactive Lessons', desc: 'Rich educational content with clear explanations and examples.' },
+    { icon: 'fa-video', title: 'High-Quality Videos', desc: 'Watch lessons anytime, anywhere with ease.' },
+    { icon: 'fa-file-alt', title: 'Online Exams', desc: 'Test yourself with varied exams and get instant results.' },
+    { icon: 'fa-chart-line', title: 'Progress Reports', desc: 'Track your growth step by step with detailed reports.' },
+    { icon: 'fa-users', title: 'Student Community', desc: 'Connect with peers and share questions and experiences.' },
+    { icon: 'fa-mobile-alt', title: 'Works on Any Device', desc: 'Seamless experience on phone, tablet, and desktop.' },
+  ]
+
+  const steps = lang === 'ar' ? [
+    { n: '1', title: 'أنشئ حسابك', desc: 'سجّل بسهولة برقم هاتفك وكلمة مرور آمنة.' },
+    { n: '2', title: 'اختر مسارك', desc: 'تصفح المراحل والدروس المتاحة واختر ما يناسبك.' },
+    { n: '3', title: 'ابدأ التعلم', desc: 'شاهد الدروس، حلّ الاختبارات، وتابع تقدمك.' },
+  ] : [
+    { n: '1', title: 'Create Account', desc: 'Sign up easily with your phone number and a secure password.' },
+    { n: '2', title: 'Choose Your Path', desc: 'Browse available levels and lessons that fit you.' },
+    { n: '3', title: 'Start Learning', desc: 'Watch lessons, take exams, and track your progress.' },
+  ]
+
   return (
+    <div className="login-page-wrapper">
     <div className="login-container">
       <div className="lang-toggle">
         <button onClick={() => switchLang('en')} className={`lang-btn ${lang === 'en' ? 'active' : ''}`}>
@@ -250,7 +285,7 @@ export default function Login() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 placeholder={t.password}
-                minLength="3"
+                minLength="6"
               />
               <button
                 type="button"
@@ -284,7 +319,11 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="demo-hint">{tab === 'register' ? (lang === 'ar' ? 'أنشئ حسابًا جديدًا للبدء' : 'Create a new account to get started') : ''}</div>
+          {tab === 'register' && (
+            <div className="demo-hint">
+              {lang === 'ar' ? 'أنشئ حسابًا جديدًا للبدء' : 'Create a new account to get started'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -293,8 +332,49 @@ export default function Login() {
           <img src="/images/logo.white.png" alt="Masar Logo" />
           <h2>{t['platform-title']}</h2>
           <p>{t['platform-description']}</p>
+          <a href="#features" className="scroll-down-btn">
+            {lang === 'ar' ? 'اكتشف المزيد' : 'Discover More'}
+            <i className="fas fa-arrow-down"></i>
+          </a>
         </div>
       </div>
+    </div>
+
+    <section id="features" className="login-features">
+      <div className="section-inner">
+        <h2 className="section-heading">{lang === 'ar' ? 'لماذا منصة مسار؟' : 'Why Masar Platform?'}</h2>
+        <p className="section-sub">{lang === 'ar' ? 'كل ما تحتاجه لرحلة تعليمية ناجحة في مكان واحد' : 'Everything you need for a successful learning journey in one place'}</p>
+        <div className="features-grid">
+          {features.map((f, i) => (
+            <div key={i} className="feature-card">
+              <div className="feature-icon"><i className={`fas ${f.icon}`}></i></div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="login-steps">
+      <div className="section-inner">
+        <h2 className="section-heading">{lang === 'ar' ? 'كيف تبدأ؟' : 'How to Get Started?'}</h2>
+        <p className="section-sub">{lang === 'ar' ? 'ثلاث خطوات بسيطة تفصلك عن رحلتك التعليمية' : 'Three simple steps to begin your learning journey'}</p>
+        <div className="steps-grid">
+          {steps.map((s, i) => (
+            <div key={i} className="step-card">
+              <div className="step-number">{s.n}</div>
+              <h3>{s.title}</h3>
+              <p>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <footer className="login-footer">
+      <p>{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة.' : '© 2026 Masar Educational Platform. All rights reserved.'}</p>
+    </footer>
     </div>
   )
 }

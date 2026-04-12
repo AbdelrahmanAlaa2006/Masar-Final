@@ -11,7 +11,21 @@
 }
 
 .login-page .page-container {
-  padding-top: 0;
+  padding: 0;
+  margin: 0;
+  animation: none;
+  transform: none;
+}
+
+.login-page,
+.login-page .page-container {
+  min-height: 100vh;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.login-page button {
+  margin: 0;
 }
 
 
