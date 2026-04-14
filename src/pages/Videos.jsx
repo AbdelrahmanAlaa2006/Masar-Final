@@ -16,8 +16,8 @@ export default function Videos() {
     'first-prep': [
       {
         id: '1',
-        title: 'مقدمة في الرياضيات',
-        description: 'أساسيات الرياضيات للصف الأول الإعدادي - شرح مفصل لأهم المفاهيم',
+        title: 'رياضيات | مقدمة الأعداد',
+        description: 'شرح الأعداد الطبيعية والعمليات الحسابية مع أمثلة محلولة',
         grade: 'first-prep',
         totalParts: 3,
         parts: [
@@ -60,17 +60,6 @@ export default function Videos() {
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
 
-  const scientificElements = [
-    'x² + y² = r²', 'E = mc²', 'F = ma', 'a² + b² = c²', 'PV = nRT',
-    '∫ f(x)dx', '∑ n=1', '∆x → 0', 'lim x→∞', 'dy/dx',
-    '∞', '∂', '∇', '∆', '∑', '∏', '∫', '√', '±', '∝',
-    'α', 'β', 'γ', 'δ', 'ε', 'θ', 'λ', 'μ', 'π', 'σ', 'φ', 'ψ', 'ω',
-    'H₂O', 'CO₂', 'NaCl', 'C₆H₁₂O₆', 'CH₄', 'NH₃', 'H₂SO₄',
-    'v = u + at', 's = ut + ½at²', 'P = F/A', 'W = Fd', 'Q = mcΔT',
-    '△', '⬠', '⬢', '⬟', '⬝', '◯', '⬜', '⬛',
-    '1', '2', '3', '5', '7', '11', '13', '17', '19', '23',
-  ]
-
   // Load current user
   useEffect(() => {
     try {
@@ -82,36 +71,6 @@ export default function Videos() {
     } catch (err) {
       console.error('Error loading user:', err)
     }
-  }, [])
-
-  // Initialize floating elements
-  useEffect(() => {
-    const bgDiv = document.getElementById('scientificBg')
-    if (!bgDiv) return
-
-    const createFloatingElement = () => {
-      const element = document.createElement('div')
-      const sizes = ['small', 'medium', 'large']
-      element.className = `floating-element ${sizes[Math.floor(Math.random() * 3)]}`
-      element.textContent = scientificElements[Math.floor(Math.random() * scientificElements.length)]
-      element.style.left = Math.random() * 100 + '%'
-      element.style.animationDelay = Math.random() * 10 + 's'
-      
-      bgDiv.appendChild(element)
-      
-      setTimeout(() => {
-        if (element.parentNode) {
-          element.parentNode.removeChild(element)
-        }
-      }, 25000)
-    }
-
-    for (let i = 0; i < 15; i++) {
-      setTimeout(createFloatingElement, i * 1000)
-    }
-
-    const interval = setInterval(createFloatingElement, 2000)
-    return () => clearInterval(interval)
   }, [])
 
   // Extract video ID from YouTube URL
@@ -190,7 +149,6 @@ export default function Videos() {
 
   return (
     <div className="videos-page" dir="rtl">
-      <div className="scientific-bg" id="scientificBg"></div>
 
       {/* Grade Selection View */}
       {view === 'grades' && (
@@ -244,32 +202,83 @@ export default function Videos() {
           </div>
 
           <div className="videos-grid" id="videosGrid">
-            {currentGrade && videos[currentGrade] && videos[currentGrade].map((video) => (
-              <div key={video.id} className="card video-card" onClick={() => openVideoPlayer(video)}>
-                <div className="video-thumbnail">
-                  <div className="play-icon">▶️</div>
-                  <span className="badge badge-secondary" style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                    {video.totalParts} أجزاء
-                  </span>
-                </div>
-                <div className="video-info">
-                  <h3>{video.title}</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '10px' }}>
-                    {video.description}
-                  </p>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <span className="info-label">👁️ المشاهدات</span>
-                      <span className="info-value">{video.viewLimit}</span>
+            {currentGrade && videos[currentGrade] && videos[currentGrade].map((video, index) => {
+              const expiry = new Date(video.expiryTime)
+              const isAvailable = new Date() < expiry
+              const formattedExpiry = expiry.toLocaleDateString('ar-EG', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })
+              const totalDuration = video.parts.reduce((sum, p) => {
+                const mins = parseInt(p.duration) || 0
+                return sum + mins
+              }, 0)
+
+              const handleDelete = (e) => {
+                e.stopPropagation()
+                setVideos(prev => ({
+                  ...prev,
+                  [currentGrade]: prev[currentGrade].filter(v => v.id !== video.id)
+                }))
+              }
+
+              return (
+                <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
+
+                  {/* Status Bar */}
+                  <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
+                    <span className="vc-status-dot" />
+                    <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+                    {userRole === 'admin' && (
+                      <button className="vc-delete-btn" onClick={handleDelete}>
+                        🗑 حذف
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Header */}
+                  <div className="vc-header">
+                    <div className="vc-play-btn">▶</div>
+                    <div className="vc-titles">
+                      <div className="vc-title">{video.title}</div>
+                      <div className="vc-desc">{video.description}</div>
                     </div>
-                    <div className="info-item">
-                      <span className="info-label">⏱️ المدة</span>
-                      <span className="info-value">{video.totalParts * 20} دقيقة</span>
+                    <div className="vc-badge">{index + 1}</div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="vc-stats">
+                    <div className="vc-stat">
+                      <span className="vc-stat-icon">🎬</span>
+                      <span className="vc-stat-label">عدد الأجزاء</span>
+                      <span className="vc-stat-value">{video.totalParts} جزء</span>
+                    </div>
+                    <div className="vc-stat">
+                      <span className="vc-stat-icon">⏱️</span>
+                      <span className="vc-stat-label">المدة الكلية</span>
+                      <span className="vc-stat-value">{totalDuration || video.totalParts * 18} دقيقة</span>
+                    </div>
+                    <div className="vc-stat">
+                      <span className="vc-stat-icon">👁️</span>
+                      <span className="vc-stat-label">عدد المشاهدات</span>
+                      <span className="vc-stat-value">{video.viewLimit} مرات</span>
+                    </div>
+                    <div className="vc-stat">
+                      <span className="vc-stat-icon">🕒</span>
+                      <span className="vc-stat-label">متاح لمدة</span>
+                      <span className="vc-stat-value">{video.activeHours} ساعة</span>
                     </div>
                   </div>
+
+                  {/* Footer */}
+                  <div className="vc-footer">
+                    <span>⏳</span>
+                    <span>متاح حتى {formattedExpiry}</span>
+                  </div>
+
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

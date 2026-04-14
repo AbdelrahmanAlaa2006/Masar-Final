@@ -1,25 +1,25 @@
 :root {
   --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-secondary: #f8fafc;
+  --bg-secondary: #f0f2f8;
   --text-color: #1a202c;
   --card-bg: #ffffff;
   --primary: #667eea;
   --secondary: #764ba2;
   --success: #48bb78;
   --warning: #ed8936;
-  --shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
-  --shadow-hover: 0 20px 40px rgba(102, 126, 234, 0.2);
+  --shadow: 0 4px 20px rgba(102, 126, 234, 0.12);
+  --shadow-hover: 0 12px 36px rgba(102, 126, 234, 0.2);
   --gradient-success: linear-gradient(135deg, #48bb78, #38a169);
   --gradient-warning: linear-gradient(135deg, #ed8936, #dd6b20);
-  
+
   /* Light mode page backgrounds */
-  --page-bg: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  --page-bg: #f0f2f8;
   --page-bg-secondary: #ffffff;
   --text-primary: #1a202c;
   --text-secondary: #4a5568;
   --text-muted: #718096;
-  --border-light: #cbd5e0;
-  --hover-bg: #f0f4f8;
+  --border-light: #e2e8f0;
+  --hover-bg: #f0f2f8;
 }
 
 body.dark {

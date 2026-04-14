@@ -16,109 +16,118 @@ export default function Exams() {
       setUserRole(null)
     }
   }, [])
-  const [examData] = useState({
+  const [examData, setExamData] = useState({
     first: [
       {
         id: 'exam1_first',
-        title: "امتحان الرياضيات - الوحدة الأولى",
+        title: "رياضيات | الوحدة الأولى",
         lecture: "الأعداد الطبيعية والصحيحة",
         icon: "📘",
         duration: 60,
         availableHours: 72,
         maxAttempts: 2,
         questions: 15,
+        grade: 30,
         createdAt: "2023-05-15T10:00:00"
       },
       {
         id: 'exam2_first',
-        title: "امتحان العلوم - الفصل الأول",
+        title: "علوم | الفصل الأول",
         lecture: "المادة وخواصها",
         icon: "🔬",
         duration: 45,
         availableHours: 48,
         maxAttempts: 1,
         questions: 10,
+        grade: 20,
         createdAt: "2023-05-20T14:30:00"
       }
     ],
     second: [
       {
         id: 'exam1_second',
-        title: "امتحان الجبر",
+        title: "جبر | المعادلات",
         lecture: "المعادلات والمتباينات",
         icon: "📐",
         duration: 90,
         availableHours: 96,
         maxAttempts: 3,
         questions: 20,
+        grade: 40,
         createdAt: "2023-05-10T09:15:00"
       },
       {
         id: 'exam2_second',
-        title: "امتحان الهندسة",
-        lecture: "الدائرة والمثلث",
+        title: "هندسة | الدائرة والمثلث",
+        lecture: "خصائص الأشكال الهندسية",
         icon: "📏",
         duration: 75,
         availableHours: 72,
         maxAttempts: 2,
         questions: 18,
+        grade: 36,
         createdAt: "2023-05-18T11:45:00"
       },
       {
         id: 'exam3_second',
-        title: "امتحان العلوم المتقدم",
-        lecture: "التفاعلات الكيميائية",
+        title: "علوم | التفاعلات الكيميائية",
+        lecture: "أنواع التفاعلات ومعادلاتها",
         icon: "🧪",
         duration: 60,
         availableHours: 48,
         maxAttempts: 1,
         questions: 15,
+        grade: 30,
         createdAt: "2023-05-22T16:20:00"
       }
     ],
     third: [
       {
         id: 'exam1_third',
-        title: "امتحان الجبر المتقدم",
+        title: "جبر | الإحصاء",
         lecture: "الإحصاء والاحتمالات",
         icon: "📊",
         duration: 120,
         availableHours: 120,
         maxAttempts: 2,
         questions: 25,
+        grade: 50,
         createdAt: "2023-05-05T08:00:00"
       },
       {
         id: 'exam2_third',
-        title: "امتحان الهندسة التحليلية",
-        lecture: "الإحداثيات والرسم البياني",
+        title: "هندسة | الإحداثيات",
+        lecture: "الرسم البياني والإحداثيات",
         icon: "📈",
         duration: 90,
         availableHours: 96,
         maxAttempts: 2,
         questions: 20,
+        grade: 40,
         createdAt: "2023-05-12T13:30:00"
       },
       {
         id: 'exam3_third',
-        title: "امتحان الفيزياء",
+        title: "فيزياء | الكهرباء",
         lecture: "الكهرباء والمغناطيسية",
         icon: "⚡",
         duration: 75,
         availableHours: 72,
         maxAttempts: 1,
         questions: 18,
+        grade: 36,
         createdAt: "2023-05-17T10:15:00"
       },
       {
         id: 'exam4_third',
-        title: "امتحان الكيمياء",
-        lecture: "التركيب الذري والجزيئي",
+        title: "كيمياء | التركيب الذري",
+        lecture: "الذرة والجزيء والروابط",
         icon: "🧬",
         duration: 60,
         availableHours: 48,
         maxAttempts: 1,
         questions: 15,
+        grade: 30,
         createdAt: "2023-05-25T15:45:00"
       }
     ]
@@ -213,10 +222,18 @@ export default function Exams() {
     </div>
   )
 
+  const deleteExam = (level, examId) => {
+    setExamData(prev => ({
+      ...prev,
+      [level]: prev[level].filter(e => e.id !== examId)
+    }))
+  }
+
   const renderExamItem = (exam, index, level) => {
     const remainingAttempts = getRemainingAttempts(exam.id)
     const createdAt = new Date(exam.createdAt)
     const availableUntil = new Date(createdAt.getTime() + (exam.availableHours * 60 * 60 * 1000))
+    const isAvailable = new Date() < availableUntil
     const formattedDate = availableUntil.toLocaleDateString('ar-EG', {
       weekday: 'long',
       year: 'numeric',
@@ -227,36 +244,63 @@ export default function Exams() {
     })
 
     return (
-      <div key={exam.id} className="exam-item" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam.id)}>
-        <div className="exam-title">
-          <div className="exam-number">{index + 1}</div>
-          <span>{exam.title}</span>
+      <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam.id)}>
+
+        {/* Status Bar */}
+        <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
+          <span className="ec-status-dot" />
+          <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+          {userRole === 'admin' && (
+            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); deleteExam(level, exam.id) }}>
+              🗑 حذف
+            </button>
+          )}
         </div>
-        <div className="exam-lecture">
-          {exam.icon} {exam.lecture}
-        </div>
-        <div className="exam-details">
-          <div className="exam-detail">
-            <span>⏱️</span>
-            <span>{exam.duration} دقيقة</span>
-          </div>
-          <div className="exam-detail">
-            <span>🕒</span>
-            <span>متاح لمدة {exam.availableHours} ساعة</span>
-          </div>
-          <div className="exam-detail">
-            <span>🔁</span>
-            <span>{remainingAttempts}/{exam.maxAttempts} محاولة</span>
-          </div>
-          <div className="exam-detail">
-            <span>❓</span>
-            <span>{exam.questions} سؤال</span>
+
+        {/* Header */}
+        <div className="ec-header">
+          <div className="ec-badge">{index + 1}</div>
+          <div className="ec-titles">
+            <div className="ec-title">{exam.title}</div>
+            <div className="ec-lecture">{exam.icon} {exam.lecture}</div>
           </div>
         </div>
-        <div className="exam-detail" style={{ marginTop: '12px', background: 'rgba(255, 193, 7, 0.1)', color: 'var(--text-color)' }}>
+
+        {/* Stats Grid */}
+        <div className="ec-stats">
+          <div className="ec-stat">
+            <span className="ec-stat-icon">⏱️</span>
+            <span className="ec-stat-label">مدة الامتحان</span>
+            <span className="ec-stat-value">{exam.duration} دقيقة</span>
+          </div>
+          <div className="ec-stat">
+            <span className="ec-stat-icon">🕒</span>
+            <span className="ec-stat-label">المدة المتاحة</span>
+            <span className="ec-stat-value">{exam.availableHours} ساعة</span>
+          </div>
+          <div className="ec-stat">
+            <span className="ec-stat-icon">❓</span>
+            <span className="ec-stat-label">عدد الأسئلة</span>
+            <span className="ec-stat-value">{exam.questions} سؤال</span>
+          </div>
+          <div className="ec-stat">
+            <span className="ec-stat-icon">🏆</span>
+            <span className="ec-stat-label">درجة الامتحان</span>
+            <span className="ec-stat-value">{exam.grade} درجة</span>
+          </div>
+          <div className="ec-stat">
+            <span className="ec-stat-icon">🔁</span>
+            <span className="ec-stat-label">عدد المحاولات</span>
+            <span className="ec-stat-value">{remainingAttempts}/{exam.maxAttempts}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="ec-footer">
           <span>⏳</span>
           <span>متاح حتى {formattedDate}</span>
         </div>
+
       </div>
     )
   }

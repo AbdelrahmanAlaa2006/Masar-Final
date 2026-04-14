@@ -4,7 +4,7 @@ import './ExamTaking.css'
 export default function ExamTaking() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [userAnswers, setUserAnswers] = useState(new Array(3).fill(null))
-  const [timeLeft, setTimeLeft] = useState(600) // 10 minutes
+  const [timeLeft, setTimeLeft] = useState(600)
   const [examFinished, setExamFinished] = useState(false)
 
   const questions = [
@@ -28,10 +28,8 @@ export default function ExamTaking() {
     },
   ]
 
-  // Timer effect
   useEffect(() => {
     if (examFinished) return
-
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -42,37 +40,22 @@ export default function ExamTaking() {
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
   }, [examFinished])
 
   const formatTime = seconds => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, '0')
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
     return `${m}:${s}`
   }
 
-  const answeredCount = userAnswers.filter(ans => ans !== null).length
+  const answeredCount = userAnswers.filter(a => a !== null).length
   const remainingCount = questions.length - answeredCount
 
-  const handleSelectOption = optionIndex => {
-    const newAnswers = [...userAnswers]
-    newAnswers[currentQuestion] = optionIndex
-    setUserAnswers(newAnswers)
-  }
-
-  const handleNextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-    }
-  }
-
-  const handlePrevQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1)
-    }
+  const handleSelectOption = idx => {
+    const next = [...userAnswers]
+    next[currentQuestion] = idx
+    setUserAnswers(next)
   }
 
   const handleFinishExam = () => {
@@ -83,91 +66,137 @@ export default function ExamTaking() {
   const createConfetti = () => {
     const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#48bb78']
     for (let i = 0; i < 50; i++) {
-      const confetti = document.createElement('div')
-      confetti.style.position = 'fixed'
-      confetti.style.width = '8px'
-      confetti.style.height = '8px'
-      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]
-      confetti.style.borderRadius = '50%'
-      confetti.style.left = Math.random() * 100 + 'vw'
-      confetti.style.top = '-10px'
-      confetti.style.zIndex = '9999'
-      confetti.style.animation = `confettiFall ${Math.random() * 3 + 2}s ease-out forwards`
-      document.body.appendChild(confetti)
-
-      setTimeout(() => {
-        confetti.remove()
-      }, 5000)
+      const el = document.createElement('div')
+      el.style.cssText = `position:fixed;width:8px;height:8px;border-radius:50%;
+        background:${colors[Math.floor(Math.random() * colors.length)]};
+        left:${Math.random() * 100}vw;top:-10px;z-index:9999;
+        animation:confettiFall ${Math.random() * 3 + 2}s ease-out forwards`
+      document.body.appendChild(el)
+      setTimeout(() => el.remove(), 5000)
     }
   }
 
   const currentQ = questions[currentQuestion]
+  const letters = ['أ', 'ب', 'ج', 'د']
+  const progress = ((currentQuestion + 1) / questions.length) * 100
 
   return (
-    <div className="exam-taking">
-      <div className="exam-container">
+    <div className="et-wrapper">
+      <div className="et-card">
+
         {!examFinished ? (
           <>
-            <div className="exam-header">
-              <div className="counter">Answered: {answeredCount}</div>
-              <div className="counter">Remaining: {remainingCount}</div>
-              <div className={`timer ${timeLeft <= 60 ? 'critical' : ''}`}>
-                Time left: {formatTime(timeLeft)}
+            {/* ── Top Bar ── */}
+            <div className="et-topbar">
+              <div className="et-topbar-stat">
+                <span>✅</span>
+                <span>أجبت: <strong>{answeredCount}</strong></span>
+              </div>
+
+              <div className="et-topbar-center">
+                السؤال {currentQuestion + 1} من {questions.length}
+              </div>
+
+              <div className={`et-timer ${timeLeft <= 60 ? 'et-timer-critical' : ''}`}>
+                <span>⏱</span>
+                <span>{formatTime(timeLeft)}</span>
               </div>
             </div>
 
-            <div id="question-container">
-              <h2>
-                <span className="question-points">{currentQ.points} درجات</span>
-                Q{currentQuestion + 1}: {currentQ.question}
-              </h2>
+            {/* ── Progress Bar ── */}
+            <div className="et-progress-track">
+              <div className="et-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
 
-              <div className="options">
-                {currentQ.options.map((option, index) => (
-                  <div
-                    key={index}
-                    className={`option ${userAnswers[currentQuestion] === index ? 'selected' : ''}`}
-                    onClick={() => handleSelectOption(index)}
-                  >
-                    {option}
-                  </div>
-                ))}
+            {/* ── Question ── */}
+            <div className="et-question-area">
+              <div className="et-question-meta">
+                <span className="et-q-badge et-q-num">س {currentQuestion + 1}</span>
+                <span className="et-q-badge et-q-pts">{currentQ.points} درجات</span>
+                <span className="et-q-badge et-q-rem">متبقي: {remainingCount}</span>
               </div>
+              <p className="et-question-text">{currentQ.question}</p>
             </div>
 
-            <div className="navigation">
-              <button onClick={handlePrevQuestion} disabled={currentQuestion === 0}>
-                ⬅️ السابق
-              </button>
-              {currentQuestion === questions.length - 1 ? (
-                <button className="finish-btn" onClick={handleFinishExam}>
-                  ✅ إنهاء الامتحان
-                </button>
-              ) : (
-                <button onClick={handleNextQuestion}>التالي ➡️</button>
-              )}
-            </div>
-
-            <div className="question-slides">
-              {questions.map((_, index) => (
+            {/* ── Options ── */}
+            <div className="et-options">
+              {currentQ.options.map((opt, idx) => (
                 <div
-                  key={index}
-                  className={`question-slide ${userAnswers[index] !== null ? 'answered' : ''} ${
-                    index === currentQuestion ? 'active' : ''
-                  }`}
-                  onClick={() => setCurrentQuestion(index)}
+                  key={idx}
+                  className={`et-option ${userAnswers[currentQuestion] === idx ? 'et-option-selected' : ''}`}
+                  onClick={() => handleSelectOption(idx)}
                 >
-                  {index + 1}
+                  <span className="et-option-letter">{letters[idx]}</span>
+                  <span className="et-option-text">{opt}</span>
                 </div>
               ))}
             </div>
+
+            {/* ── Question Navigator ── */}
+            <div className="et-navigator">
+              {questions.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`et-nav-dot
+                    ${userAnswers[idx] !== null ? 'et-dot-answered' : ''}
+                    ${idx === currentQuestion ? 'et-dot-active' : ''}
+                  `}
+                  onClick={() => setCurrentQuestion(idx)}
+                >
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Footer Navigation ── */}
+            <div className="et-footer">
+              <button
+                className="et-btn et-btn-prev"
+                onClick={() => setCurrentQuestion(q => q - 1)}
+                disabled={currentQuestion === 0}
+              >
+                ← السابق
+              </button>
+
+              {currentQuestion === questions.length - 1 ? (
+                <button className="et-btn et-btn-finish" onClick={handleFinishExam}>
+                  إنهاء الامتحان ✓
+                </button>
+              ) : (
+                <button
+                  className="et-btn et-btn-next"
+                  onClick={() => setCurrentQuestion(q => q + 1)}
+                >
+                  التالي →
+                </button>
+              )}
+            </div>
           </>
         ) : (
-          <div className="exam-finished">
-            <div className="success-message">🎉 تم إنهاء الامتحان بنجاح!</div>
-            <p>شكراً لك على إكمال الاختبار</p>
+          /* ── Finished Screen ── */
+          <div className="et-finished">
+            <div className="et-finished-icon">🎉</div>
+            <h2 className="et-finished-title">تم إنهاء الامتحان بنجاح!</h2>
+            <p className="et-finished-sub">شكراً لك على إكمال الاختبار</p>
+            <div className="et-score-box">
+              <div className="et-score-item">
+                <span className="et-score-val">{answeredCount}</span>
+                <span className="et-score-lbl">أجبت</span>
+              </div>
+              <div className="et-score-divider" />
+              <div className="et-score-item">
+                <span className="et-score-val">{questions.length}</span>
+                <span className="et-score-lbl">إجمالي الأسئلة</span>
+              </div>
+              <div className="et-score-divider" />
+              <div className="et-score-item">
+                <span className="et-score-val">{remainingCount}</span>
+                <span className="et-score-lbl">لم يُجب عنها</span>
+              </div>
+            </div>
           </div>
         )}
+
       </div>
     </div>
   )

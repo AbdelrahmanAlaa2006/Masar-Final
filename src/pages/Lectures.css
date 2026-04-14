@@ -2,10 +2,10 @@
 
 :root {
   --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-secondary: #f8fafc;
+  --bg-secondary: #f0f2f8;
   --text-color: #1a202c;
   --card-bg: #ffffff;
-  --input-bg: #ffffff;
+  --input-bg: #f0f2f8;
   --suggestion-bg: #ffffff;
   --primary: #667eea;
   --secondary: #764ba2;

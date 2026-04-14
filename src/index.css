@@ -1,6 +1,6 @@
 :root {
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #f5f7fa;
+  color: #1a202c;
+  background-color: #f0f2f8;
 }
 
 * {
@@ -15,7 +15,7 @@ body {
   min-width: 320px;
   font-family: 'Cairo', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  background: #f0f2f8;
   color: #1a202c;
   transition: background 0.3s ease, color 0.3s ease;
 }
@@ -64,14 +64,14 @@ button:focus-visible {
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: #1a202c;
+    background-color: #f0f2f8;
   }
   a:hover {
     color: #747bff;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #ffffff;
   }
 }
 body::before{

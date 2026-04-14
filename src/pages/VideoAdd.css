@@ -41,7 +41,7 @@
 
 .form-section {
   flex: 1;
-  background: white;
+  background: var(--card-bg, #ffffff);
   border-radius: 15px;
   padding: 30px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -149,7 +149,7 @@
 }
 
 .part-block {
-  background: white;
+  background: var(--card-bg, #ffffff);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 15px;
@@ -191,7 +191,7 @@
   border: 2px solid #bfdbfe;
   border-radius: 8px;
   font-size: 1rem;
-  background-color: white;
+  background-color: var(--card-bg, #ffffff);
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -287,7 +287,7 @@
 
 /* Preview Card */
 .preview-card {
-  background: white;
+  background: var(--card-bg, #ffffff);
   border-radius: 15px;
   padding: 30px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
