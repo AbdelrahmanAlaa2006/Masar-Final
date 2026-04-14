@@ -373,7 +373,7 @@ export default function Login() {
     </section>
 
     <footer className="login-footer">
-      <p>{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة.' : '© 2026 Masar Educational Platform. All rights reserved.'}</p>
+      <p>{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة' : '© 2026 Masar Educational Platform. All rights reserved'}</p>
     </footer>
     </div>
   )

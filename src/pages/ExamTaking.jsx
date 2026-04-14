@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './ExamTaking.css'
 
 export default function ExamTaking() {
+  const navigate = useNavigate()
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [userAnswers, setUserAnswers] = useState(new Array(3).fill(null))
   const [timeLeft, setTimeLeft] = useState(600)
@@ -82,6 +84,13 @@ export default function ExamTaking() {
 
   return (
     <div className="et-wrapper">
+      {examFinished && (
+        <div className="et-back-row">
+          <button className="et-back-btn" onClick={() => navigate('/exams')}>
+            العودة إلى الامتحانات
+          </button>
+        </div>
+      )}
       <div className="et-card">
 
         {!examFinished ? (
