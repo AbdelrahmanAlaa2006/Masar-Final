@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Report.css'
 
@@ -10,32 +10,6 @@ export default function Report() {
   const [filteredNames, setFilteredNames] = useState([])
 
   const studentNames = ['محمد أحمد', 'محمود عبد الله', 'منى حسين', 'محمد حسين']
-
-  useEffect(() => {
-    // Create floating particles
-    const createParticle = () => {
-      const particle = document.createElement('div')
-      particle.className = 'particle'
-      particle.style.left = Math.random() * 100 + 'vw'
-      particle.style.animationDelay = Math.random() * 15 + 's'
-      particle.style.animationDuration = Math.random() * 10 + 10 + 's'
-      document.body.appendChild(particle)
-
-      setTimeout(() => {
-        particle.remove()
-      }, 25000)
-    }
-
-    // Generate particles periodically
-    const particleInterval = setInterval(createParticle, 3000)
-
-    // Initial particles
-    for (let i = 0; i < 5; i++) {
-      setTimeout(createParticle, i * 1000)
-    }
-
-    return () => clearInterval(particleInterval)
-  }, [])
 
   const filterNames = (value) => {
     setStudentInput(value)
@@ -91,24 +65,37 @@ export default function Report() {
 
   return (
     <main className="report-page">
-      <div className="main-container">
-        <h1 className="page-title">تقرير الطالب</h1>
+      <div className="report-container">
 
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="ابحث باسم الطالب..."
-            value={studentInput}
-            onChange={(e) => filterNames(e.target.value)}
-            className="search-input"
-          />
-          <button onClick={searchStudent} className="search-btn">
-            🔍 بحث
-          </button>
+        <div className="report-header">
+          <div className="report-header-icon">
+            <i className="fas fa-chart-bar"></i>
+          </div>
+          <h1>تقارير الطلاب</h1>
+          <p>ابحث عن طالب واستعرض تقاريره الدراسية بالتفصيل</p>
+        </div>
+
+        <div className="report-search-box">
+          <div className="report-search-row">
+            <div className="report-search-field">
+              <i className="fas fa-search report-search-icon"></i>
+              <input
+                type="text"
+                placeholder="اكتب اسم الطالب للبحث..."
+                value={studentInput}
+                onChange={(e) => filterNames(e.target.value)}
+              />
+            </div>
+            <button onClick={searchStudent} className="report-search-btn">
+              <i className="fas fa-arrow-left"></i>
+              بحث
+            </button>
+          </div>
           {showSuggestions && (
-            <ul className="suggestions">
+            <ul className="report-suggestions">
               {filteredNames.map((name, index) => (
                 <li key={index} onClick={() => selectStudent(name)}>
+                  <i className="fas fa-user"></i>
                   {name}
                 </li>
               ))}
@@ -116,62 +103,64 @@ export default function Report() {
           )}
         </div>
 
-        <div className="action-cards">
-          <div
-            className="action-card"
-            onClick={() => goTo('videos')}
-          >
-            <div className="card-icon">🎬</div>
-            <h2 className="card-title">الفيديوهات التعليمية</h2>
-            <p className="card-description">
-              عرض حالة المشاهدة وتتبع تقدم الطالب في جميع الفيديوهات التعليمية المتاحة
-            </p>
+        <h2 className="report-section-label">
+          <i className="fas fa-user-graduate"></i>
+          تقارير فردية
+        </h2>
+
+        <div className="report-cards-grid">
+          <div className="report-card" onClick={() => goTo('videos')}>
+            <div className="report-card-icon report-card-icon--blue">
+              <i className="fas fa-play-circle"></i>
+            </div>
+            <div className="report-card-body">
+              <h3>تقرير الفيديوهات</h3>
+              <p>تتبع حالة مشاهدة الفيديوهات التعليمية ومدى تقدم الطالب فيها</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
           </div>
 
-          <div
-            className="action-card"
-            onClick={() => goTo('exams')}
-          >
-            <div className="card-icon">📚</div>
-            <h2 className="card-title">الامتحانات والاختبارات</h2>
-            <p className="card-description">
-              مراجعة النتائج وحالة الحل لجميع الامتحانات والاختبارات التي تم إجراؤها
-            </p>
+          <div className="report-card" onClick={() => goTo('exams')}>
+            <div className="report-card-icon report-card-icon--purple">
+              <i className="fas fa-file-alt"></i>
+            </div>
+            <div className="report-card-body">
+              <h3>تقرير الامتحانات</h3>
+              <p>مراجعة نتائج الامتحانات وتحليل أداء الطالب في كل اختبار</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
           </div>
         </div>
 
-        {/* قسم التقرير الجماعي الجديد */}
-        <div className="group-report-section">
-          <h2 className="group-report-title">التقرير الجماعي</h2>
+        <h2 className="report-section-label">
+          <i className="fas fa-users"></i>
+          تقارير جماعية
+        </h2>
 
-          <div className="group-report-cards">
-            <div
-              className="action-card"
-              onClick={() => goToGroupReport('videos')}
-            >
-              <div className="card-icon">
-                <i className="fas fa-chart-line"></i>
-              </div>
-              <h2 className="card-title">تقرير جماعي للفيديوهات</h2>
-              <p className="card-description">
-                عرض إحصائيات المشاهدة وتقرير الأداء لجميع الطلاب
-              </p>
+        <div className="report-cards-grid">
+          <div className="report-card" onClick={() => goToGroupReport('videos')}>
+            <div className="report-card-icon report-card-icon--teal">
+              <i className="fas fa-chart-line"></i>
             </div>
+            <div className="report-card-body">
+              <h3>تقرير جماعي للفيديوهات</h3>
+              <p>إحصائيات المشاهدة وتقرير الأداء العام لجميع الطلاب</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
+          </div>
 
-            <div
-              className="action-card"
-              onClick={() => goToGroupReport('exams')}
-            >
-              <div className="card-icon">
-                <i className="fas fa-chart-pie"></i>
-              </div>
-              <h2 className="card-title">تقرير جماعي للامتحانات</h2>
-              <p className="card-description">
-                عرض نتائج الامتحانات وتحليل الأداء لجميع الطلاب
-              </p>
+          <div className="report-card" onClick={() => goToGroupReport('exams')}>
+            <div className="report-card-icon report-card-icon--orange">
+              <i className="fas fa-chart-pie"></i>
             </div>
+            <div className="report-card-body">
+              <h3>تقرير جماعي للامتحانات</h3>
+              <p>نتائج وتحليل أداء جميع الطلاب في الامتحانات</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
           </div>
         </div>
+
       </div>
     </main>
   )
