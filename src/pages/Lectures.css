@@ -513,7 +513,7 @@ h2 {
 }
 
 @media (max-width: 768px) {
-  body {
+  .app:not(.login-page) .page-container {
     padding-top: 140px;
   }
 

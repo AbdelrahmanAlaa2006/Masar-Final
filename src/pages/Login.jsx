@@ -28,6 +28,7 @@ const translations = {
 
 export default function Login() {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en')
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [tab, setTab] = useState('login') // 'login' or 'register'
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
@@ -41,18 +42,29 @@ export default function Login() {
   const t = translations[lang]
 
   useEffect(() => {
-    const wasDark = document.body.classList.contains('dark')
-    document.body.classList.remove('dark')
+    if (theme === 'dark') document.body.classList.add('dark')
+    else document.body.classList.remove('dark')
+  }, [theme])
+
+  useEffect(() => {
+    const prevDir = document.documentElement.dir
+    document.documentElement.dir = 'ltr'
     return () => {
-      if (wasDark) document.body.classList.add('dark')
+      document.documentElement.dir = prevDir
     }
   }, [])
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+  }
 
   const switchLang = newLang => {
     setLang(newLang)
     localStorage.setItem('lang', newLang)
     document.documentElement.lang = newLang
-    document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr'
+    document.documentElement.dir = 'ltr'
   }
 
   const handleLogin = async e => {
@@ -219,12 +231,22 @@ export default function Login() {
   return (
     <div className="login-page-wrapper">
     <div className="login-container">
-      <div className="lang-toggle">
-        <button onClick={() => switchLang('en')} className={`lang-btn ${lang === 'en' ? 'active' : ''}`}>
-          English
-        </button>
-        <button onClick={() => switchLang('ar')} className={`lang-btn ${lang === 'ar' ? 'active' : ''}`}>
-          العربية
+      <div className="top-controls">
+        <div className="lang-toggle">
+          <button onClick={() => switchLang('en')} className={`lang-btn ${lang === 'en' ? 'active' : ''}`}>
+            English
+          </button>
+          <button onClick={() => switchLang('ar')} className={`lang-btn ${lang === 'ar' ? 'active' : ''}`}>
+            العربية
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="theme-toggle"
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
         </button>
       </div>
 
