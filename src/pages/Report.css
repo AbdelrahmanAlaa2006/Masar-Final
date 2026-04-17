@@ -480,9 +480,11 @@
   -webkit-backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  /* Top padding pushes the modal below the fixed navbar */
+  padding: 110px 1rem 2rem;
+  overflow-y: auto;
   animation: rp-fade 0.18s ease-out;
 }
 
@@ -496,7 +498,7 @@
   border-radius: 16px;
   width: 100%;
   max-width: 540px;
-  max-height: 85vh;
+  max-height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
@@ -712,7 +714,8 @@
 .rp-modal-empty p { margin: 0; font-size: 0.88rem; }
 
 @media (max-width: 540px) {
-  .rp-modal { max-height: 92vh; }
+  .rp-modal-overlay { padding: 90px 0.75rem 1.5rem; }
+  .rp-modal { max-height: calc(100vh - 110px); }
   .rp-modal-header { padding: 0.9rem 1rem 0.75rem; }
   .rp-modal-search { margin: 0.75rem 1rem 0; }
   .rp-modal-meta { padding: 0.5rem 1rem 0.3rem; }
