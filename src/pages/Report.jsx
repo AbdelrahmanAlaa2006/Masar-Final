@@ -62,6 +62,9 @@ export default function Report() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerType, setPickerType] = useState(null)
+  const [pickerQuery, setPickerQuery] = useState('')
   const boxRef = useRef(null)
 
   const allStudents = useMemo(() => buildAllStudents(), [])
@@ -127,6 +130,17 @@ export default function Report() {
     }
   }
 
+  const navigateToReport = (type, student) => {
+    const params = new URLSearchParams({
+      student: student.name,
+      id: student.id,
+      group: student.group,
+      prep: student.prep,
+    }).toString()
+    if (type === 'videos') navigate(`/videos-report?${params}`)
+    else if (type === 'exams') navigate(`/exams-report?${params}`)
+  }
+
   const goTo = (type) => {
     /* If user typed something but didn't click — auto-pick the first match */
     let student = selectedStudent
@@ -136,17 +150,28 @@ export default function Report() {
       setStudentInput(student.name)
     }
     if (!student) {
-      setShowSuggestions(true)
+      /* Open the picker modal instead of a browser alert */
+      setPickerType(type)
+      setPickerQuery('')
+      setPickerOpen(true)
       return
     }
-    const params = new URLSearchParams({
-      student: student.name,
-      id: student.id,
-      group: student.group,
-      prep: student.prep,
-    }).toString()
-    if (type === 'videos') navigate(`/videos-report?${params}`)
-    else if (type === 'exams') navigate(`/exams-report?${params}`)
+    navigateToReport(type, student)
+  }
+
+  const pickerResults = useMemo(() => {
+    const q = pickerQuery.trim().toLowerCase()
+    if (!q) return allStudents
+    return allStudents.filter((s) =>
+      [s.name, s.id, s.group, s.prep].join(' ').toLowerCase().includes(q)
+    )
+  }, [pickerQuery, allStudents])
+
+  const pickFromModal = (s) => {
+    setSelectedStudent(s)
+    setStudentInput(s.name)
+    setPickerOpen(false)
+    if (pickerType) navigateToReport(pickerType, s)
   }
 
   const goToGroupReport = (type) => {
@@ -329,6 +354,84 @@ export default function Report() {
         </div>
 
       </div>
+
+      {/* ── Student Picker Modal (replaces browser alert) ── */}
+      {pickerOpen && (
+        <div
+          className="rp-modal-overlay"
+          onClick={() => setPickerOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="rp-modal-header">
+              <div className="rp-modal-icon">
+                <i className="fas fa-user-graduate"></i>
+              </div>
+              <div className="rp-modal-title">
+                <h3>اختر الطالب</h3>
+                <p>
+                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : 'تقرير الامتحانات'} يرجى اختيار طالب من القائمة
+                </p>
+              </div>
+              <button
+                className="rp-modal-close"
+                onClick={() => setPickerOpen(false)}
+                aria-label="إغلاق"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="rp-modal-search">
+              <i className="fas fa-search"></i>
+              <input
+                type="text"
+                autoFocus
+                placeholder="ابحث بالاسم أو رقم الطالب..."
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="rp-modal-meta">
+              <i className="fas fa-list-ul"></i>
+              <span>
+                {pickerResults.length}{' '}
+                {pickerResults.length === 1 ? 'طالب' : 'طالب'}
+              </span>
+            </div>
+
+            <ul className="rp-modal-list">
+              {pickerResults.map((s) => (
+                <li key={s.id} onClick={() => pickFromModal(s)}>
+                  <div className="rp-modal-avatar">{initials(s.name)}</div>
+                  <div className="rp-modal-info">
+                    <div className="rp-modal-name">
+                      <span>{s.name}</span>
+                      <span className="rp-modal-id">
+                        <i className="fas fa-id-badge"></i> {s.id}
+                      </span>
+                    </div>
+                    <div className="rp-modal-sub">
+                      <span><i className="fas fa-graduation-cap"></i> {s.prep}</span>
+                      <span className="rp-dot">•</span>
+                      <span><i className="fas fa-users"></i> {s.group}</span>
+                    </div>
+                  </div>
+                  <i className="fas fa-arrow-left rp-modal-arrow"></i>
+                </li>
+              ))}
+              {pickerResults.length === 0 && (
+                <li className="rp-modal-empty">
+                  <i className="fas fa-user-slash"></i>
+                  <p>لم يتم العثور على نتائج</p>
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
