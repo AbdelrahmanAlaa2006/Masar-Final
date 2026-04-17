@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './ExamsGroupReport.css'
 
 export default function ExamsGroupReport() {
+  const navigate = useNavigate()
   const [currentGrade, setCurrentGrade] = useState('')
   const [currentGroup, setCurrentGroup] = useState('')
   const [currentExam, setCurrentExam] = useState('')
@@ -72,30 +74,6 @@ export default function ExamsGroupReport() {
     'امتحان الهندسة'
   ]
 
-  useEffect(() => {
-    // Create floating particles
-    const createParticle = () => {
-      const particle = document.createElement('div')
-      particle.className = 'particle'
-      particle.style.left = Math.random() * 100 + 'vw'
-      particle.style.animationDelay = Math.random() * 15 + 's'
-      particle.style.animationDuration = Math.random() * 10 + 10 + 's'
-      document.body.appendChild(particle)
-
-      setTimeout(() => {
-        particle.remove()
-      }, 25000)
-    }
-
-    const particleInterval = setInterval(createParticle, 3000)
-
-    for (let i = 0; i < 5; i++) {
-      setTimeout(createParticle, i * 1000)
-    }
-
-    return () => clearInterval(particleInterval)
-  }, [])
-
   const selectGrade = (grade) => {
     setCurrentGrade(grade)
     setCurrentGroup('')
@@ -115,9 +93,7 @@ export default function ExamsGroupReport() {
 
   const handleExamChange = (exam) => {
     setCurrentExam(exam)
-    if (exam) {
-      loadReport(exam)
-    }
+    if (exam) loadReport(exam)
   }
 
   const loadReport = (exam) => {
@@ -137,14 +113,14 @@ export default function ExamsGroupReport() {
         name: student.name,
         id: student.id,
         group: currentGroup,
-        exam: exam,
+        exam,
         date: date.toLocaleDateString('ar-EG'),
-        score: score,
-        maxScore: maxScore,
+        score,
+        maxScore,
         result: score >= 60 ? 'نجح' : 'لم ينجح',
-        rating: rating,
-        attempts: attempts,
-        maxAttempts: maxAttempts,
+        rating,
+        attempts,
+        maxAttempts,
         status: score >= 60 ? 'passed' : 'failed'
       }
     })
@@ -155,65 +131,104 @@ export default function ExamsGroupReport() {
 
   const filterStudents = (filter) => {
     setCurrentFilter(filter)
-
     let filteredData = allStudentsData
-
     switch (filter) {
-      case 'passed':
-        filteredData = allStudentsData.filter((student) => student.score >= 60)
-        break
-      case 'failed':
-        filteredData = allStudentsData.filter((student) => student.score < 60)
-        break
-      case 'high':
-        filteredData = allStudentsData.filter((student) => student.score >= 80)
-        break
-      case 'low':
-        filteredData = allStudentsData.filter((student) => student.score < 60)
-        break
-      default:
-        filteredData = allStudentsData
+      case 'passed': filteredData = allStudentsData.filter((s) => s.score >= 60); break
+      case 'failed': filteredData = allStudentsData.filter((s) => s.score < 60); break
+      case 'high': filteredData = allStudentsData.filter((s) => s.score >= 80); break
+      default: filteredData = allStudentsData
     }
-
     setDisplayedStudents(filteredData)
   }
 
-  const printReport = () => {
-    window.print()
-  }
+  // Summary stats
+  const totalStudents = allStudentsData.length
+  const passedCount = allStudentsData.filter((s) => s.score >= 60).length
+  const failedCount = allStudentsData.filter((s) => s.score < 60).length
+  const excellentCount = allStudentsData.filter((s) => s.score >= 80).length
+  const avgScore = totalStudents > 0
+    ? Math.round(allStudentsData.reduce((s, x) => s + x.score, 0) / totalStudents)
+    : 0
+  const passRate = totalStudents > 0 ? Math.round((passedCount / totalStudents) * 100) : 0
 
   return (
-    <main className="exams-group-report-page">
-      <div className="container">
-        <h1 className="page-title">📊 نظام التقرير الجماعي للامتحانات</h1>
+    <main className="egr-page">
+      <div className="egr-container">
 
-        {/* اختيار الصف */}
-        <div className="card">
-          <h2 className="card-title">اختر الصف الدراسي</h2>
-          <div className="button-group">
+        {/* Back */}
+        <button className="egr-back-btn" onClick={() => navigate(-1)}>
+          <i className="fas fa-arrow-right"></i>
+          رجوع
+        </button>
+
+        {/* Header */}
+        <div className="egr-header">
+          <div className="egr-header-icon">
+            <i className="fas fa-chart-pie"></i>
+          </div>
+          <h1>التقرير الجماعي للامتحانات</h1>
+          <p>تحليل نتائج الطلاب وأداء المجموعات الدراسية</p>
+        </div>
+
+        {/* Stepper */}
+        <div className="egr-stepper">
+          <div className={`egr-step ${currentGrade ? 'done' : 'active'}`}>
+            <div className="egr-step-num">
+              {currentGrade ? <i className="fas fa-check"></i> : 1}
+            </div>
+            <span>الصف</span>
+          </div>
+          <div className="egr-step-line"></div>
+          <div className={`egr-step ${currentGroup ? 'done' : currentGrade ? 'active' : ''}`}>
+            <div className="egr-step-num">
+              {currentGroup ? <i className="fas fa-check"></i> : 2}
+            </div>
+            <span>المجموعة</span>
+          </div>
+          <div className="egr-step-line"></div>
+          <div className={`egr-step ${currentExam ? 'done' : currentGroup ? 'active' : ''}`}>
+            <div className="egr-step-num">
+              {currentExam ? <i className="fas fa-check"></i> : 3}
+            </div>
+            <span>الامتحان</span>
+          </div>
+        </div>
+
+        {/* Grade */}
+        <div className="egr-section">
+          <h2 className="egr-section-title">
+            <i className="fas fa-school"></i>
+            اختر الصف الدراسي
+          </h2>
+          <div className="egr-chips">
             {Object.keys(groupsByGrade).map((grade) => (
               <button
                 key={grade}
-                className={`btn grade-btn ${currentGrade === grade ? 'active' : ''}`}
+                className={`egr-chip ${currentGrade === grade ? 'active' : ''}`}
                 onClick={() => selectGrade(grade)}
               >
+                <i className="fas fa-graduation-cap"></i>
                 {grade}
               </button>
             ))}
           </div>
         </div>
 
-        {/* اختيار المجموعة */}
+        {/* Group */}
         {currentGrade && (
-          <div className="card">
-            <h2 className="card-title">اختر المجموعة</h2>
-            <div className="button-group">
+          <div className="egr-section">
+            <h2 className="egr-section-title">
+              <i className="fas fa-users"></i>
+              اختر المجموعة
+            </h2>
+            <div className="egr-chips">
               {groupsByGrade[currentGrade].map((group) => (
                 <button
                   key={group}
-                  className={`btn grade-btn ${currentGroup === group ? 'active' : ''}`}
+                  className={`egr-chip ${currentGroup === group ? 'active' : ''}`}
                   onClick={() => selectGroup(group)}
                 >
+                  <i className="fas fa-layer-group"></i>
                   {group}
                 </button>
               ))}
@@ -221,106 +236,166 @@ export default function ExamsGroupReport() {
           </div>
         )}
 
-        {/* اختيار الامتحان */}
+        {/* Exam */}
         {currentGroup && (
-          <div className="card">
-            <h2 className="card-title">اختر الامتحان</h2>
-            <select value={currentExam} onChange={(e) => handleExamChange(e.target.value)}>
-              <option value="">-- اختر الامتحان --</option>
-              {exams.map((exam) => (
-                <option key={exam} value={exam}>
-                  {exam}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* أزرار التصفية */}
-        {currentExam && (
-          <div className="card">
-            <h2 className="card-title">تصفية النتائج</h2>
-            <div className="button-group">
-              <button
-                className={`btn filter-btn ${currentFilter === 'all' ? 'active' : ''}`}
-                onClick={() => filterStudents('all')}
+          <div className="egr-section">
+            <h2 className="egr-section-title">
+              <i className="fas fa-file-alt"></i>
+              اختر الامتحان
+            </h2>
+            <div className="egr-select-wrap">
+              <i className="fas fa-clipboard-list egr-select-icon"></i>
+              <select
+                className="egr-select"
+                value={currentExam}
+                onChange={(e) => handleExamChange(e.target.value)}
               >
-                جميع الطلاب
-              </button>
-              <button
-                className={`btn filter-btn ${currentFilter === 'passed' ? 'active' : ''}`}
-                onClick={() => filterStudents('passed')}
-              >
-                ناجحون (≥60%)
-              </button>
-              <button
-                className={`btn filter-btn ${currentFilter === 'failed' ? 'active' : ''}`}
-                onClick={() => filterStudents('failed')}
-              >
-                راسبون (&lt;60%)
-              </button>
-              <button
-                className={`btn filter-btn ${currentFilter === 'high' ? 'active' : ''}`}
-                onClick={() => filterStudents('high')}
-              >
-                ممتازون (≥80%)
-              </button>
+                <option value="">-- اختر الامتحان --</option>
+                {exams.map((exam) => (
+                  <option key={exam} value={exam}>{exam}</option>
+                ))}
+              </select>
+              <i className="fas fa-chevron-down egr-select-arrow"></i>
             </div>
           </div>
         )}
 
-        {/* جدول التقرير */}
+        {/* Summary Stats */}
         {displayedStudents.length > 0 && (
-          <div className="card" id="reportTable">
-            <div className="report-header">
-              <h2 className="card-title">تقرير النتائج التفصيلي</h2>
-              <button onClick={printReport} className="btn">
-                🖨️ طباعة التقرير
+          <div className="egr-summary">
+            <div className="egr-sum-card">
+              <i className="fas fa-users egr-sum-icon" style={{color:'var(--primary)'}}></i>
+              <span className="egr-sum-val" style={{color:'var(--primary)'}}>{totalStudents}</span>
+              <span className="egr-sum-lbl">إجمالي الطلاب</span>
+            </div>
+            <div className="egr-sum-card">
+              <i className="fas fa-check-circle egr-sum-icon" style={{color:'#48bb78'}}></i>
+              <span className="egr-sum-val" style={{color:'#48bb78'}}>{passedCount}</span>
+              <span className="egr-sum-lbl">ناجحون</span>
+            </div>
+            <div className="egr-sum-card">
+              <i className="fas fa-times-circle egr-sum-icon" style={{color:'#ef4444'}}></i>
+              <span className="egr-sum-val" style={{color:'#ef4444'}}>{failedCount}</span>
+              <span className="egr-sum-lbl">راسبون</span>
+            </div>
+            <div className="egr-sum-card">
+              <i className="fas fa-star egr-sum-icon" style={{color:'#f59e0b'}}></i>
+              <span className="egr-sum-val" style={{color:'#f59e0b'}}>{excellentCount}</span>
+              <span className="egr-sum-lbl">ممتازون</span>
+            </div>
+            <div className="egr-sum-card">
+              <i className="fas fa-percentage egr-sum-icon" style={{color:'#ed8936'}}></i>
+              <span className="egr-sum-val" style={{color:'#ed8936'}}>{avgScore}%</span>
+              <span className="egr-sum-lbl">متوسط الدرجات</span>
+            </div>
+            <div className="egr-sum-card">
+              <i className="fas fa-trophy egr-sum-icon" style={{color:'var(--secondary)'}}></i>
+              <span className="egr-sum-val" style={{color:'var(--secondary)'}}>{passRate}%</span>
+              <span className="egr-sum-lbl">نسبة النجاح</span>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Chips */}
+        {currentExam && allStudentsData.length > 0 && (
+          <div className="egr-section">
+            <h2 className="egr-section-title">
+              <i className="fas fa-filter"></i>
+              تصفية النتائج
+            </h2>
+            <div className="egr-chips">
+              {[
+                { key: 'all', label: 'الجميع', icon: 'fa-th-list' },
+                { key: 'passed', label: 'ناجحون (≥60%)', icon: 'fa-check' },
+                { key: 'failed', label: 'راسبون (<60%)', icon: 'fa-times' },
+                { key: 'high', label: 'ممتازون (≥80%)', icon: 'fa-star' },
+              ].map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  className={`egr-chip egr-filter-chip ${currentFilter === key ? 'active' : ''}`}
+                  onClick={() => filterStudents(key)}
+                >
+                  <i className={`fas ${icon}`}></i>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Report Table */}
+        {displayedStudents.length > 0 && (
+          <div className="egr-card" id="egr-reportTable">
+            <div className="egr-card-header">
+              <h2 className="egr-card-title">
+                <i className="fas fa-clipboard-list"></i>
+                تقرير النتائج التفصيلي
+                <span className="egr-count-badge">{displayedStudents.length}</span>
+              </h2>
+              <button onClick={() => window.print()} className="egr-print-btn">
+                <i className="fas fa-print"></i>
+                طباعة التقرير
               </button>
             </div>
 
-            <div className="table-container">
-              <table>
+            <div className="egr-table-container">
+              <table className="egr-table">
                 <thead>
                   <tr>
+                    <th>#</th>
                     <th>اسم الطالب</th>
-                    <th>ID</th>
+                    <th>رقم الطالب</th>
                     <th>المجموعة</th>
-                    <th>الامتحان</th>
                     <th>التاريخ</th>
                     <th>النتيجة</th>
                     <th>التقييم</th>
                     <th>المحاولات</th>
-                    <th>النسبة</th>
+                    <th>الدرجة</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedStudents.map((student, index) => (
-                    <tr key={index}>
-                      <td className="student-name">{student.name}</td>
-                      <td>{student.id}</td>
-                      <td>{student.group}</td>
-                      <td>{student.exam}</td>
-                      <td>{student.date}</td>
-                      <td className={student.status === 'passed' ? 'status-passed' : 'status-failed'}>
-                        {student.result}
-                      </td>
-                      <td>{student.rating}</td>
-                      <td>{student.attempts}/{student.maxAttempts}</td>
-                      <td>
-                        <div className="progress-bar">
-                          <div
-                            className={`progress-fill ${
-                              student.score >= 80
-                                ? 'progress-high'
-                                : student.score >= 60
-                                ? 'progress-medium'
-                                : 'progress-low'
-                            }`}
-                            style={{ width: `${student.score}%` }}
-                          ></div>
+                    <tr key={student.id} className="egr-tr">
+                      <td className="egr-td-num">{index + 1}</td>
+                      <td className="egr-td-name">
+                        <div className="egr-name-cell">
+                          <div className="egr-mini-avatar">
+                            <i className="fas fa-user"></i>
+                          </div>
+                          <span>{student.name}</span>
                         </div>
-                        <span className="percentage-text">{student.score}/{student.maxScore}</span>
+                      </td>
+                      <td><span className="egr-id-pill">{student.id}</span></td>
+                      <td>{student.group}</td>
+                      <td>{student.date}</td>
+                      <td>
+                        <span className={`egr-badge ${student.status === 'passed' ? 'egr-badge-passed' : 'egr-badge-failed'}`}>
+                          <i className={`fas ${student.status === 'passed' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                          {student.result}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`egr-rating ${
+                          student.score >= 80 ? 'egr-rating-excellent' :
+                          student.score >= 60 ? 'egr-rating-good' : 'egr-rating-poor'
+                        }`}>
+                          {student.rating}
+                        </span>
+                      </td>
+                      <td><span className="egr-attempts">{student.attempts}/{student.maxAttempts}</span></td>
+                      <td>
+                        <div className="egr-score-cell">
+                          <div className="egr-progress-bar">
+                            <div
+                              className={`egr-progress-fill ${
+                                student.score >= 80 ? 'egr-prog-high' :
+                                student.score >= 60 ? 'egr-prog-medium' : 'egr-prog-low'
+                              }`}
+                              style={{ width: `${student.score}%` }}
+                            ></div>
+                          </div>
+                          <span className="egr-pct-text">{student.score}/{student.maxScore}</span>
+                        </div>
                       </td>
                     </tr>
                   ))}
