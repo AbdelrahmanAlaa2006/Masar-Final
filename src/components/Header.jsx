@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
-import Notifications from './Notifications'
 import './Header.css'
 
 export default function Header() {
@@ -74,51 +73,32 @@ export default function Header() {
     // Call API logout
     authAPI.logout()
     
-    // Create logout animation message
-    let msg = document.createElement('div')
-    msg.id = 'logout-message'
-    msg.innerHTML = `
-      <div class="logout-anim-icon">✔️</div>
-      <div class="logout-anim-text">تم تسجيل الخروج بنجاح</div>
+    const overlay = document.createElement('div')
+    overlay.className = 'auth-overlay'
+    overlay.innerHTML = `
+      <div class="auth-toast" role="status" aria-live="polite">
+        <div class="auth-toast-check">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
+            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
+          </svg>
+        </div>
+        <div class="auth-toast-text">تم تسجيل الخروج بنجاح</div>
+        <div class="auth-toast-sub">نراك قريبًا</div>
+        <div class="auth-toast-bar"><span></span></div>
+      </div>
     `
-    msg.style.position = 'fixed'
-    msg.style.top = '50%'
-    msg.style.left = '50%'
-    msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
-    msg.style.background = 'linear-gradient(135deg, #667eea, #764ba2)'
-    msg.style.color = '#fff'
-    msg.style.padding = '40px 60px'
-    msg.style.borderRadius = '24px'
-    msg.style.fontSize = '1.7rem'
-    msg.style.fontWeight = 'bold'
-    msg.style.boxShadow = '0 12px 40px 0 rgba(102,126,234,0.25), 0 2px 8px 0 rgba(0,0,0,0.10)'
-    msg.style.zIndex = '9999'
-    msg.style.textAlign = 'center'
-    msg.style.letterSpacing = '1px'
-    msg.style.overflow = 'hidden'
-    msg.style.opacity = '0'
-    msg.style.transition = 'opacity 0.4s cubic-bezier(.4,2,.6,1), transform 0.5s cubic-bezier(.4,2,.6,1)'
-    msg.classList.add('logout-anim-in')
-    document.body.appendChild(msg)
+    document.body.appendChild(overlay)
+    requestAnimationFrame(() => overlay.classList.add('open'))
 
-    // Animate in
     setTimeout(() => {
-      msg.style.opacity = '1'
-      msg.style.transform = 'translate(-50%, -50%) scale(1)'
-      msg.classList.add('logout-anim-in-active')
-    }, 10)
-
-    // Animate out and redirect to login
-    setTimeout(() => {
-      msg.classList.remove('logout-anim-in-active')
-      msg.classList.add('logout-anim-out')
-      msg.style.opacity = '0'
-      msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
+      overlay.classList.remove('open')
+      overlay.classList.add('closing')
       setTimeout(() => {
-        document.body.removeChild(msg)
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
         navigate('/login')
-      }, 400)
-    }, 2000)
+      }, 320)
+    }, 1600)
   }
 
   const closeMenu = () => setMenuOpen(false)
@@ -166,12 +146,14 @@ export default function Header() {
           </svg>
           المحاضرات
         </Link>
-        <Link to="/report" className={`nav-item ${isActive('/report')}`} onClick={closeMenu}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
-          </svg>
-          التقارير
-        </Link>
+        {userRole === 'admin' && (
+          <Link to="/report" className={`nav-item ${isActive('/report')}`} onClick={closeMenu}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
+            </svg>
+            التقارير
+          </Link>
+        )}
         {userRole === 'admin' && (
           <Link to="/control-panel" className={`nav-item ${isActive('/control-panel')}`} onClick={closeMenu}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -184,17 +166,6 @@ export default function Header() {
       </nav>
       
       <div className="header-actions">
-        {location.pathname !== '/' && location.pathname !== '/home' && location.pathname !== '/login' && (
-          <button
-            className="header-back"
-            onClick={() => navigate(-1)}
-            aria-label="رجوع"
-            title="رجوع للصفحة السابقة"
-          >
-            <i className="fas fa-arrow-right"></i>
-          </button>
-        )}
-        <Notifications />
         <button className="logout-btn" onClick={logoutUser}>
           <i className="fas fa-sign-out-alt"></i>
           <span>تسجيل الخروج</span>

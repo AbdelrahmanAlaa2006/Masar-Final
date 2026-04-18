@@ -281,46 +281,6 @@ nav {
   flex-shrink: 0;
 }
 
-.logout-anim-icon {
-  font-size: 3.5rem;
-  margin-bottom: 12px;
-  animation: logout-bounce 0.7s cubic-bezier(.4,2,.6,1);
-  filter: drop-shadow(0 2px 8px #fff8) drop-shadow(0 0px 16px #764ba2cc);
-}
-
-.logout-anim-text {
-  font-size: 1.7rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 8px #764ba2cc, 0 1px 0 #fff;
-  letter-spacing: 1.5px;
-  margin-top: 8px;
-}
-
-.logout-anim-in {
-  animation: logout-in-anim 0.5s cubic-bezier(.4,2,.6,1);
-}
-
-.logout-anim-out {
-  animation: logout-out-anim 0.4s cubic-bezier(.4,2,.6,1);
-}
-
-@keyframes logout-bounce {
-  0% { transform: scale(0.5) rotate(-20deg); opacity: 0; }
-  60% { transform: scale(1.2) rotate(8deg); opacity: 1; }
-  80% { transform: scale(0.95) rotate(-4deg); }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-
-@keyframes logout-in-anim {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-@keyframes logout-out-anim {
-  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-}
 
 /* Hamburger Menu Button */
 .hamburger-menu {

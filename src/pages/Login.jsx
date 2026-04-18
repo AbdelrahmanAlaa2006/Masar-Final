@@ -160,46 +160,34 @@ export default function Login() {
   }
 
   const showSuccessMessage = () => {
-    const msg = document.createElement('div')
-    msg.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.8);
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: #fff;
-      padding: 40px 60px;
-      border-radius: 24px;
-      font-size: 2rem;
-      font-weight: bold;
-      box-shadow: 0 12px 40px rgba(102,126,234,0.25);
-      z-index: 9999;
-      text-align: center;
-      opacity: 0;
-      transition: opacity 0.4s ease, transform 0.5s ease;
+    const title = lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login Successful'
+    const sub = lang === 'ar' ? 'جارٍ تحويلك إلى المنصة...' : 'Redirecting you to the platform...'
+    const overlay = document.createElement('div')
+    overlay.className = 'auth-overlay'
+    overlay.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
+    overlay.innerHTML = `
+      <div class="auth-toast" role="status" aria-live="polite">
+        <div class="auth-toast-check success">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
+            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
+          </svg>
+        </div>
+        <div class="auth-toast-text">${title}</div>
+        <div class="auth-toast-sub">${sub}</div>
+        <div class="auth-toast-bar"><span></span></div>
+      </div>
     `
-
-    msg.innerHTML = `
-      <div style="font-size: 3.5rem; margin-bottom: 12px;">✔️</div>
-      <div>${lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login Successful!'}</div>
-    `
-
-    document.body.appendChild(msg)
+    document.body.appendChild(overlay)
+    requestAnimationFrame(() => overlay.classList.add('open'))
 
     setTimeout(() => {
-      msg.style.opacity = '1'
-      msg.style.transform = 'translate(-50%, -50%) scale(1)'
-    }, 10)
-
-    // Fade out and remove
-    setTimeout(() => {
-      msg.style.opacity = '0'
-      msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
-    }, 1200)
-
-    setTimeout(() => {
-      if (msg.parentNode) msg.parentNode.removeChild(msg)
-    }, 1700)
+      overlay.classList.remove('open')
+      overlay.classList.add('closing')
+      setTimeout(() => {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+      }, 320)
+    }, 1400)
   }
 
   const features = lang === 'ar' ? [
@@ -246,7 +234,7 @@ export default function Login() {
           className="theme-toggle"
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+          <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
         </button>
       </div>
 
@@ -354,7 +342,15 @@ export default function Login() {
           <img src="/images/logo.white.png" alt="Masar Logo" />
           <h2>{t['platform-title']}</h2>
           <p>{t['platform-description']}</p>
-          <a href="#features" className="scroll-down-btn">
+          <a
+            href="#features"
+            className="scroll-down-btn"
+            onClick={(e) => {
+              e.preventDefault()
+              const target = document.getElementById('features')
+              if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
             {lang === 'ar' ? 'اكتشف المزيد' : 'Discover More'}
             <i className="fas fa-arrow-down"></i>
           </a>
