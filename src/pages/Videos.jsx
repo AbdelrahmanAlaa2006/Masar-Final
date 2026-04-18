@@ -152,32 +152,40 @@ export default function Videos() {
 
       {/* Grade Selection View */}
       {view === 'grades' && (
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="title-main gradient-text">📚 اختر الصف الدراسي</h1>
-            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-              اختر الصف المناسب لعرض الفيديوهات التعليمية
-            </p>
+        <div className="vid-prep-wrap">
+          <div className="vid-prep-head">
+            <div className="vid-prep-icon"><i className="fas fa-video"></i></div>
+            <div>
+              <h1>الفيديوهات التعليمية</h1>
+              <p>اختر المرحلة الدراسية لعرض الفيديوهات الخاصة بها</p>
+            </div>
           </div>
 
-          <div className="grade-grid">
-            <div className="card grade-card" onClick={() => selectGrade('first-prep', 'الصف الأول الإعدادي')}>
-              <div className="grade-icon">🎓</div>
-              <h3 className="title-card" style={{ color: 'var(--text-primary)' }}>First Prep</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>الصف الأول الإعدادي</p>
-            </div>
-
-            <div className="card grade-card" onClick={() => selectGrade('second-prep', 'الصف الثاني الإعدادي')}>
-              <div className="grade-icon">📖</div>
-              <h3 className="title-card" style={{ color: 'var(--text-primary)' }}>Second Prep</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>الصف الثاني الإعدادي</p>
-            </div>
-
-            <div className="card grade-card" onClick={() => selectGrade('third-prep', 'الصف الثالث الإعدادي')}>
-              <div className="grade-icon">🏆</div>
-              <h3 className="title-card" style={{ color: 'var(--text-primary)' }}>Third Prep</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>الصف الثالث الإعدادي</p>
-            </div>
+          <div className="prep-grid">
+            {[
+              { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  icon: 'fa-seedling',          accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+              { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', icon: 'fa-book-open-reader',  accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+              { id: 'third-prep',  ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  icon: 'fa-trophy',            accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+            ].map((p) => {
+              const count = (videos[p.id] || []).length
+              return (
+                <button key={p.id} className={`prep-card prep-${p.accent}`} onClick={() => selectGrade(p.id, p.ar)}>
+                  <div className="prep-cover">
+                    <div className="prep-cover-deco" />
+                    <div className="prep-icon"><i className={`fas ${p.icon}`}></i></div>
+                    <div className="prep-stage">{p.en}</div>
+                  </div>
+                  <div className="prep-body">
+                    <h3>{p.ar}</h3>
+                    <p>{p.desc}</p>
+                    <div className="prep-foot">
+                      <span className="prep-count"><i className="fas fa-play-circle"></i> {count} فيديو</span>
+                      <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

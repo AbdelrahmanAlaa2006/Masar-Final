@@ -791,3 +791,177 @@ body.dark::before{
   position: relative;
   z-index: 10;
 }
+
+/* ───── Prep picker (shared design with Lectures page) ───── */
+.vid-prep-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 30px 20px 60px;
+}
+
+.vid-prep-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 1.75rem;
+}
+.vid-prep-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4facfe, #2b6cb0);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.vid-prep-head h1 {
+  margin: 0 0 0.2rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-color, var(--text-primary));
+  font-family: 'Cairo', sans-serif;
+}
+.vid-prep-head p {
+  margin: 0;
+  color: var(--text-muted, #718096);
+  font-size: 0.95rem;
+  font-family: 'Cairo', sans-serif;
+}
+
+.prep-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.prep-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #fff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: 'Cairo', sans-serif;
+  text-align: right;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  padding: 0;
+}
+.prep-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+}
+
+.prep-cover {
+  position: relative;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #fff;
+}
+.prep-green  .prep-cover { background: linear-gradient(135deg, #43e97b 0%, #38a169 100%); }
+.prep-blue   .prep-cover { background: linear-gradient(135deg, #4facfe 0%, #2b6cb0 100%); }
+.prep-orange .prep-cover { background: linear-gradient(135deg, #f6ad55 0%, #dd6b20 100%); }
+.prep-purple .prep-cover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.prep-green:hover  { border-color: #38a169; }
+.prep-blue:hover   { border-color: #2b6cb0; }
+.prep-orange:hover { border-color: #dd6b20; }
+.prep-purple:hover { border-color: #667eea; }
+
+.prep-cover-deco {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(255,255,255,0.18) 0%, transparent 35%),
+    radial-gradient(circle at 15% 80%, rgba(255,255,255,0.10) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.prep-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  z-index: 1;
+}
+
+.prep-stage {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.prep-body {
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+.prep-body h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color, var(--text-primary));
+}
+.prep-body > p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-muted, #718096);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.prep-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--border-light, #e2e8f0);
+}
+
+.prep-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted, #718096);
+}
+.prep-count i { color: var(--primary); font-size: 0.78rem; }
+
+.prep-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+  transition: transform 0.2s;
+}
+.prep-card:hover .prep-cta { transform: translateX(-3px); }
+
+@media (max-width: 900px) {
+  .prep-grid { grid-template-columns: 1fr; }
+}
