@@ -12,7 +12,7 @@
   animation: fadeInUp 0.8s ease;
 }
 
-h1 {
+.exam-add-container h1 {
   text-align: center;
   margin-bottom: 40px;
   font-size: 2.5rem;
@@ -75,10 +75,10 @@ label {
   font-size: 1.1rem;
 }
 
-input[type="text"],
-input[type="number"],
-textarea,
-select {
+.exam-add-container input[type="text"],
+.exam-add-container input[type="number"],
+.exam-add-container textarea,
+.exam-add-container select {
   width: 100%;
   padding: 15px 20px;
   font-size: 16px;
@@ -91,10 +91,10 @@ select {
   font-family: 'Cairo', sans-serif;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-textarea:focus,
-select:focus {
+.exam-add-container input[type="text"]:focus,
+.exam-add-container input[type="number"]:focus,
+.exam-add-container textarea:focus,
+.exam-add-container select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -514,10 +514,10 @@ body.dark .restore-exam {
     font-size: 1rem;
   }
 
-  input[type="text"],
-  input[type="number"],
-  textarea,
-  select {
+  .exam-add-container input[type="text"],
+  .exam-add-container input[type="number"],
+  .exam-add-container textarea,
+  .exam-add-container select {
     padding: 12px 15px;
     font-size: 14px;
   }

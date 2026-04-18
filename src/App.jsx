@@ -83,7 +83,7 @@ function AppContent() {
           {/* Admin only */}
           <Route path="/video-add" element={<AdminRoute><VideoAdd /></AdminRoute>} />
           <Route path="/exam-add" element={<AdminRoute><ExamAdd /></AdminRoute>} />
-          <Route path="/report" element={<AdminRoute><Report /></AdminRoute>} />
+          <Route path="/report" element={<ProtectedRoute><Report /></ProtectedRoute>} />
           <Route path="/videos-group-report" element={<AdminRoute><VideosGroupReport /></AdminRoute>} />
           <Route path="/exams-group-report" element={<AdminRoute><ExamsGroupReport /></AdminRoute>} />
           <Route path="/control-panel" element={<AdminRoute><ControlPanel /></AdminRoute>} />

@@ -182,21 +182,15 @@ export default function Lectures() {
   return (
     <main className="lec-page" dir="rtl">
       <div className="lec-container">
-        {/* Page header */}
-        <header className="lec-page-header">
-          <div className="lec-page-icon"><i className="fas fa-book-bookmark"></i></div>
-          <div>
-            <h1>المحاضرات التعليمية</h1>
-            <p>محاضرات شاملة بالصور والوصف لكل مادة دراسية</p>
-          </div>
-        </header>
-
         {/* Step 1 — prep picker */}
         {!grade && (
-          <section className="lec-prep-block">
+          <div className="lec-prep-wrap">
             <div className="lec-prep-head">
-              <h2><i className="fas fa-graduation-cap"></i> اختر المرحلة الدراسية</h2>
-              <p>حدد المرحلة لاستعراض المحاضرات الخاصة بها</p>
+              <div className="lec-prep-icon"><i className="fas fa-book-bookmark"></i></div>
+              <div>
+                <h1>المحاضرات</h1>
+                <p>اختر المرحلة الدراسية لاستعراض المحاضرات الخاصة بها</p>
+              </div>
             </div>
             <div className="prep-grid">
               {PREPS.map((p) => (
@@ -208,7 +202,7 @@ export default function Lectures() {
                 />
               ))}
             </div>
-          </section>
+          </div>
         )}
 
         {/* Step 2 — lectures of selected prep */}

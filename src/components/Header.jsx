@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import Notifications from './Notifications'
 import './Header.css'
 
 export default function Header() {
@@ -165,14 +166,12 @@ export default function Header() {
           </svg>
           المحاضرات
         </Link>
-        {userRole === 'admin' && (
-          <Link to="/report" className={`nav-item ${isActive('/report')}`} onClick={closeMenu}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
-            </svg>
-            التقارير
-          </Link>
-        )}
+        <Link to="/report" className={`nav-item ${isActive('/report')}`} onClick={closeMenu}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
+          </svg>
+          التقارير
+        </Link>
         {userRole === 'admin' && (
           <Link to="/control-panel" className={`nav-item ${isActive('/control-panel')}`} onClick={closeMenu}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -185,6 +184,17 @@ export default function Header() {
       </nav>
       
       <div className="header-actions">
+        {location.pathname !== '/' && location.pathname !== '/home' && location.pathname !== '/login' && (
+          <button
+            className="header-back"
+            onClick={() => navigate(-1)}
+            aria-label="رجوع"
+            title="رجوع للصفحة السابقة"
+          >
+            <i className="fas fa-arrow-right"></i>
+          </button>
+        )}
+        <Notifications />
         <button className="logout-btn" onClick={logoutUser}>
           <i className="fas fa-sign-out-alt"></i>
           <span>تسجيل الخروج</span>

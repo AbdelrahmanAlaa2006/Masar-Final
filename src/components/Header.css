@@ -554,3 +554,24 @@ body.dark .hamburger-menu.open span:nth-child(3) {
     font-size: 13px;
   }
 }
+
+
+/* Back button */
+.header-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--text-color, #1a202c);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background 0.2s, transform 0.2s;
+}
+.header-back:hover { background: rgba(124, 58, 237, 0.22); transform: scale(1.05); }
+body.dark .header-back { color: #f7fafc; background: rgba(168, 85, 247, 0.18); }
+body.dark .header-back:hover { background: rgba(168, 85, 247, 0.3); }
+

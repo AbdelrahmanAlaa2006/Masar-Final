@@ -12,6 +12,14 @@ export default function ExamsReport() {
   const [selectedExam, setSelectedExam] = useState(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      setIsAdmin(u?.role === 'admin')
+    } catch { setIsAdmin(false) }
+  }, [])
 
   const examsData = [
     {
@@ -273,9 +281,11 @@ export default function ExamsReport() {
           <div className="er-card" id="er-reportTable">
             <div className="er-table-header">
               <h2 className="er-card-title"><i className="fas fa-clipboard-list"></i> تقرير النتائج التفصيلي</h2>
-              <button className="er-print-btn" onClick={() => window.print()}>
-                <i className="fas fa-print"></i> طباعة
-              </button>
+              {isAdmin && (
+                <button className="er-print-btn" onClick={() => window.print()}>
+                  <i className="fas fa-print"></i> طباعة
+                </button>
+              )}
             </div>
 
             <div className="er-table-container">

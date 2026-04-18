@@ -11,6 +11,14 @@ export default function VideosReport() {
   const [viewMode, setViewMode] = useState('table')
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      setIsAdmin(u?.role === 'admin')
+    } catch { setIsAdmin(false) }
+  }, [])
 
   const videosData = [
     { id: 1, title: 'مقدمة في البرمجة', subject: 'علوم الحاسب', date: '10/4/2024', status: 'completed', statusText: 'تم المشاهدة بالكامل', progress: 100, watchedTime: '45 دقيقة', totalTime: '45 دقيقة' },
@@ -193,9 +201,11 @@ export default function VideosReport() {
           <div className="vr-card" id="vr-reportTable">
             <div className="vr-table-header">
               <h2 className="vr-card-title"><i className="fas fa-clipboard-list"></i> تقرير المشاهدة التفصيلي</h2>
-              <button className="vr-print-btn" onClick={() => window.print()}>
-                <i className="fas fa-print"></i> طباعة
-              </button>
+              {isAdmin && (
+                <button className="vr-print-btn" onClick={() => window.print()}>
+                  <i className="fas fa-print"></i> طباعة
+                </button>
+              )}
             </div>
             <div className="vr-table-container">
               <table className="vr-table">

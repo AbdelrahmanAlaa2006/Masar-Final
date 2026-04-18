@@ -58,6 +58,10 @@ function buildAllStudents() {
 
 export default function Report() {
   const navigate = useNavigate()
+  const [currentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('masar-user')) || null } catch { return null }
+  })
+  const isStudent = currentUser?.role !== 'admin'
   const [studentInput, setStudentInput] = useState('')
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -141,6 +145,79 @@ export default function Report() {
     else if (type === 'exams') navigate(`/exams-report?${params}`)
   }
 
+  const goToMyReport = (type) => {
+    const me = {
+      name: currentUser?.name || 'الطالب',
+      id: currentUser?.id || currentUser?.studentId || '',
+      group: currentUser?.group || '',
+      prep: currentUser?.prep || currentUser?.grade || '',
+    }
+    navigateToReport(type, me)
+  }
+
+  const initials = (name) =>
+    (name || '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+
+  if (isStudent) {
+    return (
+      <main className="report-page">
+        <div className="report-container">
+          <div className="report-header">
+            <div className="report-header-icon"><i className="fas fa-chart-bar"></i></div>
+            <h1>تقاريري الدراسية</h1>
+            <p>استعرض نتائجك وأدائك في الفيديوهات والامتحانات</p>
+          </div>
+
+          <div className="report-selected-chip" style={{ marginBottom: 24 }}>
+            <div className="report-selected-avatar">{initials(currentUser?.name || 'طالب')}</div>
+            <div className="report-selected-info">
+              <div className="report-selected-name">
+                <i className="fas fa-circle-check"></i>
+                {currentUser?.name || 'الطالب'}
+              </div>
+              {(currentUser?.id || currentUser?.prep || currentUser?.group) && (
+                <div className="report-selected-meta">
+                  {currentUser?.id && <span><i className="fas fa-id-badge"></i> {currentUser.id}</span>}
+                  {(currentUser?.prep || currentUser?.grade) && <span><i className="fas fa-graduation-cap"></i> {currentUser.prep || currentUser.grade}</span>}
+                  {currentUser?.group && <span><i className="fas fa-users"></i> {currentUser.group}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="report-cards-grid">
+            <div className="report-card" onClick={() => goToMyReport('videos')}>
+              <div className="report-card-icon report-card-icon--blue">
+                <i className="fas fa-play-circle"></i>
+              </div>
+              <div className="report-card-body">
+                <h3>تقرير الفيديوهات</h3>
+                <p>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</p>
+              </div>
+              <i className="fas fa-chevron-left report-card-arrow"></i>
+            </div>
+
+            <div className="report-card" onClick={() => goToMyReport('exams')}>
+              <div className="report-card-icon report-card-icon--purple">
+                <i className="fas fa-file-alt"></i>
+              </div>
+              <div className="report-card-body">
+                <h3>تقرير الامتحانات</h3>
+                <p>نتائجك في الامتحانات السابقة وتحليل أدائك</p>
+              </div>
+              <i className="fas fa-chevron-left report-card-arrow"></i>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   const goTo = (type) => {
     /* If user typed something but didn't click — auto-pick the first match */
     let student = selectedStudent
@@ -179,13 +256,6 @@ export default function Report() {
     else if (type === 'exams') navigate('/exams-group-report')
   }
 
-  const initials = (name) =>
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0])
-      .join('')
 
   return (
     <main className="report-page">
