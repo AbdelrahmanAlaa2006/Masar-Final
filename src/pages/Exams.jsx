@@ -210,17 +210,32 @@ export default function Exams() {
     third: '3️⃣'
   }
 
-  const renderLevelCard = (level) => (
-    <div key={level} className="level-card" onClick={() => showExams(level)}>
-      <div className="level-icon">{levelEmojis[level]}</div>
-      <div className="level-title">{levelTitles[level]}</div>
-      <div className="level-subtitle">{level === 'first' ? 'First Prep' : level === 'second' ? 'Second Prep' : 'Third Prep'}</div>
-      <div className="exam-count">
-        <span>📚</span>
-        <span>{examData[level].length}</span> امتحان متاح
-      </div>
-    </div>
-  )
+  const PREP_META = {
+    first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  icon: 'fa-seedling',         accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+    second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+    third:  { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  icon: 'fa-trophy',           accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  }
+
+  const renderLevelCard = (level) => {
+    const m = PREP_META[level]
+    return (
+      <button key={level} className={`prep-card prep-${m.accent}`} onClick={() => showExams(level)}>
+        <div className="prep-cover">
+          <div className="prep-cover-deco" />
+          <div className="prep-icon"><i className={`fas ${m.icon}`}></i></div>
+          <div className="prep-stage">{m.en}</div>
+        </div>
+        <div className="prep-body">
+          <h3>{m.ar}</h3>
+          <p>{m.desc}</p>
+          <div className="prep-foot">
+            <span className="prep-count"><i className="fas fa-file-alt"></i> {examData[level].length} امتحان</span>
+            <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
+          </div>
+        </div>
+      </button>
+    )
+  }
 
   const deleteExam = (level, examId) => {
     setExamData(prev => ({
@@ -329,32 +344,30 @@ export default function Exams() {
 
   return (
     <div className="exams-container">
-      {/* Hero Section */}
- <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="title-main gradient-text">📚 اختر الصف الدراسي</h1>
-            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-              اختر الصف المناسب للوصول إلى الامتحانات المتاحة وتحسين مهاراتك الدراسية
-            </p>
+      {/* Header (only on selection screen) */}
+      {!currentLevel && (
+        <div className="exm-prep-wrap">
+          <div className="exm-prep-head">
+            <div className="exm-prep-icon"><i className="fas fa-file-alt"></i></div>
+            <div>
+              <h1>الامتحانات</h1>
+              <p>اختر المرحلة الدراسية لاستعراض الامتحانات المتاحة</p>
+            </div>
+          </div>
+          <div className="prep-grid">
+            {renderLevelCard('first')}
+            {renderLevelCard('second')}
+            {renderLevelCard('third')}
           </div>
         </div>
-      {/* Breadcrumb */}
-      <div className="breadcrumb" id="breadcrumb">
-        <span className="breadcrumb-item active" onClick={() => showLevels()}>الامتحانات</span>
-        {currentLevel && (
-          <>
-            <span>›</span>
-            <span className="breadcrumb-item active">{levelTitles[currentLevel]}</span>
-          </>
-        )}
-      </div>
+      )}
 
-      {/* Level Selection */}
-      {!currentLevel && (
-        <div className="level-selection" id="levelSelection">
-          {renderLevelCard('first')}
-          {renderLevelCard('second')}
-          {renderLevelCard('third')}
+      {/* Breadcrumb (only on inner views) */}
+      {currentLevel && (
+        <div className="breadcrumb" id="breadcrumb">
+          <span className="breadcrumb-item active" onClick={() => showLevels()}>الامتحانات</span>
+          <span>›</span>
+          <span className="breadcrumb-item active">{levelTitles[currentLevel]}</span>
         </div>
       )}
 

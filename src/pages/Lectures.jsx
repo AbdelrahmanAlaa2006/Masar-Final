@@ -1,342 +1,487 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import './Lectures.css'
 
+/* ──────────────────────────────────────────────────────────────
+   Lectures page — image-driven course cards + prep picker.
+   ────────────────────────────────────────────────────────────── */
+
+const PREPS = [
+  {
+    id: 'first',
+    nameAr: 'الصف الأول الإعدادي',
+    nameEn: 'First Prep',
+    icon: 'fa-seedling',
+    accent: 'green',
+    desc: 'بداية المرحلة الإعدادية والتأسيس',
+  },
+  {
+    id: 'second',
+    nameAr: 'الصف الثاني الإعدادي',
+    nameEn: 'Second Prep',
+    icon: 'fa-book-open-reader',
+    accent: 'blue',
+    desc: 'تعميق المفاهيم وبناء المهارات',
+  },
+  {
+    id: 'third',
+    nameAr: 'الصف الثالث الإعدادي',
+    nameEn: 'Third Prep',
+    icon: 'fa-trophy',
+    accent: 'orange',
+    desc: 'الاستعداد لاختبارات الشهادة',
+  },
+]
+
+const PLACEHOLDER_COVER =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#667eea"/>
+          <stop offset="100%" stop-color="#764ba2"/>
+        </linearGradient>
+      </defs>
+      <rect width="600" height="340" fill="url(#g)"/>
+      <text x="50%" y="50%" font-family="Cairo, Arial" font-size="44" font-weight="700"
+        fill="rgba(255,255,255,0.85)" text-anchor="middle" dominant-baseline="middle">محاضرة</text>
+    </svg>`
+  )
+
+const SAMPLE_LECTURES = {
+  first: [
+    {
+      id: 'L101',
+      title: 'مقدمة في الجبر',
+      desc: 'تعريف المتغيرات، المعادلات الخطية، وأمثلة محلولة خطوة بخطوة لفهم الأساسيات.',
+      subject: 'رياضيات',
+      teacher: 'أ. محمد علي',
+      week: 'الأسبوع 1',
+      date: '2026-04-10',
+      cover: PLACEHOLDER_COVER,
+    },
+    {
+      id: 'L102',
+      title: 'العمليات الحسابية المتقدمة',
+      desc: 'الجمع والطرح والضرب على الأعداد الصحيحة مع تدريبات عملية.',
+      subject: 'رياضيات',
+      teacher: 'أ. محمد علي',
+      week: 'الأسبوع 2',
+      date: '2026-04-13',
+      cover: PLACEHOLDER_COVER,
+    },
+  ],
+  second: [
+    {
+      id: 'L201',
+      title: 'الهندسة المستوية',
+      desc: 'الزوايا والمضلعات وقواعد التطابق مع رسومات توضيحية.',
+      subject: 'رياضيات',
+      teacher: 'أ. سارة أحمد',
+      week: 'الأسبوع 1',
+      date: '2026-04-12',
+      cover: PLACEHOLDER_COVER,
+    },
+  ],
+  third: [
+    {
+      id: 'L301',
+      title: 'حساب المثلثات',
+      desc: 'النسب المثلثية، التمارين، وحل المسائل التطبيقية.',
+      subject: 'رياضيات',
+      teacher: 'أ. خالد رضا',
+      week: 'الأسبوع 1',
+      date: '2026-04-15',
+      cover: PLACEHOLDER_COVER,
+    },
+  ],
+}
+
 export default function Lectures() {
-  const [currentGrade, setCurrentGrade] = useState('')
-  const [gradeSelectionVisible, setGradeSelectionVisible] = useState(true)
-  const [activeSections, setActiveSections] = useState({})
+  const [grade, setGrade] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const [lectures, setLectures] = useState(SAMPLE_LECTURES)
+  const [search, setSearch] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [form, setForm] = useState({
+    title: '',
+    desc: '',
+    subject: '',
+    teacher: '',
+    week: '',
+    cover: '',
+    file: null,
+  })
 
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('masar-user'))
-      setUserRole(user?.role || null)
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      setUserRole(u?.role || null)
     } catch {
       setUserRole(null)
     }
   }, [])
-  const [lectures, setLectures] = useState({
-    first: [
-      { name: 'مقدمة في الرياضيات - الأسبوع الأول', icon: '📄' },
-      { name: 'أساسيات الجبر - الأسبوع الثاني', icon: '📄' }
-    ],
-    second: [
-      { name: 'الهندسة المستوية - الأسبوع الأول', icon: '📄' },
-      { name: 'المعادلات الخطية - الأسبوع الثاني', icon: '📄' }
-    ],
-    third: [
-      { name: 'حساب المثلثات - الأسبوع الأول', icon: '📄' },
-      { name: 'الإحصاء والاحتمالات - الأسبوع الثاني', icon: '📄' }
-    ]
-  })
-  const [modalVisible, setModalVisible] = useState(false)
-  const [formData, setFormData] = useState({ lectureName: '', lectureFile: null })
 
-  useEffect(() => {
-    // Create floating particles
-    const createParticle = () => {
-      const particle = document.createElement('div')
-      particle.className = 'particle'
-      particle.style.left = Math.random() * 100 + 'vw'
-      particle.style.animationDelay = Math.random() * 15 + 's'
-      particle.style.animationDuration = Math.random() * 10 + 10 + 's'
-      document.body.appendChild(particle)
-
-      setTimeout(() => {
-        particle.remove()
-      }, 25000)
-    }
-
-    // Generate particles periodically
-    const particleInterval = setInterval(createParticle, 3000)
-
-    // Initial particles
-    for (let i = 0; i < 5; i++) {
-      setTimeout(createParticle, i * 1000)
-    }
-
-    // Theme from localStorage
-    if (localStorage.getItem('theme') === 'dark') {
-      document.body.classList.add('dark')
-    }
-
-    return () => clearInterval(particleInterval)
-  }, [])
-
-  const selectGrade = (grade) => {
-    setCurrentGrade(grade)
-    setGradeSelectionVisible(false)
-    setActiveSections({ [grade + 'PrepSection']: true })
+  const flash = (msg, kind = 'success') => {
+    setToast({ msg, kind })
+    setTimeout(() => setToast(null), 2400)
   }
 
-  const backToSelection = () => {
-    setGradeSelectionVisible(true)
-    setActiveSections({})
-    setCurrentGrade('')
+  const filtered = useMemo(() => {
+    if (!grade) return []
+    const list = lectures[grade] || []
+    const q = search.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((l) =>
+      [l.title, l.desc, l.subject, l.teacher, l.week, l.id]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [lectures, grade, search])
+
+  const onCoverChange = (file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => setForm((f) => ({ ...f, cover: e.target.result }))
+    reader.readAsDataURL(file)
   }
 
-  const openAddLectureModal = (grade) => {
-    setCurrentGrade(grade)
-    setModalVisible(true)
-  }
-
-  const closeAddLectureModal = () => {
-    setModalVisible(false)
-    setFormData({ lectureName: '', lectureFile: null })
-  }
-
-  const handleAddLecture = (e) => {
+  const submit = (e) => {
     e.preventDefault()
-    if (formData.lectureName && formData.lectureFile && currentGrade) {
-      const newLecture = {
-        name: formData.lectureName,
-        icon: '📄'
-      }
-      setLectures(prev => ({
-        ...prev,
-        [currentGrade]: [...prev[currentGrade], newLecture]
-      }))
-      showNotification('تم إضافة المحاضرة بنجاح!', 'success')
-      closeAddLectureModal()
+    if (!form.title.trim() || !grade) return
+    const id = 'L' + Math.floor(Math.random() * 9000 + 1000)
+    const today = new Date().toISOString().slice(0, 10)
+    const newLec = {
+      id,
+      title: form.title.trim(),
+      desc: form.desc.trim() || '—',
+      subject: form.subject.trim() || 'عام',
+      teacher: form.teacher.trim() || '—',
+      week: form.week.trim() || '—',
+      date: today,
+      cover: form.cover || PLACEHOLDER_COVER,
+      fileName: form.file?.name,
     }
+    setLectures((prev) => ({ ...prev, [grade]: [newLec, ...(prev[grade] || [])] }))
+    flash('تمت إضافة المحاضرة بنجاح')
+    setModalOpen(false)
+    setForm({ title: '', desc: '', subject: '', teacher: '', week: '', cover: '', file: null })
   }
 
-  const showNotification = (message, type) => {
-    const notification = document.createElement('div')
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${type === 'success' ? 'linear-gradient(45deg, #4ade80, #22c55e)' : 'linear-gradient(45deg, #3b82f6, #1d4ed8)'};
-      color: white;
-      padding: 15px 25px;
-      border-radius: 12px;
-      font-weight: 600;
-      z-index: 3000;
-      animation: slideInRight 0.3s ease-out;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      backdrop-filter: blur(10px);
-    `
-    notification.textContent = message
-    document.body.appendChild(notification)
-
-    setTimeout(() => {
-      notification.style.animation = 'slideOutRight 0.3s ease-out'
-      setTimeout(() => {
-        document.body.removeChild(notification)
-      }, 300)
-    }, 3000)
+  const removeLecture = (id) => {
+    setLectures((prev) => ({
+      ...prev,
+      [grade]: (prev[grade] || []).filter((l) => l.id !== id),
+    }))
+    flash('تم حذف المحاضرة', 'warning')
   }
 
-  const openPDF = (fileName) => {
-    showNotification('سيتم فتح ملف: ' + fileName, 'info')
-  }
-
-  const logoutUser = () => {
-    localStorage.removeItem('masar-user')
-    let msg = document.createElement('div')
-    msg.id = 'logout-message'
-    msg.innerHTML = `
-      <div class="logout-anim-icon">✔️</div>
-      <div class="logout-anim-text" style="
-        font-size: 1.7rem;
-        font-weight: 900;
-        color: #fff;
-        text-shadow: 0 2px 8px #764ba2cc, 0 1px 0 #fff;
-        letter-spacing: 1.5px;
-        margin-top: 8px;
-      ">تم تسجيل الخروج بنجاح</div>
-    `
-    msg.style.position = 'fixed'
-    msg.style.top = '50%'
-    msg.style.left = '50%'
-    msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
-    msg.style.background = 'linear-gradient(135deg, #667eea, #764ba2)'
-    msg.style.color = '#fff'
-    msg.style.padding = '40px 60px'
-    msg.style.borderRadius = '24px'
-    msg.style.fontSize = '2rem'
-    msg.style.fontWeight = 'bold'
-    msg.style.boxShadow = '0 12px 40px 0 rgba(102,126,234,0.25), 0 2px 8px 0 rgba(0,0,0,0.10)'
-    msg.style.zIndex = '9999'
-    msg.style.textAlign = 'center'
-    msg.style.letterSpacing = '1px'
-    msg.style.overflow = 'hidden'
-    msg.style.opacity = '0'
-    msg.style.transition = 'opacity 0.4s cubic-bezier(.4,2,.6,1), transform 0.5s cubic-bezier(.4,2,.6,1)'
-    msg.classList.add('logout-anim-in')
-    document.body.appendChild(msg)
-
-    setTimeout(() => {
-      msg.style.opacity = '1'
-      msg.style.transform = 'translate(-50%, -50%) scale(1)'
-      msg.classList.add('logout-anim-in-active')
-    }, 10)
-
-    setTimeout(() => {
-      msg.classList.remove('logout-anim-in-active')
-      msg.classList.add('logout-anim-out')
-      msg.style.opacity = '0'
-      msg.style.transform = 'translate(-50%, -50%) scale(0.8)'
-      setTimeout(() => {
-        document.body.removeChild(msg)
-        window.location.href = '/login'
-      }, 400)
-    }, 2000)
-
-    if (!document.getElementById('logout-anim-style')) {
-      const style = document.createElement('style')
-      style.id = 'logout-anim-style'
-      style.textContent = `
-        .logout-anim-icon {
-          font-size: 3.5rem;
-          margin-bottom: 12px;
-          animation: logout-bounce 0.7s cubic-bezier(.4,2,.6,1);
-          filter: drop-shadow(0 2px 8px #fff8) drop-shadow(0 0px 16px #764ba2cc);
-        }
-        .logout-anim-text {
-          animation: logout-fadein 1.2s cubic-bezier(.4,2,.6,1);
-        }
-        .logout-anim-in {
-          animation: logout-in-anim 0.5s cubic-bezier(.4,2,.6,1);
-        }
-        .logout-anim-in-active {
-        }
-        .logout-anim-out {
-          animation: logout-out-anim 0.4s cubic-bezier(.4,2,.6,1);
-        }
-        @keyframes logout-bounce {
-          0% { transform: scale(0.5) rotate(-20deg); opacity: 0; }
-          60% { transform: scale(1.2) rotate(8deg); opacity: 1; }
-          80% { transform: scale(0.95) rotate(-4deg); }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-        @keyframes logout-fadein {
-          0% { opacity: 0; filter: blur(8px); }
-          60% { opacity: 1; filter: blur(0); }
-          100% { opacity: 1; filter: blur(0); }
-        }
-        @keyframes logout-in-anim {
-          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-        @keyframes logout-out-anim {
-          0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-        }
-      `
-      document.head.appendChild(style)
-    }
-  }
-
-  const toggleTheme = () => {
-    const isDark = document.body.classList.toggle('dark')
-    localStorage.setItem('theme', isDark ? 'dark' : 'light')
-  }
-
-  const renderLecturesSection = (grade, title, titleAr) => (
-    <div key={grade} id={grade + 'PrepSection'} className={`lectures-section ${activeSections[grade + 'PrepSection'] ? 'active' : ''}`}>
-      <button className="back-btn" onClick={backToSelection}>
-        <span>←</span>
-        العودة للاختيار
-      </button>
-      <div className="section-header">
-        <h2 className="section-title">📚 {titleAr}</h2>
-        {userRole === 'admin' && (
-          <button className="add-lecture-btn" onClick={() => openAddLectureModal(grade)}>
-            <span>+</span>
-            إضافة محاضرة جديدة
-          </button>
-        )}
-      </div>
-      <div className="lectures" id={grade + 'PrepLectures'}>
-        {lectures[grade].map((lecture, idx) => (
-          <div key={idx} className="pdf">
-            <a href="#" onClick={(e) => { e.preventDefault(); openPDF(lecture.name) }}>
-              <span>{lecture.icon}</span>
-              {lecture.name}
-            </a>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
+  /* ─────────── render ─────────── */
   return (
-    <div>
-      <div className="main-content">
-        <div className="container">
-          {/* Grade Selection */}
-          {gradeSelectionVisible && (
-            <div id="gradeSelection">
-              <h2>📚 اختر المرحلة الدراسية</h2>
-              <div className="grade-selection">
-                <div className="grade-card" onClick={() => selectGrade('first')}>
-                  <span className="icon">🎓</span>
-                  <h3>الصف الأول الإعدادي</h3>
-                  <p>First Prep</p>
-                </div>
-                <div className="grade-card" onClick={() => selectGrade('second')}>
-                  <span className="icon">📖</span>
-                  <h3>الصف الثاني الإعدادي</h3>
-                  <p>Second Prep</p>
-                </div>
-                <div className="grade-card" onClick={() => selectGrade('third')}>
-                  <span className="icon">🏆</span>
-                  <h3>الصف الثالث الإعدادي</h3>
-                  <p>Third Prep</p>
-                </div>
-              </div>
-            </div>
-          )}
+    <main className="lec-page" dir="rtl">
+      <div className="lec-container">
+        {/* Page header */}
+        <header className="lec-page-header">
+          <div className="lec-page-icon"><i className="fas fa-book-bookmark"></i></div>
+          <div>
+            <h1>المحاضرات التعليمية</h1>
+            <p>محاضرات شاملة بالصور والوصف لكل مادة دراسية</p>
+          </div>
+        </header>
 
-          {/* Lectures Sections */}
-          {renderLecturesSection('first', 'First Prep', 'محاضرات الصف الأول الإعدادي')}
-          {renderLecturesSection('second', 'Second Prep', 'محاضرات الصف الثاني الإعدادي')}
-          {renderLecturesSection('third', 'Third Prep', 'محاضرات الصف الثالث الإعدادي')}
-        </div>
-      </div>
-
-      {/* Add Lecture Modal */}
-      {modalVisible && (
-        <div id="addLectureModal" className="modal active" onClick={(e) => { if (e.target.id === 'addLectureModal') closeAddLectureModal() }}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 className="modal-title">إضافة محاضرة جديدة</h3>
-              <button className="close-btn" onClick={closeAddLectureModal}>×</button>
+        {/* Step 1 — prep picker */}
+        {!grade && (
+          <section className="lec-prep-block">
+            <div className="lec-prep-head">
+              <h2><i className="fas fa-graduation-cap"></i> اختر المرحلة الدراسية</h2>
+              <p>حدد المرحلة لاستعراض المحاضرات الخاصة بها</p>
             </div>
-            <form id="addLectureForm" onSubmit={handleAddLecture}>
-              <div className="form-group">
-                <label htmlFor="lectureName">اسم المحاضرة:</label>
+            <div className="prep-grid">
+              {PREPS.map((p) => (
+                <PrepCard
+                  key={p.id}
+                  prep={p}
+                  count={(lectures[p.id] || []).length}
+                  onClick={() => setGrade(p.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Step 2 — lectures of selected prep */}
+        {grade && (
+          <>
+            <div className="lec-toolbar">
+              <button className="lec-back" onClick={() => { setGrade(null); setSearch('') }}>
+                <i className="fas fa-arrow-right"></i> العودة للمراحل
+              </button>
+              <div className="lec-search-wrap">
+                <i className="fas fa-search"></i>
                 <input
                   type="text"
-                  id="lectureName"
-                  name="lectureName"
-                  placeholder="أدخل اسم المحاضرة"
-                  value={formData.lectureName}
-                  onChange={(e) => setFormData({ ...formData, lectureName: e.target.value })}
-                  required
+                  placeholder="ابحث بعنوان المحاضرة، المادة، أو المعلم..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
+                {search && (
+                  <button className="lec-search-clear" onClick={() => setSearch('')}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                )}
               </div>
-              <div className="form-group">
-                <label htmlFor="lectureFile">ملف PDF:</label>
+              {userRole === 'admin' && (
+                <button className="lec-add-btn" onClick={() => setModalOpen(true)}>
+                  <i className="fas fa-plus"></i> محاضرة جديدة
+                </button>
+              )}
+            </div>
+
+            <div className="lec-section-head">
+              <h2>
+                <i className="fas fa-layer-group"></i>
+                {' '}محاضرات {PREPS.find((p) => p.id === grade)?.nameAr}
+              </h2>
+              <span className="lec-count-pill">{filtered.length} محاضرة</span>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="lec-empty">
+                <i className="fas fa-folder-open"></i>
+                <p>لا توجد محاضرات مطابقة</p>
+              </div>
+            ) : (
+              <div className="lec-grid">
+                {filtered.map((lec) => (
+                  <LectureCard
+                    key={lec.id}
+                    lec={lec}
+                    isAdmin={userRole === 'admin'}
+                    onOpen={() => flash('سيتم فتح: ' + lec.title, 'info')}
+                    onDownload={() => flash('بدء التحميل: ' + lec.title, 'info')}
+                    onDelete={() => removeLecture(lec.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Add modal */}
+      {modalOpen && (
+        <div className="lec-modal-overlay" onClick={() => setModalOpen(false)}>
+          <form className="lec-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+            <div className="lec-modal-head">
+              <div className="lec-modal-icon"><i className="fas fa-circle-plus"></i></div>
+              <div>
+                <h3>إضافة محاضرة جديدة</h3>
+                <p>املأ بيانات المحاضرة وارفع صورة الغلاف وملف الـ PDF</p>
+              </div>
+              <button type="button" className="lec-modal-close" onClick={() => setModalOpen(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="lec-modal-body">
+              {/* Cover uploader */}
+              <label className="lec-cover-uploader">
+                {form.cover ? (
+                  <img src={form.cover} alt="cover" />
+                ) : (
+                  <div className="lec-cover-placeholder">
+                    <i className="fas fa-image"></i>
+                    <span>اضغط لرفع صورة الغلاف</span>
+                    <small>JPG / PNG — يفضّل بنسبة 16:9</small>
+                  </div>
+                )}
                 <input
                   type="file"
-                  id="lectureFile"
-                  name="lectureFile"
-                  accept=".pdf"
-                  onChange={(e) => setFormData({ ...formData, lectureFile: e.target.files[0] })}
-                  required
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => onCoverChange(e.target.files[0])}
                 />
+              </label>
+
+              <div className="lec-form-row">
+                <Field label="عنوان المحاضرة" icon="fa-heading" required>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    placeholder="مثال: مقدمة في الجبر"
+                    required
+                  />
+                </Field>
+                <Field label="المادة" icon="fa-book">
+                  <input
+                    type="text"
+                    value={form.subject}
+                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                    placeholder="رياضيات / علوم / لغة..."
+                  />
+                </Field>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeAddLectureModal}>إلغاء</button>
-                <button type="submit" className="btn btn-primary">إضافة المحاضرة</button>
+
+              <div className="lec-form-row">
+                <Field label="المعلم" icon="fa-chalkboard-user">
+                  <input
+                    type="text"
+                    value={form.teacher}
+                    onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                    placeholder="اسم المدرس"
+                  />
+                </Field>
+                <Field label="الأسبوع / الترم" icon="fa-calendar-week">
+                  <input
+                    type="text"
+                    value={form.week}
+                    onChange={(e) => setForm({ ...form, week: e.target.value })}
+                    placeholder="الأسبوع الأول"
+                  />
+                </Field>
               </div>
-            </form>
-          </div>
+
+              <Field label="الوصف" icon="fa-align-right">
+                <textarea
+                  rows="3"
+                  value={form.desc}
+                  onChange={(e) => setForm({ ...form, desc: e.target.value })}
+                  placeholder="نبذة قصيرة عن محتوى المحاضرة..."
+                />
+              </Field>
+
+              <Field label="ملف PDF" icon="fa-file-pdf">
+                <label className="lec-file-input">
+                  <i className="fas fa-cloud-arrow-up"></i>
+                  <span>{form.file?.name || 'اختر ملف PDF'}</span>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    hidden
+                    onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
+                  />
+                </label>
+              </Field>
+            </div>
+
+            <div className="lec-modal-foot">
+              <button type="button" className="lec-btn lec-btn-ghost" onClick={() => setModalOpen(false)}>
+                إلغاء
+              </button>
+              <button type="submit" className="lec-btn lec-btn-primary">
+                <i className="fas fa-check"></i> حفظ المحاضرة
+              </button>
+            </div>
+          </form>
         </div>
       )}
+
+      {toast && (
+        <div className={`lec-toast lec-toast-${toast.kind}`}>
+          <i className={`fas ${
+            toast.kind === 'success' ? 'fa-circle-check'
+              : toast.kind === 'warning' ? 'fa-circle-exclamation'
+              : 'fa-circle-info'
+          }`}></i>
+          <span>{toast.msg}</span>
+        </div>
+      )}
+    </main>
+  )
+}
+
+/* ─────────────────────── sub-components ─────────────────────── */
+
+function PrepCard({ prep, count, onClick }) {
+  return (
+    <button className={`prep-card prep-${prep.accent}`} onClick={onClick}>
+      <div className="prep-cover">
+        <div className="prep-cover-deco" />
+        <div className="prep-icon">
+          <i className={`fas ${prep.icon}`}></i>
+        </div>
+        <div className="prep-stage">{prep.nameEn}</div>
+      </div>
+      <div className="prep-body">
+        <h3>{prep.nameAr}</h3>
+        <p>{prep.desc}</p>
+        <div className="prep-foot">
+          <span className="prep-count">
+            <i className="fas fa-book"></i> {count} محاضرة
+          </span>
+          <span className="prep-cta">
+            استعراض <i className="fas fa-arrow-left"></i>
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function LectureCard({ lec, isAdmin, onOpen, onDownload, onDelete }) {
+  return (
+    <article className="lec-card">
+      <div className="lec-card-cover">
+        <img src={lec.cover} alt={lec.title} loading="lazy" />
+        <div className="lec-card-cover-grad"></div>
+        <div className="lec-card-ribbon">
+          <i className="fas fa-circle-play"></i> محاضرة
+        </div>
+        <div className="lec-card-id">
+          <i className="fas fa-hashtag"></i>{lec.id}
+        </div>
+        <div className="lec-card-title-pill">
+          <i className="fas fa-bookmark"></i> {lec.week}
+        </div>
+      </div>
+
+      <div className="lec-card-body">
+        <div className="lec-card-tags">
+          <span className="lec-tag lec-tag-subject"><i className="fas fa-book"></i> {lec.subject}</span>
+          <span className="lec-tag"><i className="fas fa-chalkboard-user"></i> {lec.teacher}</span>
+        </div>
+
+        <h3 className="lec-card-title">{lec.title}</h3>
+        <p className="lec-card-desc">{lec.desc}</p>
+
+        <div className="lec-card-meta">
+          <span><i className="fas fa-calendar"></i> {lec.date}</span>
+          {lec.fileName && (
+            <span className="lec-meta-file">
+              <i className="fas fa-file-pdf"></i> {lec.fileName}
+            </span>
+          )}
+        </div>
+
+        <div className="lec-card-actions">
+          <button className="lec-btn lec-btn-primary" onClick={onOpen}>
+            <i className="fas fa-eye"></i> فتح المحاضرة
+          </button>
+          <button className="lec-btn lec-btn-ghost" onClick={onDownload}>
+            <i className="fas fa-download"></i> تحميل
+          </button>
+          {isAdmin && (
+            <button className="lec-btn lec-btn-danger lec-btn-icon" onClick={onDelete} title="حذف">
+              <i className="fas fa-trash"></i>
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function Field({ label, icon, required, children }) {
+  return (
+    <div className="lec-field">
+      <label>
+        <i className={`fas ${icon}`}></i> {label}
+        {required && <span className="lec-required">*</span>}
+      </label>
+      {children}
     </div>
   )
 }
