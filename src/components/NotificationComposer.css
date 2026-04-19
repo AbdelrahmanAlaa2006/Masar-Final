@@ -9,32 +9,31 @@
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: 9999;
-  overflow-y: scroll;          /* always show scrollbar so it's clear */
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  display: flex;
+  align-items: center;          /* CENTER on screen */
+  justify-content: center;
+  padding: 1rem;
   font-family: 'Cairo', sans-serif;
   animation: ncFade 0.2s ease;
+  overscroll-behavior: contain;
 }
 .nc-overlay-inner {
-  min-height: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 100px 1rem 2rem;
+  display: contents;            /* let the modal be the flex item */
 }
 @keyframes ncFade { from { opacity: 0; } to { opacity: 1; } }
 
 .nc-modal {
   width: 100%;
   max-width: 620px;
-  margin: 0 auto;
+  max-height: calc(100vh - 2rem);   /* never taller than the viewport */
   background: #fff;
   color: #1a202c;
   border-radius: 18px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;                  /* clip child rounded corners */
+  min-height: 0;
   animation: ncSlide 0.25s ease;
   direction: rtl;
 }
@@ -43,15 +42,15 @@
   to   { transform: translateY(0);     opacity: 1; }
 }
 
-/* head */
+/* head — fixed, never shrinks */
 .nc-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 0.9rem;
   padding: 1.1rem 1.2rem;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
-  border-radius: 18px 18px 0 0;
 }
 .nc-head h3 { margin: 0; font-size: 1.15rem; font-weight: 800; }
 .nc-head p  { margin: 2px 0 0; font-size: 0.82rem; opacity: 0.85; }
@@ -76,8 +75,12 @@
 }
 .nc-close:hover { background: rgba(255, 255, 255, 0.3); }
 
-/* body — natural height; the overlay is what scrolls */
+/* body — the ONLY scrollable area inside the modal */
 .nc-body {
+  flex: 1 1 auto;
+  min-height: 0;                /* critical: lets overflow work in flex */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 1.2rem;
   display: flex;
   flex-direction: column;
@@ -307,15 +310,15 @@
 }
 .nc-preview-meta i { margin-inline-end: 0.2rem; }
 
-/* footer */
+/* footer — fixed, never shrinks */
 .nc-foot {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
   padding: 0.9rem 1.2rem;
   background: #fafbfc;
   border-top: 1px solid #edf0f7;
-  border-radius: 0 0 18px 18px;
 }
 .nc-btn {
   padding: 0.65rem 1.2rem;
