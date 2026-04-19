@@ -16,6 +16,7 @@ import ControlPanel from './pages/ControlPanel'
 import ExamTaking from './pages/ExamTaking'
 import ExamAdd from './pages/ExamAdd'
 import VideoAdd from './pages/VideoAdd'
+import Profile from './pages/Profile'
 import { tokenAPI } from './services/api'
 import './App.css'
 
@@ -72,6 +73,7 @@ function AppContent() {
           <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/lectures" element={<ProtectedRoute><Lectures /></ProtectedRoute>} />
           <Route path="/exams" element={<ProtectedRoute><Exams /></ProtectedRoute>} />
           <Route path="/exam-taking" element={<ProtectedRoute><ExamTaking /></ProtectedRoute>} />

@@ -173,7 +173,7 @@ export default function Header() {
             </button>
 
             {userName && (
-              <div className="mh__user" title={userName}>
+              <div className="mh__user" title={userName} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
                 <span className="mh__avatar">{initial}</span>
                 <span className="mh__user-meta">
                   <span className="mh__user-hi">مرحبًا</span>
@@ -234,7 +234,7 @@ export default function Header() {
           </header>
 
           {userName && (
-            <div className="mh-drawer__user">
+            <div className="mh-drawer__user" onClick={() => { setDrawerOpen(false); navigate('/profile') }} style={{ cursor: 'pointer' }}>
               <span className="mh__avatar mh__avatar--lg">{initial}</span>
               <div>
                 <div className="mh-drawer__user-name">{userName}</div>
