@@ -166,8 +166,32 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Background particles are now rendered globally in App.jsx
-  // (BackgroundParticles component) so every page shares the effect.
+  useEffect(() => {
+    // Create particle effects (Home page only)
+    const createParticle = () => {
+      const particle = document.createElement('div')
+      particle.style.cssText = `
+        position: fixed;
+        width: 4px;
+        height: 4px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: -1;
+        animation: particleFloat 6s linear infinite;
+      `
+
+      particle.style.left = Math.random() * 100 + 'vw'
+      particle.style.animationDelay = Math.random() * 6 + 's'
+
+      document.body.appendChild(particle)
+
+      setTimeout(() => particle.remove(), 6000)
+    }
+
+    const particleInterval = setInterval(createParticle, 800)
+    return () => clearInterval(particleInterval)
+  }, [])
 
   const marqueeItems = [
     '🚀 قريبًا: دورات مكثفة للمرحلة الإعدادية',
