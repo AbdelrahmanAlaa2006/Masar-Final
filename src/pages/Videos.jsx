@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Videos.css'
+import PrepIllustration from '../components/PrepIllustration'
 
 export default function Videos() {
   const navigate = useNavigate()
@@ -172,8 +173,7 @@ export default function Videos() {
                 <button key={p.id} className={`prep-card prep-${p.accent}`} onClick={() => selectGrade(p.id, p.ar)}>
                   <div className="prep-cover">
                     <div className="prep-cover-deco" />
-                    <div className="prep-icon"><i className={`fas ${p.icon}`}></i></div>
-                    <div className="prep-stage">{p.en}</div>
+                    <PrepIllustration kind={p.id.replace('-prep','')} stage={p.en} />
                   </div>
                   <div className="prep-body">
                     <h3>{p.ar}</h3>

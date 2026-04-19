@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Exams.css'
+import PrepIllustration from '../components/PrepIllustration'
 
 export default function Exams() {
   const navigate = useNavigate()
@@ -222,8 +223,7 @@ export default function Exams() {
       <button key={level} className={`prep-card prep-${m.accent}`} onClick={() => showExams(level)}>
         <div className="prep-cover">
           <div className="prep-cover-deco" />
-          <div className="prep-icon"><i className={`fas ${m.icon}`}></i></div>
-          <div className="prep-stage">{m.en}</div>
+          <PrepIllustration kind={level} stage={m.en} />
         </div>
         <div className="prep-body">
           <h3>{m.ar}</h3>
