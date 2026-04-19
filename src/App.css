@@ -52,16 +52,23 @@ body.dark::after {
   100% { transform: translate(var(--drift), -110vh) rotate(360deg);          opacity: 0; }
 }
 
-/* Pages may override their solid backgrounds — strip them so the global one shows */
+/* Strip every page wrapper's solid background so the global
+   gradient + floating particles show through on every page. */
+.page-container,
 .lec-page,
-.vid-page,
+.videos-page,
+.exams-container,
 .exm-page,
 .cp-page,
 .report-page,
 .er-page,
 .vr-page,
 .egr-page,
-.vgr-page {
+.vgr-page,
+.exam-add-page,
+.video-add-page,
+.et-wrapper,
+.home {
   background: transparent !important;
 }
 
