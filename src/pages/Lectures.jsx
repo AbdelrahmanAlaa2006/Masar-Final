@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import './Lectures.css'
 import PrepIllustration from '../components/PrepIllustration'
 
@@ -266,7 +267,7 @@ export default function Lectures() {
       </div>
 
       {/* Add modal */}
-      {modalOpen && (
+      {modalOpen && createPortal(
         <div className="lec-modal-overlay" onClick={() => setModalOpen(false)}>
           <form className="lec-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
             <div className="lec-modal-head">
@@ -371,7 +372,8 @@ export default function Lectures() {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {toast && (
