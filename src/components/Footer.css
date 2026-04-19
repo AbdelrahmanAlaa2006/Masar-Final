@@ -1,0 +1,381 @@
+/* ────────────────────────────────────────────────
+   Site Footer — Masar
+   Namespace: .sf-* (site-footer)
+   ──────────────────────────────────────────────── */
+
+.site-footer {
+  margin-top: 4rem;
+  font-family: 'Cairo', sans-serif;
+  color: #e2e8f0;
+  position: relative;
+  isolation: isolate;
+}
+
+/* ── animated gradient strip ── */
+.sf-strip {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #43e97b, #38f9d7, #4facfe, #667eea, #f093fb, #f6ad55, #43e97b
+  );
+  background-size: 300% 100%;
+  animation: sfStrip 9s linear infinite;
+}
+@keyframes sfStrip {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* ── marquee ticker ── */
+.sf-marquee {
+  background: rgba(15, 23, 42, 0.95);
+  border-block: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  padding: 0.7rem 0;
+}
+.sf-marquee-track {
+  display: inline-flex;
+  gap: 2.5rem;
+  white-space: nowrap;
+  animation: sfMarquee 38s linear infinite;
+  padding-inline-start: 2.5rem;
+}
+@keyframes sfMarquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.site-footer:hover .sf-marquee-track { animation-play-state: paused; }
+
+.sf-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #cbd5e0;
+}
+.sf-marquee-item i {
+  color: #4facfe;
+  font-size: 1rem;
+}
+.sf-marquee-dot {
+  margin-inline-start: 1.6rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── main body ── */
+.sf-main {
+  position: relative;
+  background:
+    radial-gradient(ellipse at top, #1e293b 0%, #0f172a 60%, #020617 100%);
+  padding: 3.2rem 0 0;
+  overflow: hidden;
+}
+
+.sf-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.sf-main > .sf-container {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.2fr 1.4fr;
+  gap: 2.2rem;
+  padding-bottom: 2.2rem;
+}
+
+/* ── floating blobs ── */
+.sf-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 1;
+}
+.sf-blob-1 {
+  width: 260px; height: 260px;
+  background: #4facfe;
+  top: -80px; right: -60px;
+  animation: sfBlob1 14s ease-in-out infinite;
+}
+.sf-blob-2 {
+  width: 220px; height: 220px;
+  background: #667eea;
+  bottom: -60px; left: 15%;
+  animation: sfBlob2 17s ease-in-out infinite;
+}
+.sf-blob-3 {
+  width: 180px; height: 180px;
+  background: #43e97b;
+  top: 40%; left: -40px;
+  animation: sfBlob3 20s ease-in-out infinite;
+}
+@keyframes sfBlob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-30px, 25px) scale(1.1); }
+}
+@keyframes sfBlob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(40px, -20px) scale(0.9); }
+}
+@keyframes sfBlob3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(20px, 30px) scale(1.15); }
+}
+
+/* ── columns ── */
+.sf-col-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+.sf-col-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: 0;
+  width: 50px;
+  height: 2px;
+  background: linear-gradient(90deg, #4facfe, #43e97b);
+  border-radius: 2px;
+}
+.sf-col-title i { color: #4facfe; font-size: 1rem; }
+
+/* Brand */
+.sf-brand {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.sf-brand-logo {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #4facfe 0%, #667eea 100%);
+  font-size: 1.6rem;
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(79, 172, 254, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+.sf-brand-logo::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%);
+}
+.sf-brand-name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+.sf-brand-tag {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+.sf-brand-desc {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: #94a3b8;
+  margin: 0 0 1.2rem;
+}
+
+.sf-social {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.sf-social-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  color: #cbd5e0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+.sf-social-btn:hover {
+  transform: translateY(-3px);
+  color: #fff;
+  background: linear-gradient(135deg, #4facfe 0%, #667eea 100%);
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(79, 172, 254, 0.35);
+}
+
+/* Links */
+.sf-links {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.55rem;
+}
+.sf-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #cbd5e0;
+  text-decoration: none;
+  font-size: 0.93rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  transition: color 0.2s ease, background 0.2s ease, padding-inline-start 0.25s ease;
+}
+.sf-links a i {
+  width: 16px;
+  text-align: center;
+  color: #4facfe;
+  font-size: 0.85rem;
+  transition: transform 0.25s ease;
+}
+.sf-links a:hover {
+  color: #fff;
+  background: rgba(79, 172, 254, 0.08);
+  padding-inline-start: 0.9rem;
+}
+.sf-links a:hover i {
+  transform: translateX(-3px);
+  color: #43e97b;
+}
+
+/* Badges */
+.sf-badges {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.sf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #cbd5e0;
+}
+.sf-badge i { color: #43e97b; font-size: 0.8rem; }
+
+/* Contact */
+.sf-contact {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.9rem;
+}
+.sf-contact li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.sf-ci {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: rgba(79, 172, 254, 0.12);
+  border: 1px solid rgba(79, 172, 254, 0.25);
+  color: #4facfe;
+  flex-shrink: 0;
+}
+.sf-contact div {
+  display: flex; flex-direction: column;
+}
+.sf-ck {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+.sf-cv {
+  font-size: 0.92rem;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+/* Bottom bar */
+.sf-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(2, 6, 23, 0.6);
+  padding: 1.1rem 0;
+  position: relative;
+  z-index: 2;
+}
+.sf-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.sf-copy, .sf-made {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+.sf-copy strong { color: #fff; }
+.sf-heart {
+  color: #f56565;
+  margin: 0 0.2rem;
+  animation: sfHeart 1.4s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes sfHeart {
+  0%, 100% { transform: scale(1); }
+  20%, 60% { transform: scale(1.25); }
+  40%, 80% { transform: scale(0.95); }
+}
+
+.sf-mini {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  gap: 1.1rem;
+}
+.sf-mini a {
+  font-size: 0.83rem;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.sf-mini a:hover { color: #4facfe; }
+
+/* ── responsive ── */
+@media (max-width: 980px) {
+  .sf-main > .sf-container {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+}
+@media (max-width: 600px) {
+  .sf-main { padding-top: 2.4rem; }
+  .sf-main > .sf-container {
+    grid-template-columns: 1fr;
+    gap: 1.6rem;
+  }
+  .sf-bottom-row { justify-content: center; text-align: center; }
+  .sf-mini { justify-content: center; flex-wrap: wrap; }
+  .sf-marquee-item { font-size: 0.85rem; }
+}
+
+/* respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .sf-strip,
+  .sf-marquee-track,
+  .sf-blob,
+  .sf-heart {
+    animation: none !important;
+  }
+}

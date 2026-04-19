@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import './Lectures.css'
+import PrepIllustration from '../components/PrepIllustration'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -394,10 +395,7 @@ function PrepCard({ prep, count, onClick }) {
     <button className={`prep-card prep-${prep.accent}`} onClick={onClick}>
       <div className="prep-cover">
         <div className="prep-cover-deco" />
-        <div className="prep-icon">
-          <i className={`fas ${prep.icon}`}></i>
-        </div>
-        <div className="prep-stage">{prep.nameEn}</div>
+        <PrepIllustration kind={prep.id} stage={prep.nameEn} />
       </div>
       <div className="prep-body">
         <h3>{prep.nameAr}</h3>
