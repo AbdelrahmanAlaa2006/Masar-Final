@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { sendNotification } from '../services/notifications'
 import './NotificationComposer.css'
 
@@ -101,8 +101,16 @@ export default function NotificationComposer({ onClose, onSent }) {
 
   const kindMeta = KIND_OPTIONS.find((k) => k.v === kind)
 
+  // Lock body scroll while the modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   return (
     <div className="nc-overlay" onClick={onClose}>
+      <div className="nc-overlay-inner">
       <form className="nc-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <header className="nc-head">
           <div className="nc-head-icon" style={{ background: kindMeta.color }}>
@@ -295,6 +303,7 @@ export default function NotificationComposer({ onClose, onSent }) {
           </button>
         </footer>
       </form>
+      </div>
     </div>
   )
 }
