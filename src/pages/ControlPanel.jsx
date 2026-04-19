@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { notifyExamRevealed } from '../services/notifications'
 import './ControlPanel.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -221,11 +222,26 @@ export default function ControlPanel() {
   const toggleReveal = (exam) => {
     setRevealedExams((prev) => {
       const next = { ...prev, [exam.id]: !prev[exam.id] }
+      const isReveal = !!next[exam.id]
+
+      // Auto-notify students when results become visible
+      if (isReveal) {
+        let notifyTarget = { type: 'all' }
+        if (scope === 'student' && target?.id) {
+          notifyTarget = { type: 'students', value: [target.id] }
+        } else if (scope === 'group' && target?.id) {
+          notifyTarget = { type: 'group', value: target.id }
+        } else if (scope === 'prep' && target?.id) {
+          notifyTarget = { type: 'prep', value: String(target.id).replace('-prep', '') }
+        }
+        notifyExamRevealed({ examTitle: exam.title, target: notifyTarget })
+      }
+
       flash(
-        next[exam.id]
-          ? `تم إظهار نتائج: ${exam.title} للطلاب`
+        isReveal
+          ? `تم إظهار نتائج: ${exam.title} للطلاب (تم إرسال إشعار)`
           : `تم إخفاء نتائج: ${exam.title}`,
-        next[exam.id] ? 'success' : 'warning'
+        isReveal ? 'success' : 'warning'
       )
       return next
     })
