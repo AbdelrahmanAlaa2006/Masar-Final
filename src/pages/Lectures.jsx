@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import './Lectures.css'
 import PrepIllustration from '../components/PrepIllustration'
-import { notifyNewLecture } from '../services/notifications'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -167,8 +166,7 @@ export default function Lectures() {
       fileName: form.file?.name,
     }
     setLectures((prev) => ({ ...prev, [grade]: [newLec, ...(prev[grade] || [])] }))
-    notifyNewLecture({ prep: grade, title: newLec.title })
-    flash('تمت إضافة المحاضرة بنجاح وتم إرسال إشعار للطلاب')
+    flash('تمت إضافة المحاضرة بنجاح')
     setModalOpen(false)
     setForm({ title: '', desc: '', subject: '', teacher: '', week: '', cover: '', file: null })
   }

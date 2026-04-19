@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
-import NotificationBell from './NotificationBell'
 import './Header.css'
 
 export default function Header() {
@@ -186,7 +185,6 @@ export default function Header() {
       </nav>
       
       <div className="header-actions">
-        <NotificationBell />
         <button className="logout-btn" onClick={logoutUser}>
           <i className="fas fa-sign-out-alt"></i>
           <span>تسجيل الخروج</span>
