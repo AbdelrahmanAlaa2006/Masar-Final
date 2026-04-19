@@ -142,8 +142,29 @@ body.dark .notif-compose select {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
-.notif-compose-row select { flex: 1; }
+.notif-compose-row select { flex: 1 1 120px; min-width: 0; }
+
+.notif-grade-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 999px;
+  width: fit-content;
+}
+body.dark .notif-grade-tag {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(167, 139, 250, 0.35);
+}
 
 .notif-send {
   border: none;

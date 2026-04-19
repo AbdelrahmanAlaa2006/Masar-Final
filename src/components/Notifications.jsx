@@ -42,9 +42,17 @@ export default function Notifications() {
   const [list, setList] = useState(loadList)
   const [readIds, setReadIds] = useState(() => loadRead(getUid()))
   const [userRole, setUserRole] = useState(null)
+  const [userGrade, setUserGrade] = useState(null)
   const [composeOpen, setComposeOpen] = useState(false)
-  const [draft, setDraft] = useState({ title: '', message: '', level: 'warning' })
+  const [draft, setDraft] = useState({ title: '', message: '', level: 'warning', grade: 'all' })
   const panelRef = useRef(null)
+
+  const GRADE_LABELS = {
+    all: 'كل المراحل',
+    'first-prep': 'الصف الأول الإعدادي',
+    'second-prep': 'الصف الثاني الإعدادي',
+    'third-prep': 'الصف الثالث الإعدادي',
+  }
 
   function getUid() {
     try {
@@ -59,8 +67,10 @@ export default function Notifications() {
     try {
       const u = JSON.parse(localStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
+      setUserGrade(u?.grade || u?.level || null)
     } catch {
       setUserRole(null)
+      setUserGrade(null)
     }
   }, [])
 
@@ -89,7 +99,13 @@ export default function Notifications() {
     }
   }, [open])
 
-  const sorted = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const visible = list.filter((n) => {
+    if (userRole === 'admin') return true
+    const target = n.grade || 'all'
+    if (target === 'all') return true
+    return userGrade && target === userGrade
+  })
+  const sorted = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length
 
   const markAllRead = () => {
@@ -121,12 +137,13 @@ export default function Notifications() {
       title: draft.title.trim() || 'تنبيه',
       message: draft.message.trim(),
       level: draft.level,
+      grade: draft.grade || 'all',
       createdAt: new Date().toISOString(),
     }
     const next = [entry, ...list]
     setList(next)
     saveList(next)
-    setDraft({ title: '', message: '', level: 'warning' })
+    setDraft({ title: '', message: '', level: 'warning', grade: 'all' })
     setComposeOpen(false)
   }
 
@@ -183,10 +200,21 @@ export default function Notifications() {
                 <select
                   value={draft.level}
                   onChange={(e) => setDraft({ ...draft, level: e.target.value })}
+                  aria-label="مستوى الأهمية"
                 >
                   <option value="info">معلومة</option>
                   <option value="warning">تحذير</option>
                   <option value="danger">هام</option>
+                </select>
+                <select
+                  value={draft.grade}
+                  onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
+                  aria-label="المرحلة المستهدفة"
+                >
+                  <option value="all">كل المراحل</option>
+                  <option value="first-prep">الصف الأول الإعدادي</option>
+                  <option value="second-prep">الصف الثاني الإعدادي</option>
+                  <option value="third-prep">الصف الثالث الإعدادي</option>
                 </select>
                 <button type="submit" className="notif-send">
                   <i className="fas fa-paper-plane"></i> إرسال
@@ -223,6 +251,12 @@ export default function Notifications() {
                       <span className="notif-time">{formatWhen(n.createdAt)}</span>
                     </div>
                     {n.message && <div className="notif-message">{n.message}</div>}
+                    {userRole === 'admin' && (
+                      <span className="notif-grade-tag">
+                        <i className="fas fa-users"></i>
+                        {GRADE_LABELS[n.grade || 'all']}
+                      </span>
+                    )}
                   </div>
                   {userRole === 'admin' && (
                     <button
