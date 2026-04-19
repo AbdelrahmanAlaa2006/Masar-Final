@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { notifyNewVideo } from '../services/notifications'
 import './VideoAdd.css'
 
 export default function VideoAdd() {
@@ -103,6 +104,10 @@ export default function VideoAdd() {
     const videos = JSON.parse(localStorage.getItem('videos')) || []
     videos.push(newVideo)
     localStorage.setItem('videos', JSON.stringify(videos))
+
+    // Auto-notify all students of this prep
+    const prepKey = String(videoGrade).replace('-prep', '')
+    notifyNewVideo({ prep: prepKey, title: videoTitle })
 
     setShowSuccess(true)
     setTimeout(() => {
