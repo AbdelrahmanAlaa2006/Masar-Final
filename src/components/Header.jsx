@@ -3,177 +3,232 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import './Header.css'
 
+/* ──────────────────────────────────────────────────────────────
+   Site header / navbar
+   - Brand on the start (RTL: right) with mark + wordmark
+   - Primary nav in the middle, label + icon, restrained active
+     state (soft tinted pill, not a rainbow)
+   - Theme toggle and a polished logout on the end
+   - Mobile drawer for narrow viewports
+   ────────────────────────────────────────────────────────────── */
+
+const NAV_ITEMS_BASE = [
+  { to: '/',         label: 'الرئيسية',   icon: 'fa-house' },
+  { to: '/videos',   label: 'الفيديوهات', icon: 'fa-circle-play' },
+  { to: '/exams',    label: 'الامتحانات', icon: 'fa-file-pen' },
+  { to: '/lectures', label: 'المحاضرات',  icon: 'fa-book-open' },
+]
+const ADMIN_ITEMS = [
+  { to: '/report',        label: 'التقارير',   icon: 'fa-chart-line' },
+  { to: '/control-panel', label: 'لوحة التحكم', icon: 'fa-sliders' },
+]
+
 export default function Header() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const [userRole, setUserRole] = useState(null)
+  const [userName, setUserName] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Read user
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('masar-user'))
-      setUserRole(user?.role || null)
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      setUserRole(u?.role || null)
+      setUserName(u?.name || '')
     } catch {
       setUserRole(null)
+      setUserName('')
     }
   }, [location.pathname])
 
-  // Close menu when location changes
-  useEffect(() => {
-    setMenuOpen(false)
-  }, [location.pathname])
+  // Close drawer on nav
+  useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
+  // Theme toggle effect
   useEffect(() => {
-    if (isDark) {
-      document.body.classList.add('dark')
-      document.getElementById('themeIcon').textContent = '☀️'
-    } else {
-      document.body.classList.remove('dark')
-      document.getElementById('themeIcon').textContent = '🌙'
-    }
+    document.body.classList.toggle('dark', isDark)
     localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
-  // Close menu when clicking outside
+  // Subtle elevation when scrolled
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuOpen && !e.target.closest('.hamburger-menu') && !e.target.closest('.nav-links')) {
-        setMenuOpen(false)
-      }
-    }
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-    // Close menu on Escape key
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && menuOpen) {
-        setMenuOpen(false)
-      }
+  // Lock body scroll while mobile drawer is open
+  useEffect(() => {
+    if (drawerOpen) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = prev }
     }
+  }, [drawerOpen])
 
-    if (menuOpen) {
-      document.addEventListener('click', handleClickOutside)
-      document.addEventListener('keydown', handleEscape)
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [menuOpen])
-
-  const toggleTheme = () => {
-    setIsDark(!isDark)
-  }
+  // Esc closes drawer
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setDrawerOpen(false) }
+    if (drawerOpen) document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
 
   const isActive = (path) => {
-    return location.pathname === path ? 'active' : ''
+    if (path === '/') return location.pathname === '/' || location.pathname === '/home'
+    return location.pathname === path
   }
 
-  const logoutUser = () => {
-    // Call API logout
+  const handleLogout = () => {
     authAPI.logout()
-    
-    const overlay = document.createElement('div')
-    overlay.className = 'auth-overlay'
-    overlay.innerHTML = `
-      <div class="auth-toast" role="status" aria-live="polite">
-        <div class="auth-toast-check">
-          <svg viewBox="0 0 52 52" aria-hidden="true">
-            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
-            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
-          </svg>
-        </div>
-        <div class="auth-toast-text">تم تسجيل الخروج بنجاح</div>
-        <div class="auth-toast-sub">نراك قريبًا</div>
-        <div class="auth-toast-bar"><span></span></div>
-      </div>
-    `
-    document.body.appendChild(overlay)
-    requestAnimationFrame(() => overlay.classList.add('open'))
-
-    setTimeout(() => {
-      overlay.classList.remove('open')
-      overlay.classList.add('closing')
-      setTimeout(() => {
-        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
-        navigate('/login')
-      }, 320)
-    }, 1600)
+    navigate('/login')
   }
 
-  const closeMenu = () => setMenuOpen(false)
+  const items = userRole === 'admin'
+    ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
+    : NAV_ITEMS_BASE
+
+  const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 
   return (
-    <header className="header">
-      <div className="left">
-        <Link to="/" className="logo-text">مسار</Link>
-        <img src="/images/logo.white.png" alt="شعار مسار" />
-        
-        {/* Hamburger Menu Button */}
-        <button 
-          className={`hamburger-menu ${menuOpen ? 'open' : ''}`}
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
+    <>
+      <header className={`mh ${scrolled ? 'mh--scrolled' : ''}`} dir="rtl">
+        <div className="mh__inner">
+          {/* ─── Brand ─── */}
+          <Link to="/" className="mh__brand" aria-label="مسار - الصفحة الرئيسية">
+            <span className="mh__mark">
+              <span className="mh__mark-letter">م</span>
+            </span>
+            <span className="mh__wordmark">
+              <span className="mh__brand-name">مسار</span>
+              <span className="mh__brand-tag">منصة تعليمية</span>
+            </span>
+          </Link>
+
+          {/* ─── Primary nav (desktop) ─── */}
+          <nav className="mh__nav" aria-label="القائمة الرئيسية">
+            {items.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`mh__link ${isActive(item.to) ? 'is-active' : ''}`}
+              >
+                <i className={`fas ${item.icon}`} aria-hidden="true"></i>
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* ─── Actions ─── */}
+          <div className="mh__actions">
+            <button
+              type="button"
+              className="mh__icon-btn"
+              onClick={() => setIsDark((v) => !v)}
+              aria-label={isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'}
+              title={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
+            >
+              <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
+            </button>
+
+            {userName && (
+              <div className="mh__user" title={userName}>
+                <span className="mh__avatar">{initial}</span>
+                <span className="mh__user-meta">
+                  <span className="mh__user-hi">مرحبًا</span>
+                  <span className="mh__user-name">{userName}</span>
+                </span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="mh__logout"
+              onClick={handleLogout}
+              aria-label="تسجيل الخروج"
+            >
+              <i className="fas fa-arrow-right-from-bracket"></i>
+              <span>خروج</span>
+            </button>
+
+            <button
+              type="button"
+              className={`mh__burger ${drawerOpen ? 'is-open' : ''}`}
+              onClick={() => setDrawerOpen((v) => !v)}
+              aria-label="القائمة"
+              aria-expanded={drawerOpen}
+            >
+              <span></span><span></span><span></span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ─── Mobile drawer ─── */}
+      <div
+        className={`mh-drawer ${drawerOpen ? 'is-open' : ''}`}
+        onClick={() => setDrawerOpen(false)}
+      >
+        <aside
+          className="mh-drawer__panel"
+          dir="rtl"
+          onClick={(e) => e.stopPropagation()}
         >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+          <header className="mh-drawer__head">
+            <div className="mh__brand">
+              <span className="mh__mark"><span className="mh__mark-letter">م</span></span>
+              <span className="mh__wordmark">
+                <span className="mh__brand-name">مسار</span>
+                <span className="mh__brand-tag">منصة تعليمية</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              className="mh__icon-btn"
+              onClick={() => setDrawerOpen(false)}
+              aria-label="إغلاق"
+            >
+              <i className="fas fa-xmark"></i>
+            </button>
+          </header>
+
+          {userName && (
+            <div className="mh-drawer__user">
+              <span className="mh__avatar mh__avatar--lg">{initial}</span>
+              <div>
+                <div className="mh-drawer__user-name">{userName}</div>
+                <div className="mh-drawer__user-role">
+                  {userRole === 'admin' ? 'مشرف' : 'طالب'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <nav className="mh-drawer__nav">
+            {items.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`mh-drawer__link ${isActive(item.to) ? 'is-active' : ''}`}
+              >
+                <i className={`fas ${item.icon}`} aria-hidden="true"></i>
+                <span>{item.label}</span>
+                <i className="fas fa-chevron-left mh-drawer__link-arrow"></i>
+              </Link>
+            ))}
+          </nav>
+
+          <footer className="mh-drawer__foot">
+            <button className="mh__logout mh__logout--full" onClick={handleLogout}>
+              <i className="fas fa-arrow-right-from-bracket"></i>
+              <span>تسجيل الخروج</span>
+            </button>
+          </footer>
+        </aside>
       </div>
-      
-      <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
-        <Link to="/" className={`nav-item ${isActive('/')}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-7 9 7v10a2 2 0 01-2 2h-4a2 2 0 01-2-2v-4H9v4a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
-          </svg>
-          الصفحة الرئيسية
-        </Link>
-        <Link to="/videos" className={`nav-item ${isActive('/videos')}`} onClick={closeMenu}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
-          </svg>
-          الفيديوهات المسجلة
-        </Link>
-        <Link to="/exams" className={`nav-item ${isActive('/exams')}`} onClick={closeMenu}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
-          </svg>
-          الامتحانات
-        </Link>
-        <Link to="/lectures" className={`nav-item ${isActive('/lectures')}`} onClick={closeMenu}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9M12 4h9M4 4h.01M4 20h.01M4 12h16" />
-          </svg>
-          المحاضرات
-        </Link>
-        {userRole === 'admin' && (
-          <Link to="/report" className={`nav-item ${isActive('/report')}`} onClick={closeMenu}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m4 0h.01M6 17h.01M4 4h16v16H4V4z" />
-            </svg>
-            التقارير
-          </Link>
-        )}
-        {userRole === 'admin' && (
-          <Link to="/control-panel" className={`nav-item ${isActive('/control-panel')}`} onClick={closeMenu}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            لوحة التحكم
-          </Link>
-        )}
-      </nav>
-      
-      <div className="header-actions">
-        <button className="logout-btn" onClick={logoutUser}>
-          <i className="fas fa-sign-out-alt"></i>
-          <span>تسجيل الخروج</span>
-        </button>
-        <button onClick={toggleTheme} className="theme-toggle">
-          <span id="themeIcon">🌙</span>
-        </button>
-      </div>
-    </header>
+    </>
   )
 }
