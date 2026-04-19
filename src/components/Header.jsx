@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import masarLogo from '../assets/logo.white.png'
 import './Header.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export default function Header() {
           {/* ─── Brand ─── */}
           <Link to="/" className="mh__brand" aria-label="مسار - الصفحة الرئيسية">
             <span className="mh__mark">
-              <span className="mh__mark-letter">م</span>
+              <img src={masarLogo} alt="" className="mh__mark-img" />
             </span>
             <span className="mh__wordmark">
               <span className="mh__brand-name">مسار</span>
