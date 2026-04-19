@@ -8,12 +8,10 @@
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
   padding: 110px 1rem 2rem;
   z-index: 1200;
   overflow-y: auto;
+  overscroll-behavior: contain;
   font-family: 'Cairo', sans-serif;
   animation: ncFade 0.2s ease;
 }
@@ -22,14 +20,14 @@
 .nc-modal {
   width: 100%;
   max-width: 620px;
+  margin: 0 auto;
   background: #fff;
   color: #1a202c;
   border-radius: 18px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  max-height: calc(100vh - 140px);
+  overflow: visible;
   animation: ncSlide 0.25s ease;
   direction: rtl;
 }
@@ -40,12 +38,16 @@
 
 /* head */
 .nc-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 0.9rem;
   padding: 1.1rem 1.2rem;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
+  border-radius: 18px 18px 0 0;
 }
 .nc-head h3 { margin: 0; font-size: 1.15rem; font-weight: 800; }
 .nc-head p  { margin: 2px 0 0; font-size: 0.82rem; opacity: 0.85; }
@@ -70,14 +72,12 @@
 }
 .nc-close:hover { background: rgba(255, 255, 255, 0.3); }
 
-/* body */
+/* body — natural height; the overlay is what scrolls */
 .nc-body {
   padding: 1.2rem;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
-  flex: 1;
 }
 
 .nc-section { display: flex; flex-direction: column; gap: 0.55rem; }
@@ -303,14 +303,19 @@
 }
 .nc-preview-meta i { margin-inline-end: 0.2rem; }
 
-/* footer */
+/* footer — sticky to bottom of modal so Send is always reachable */
 .nc-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
   padding: 0.9rem 1.2rem;
   background: #fafbfc;
   border-top: 1px solid #edf0f7;
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.04);
 }
 .nc-btn {
   padding: 0.65rem 1.2rem;
@@ -359,4 +364,5 @@ body.dark .nc-btn-ghost { background: #2d3748; color: #cbd5e0; }
 @media (max-width: 540px) {
   .nc-overlay { padding: 90px 0.5rem 1rem; }
   .nc-scopes { grid-template-columns: repeat(2, 1fr); }
+  .nc-stu-list { max-height: 280px; }
 }
