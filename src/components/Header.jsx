@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import Notifications from './Notifications'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'
 
@@ -85,7 +86,31 @@ export default function Header() {
 
   const handleLogout = () => {
     authAPI.logout()
-    navigate('/login')
+    const overlay = document.createElement('div')
+    overlay.className = 'auth-overlay'
+    overlay.innerHTML = `
+      <div class="auth-toast" role="status" aria-live="polite">
+        <div class="auth-toast-check">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
+            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
+          </svg>
+        </div>
+        <div class="auth-toast-text">تم تسجيل الخروج بنجاح</div>
+        <div class="auth-toast-sub">نراك قريبًا</div>
+        <div class="auth-toast-bar"><span></span></div>
+      </div>
+    `
+    document.body.appendChild(overlay)
+    requestAnimationFrame(() => overlay.classList.add('open'))
+    setTimeout(() => {
+      overlay.classList.remove('open')
+      overlay.classList.add('closing')
+      setTimeout(() => {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+        navigate('/login')
+      }, 320)
+    }, 1600)
   }
 
   const items = userRole === 'admin'
@@ -125,6 +150,7 @@ export default function Header() {
 
           {/* ─── Actions ─── */}
           <div className="mh__actions">
+            <Notifications />
             <button
               type="button"
               className="mh__icon-btn"
@@ -132,7 +158,7 @@ export default function Header() {
               aria-label={isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'}
               title={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
             >
-              <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
+              <span>{isDark ? '☀️' : '🌙'}</span>
             </button>
 
             {userName && (
