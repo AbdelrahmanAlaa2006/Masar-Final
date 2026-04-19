@@ -43,6 +43,15 @@ body.dark::after {
     radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
 }
 
+/* Floating particle animation — used by BackgroundParticles globally */
+@keyframes bgParticleFloat {
+  0%   { transform: translate(0, 0) rotate(0deg);          opacity: 0; }
+  10%  { opacity: 0.85; }
+  50%  { transform: translate(calc(var(--drift) / 2), -55vh) rotate(180deg); opacity: 1; }
+  90%  { opacity: 0.7; }
+  100% { transform: translate(var(--drift), -110vh) rotate(360deg);          opacity: 0; }
+}
+
 /* Pages may override their solid backgrounds — strip them so the global one shows */
 .lec-page,
 .vid-page,
