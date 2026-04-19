@@ -7,7 +7,6 @@
   animation: fadeIn 0.3s ease-in-out;
   position: relative;
   z-index: 0;
-  padding-top: 90px;
 }
 
 .login-page .page-container {
@@ -97,6 +96,11 @@ body.dark .auth-toast {
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
 }
 .auth-toast-check svg { width: 36px; height: 36px; }
+.notify-icon i { color: #fff; font-size: 1.7rem; }
+.notify--warning .notify-icon { background: linear-gradient(135deg, #f59e0b, #f97316); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35); }
+.notify--error .notify-icon { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35); }
+.notify--info .notify-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35); }
+.notify--success .notify-icon { background: linear-gradient(135deg, #10b981, #06b6d4); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35); }
 .auth-toast-check-circle {
   stroke: rgba(255,255,255,0.45);
   stroke-width: 2.5;

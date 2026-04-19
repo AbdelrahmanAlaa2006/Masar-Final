@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './ExamAdd.css'
+import { notify } from '../utils/notify'
 
 export default function ExamAdd() {
   const [examNumber, setExamNumber] = useState('')
@@ -24,7 +25,7 @@ export default function ExamAdd() {
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
     if (!count || count <= 0) {
-      alert('يرجى إدخال عدد صحيح من الأسئلة')
+      notify('يرجى إدخال عدد صحيح من الأسئلة', { type: 'warning' })
       return
     }
 
@@ -99,13 +100,13 @@ export default function ExamAdd() {
   const parseCopiedQuestions = () => {
     const text = questionsCopy.trim()
     if (!text) {
-      alert('يرجى إدخال الأسئلة بالتنسيق المطلوب')
+      notify('يرجى إدخال الأسئلة بالتنسيق المطلوب', { type: 'warning' })
       return
     }
 
     const questionTexts = text.split('@').filter(q => q.trim() !== '')
     if (questionTexts.length === 0) {
-      alert('لم يتم العثور على أسئلة')
+      notify('لم يتم العثور على أسئلة', { type: 'warning' })
       return
     }
 
@@ -181,7 +182,7 @@ export default function ExamAdd() {
 
   const saveExam = () => {
     if (!examNumber.trim() || !examTitle.trim() || !duration || questions.length === 0) {
-      alert('يرجى ملء جميع البيانات المطلوبة')
+      notify('يرجى ملء جميع البيانات المطلوبة', { type: 'warning' })
       return
     }
 
@@ -193,7 +194,7 @@ export default function ExamAdd() {
     })
 
     if (!isValid) {
-      alert('يرجى التأكد من ملء جميع الأسئلة والاختيارات وتحديد الإجابات الصحيحة')
+      notify('يرجى التأكد من ملء جميع الأسئلة والاختيارات وتحديد الإجابات الصحيحة', { type: 'warning' })
       return
     }
 
@@ -230,7 +231,7 @@ export default function ExamAdd() {
   return (
     <div className="exam-add-page">
       <div className="exam-add-container">
-        <h1>🛠 إنشاء امتحان</h1>
+        <h1>إنشاء امتحان</h1>
 
         <div className="form-group">
           <label htmlFor="examNumber">🔢 رقم الامتحان:</label>

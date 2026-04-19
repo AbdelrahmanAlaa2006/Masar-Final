@@ -1,10 +1,8 @@
 /* Video Add Page Styles */
 .video-add-page {
-  min-height: calc(100vh - 70px);
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   background-attachment: fixed;
-  padding: 30px 20px;
-  margin-top: 70px;
+  padding: 0 20px 60px;
 }
 
 .video-add-container {

@@ -32,17 +32,21 @@
   border-block: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
   padding: 0.7rem 0;
+  direction: ltr;
 }
 .sf-marquee-track {
-  display: inline-flex;
-  gap: 2.5rem;
+  display: flex;
+  width: max-content;
   white-space: nowrap;
   animation: sfMarquee 38s linear infinite;
-  padding-inline-start: 2.5rem;
+  will-change: transform;
+}
+.sf-marquee-item {
+  padding-inline-end: 2.5rem;
 }
 @keyframes sfMarquee {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(-25%); }
 }
 .site-footer:hover .sf-marquee-track { animation-play-state: paused; }
 
@@ -368,6 +372,52 @@
   .sf-bottom-row { justify-content: center; text-align: center; }
   .sf-mini { justify-content: center; flex-wrap: wrap; }
   .sf-marquee-item { font-size: 0.85rem; }
+}
+
+/* ── light mode overrides ── */
+body:not(.dark) .site-footer { color: #1e293b; }
+body:not(.dark) .sf-marquee {
+  background: rgba(248, 250, 252, 0.95);
+  border-block-color: rgba(15, 23, 42, 0.08);
+}
+body:not(.dark) .sf-marquee-item { color: #475569; }
+body:not(.dark) .sf-marquee-dot { color: rgba(15, 23, 42, 0.35); }
+body:not(.dark) .sf-main {
+  background:
+    radial-gradient(ellipse at top, #ffffff 0%, #f8fafc 60%, #eef2f7 100%);
+}
+body:not(.dark) .sf-blob { opacity: 0.18; }
+body:not(.dark) .sf-col-title {
+  color: #0f172a;
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+body:not(.dark) .sf-brand-name { color: #0f172a; }
+body:not(.dark) .sf-brand-tag,
+body:not(.dark) .sf-brand-desc,
+body:not(.dark) .sf-copy,
+body:not(.dark) .sf-made,
+body:not(.dark) .sf-mini a { color: #64748b; }
+body:not(.dark) .sf-copy strong { color: #0f172a; }
+body:not(.dark) .sf-social-btn {
+  color: #475569;
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+body:not(.dark) .sf-links a { color: #475569; }
+body:not(.dark) .sf-links a:hover {
+  color: #0f172a;
+  background: rgba(79, 172, 254, 0.1);
+}
+body:not(.dark) .sf-badge {
+  color: #475569;
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+body:not(.dark) .sf-cv { color: #0f172a; }
+body:not(.dark) .sf-ck { color: #64748b; }
+body:not(.dark) .sf-bottom {
+  background: rgba(241, 245, 249, 0.7);
+  border-top-color: rgba(15, 23, 42, 0.08);
 }
 
 /* respect reduced motion */

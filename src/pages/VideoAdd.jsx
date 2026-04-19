@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './VideoAdd.css'
+import { notify } from '../utils/notify'
 
 export default function VideoAdd() {
   const [videoTitle, setVideoTitle] = useState('')
@@ -26,7 +27,7 @@ export default function VideoAdd() {
   const generateParts = () => {
     const count = parseInt(numParts)
     if (!count || count <= 0) {
-      alert('يرجى إدخال عدد صحيح من الأجزاء')
+      notify('يرجى إدخال عدد صحيح من الأجزاء', { type: 'warning' })
       return
     }
 
@@ -77,12 +78,12 @@ export default function VideoAdd() {
 
   const saveVideo = () => {
     if (!videoTitle.trim()) {
-      alert('يرجى إدخال عنوان الفيديو')
+      notify('يرجى إدخال عنوان الفيديو', { type: 'warning' })
       return
     }
 
     if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoUrl.trim())) {
-      alert('يرجى ملء كل أجزاء الفيديو (العنوان والرابط)')
+      notify('يرجى ملء كل أجزاء الفيديو (العنوان والرابط)', { type: 'warning' })
       return
     }
 
@@ -125,12 +126,12 @@ export default function VideoAdd() {
 
   const showVideoPreview = () => {
     if (!videoTitle.trim()) {
-      alert('يرجى إدخال عنوان الفيديو')
+      notify('يرجى إدخال عنوان الفيديو', { type: 'warning' })
       return
     }
 
     if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoUrl.trim())) {
-      alert('يرجى ملء كل أجزاء الفيديو')
+      notify('يرجى ملء كل أجزاء الفيديو', { type: 'warning' })
       return
     }
 
@@ -158,7 +159,7 @@ export default function VideoAdd() {
     <div className="video-add-page" dir="rtl">
       <div className="video-add-container">
         <div className="page-header">
-          <h1 className="page-title">➕ إضافة فيديو جديد</h1>
+          <h1 className="page-title">إضافة فيديو جديد</h1>
           <p className="page-subtitle">قم بإنشاء فيديو تعليمي جديد مع تعريف الأجزاء والتفاصيل</p>
         </div>
 

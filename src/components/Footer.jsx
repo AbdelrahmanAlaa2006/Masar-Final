@@ -32,7 +32,7 @@ export default function Footer() {
       {/* marquee ticker */}
       <div className="sf-marquee" aria-hidden="true">
         <div className="sf-marquee-track">
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((it, i) => (
+          {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((it, i) => (
             <span className="sf-marquee-item" key={i}>
               <i className={`fas ${it.icon}`}></i>
               {it.text}
