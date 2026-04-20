@@ -274,176 +274,188 @@ export default function Videos() {
 
       {/* Videos List View */}
       {view === 'videos' && (
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <button className="btn btn-outline" onClick={goBackToGrades}>
-              ← العودة للصفوف
+        <div className="vp-wrap">
+          <div className="vp-toolbar">
+            <button className="vp-back" onClick={goBackToGrades}>
+              <i className="fas fa-arrow-right"></i>
+              <span>العودة للصفوف</span>
             </button>
 
-            <div className="text-center">
-              <h1 id="gradeTitle" className="title-main gradient-text">📺 الفيديوهات التعليمية</h1>
+            <div className="vp-toolbar-title">
+              <div className="vp-toolbar-sub">مكتبة الفيديوهات</div>
+              <h1>الفيديوهات التعليمية</h1>
             </div>
 
-            {userRole === 'admin' && (
-              <button className="btn btn-primary" onClick={openAddVideoModal}>
-                ➕ إضافة فيديو جديد
+            {userRole === 'admin' ? (
+              <button className="vp-add" onClick={openAddVideoModal}>
+                <i className="fas fa-plus"></i>
+                <span>إضافة فيديو</span>
               </button>
-            )}
+            ) : <span className="vp-toolbar-spacer" />}
           </div>
 
-          <div className="videos-grid" id="videosGrid">
-            {currentGrade && videos[currentGrade] && videos[currentGrade].map((video, index) => {
-              const expiry = new Date(video.expiryTime)
-              const isAvailable = new Date() < expiry
-              const formattedExpiry = expiry.toLocaleDateString('ar-EG', {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-              })
-              const totalDuration = video.parts.reduce((sum, p) => {
-                const mins = parseInt(p.duration) || 0
-                return sum + mins
-              }, 0)
+          {(!videos[currentGrade] || videos[currentGrade].length === 0) ? (
+            <div className="vp-empty">
+              <i className="fas fa-video-slash"></i>
+              <h3>لا توجد فيديوهات حالياً</h3>
+              <p>
+                {userRole === 'admin'
+                  ? 'ابدأ بإضافة أول فيديو لهذا الصف من زر «إضافة فيديو» في الأعلى.'
+                  : 'لم يتم رفع فيديوهات لهذا الصف بعد. يرجى المراجعة لاحقاً.'}
+              </p>
+            </div>
+          ) : (
+            <div className="vp-grid">
+              {videos[currentGrade].map((video, index) => {
+                const expiry = new Date(video.expiryTime)
+                const isAvailable = new Date() < expiry
+                const formattedExpiry = expiry.toLocaleDateString('ar-EG', {
+                  year: 'numeric', month: 'long', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit'
+                })
+                const totalDuration = video.parts.reduce((sum, p) => {
+                  const mins = parseInt(p.duration) || 0
+                  return sum + mins
+                }, 0)
+                const quizCount = (video.quizzes || []).length
+                const handleDelete = (e) => {
+                  e.stopPropagation()
+                  setVideos(prev => ({
+                    ...prev,
+                    [currentGrade]: prev[currentGrade].filter(v => v.id !== video.id)
+                  }))
+                }
 
-              const handleDelete = (e) => {
-                e.stopPropagation()
-                setVideos(prev => ({
-                  ...prev,
-                  [currentGrade]: prev[currentGrade].filter(v => v.id !== video.id)
-                }))
-              }
-
-              return (
-                <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
-
-                  {/* Status Bar */}
-                  <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
-                    <span className="vc-status-dot" />
-                    <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
-                    {userRole === 'admin' && (
-                      <button className="vc-delete-btn" onClick={handleDelete}>
-                        🗑 حذف
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Header */}
-                  <div className="vc-header">
-                    <div className="vc-play-btn">▶</div>
-                    <div className="vc-titles">
-                      <div className="vc-title">{video.title}</div>
-                      <div className="vc-desc">{video.description}</div>
+                return (
+                  <article key={video.id} className="vp-card" onClick={() => openVideoPlayer(video)}>
+                    <div className="vp-card-poster">
+                      <div className="vp-poster-glow" />
+                      <span className="vp-poster-num">#{index + 1}</span>
+                      <span className="vp-card-play" aria-hidden="true">
+                        <i className="fas fa-play"></i>
+                      </span>
+                      <span className={`vp-status ${isAvailable ? 'vp-status-ok' : 'vp-status-off'}`}>
+                        <span className="vp-status-dot" />
+                        {isAvailable ? 'متاح' : 'منتهي'}
+                      </span>
+                      {quizCount > 0 && (
+                        <span className="vp-quiz-chip" title="يتطلب اجتياز امتحان قبل المشاهدة">
+                          <i className="fas fa-graduation-cap"></i>
+                          {quizCount} {quizCount === 1 ? 'امتحان' : 'امتحانات'}
+                        </span>
+                      )}
                     </div>
-                    <div className="vc-badge">{index + 1}</div>
-                  </div>
 
-                  {/* Stats */}
-                  <div className="vc-stats">
-                    <div className="vc-stat">
-                      <span className="vc-stat-icon">🎬</span>
-                      <span className="vc-stat-label">عدد الأجزاء</span>
-                      <span className="vc-stat-value">{video.totalParts} جزء</span>
-                    </div>
-                    <div className="vc-stat">
-                      <span className="vc-stat-icon">⏱️</span>
-                      <span className="vc-stat-label">المدة الكلية</span>
-                      <span className="vc-stat-value">{totalDuration || video.totalParts * 18} دقيقة</span>
-                    </div>
-                    <div className="vc-stat">
-                      <span className="vc-stat-icon">👁️</span>
-                      <span className="vc-stat-label">عدد المشاهدات</span>
-                      <span className="vc-stat-value">{video.viewLimit} مرات</span>
-                    </div>
-                    <div className="vc-stat">
-                      <span className="vc-stat-icon">🕒</span>
-                      <span className="vc-stat-label">متاح لمدة</span>
-                      <span className="vc-stat-value">{video.activeHours} ساعة</span>
-                    </div>
-                  </div>
+                    <div className="vp-card-body">
+                      <h3 className="vp-card-title">{video.title}</h3>
+                      <p className="vp-card-desc">{video.description || 'لا يوجد وصف'}</p>
 
-                  {/* Footer */}
-                  <div className="vc-footer">
-                    <span>⏳</span>
-                    <span>متاح حتى {formattedExpiry}</span>
-                  </div>
+                      <div className="vp-card-stats">
+                        <span className="vp-stat"><i className="fas fa-film"></i>{video.totalParts} جزء</span>
+                        <span className="vp-stat"><i className="fas fa-clock"></i>{totalDuration || video.totalParts * 18} د</span>
+                        <span className="vp-stat"><i className="fas fa-eye"></i>{video.viewLimit} مشاهدات</span>
+                        <span className="vp-stat"><i className="fas fa-hourglass-half"></i>{video.activeHours} س</span>
+                      </div>
 
-                </div>
-              )
-            })}
-          </div>
+                      <div className="vp-card-foot">
+                        <span className="vp-card-expiry">
+                          <i className="far fa-calendar"></i>
+                          حتى {formattedExpiry}
+                        </span>
+                        {userRole === 'admin' && (
+                          <button className="vp-card-delete" onClick={handleDelete} aria-label="حذف">
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* Video Player View */}
-      {view === 'player' && (
-        <div>
-          <div className="flex justify-between items-center mb-8 max-w-7xl mx-auto">
-            <button className="btn btn-outline" onClick={goBackToVideos}>
-              ← العودة للفيديوهات
+      {view === 'player' && currentVideo && (
+        <div className="vp-player">
+          <div className="vp-player-topbar">
+            <button className="vp-back" onClick={goBackToVideos}>
+              <i className="fas fa-arrow-right"></i>
+              <span>العودة</span>
             </button>
 
-            <div className="text-center">
-              <h1 id="videoTitle" className="title-main gradient-text">
-                {currentVideo?.title}
-              </h1>
-              <p id="videoDescription" style={{ color: 'var(--text-secondary)' }}>
-                {currentVideo?.description}
-              </p>
+            <div className="vp-player-titles">
+              <h1>{currentVideo.title}</h1>
+              {currentVideo.description && <p>{currentVideo.description}</p>}
             </div>
-
-            <div style={{ width: '120px' }}></div>
           </div>
 
-          <div className="video-player-container">
-            <div className="video-main">
-              <div className="card">
-                <div id="videoFrame">
-                  <div className="placeholder-video">
-                    <div>
-                      <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
-                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
-                    </div>
-                  </div>
+          <div className="vp-player-layout">
+            <div className="vp-stage">
+              <div id="videoFrame" className="vp-stage-frame">
+                <div className="vp-stage-idle">
+                  <div className="vp-stage-idle-icon"><i className="fas fa-play"></i></div>
+                  <h3>اختر جزء لبدء المشاهدة</h3>
+                  <p>اختر أي جزء من القائمة الجانبية لتشغيل الفيديو</p>
                 </div>
               </div>
+
+              {selectedPart && (
+                <div className="vp-now-playing">
+                  <div className="vp-now-label">
+                    <span className="vp-now-pulse" />
+                    يُعرض الآن
+                  </div>
+                  <div className="vp-now-title">{selectedPart.title}</div>
+                </div>
+              )}
             </div>
 
-            <div className="video-sidebar">
-              <div className="card">
-                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>
-                  أجزاء المحاضرة
-                </h3>
-                <div id="partsList" data-quiz-tick={quizTick}>
-                  {currentVideo?.parts.map((part, index) => {
-                    const blocking = findBlockingQuiz(currentVideo, part)
-                    const locked = !!blocking
-                    return (
-                      <div
-                        key={part.id}
-                        className={`part-item ${locked ? 'part-item-locked' : ''}`}
-                        onClick={() => playVideoPart(part)}
-                      >
-                        <div className="title-card" style={{ color: 'var(--text-primary)' }}>
-                          {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
-                          الجزء {index + 1}: {part.title}
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                          ⏱️ {part.duration}
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--educational-accent)', marginTop: '4px' }}>
-                          👁️ المتبقي: {part.remainingViews}
+            <aside className="vp-sidebar">
+              <div className="vp-sidebar-head">
+                <h3>أجزاء الفيديو</h3>
+                <span className="vp-sidebar-count">{currentVideo.parts.length} جزء</span>
+              </div>
+
+              <div className="vp-parts" data-quiz-tick={quizTick}>
+                {currentVideo.parts.map((part, index) => {
+                  const blocking = findBlockingQuiz(currentVideo, part)
+                  const locked = !!blocking
+                  const active = selectedPart?.id === part.id
+                  return (
+                    <button
+                      key={part.id}
+                      type="button"
+                      className={`vp-part ${locked ? 'is-locked' : ''} ${active ? 'is-active' : ''}`}
+                      onClick={() => playVideoPart(part)}
+                    >
+                      <div className="vp-part-index">
+                        {locked
+                          ? <i className="fas fa-lock"></i>
+                          : active
+                            ? <i className="fas fa-volume-high"></i>
+                            : <span>{index + 1}</span>}
+                      </div>
+                      <div className="vp-part-main">
+                        <div className="vp-part-title">{part.title}</div>
+                        <div className="vp-part-meta">
+                          <span><i className="far fa-clock"></i>{part.duration}</span>
+                          <span><i className="fas fa-eye"></i>متبقي {part.remainingViews}</span>
                         </div>
                         {locked && (
-                          <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                          <div className="vp-part-gate">
+                            <i className="fas fa-graduation-cap"></i>
+                            امتحان: {blocking.title}
                           </div>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
+                    </button>
+                  )
+                })}
               </div>
-            </div>
+            </aside>
           </div>
         </div>
       )}
