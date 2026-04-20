@@ -2,6 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import './Lectures.css'
 import PrepIllustration from '../components/PrepIllustration'
+import {
+  listLectures,
+  createLecture,
+  deleteLecture,
+  uiToDbGrade,
+  dbToUiGrade,
+} from '../services/lecturesApi'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -50,61 +57,32 @@ const PLACEHOLDER_COVER =
     </svg>`
   )
 
-const SAMPLE_LECTURES = {
-  first: [
-    {
-      id: 'L101',
-      title: 'مقدمة في الجبر',
-      desc: 'تعريف المتغيرات، المعادلات الخطية، وأمثلة محلولة خطوة بخطوة لفهم الأساسيات.',
-      subject: 'رياضيات',
-      teacher: 'أ. محمد علي',
-      week: 'الأسبوع 1',
-      date: '2026-04-10',
-      cover: PLACEHOLDER_COVER,
-    },
-    {
-      id: 'L102',
-      title: 'العمليات الحسابية المتقدمة',
-      desc: 'الجمع والطرح والضرب على الأعداد الصحيحة مع تدريبات عملية.',
-      subject: 'رياضيات',
-      teacher: 'أ. محمد علي',
-      week: 'الأسبوع 2',
-      date: '2026-04-13',
-      cover: PLACEHOLDER_COVER,
-    },
-  ],
-  second: [
-    {
-      id: 'L201',
-      title: 'الهندسة المستوية',
-      desc: 'الزوايا والمضلعات وقواعد التطابق مع رسومات توضيحية.',
-      subject: 'رياضيات',
-      teacher: 'أ. سارة أحمد',
-      week: 'الأسبوع 1',
-      date: '2026-04-12',
-      cover: PLACEHOLDER_COVER,
-    },
-  ],
-  third: [
-    {
-      id: 'L301',
-      title: 'حساب المثلثات',
-      desc: 'النسب المثلثية، التمارين، وحل المسائل التطبيقية.',
-      subject: 'رياضيات',
-      teacher: 'أ. خالد رضا',
-      week: 'الأسبوع 1',
-      date: '2026-04-15',
-      cover: PLACEHOLDER_COVER,
-    },
-  ],
+// Normalize a DB row into the shape the card components expect.
+function rowToCard(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    desc: row.description || '—',
+    subject: row.subject || 'عام',
+    teacher: row.teacher || '—',
+    week: row.week || '—',
+    date: (row.created_at || '').slice(0, 10),
+    cover: row.cover_url || PLACEHOLDER_COVER,
+    pdf_url: row.pdf_url || null,
+    grade: row.grade,
+  }
 }
 
 export default function Lectures() {
   const [grade, setGrade] = useState(null)
   const [userRole, setUserRole] = useState(null)
-  const [lectures, setLectures] = useState(SAMPLE_LECTURES)
+  const [userId, setUserId] = useState(null)
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [form, setForm] = useState({
     title: '',
@@ -112,18 +90,50 @@ export default function Lectures() {
     subject: '',
     teacher: '',
     week: '',
-    cover: '',
-    file: null,
+    cover_url: '',
+    pdf_url: '',
+    grade: '',
   })
 
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
+      setUserId(u?.id || null)
+      // auto-select the student's own grade; admins still pick
+      if (u?.role !== 'admin' && u?.grade) {
+        setGrade(dbToUiGrade(u.grade))
+      }
     } catch {
       setUserRole(null)
     }
   }, [])
+
+  const refresh = async () => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const data = await listLectures()
+      setRows(data)
+    } catch (err) {
+      setLoadError(err.message || 'تعذر تحميل المحاضرات')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  const lectures = useMemo(() => {
+    const grouped = { first: [], second: [], third: [] }
+    for (const r of rows) {
+      const ui = dbToUiGrade(r.grade)
+      if (ui && grouped[ui]) grouped[ui].push(rowToCard(r))
+    }
+    return grouped
+  }, [rows])
 
   const flash = (msg, kind = 'success') => {
     setToast({ msg, kind })
@@ -143,41 +153,61 @@ export default function Lectures() {
     )
   }, [lectures, grade, search])
 
-  const onCoverChange = (file) => {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => setForm((f) => ({ ...f, cover: e.target.result }))
-    reader.readAsDataURL(file)
+  const openAddModal = () => {
+    setForm({
+      title: '',
+      desc: '',
+      subject: '',
+      teacher: '',
+      week: '',
+      cover_url: '',
+      pdf_url: '',
+      grade: grade || 'first',
+    })
+    setModalOpen(true)
   }
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    if (!form.title.trim() || !grade) return
-    const id = 'L' + Math.floor(Math.random() * 9000 + 1000)
-    const today = new Date().toISOString().slice(0, 10)
-    const newLec = {
-      id,
-      title: form.title.trim(),
-      desc: form.desc.trim() || '—',
-      subject: form.subject.trim() || 'عام',
-      teacher: form.teacher.trim() || '—',
-      week: form.week.trim() || '—',
-      date: today,
-      cover: form.cover || PLACEHOLDER_COVER,
-      fileName: form.file?.name,
+    if (submitting) return
+    if (!form.title.trim()) return
+    const uiGrade = form.grade || grade
+    const dbGrade = uiToDbGrade(uiGrade)
+    if (!dbGrade) {
+      flash('يجب اختيار الصف الدراسي', 'warning')
+      return
     }
-    setLectures((prev) => ({ ...prev, [grade]: [newLec, ...(prev[grade] || [])] }))
-    flash('تمت إضافة المحاضرة بنجاح')
-    setModalOpen(false)
-    setForm({ title: '', desc: '', subject: '', teacher: '', week: '', cover: '', file: null })
+    setSubmitting(true)
+    try {
+      await createLecture({
+        title: form.title.trim(),
+        description: form.desc.trim() || null,
+        subject: form.subject.trim() || null,
+        teacher: form.teacher.trim() || null,
+        week: form.week.trim() || null,
+        grade: dbGrade,
+        cover_url: form.cover_url.trim() || null,
+        pdf_url: form.pdf_url.trim() || null,
+        created_by: userId,
+      })
+      flash('تمت إضافة المحاضرة بنجاح')
+      setModalOpen(false)
+      await refresh()
+    } catch (err) {
+      flash(err.message || 'تعذر حفظ المحاضرة', 'warning')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const removeLecture = (id) => {
-    setLectures((prev) => ({
-      ...prev,
-      [grade]: (prev[grade] || []).filter((l) => l.id !== id),
-    }))
-    flash('تم حذف المحاضرة', 'warning')
+  const removeLecture = async (id) => {
+    try {
+      await deleteLecture(id)
+      setRows((prev) => prev.filter((r) => r.id !== id))
+      flash('تم حذف المحاضرة', 'warning')
+    } catch (err) {
+      flash(err.message || 'تعذر حذف المحاضرة', 'warning')
+    }
   }
 
   /* ─────────── render ─────────── */
@@ -211,9 +241,11 @@ export default function Lectures() {
         {grade && (
           <>
             <div className="lec-toolbar">
-              <button className="lec-back" onClick={() => { setGrade(null); setSearch('') }}>
-                <i className="fas fa-arrow-right"></i> العودة للمراحل
-              </button>
+              {userRole === 'admin' && (
+                <button className="lec-back" onClick={() => { setGrade(null); setSearch('') }}>
+                  <i className="fas fa-arrow-right"></i> العودة للمراحل
+                </button>
+              )}
               <div className="lec-search-wrap">
                 <i className="fas fa-search"></i>
                 <input
@@ -229,7 +261,7 @@ export default function Lectures() {
                 )}
               </div>
               {userRole === 'admin' && (
-                <button className="lec-add-btn" onClick={() => setModalOpen(true)}>
+                <button className="lec-add-btn" onClick={openAddModal}>
                   <i className="fas fa-plus"></i> محاضرة جديدة
                 </button>
               )}
@@ -243,7 +275,17 @@ export default function Lectures() {
               <span className="lec-count-pill">{filtered.length} محاضرة</span>
             </div>
 
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="lec-empty">
+                <i className="fas fa-spinner fa-spin"></i>
+                <p>جاري التحميل...</p>
+              </div>
+            ) : loadError ? (
+              <div className="lec-empty">
+                <i className="fas fa-triangle-exclamation"></i>
+                <p>{loadError}</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="lec-empty">
                 <i className="fas fa-folder-open"></i>
                 <p>لا توجد محاضرات مطابقة</p>
@@ -255,8 +297,10 @@ export default function Lectures() {
                     key={lec.id}
                     lec={lec}
                     isAdmin={userRole === 'admin'}
-                    onOpen={() => flash('سيتم فتح: ' + lec.title, 'info')}
-                    onDownload={() => flash('بدء التحميل: ' + lec.title, 'info')}
+                    onOpen={() => {
+                      if (lec.pdf_url) window.open(lec.pdf_url, '_blank', 'noopener')
+                      else flash('لا يوجد ملف PDF لهذه المحاضرة', 'warning')
+                    }}
                     onDelete={() => removeLecture(lec.id)}
                   />
                 ))}
@@ -274,7 +318,7 @@ export default function Lectures() {
               <div className="lec-modal-icon"><i className="fas fa-circle-plus"></i></div>
               <div>
                 <h3>إضافة محاضرة جديدة</h3>
-                <p>املأ بيانات المحاضرة وارفع صورة الغلاف وملف الـ PDF</p>
+                <p>املأ بيانات المحاضرة وألصق رابط الـ PDF من R2</p>
               </div>
               <button type="button" className="lec-modal-close" onClick={() => setModalOpen(false)}>
                 <i className="fas fa-times"></i>
@@ -282,25 +326,6 @@ export default function Lectures() {
             </div>
 
             <div className="lec-modal-body">
-              {/* Cover uploader */}
-              <label className="lec-cover-uploader">
-                {form.cover ? (
-                  <img src={form.cover} alt="cover" />
-                ) : (
-                  <div className="lec-cover-placeholder">
-                    <i className="fas fa-image"></i>
-                    <span>اضغط لرفع صورة الغلاف</span>
-                    <small>JPG / PNG — يفضّل بنسبة 16:9</small>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => onCoverChange(e.target.files[0])}
-                />
-              </label>
-
               <div className="lec-form-row">
                 <Field label="عنوان المحاضرة" icon="fa-heading" required>
                   <input
@@ -311,6 +336,20 @@ export default function Lectures() {
                     required
                   />
                 </Field>
+                <Field label="الصف الدراسي" icon="fa-graduation-cap" required>
+                  <select
+                    value={form.grade}
+                    onChange={(e) => setForm({ ...form, grade: e.target.value })}
+                    required
+                  >
+                    <option value="first">الأول الإعدادي</option>
+                    <option value="second">الثاني الإعدادي</option>
+                    <option value="third">الثالث الإعدادي</option>
+                  </select>
+                </Field>
+              </div>
+
+              <div className="lec-form-row">
                 <Field label="المادة" icon="fa-book">
                   <input
                     type="text"
@@ -319,9 +358,6 @@ export default function Lectures() {
                     placeholder="رياضيات / علوم / لغة..."
                   />
                 </Field>
-              </div>
-
-              <div className="lec-form-row">
                 <Field label="المعلم" icon="fa-chalkboard-user">
                   <input
                     type="text"
@@ -330,15 +366,16 @@ export default function Lectures() {
                     placeholder="اسم المدرس"
                   />
                 </Field>
-                <Field label="الأسبوع / الترم" icon="fa-calendar-week">
-                  <input
-                    type="text"
-                    value={form.week}
-                    onChange={(e) => setForm({ ...form, week: e.target.value })}
-                    placeholder="الأسبوع الأول"
-                  />
-                </Field>
               </div>
+
+              <Field label="الأسبوع / الترم" icon="fa-calendar-week">
+                <input
+                  type="text"
+                  value={form.week}
+                  onChange={(e) => setForm({ ...form, week: e.target.value })}
+                  placeholder="الأسبوع الأول"
+                />
+              </Field>
 
               <Field label="الوصف" icon="fa-align-right">
                 <textarea
@@ -349,26 +386,37 @@ export default function Lectures() {
                 />
               </Field>
 
-              <Field label="ملف PDF" icon="fa-file-pdf">
-                <label className="lec-file-input">
-                  <i className="fas fa-cloud-arrow-up"></i>
-                  <span>{form.file?.name || 'اختر ملف PDF'}</span>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    hidden
-                    onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
-                  />
-                </label>
+              <Field label="رابط صورة الغلاف (اختياري)" icon="fa-image">
+                <input
+                  type="url"
+                  value={form.cover_url}
+                  onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
+                  placeholder="https://..."
+                />
+              </Field>
+
+              <Field label="رابط ملف PDF من R2" icon="fa-file-pdf">
+                <input
+                  type="url"
+                  value={form.pdf_url}
+                  onChange={(e) => setForm({ ...form, pdf_url: e.target.value })}
+                  placeholder="https://pub-xxx.r2.dev/lectures/xxx.pdf"
+                />
               </Field>
             </div>
 
             <div className="lec-modal-foot">
-              <button type="button" className="lec-btn lec-btn-ghost" onClick={() => setModalOpen(false)}>
+              <button
+                type="button"
+                className="lec-btn lec-btn-ghost"
+                onClick={() => setModalOpen(false)}
+                disabled={submitting}
+              >
                 إلغاء
               </button>
-              <button type="submit" className="lec-btn lec-btn-primary">
-                <i className="fas fa-check"></i> حفظ المحاضرة
+              <button type="submit" className="lec-btn lec-btn-primary" disabled={submitting}>
+                <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
+                {' '}{submitting ? 'جاري الحفظ...' : 'حفظ المحاضرة'}
               </button>
             </div>
           </form>
@@ -415,7 +463,7 @@ function PrepCard({ prep, count, onClick }) {
   )
 }
 
-function LectureCard({ lec, isAdmin, onOpen, onDownload, onDelete }) {
+function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
   return (
     <article className="lec-card">
       <div className="lec-card-cover">
@@ -423,9 +471,6 @@ function LectureCard({ lec, isAdmin, onOpen, onDownload, onDelete }) {
         <div className="lec-card-cover-grad"></div>
         <div className="lec-card-ribbon">
           <i className="fas fa-circle-play"></i> محاضرة
-        </div>
-        <div className="lec-card-id">
-          <i className="fas fa-hashtag"></i>{lec.id}
         </div>
         <div className="lec-card-title-pill">
           <i className="fas fa-bookmark"></i> {lec.week}
@@ -443,9 +488,9 @@ function LectureCard({ lec, isAdmin, onOpen, onDownload, onDelete }) {
 
         <div className="lec-card-meta">
           <span><i className="fas fa-calendar"></i> {lec.date}</span>
-          {lec.fileName && (
+          {lec.pdf_url && (
             <span className="lec-meta-file">
-              <i className="fas fa-file-pdf"></i> {lec.fileName}
+              <i className="fas fa-file-pdf"></i> PDF
             </span>
           )}
         </div>
@@ -454,9 +499,17 @@ function LectureCard({ lec, isAdmin, onOpen, onDownload, onDelete }) {
           <button className="lec-btn lec-btn-primary" onClick={onOpen}>
             <i className="fas fa-eye"></i> فتح المحاضرة
           </button>
-          <button className="lec-btn lec-btn-ghost" onClick={onDownload}>
-            <i className="fas fa-download"></i> تحميل
-          </button>
+          {lec.pdf_url && (
+            <a
+              className="lec-btn lec-btn-ghost"
+              href={lec.pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              <i className="fas fa-download"></i> تحميل
+            </a>
+          )}
           {isAdmin && (
             <button className="lec-btn lec-btn-danger lec-btn-icon" onClick={onDelete} title="حذف">
               <i className="fas fa-trash"></i>
