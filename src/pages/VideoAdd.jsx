@@ -7,7 +7,7 @@ const makeQuiz = () => ({
   title: '',
   scope: 'whole',           // 'whole' | 'part'
   partIndex: '',            // index into videoParts when scope === 'part'
-  passingPercentage: 60,
+  passingQuestions: 1,      // how many questions the student must answer correctly
   raw: ''
 })
 
@@ -97,7 +97,7 @@ export default function VideoAdd() {
       title: qz.title || '',
       scope: qz.scope || 'whole',
       partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
-      passingPercentage: qz.passingPercentage ?? 60,
+      passingQuestions: qz.passingQuestions ?? Math.max(1, Math.ceil((qz.questions?.length || 1) * (qz.passingPercentage || 60) / 100)),
       raw: qz.raw || ''
     }))
     setQuizzes(restoredQuizzes)
@@ -130,9 +130,13 @@ export default function VideoAdd() {
         alert(`الامتحان ${i + 1}: ${v.error}`)
         return
       }
-      const pct = parseInt(qz.passingPercentage)
-      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-        alert(`الامتحان ${i + 1}: نسبة النجاح يجب أن تكون بين 0 و 100`)
+      const pq = parseInt(qz.passingQuestions)
+      if (Number.isNaN(pq) || pq < 1) {
+        alert(`الامتحان ${i + 1}: عدد أسئلة النجاح يجب أن يكون 1 على الأقل`)
+        return
+      }
+      if (pq > parsed.length) {
+        alert(`الامتحان ${i + 1}: عدد أسئلة النجاح (${pq}) أكبر من عدد الأسئلة (${parsed.length})`)
         return
       }
       if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex === null || qz.partIndex === undefined)) {
@@ -144,7 +148,7 @@ export default function VideoAdd() {
         title: qz.title.trim() || `امتحان ${i + 1}`,
         scope: qz.scope,
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
-        passingPercentage: pct,
+        passingQuestions: pq,
         questions: parsed,
         totalPoints: totalPoints(parsed),
         raw: qz.raw
@@ -216,7 +220,7 @@ export default function VideoAdd() {
           title: qz.title.trim() || `امتحان ${i + 1}`,
           scope: qz.scope,
           partIndex: qz.scope === 'part' ? qz.partIndex : null,
-          passingPercentage: qz.passingPercentage,
+          passingQuestions: qz.passingQuestions,
           questionCount: parsed.length,
           totalPoints: totalPoints(parsed)
         }
@@ -464,14 +468,17 @@ export default function VideoAdd() {
                       )}
 
                       <div className="form-group flex-1">
-                        <label>نسبة النجاح (%)</label>
+                        <label>عدد الأسئلة المطلوبة للنجاح</label>
                         <input
                           type="number"
-                          min="0"
-                          max="100"
-                          value={qz.passingPercentage}
-                          onChange={(e) => updateQuiz(qz.localId, 'passingPercentage', e.target.value)}
+                          min="1"
+                          max={Math.max(parsed.length, 1)}
+                          value={qz.passingQuestions}
+                          onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
                         />
+                        <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
+                          من إجمالي {parsed.length} سؤال
+                        </small>
                       </div>
                     </div>
 
@@ -602,7 +609,7 @@ export default function VideoAdd() {
                                 : `يُطلب قبل الجزء ${parseInt(qz.partIndex) + 1}`}
                             </div>
                             <div className="part-duration">
-                              {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح {qz.passingPercentage}%
+                              {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح: {qz.passingQuestions} من {qz.questionCount}
                             </div>
                           </div>
                         </div>

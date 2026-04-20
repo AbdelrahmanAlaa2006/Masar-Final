@@ -33,6 +33,8 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
     () => quiz.questions.reduce((s, q) => s + (q.points || 1), 0),
     [quiz.questions]
   )
+  const totalQuestions = quiz.questions.length
+  const passingQuestions = quiz.passingQuestions ?? totalQuestions
 
   const toggleOption = (qIdx, optIdx, isMultiple) => {
     if (submitted) return
@@ -53,31 +55,34 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
 
   const submit = () => {
     let earned = 0
+    let correctCount = 0
     quiz.questions.forEach((q, qIdx) => {
       const picked = Array.from(answers[qIdx] || []).sort()
       const correct = [...q.answers].sort()
       const allMatch =
         picked.length === correct.length &&
         picked.every((v, i) => v === correct[i])
-      if (allMatch) earned += (q.points || 1)
+      if (allMatch) {
+        earned += (q.points || 1)
+        correctCount += 1
+      }
     })
 
-    const percentage = totalPoints > 0 ? Math.round((earned / totalPoints) * 100) : 0
-    const passed = percentage >= (quiz.passingPercentage || 0)
+    const passed = correctCount >= passingQuestions
 
     const storageKey = `quiz-results-${videoId}-${quiz.localId}`
     const prev = JSON.parse(localStorage.getItem(storageKey) || '{}')
     const next = {
       passed: passed || prev.passed === true,
       lastScore: earned,
-      lastPercentage: percentage,
-      bestPercentage: Math.max(prev.bestPercentage || 0, percentage),
+      lastCorrect: correctCount,
+      bestCorrect: Math.max(prev.bestCorrect || 0, correctCount),
       attempts: (prev.attempts || 0) + 1,
       lastAttemptAt: new Date().toISOString()
     }
     localStorage.setItem(storageKey, JSON.stringify(next))
 
-    setResult({ score: earned, total: totalPoints, percentage, passed })
+    setResult({ score: earned, total: totalPoints, correctCount, totalQuestions, passed })
     setSubmitted(true)
 
     if (passed) {
@@ -110,7 +115,7 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
               <span className="qr-dot">·</span>
               <span><i className="fas fa-star"></i> {totalPoints} نقطة</span>
               <span className="qr-dot">·</span>
-              <span><i className="fas fa-bullseye"></i> النجاح: {quiz.passingPercentage}%</span>
+              <span><i className="fas fa-bullseye"></i> النجاح: {passingQuestions} من {totalQuestions}</span>
             </div>
           </div>
           {!submitted && (
@@ -136,9 +141,9 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
               <div className="qr-result-text">
                 <h3>{result.passed ? 'مبروك! نجحت' : 'لم تنجح هذه المحاولة'}</h3>
                 <p>
-                  حصلت على {result.score} من {result.total} نقطة ({result.percentage}%)
+                  أجبت إجابة صحيحة على {result.correctCount} من {result.totalQuestions} سؤال
                   {' — '}
-                  المطلوب {quiz.passingPercentage}%
+                  المطلوب {passingQuestions} من {result.totalQuestions}
                 </p>
               </div>
             </div>
