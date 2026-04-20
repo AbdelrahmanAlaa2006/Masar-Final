@@ -35,6 +35,17 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
   )
   const totalQuestions = quiz.questions.length
   const passingQuestions = quiz.passingQuestions ?? totalQuestions
+  const maxAttempts = quiz.maxAttempts || 1
+
+  // Read prior attempts so the UI can show "المحاولة X من Y" and lock the
+  // retry button once the cap is reached.
+  const storageKey = `quiz-results-${videoId}-${quiz.localId}`
+  const [priorAttempts, setPriorAttempts] = useState(() => {
+    const stored = JSON.parse(localStorage.getItem(storageKey) || '{}')
+    return stored.attempts || 0
+  })
+  const attemptNumber = priorAttempts + 1
+  const outOfAttempts = priorAttempts >= maxAttempts
 
   const toggleOption = (qIdx, optIdx, isMultiple) => {
     if (submitted) return
@@ -70,19 +81,21 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
 
     const passed = correctCount >= passingQuestions
 
-    const storageKey = `quiz-results-${videoId}-${quiz.localId}`
     const prev = JSON.parse(localStorage.getItem(storageKey) || '{}')
+    const attempts = (prev.attempts || 0) + 1
     const next = {
       passed: passed || prev.passed === true,
       lastScore: earned,
       lastCorrect: correctCount,
       bestCorrect: Math.max(prev.bestCorrect || 0, correctCount),
-      attempts: (prev.attempts || 0) + 1,
+      attempts,
       lastAttemptAt: new Date().toISOString()
     }
     localStorage.setItem(storageKey, JSON.stringify(next))
+    setPriorAttempts(attempts)
 
-    setResult({ score: earned, total: totalPoints, correctCount, totalQuestions, passed })
+    const exhausted = !passed && attempts >= maxAttempts
+    setResult({ score: earned, total: totalPoints, correctCount, totalQuestions, passed, exhausted, attemptsUsed: attempts })
     setSubmitted(true)
 
     if (passed) {
@@ -116,6 +129,13 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
               <span><i className="fas fa-star"></i> {totalPoints} نقطة</span>
               <span className="qr-dot">·</span>
               <span><i className="fas fa-bullseye"></i> النجاح: {passingQuestions} من {totalQuestions}</span>
+              <span className="qr-dot">·</span>
+              <span>
+                <i className="fas fa-repeat"></i>{' '}
+                {submitted
+                  ? `المحاولات: ${result?.attemptsUsed ?? priorAttempts} من ${maxAttempts}`
+                  : `المحاولة ${attemptNumber} من ${maxAttempts}`}
+              </span>
             </div>
           </div>
           {!submitted && (
@@ -139,11 +159,18 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
                 <i className={`fas ${result.passed ? 'fa-circle-check' : 'fa-circle-xmark'}`}></i>
               </div>
               <div className="qr-result-text">
-                <h3>{result.passed ? 'مبروك! نجحت' : 'لم تنجح هذه المحاولة'}</h3>
+                <h3>
+                  {result.passed
+                    ? 'مبروك! نجحت'
+                    : result.exhausted
+                      ? 'انتهت محاولاتك'
+                      : 'لم تنجح هذه المحاولة'}
+                </h3>
                 <p>
                   أجبت إجابة صحيحة على {result.correctCount} من {result.totalQuestions} سؤال
                   {' — '}
                   المطلوب {passingQuestions} من {result.totalQuestions}
+                  {result.exhausted && ' — استخدمت جميع محاولاتك'}
                 </p>
               </div>
             </div>
@@ -220,15 +247,20 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
               </button>
             </>
           )}
-          {submitted && !result.passed && (
+          {submitted && !result.passed && !result.exhausted && (
             <>
               <button className="qr-btn qr-btn-ghost" onClick={onClose}>
                 إغلاق
               </button>
               <button className="qr-btn qr-btn-primary" onClick={retry}>
-                <i className="fas fa-rotate-right"></i> إعادة المحاولة
+                <i className="fas fa-rotate-right"></i> إعادة المحاولة ({maxAttempts - result.attemptsUsed} متبقية)
               </button>
             </>
+          )}
+          {submitted && !result.passed && result.exhausted && (
+            <button className="qr-btn qr-btn-ghost" onClick={onClose}>
+              إغلاق
+            </button>
           )}
           {submitted && result.passed && (
             <button className="qr-btn qr-btn-success" disabled>

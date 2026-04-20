@@ -182,9 +182,22 @@ export default function Videos() {
       return
     }
 
-    // Quiz gate: if any applicable quiz hasn't been passed, run it first.
+    // Quiz gate: if any applicable quiz hasn't been passed, run it first —
+    // unless the student has already used up all allowed attempts, in which
+    // case we just tell them the part is locked.
     const blocking = findBlockingQuiz(currentVideo, part)
     if (blocking) {
+      const key = `quiz-results-${currentVideo.id}-${blocking.localId}`
+      const stored = JSON.parse(localStorage.getItem(key) || '{}')
+      const attempts = stored.attempts || 0
+      const max = blocking.maxAttempts || 1
+      if (!stored.passed && attempts >= max) {
+        showAlertModal(
+          'انتهت محاولات الامتحان',
+          `لقد استخدمت جميع المحاولات (${max}) لامتحان «${blocking.title}» ولم تجتزه. تواصل مع المعلم.`
+        )
+        return
+      }
       setPendingPart(part)
       setActiveQuiz(blocking)
       return
