@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
+import { parseQuestionsText, validateQuestions, totalPoints } from '../utils/parseQuestions'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
+
+const makeQuiz = () => ({
+  localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  title: '',
+  scope: 'whole',           // 'whole' | 'part'
+  partIndex: '',            // index into videoParts when scope === 'part'
+  passingPercentage: 60,
+  raw: ''
+})
 
 export default function VideoAdd() {
   const [videoTitle, setVideoTitle] = useState('')
@@ -12,6 +22,7 @@ export default function VideoAdd() {
   const [activeHours, setActiveHours] = useState(24)
   const [videoParts, setVideoParts] = useState([])
   const [numParts, setNumParts] = useState('')
+  const [quizzes, setQuizzes] = useState([])
   const [savedVideos, setSavedVideos] = useState([])
   const [showRestoreSection, setShowRestoreSection] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -46,6 +57,13 @@ export default function VideoAdd() {
     setVideoParts(videoParts.map(p => p.id === id ? { ...p, [field]: value } : p))
   }
 
+  // ── Quiz helpers ──────────────────────────────────────────────
+  const addQuiz = () => setQuizzes(prev => [...prev, makeQuiz()])
+  const removeQuiz = (localId) =>
+    setQuizzes(prev => prev.filter(q => q.localId !== localId))
+  const updateQuiz = (localId, field, value) =>
+    setQuizzes(prev => prev.map(q => q.localId === localId ? { ...q, [field]: value } : q))
+
   const loadSavedVideos = () => {
     const videos = JSON.parse(localStorage.getItem('videos')) || []
     setSavedVideos(videos)
@@ -73,6 +91,18 @@ export default function VideoAdd() {
 
     setVideoParts(restoredParts)
     setNumParts(restoredParts.length.toString())
+
+    // Restore quizzes (back-compat: older saved videos may have no quizzes)
+    const restoredQuizzes = (video.quizzes || []).map((qz) => ({
+      localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      title: qz.title || '',
+      scope: qz.scope || 'whole',
+      partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
+      passingPercentage: qz.passingPercentage ?? 60,
+      raw: qz.raw || ''
+    }))
+    setQuizzes(restoredQuizzes)
+
     setShowPreview(false)
   }
 
@@ -87,6 +117,41 @@ export default function VideoAdd() {
       return
     }
 
+    // Validate & parse quizzes
+    const parsedQuizzes = []
+    for (let i = 0; i < quizzes.length; i++) {
+      const qz = quizzes[i]
+      if (!qz.raw.trim()) {
+        alert(`الامتحان ${i + 1} فارغ — أضف الأسئلة أو احذف الامتحان`)
+        return
+      }
+      const parsed = parseQuestionsText(qz.raw)
+      const v = validateQuestions(parsed)
+      if (!v.valid) {
+        alert(`الامتحان ${i + 1}: ${v.error}`)
+        return
+      }
+      const pct = parseInt(qz.passingPercentage)
+      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+        alert(`الامتحان ${i + 1}: نسبة النجاح يجب أن تكون بين 0 و 100`)
+        return
+      }
+      if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex === null || qz.partIndex === undefined)) {
+        alert(`الامتحان ${i + 1}: اختر الجزء المرتبط بالامتحان`)
+        return
+      }
+      parsedQuizzes.push({
+        localId: qz.localId,
+        title: qz.title.trim() || `امتحان ${i + 1}`,
+        scope: qz.scope,
+        partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
+        passingPercentage: pct,
+        questions: parsed,
+        totalPoints: totalPoints(parsed),
+        raw: qz.raw
+      })
+    }
+
     const newVideo = {
       id: Date.now().toString(),
       title: videoTitle,
@@ -98,7 +163,8 @@ export default function VideoAdd() {
       viewLimit: parseInt(viewLimit),
       activeHours: parseInt(activeHours),
       expiryTime: new Date(Date.now() + parseInt(activeHours) * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      quizzes: parsedQuizzes
     }
 
     const videos = JSON.parse(localStorage.getItem('videos')) || []
@@ -121,6 +187,7 @@ export default function VideoAdd() {
     setActiveHours(24)
     setVideoParts([])
     setNumParts('')
+    setQuizzes([])
     setShowPreview(false)
   }
 
@@ -143,7 +210,18 @@ export default function VideoAdd() {
       totalParts: videoParts.length,
       parts: videoParts,
       viewLimit: parseInt(viewLimit),
-      activeHours: parseInt(activeHours)
+      activeHours: parseInt(activeHours),
+      quizzes: quizzes.map((qz, i) => {
+        const parsed = parseQuestionsText(qz.raw)
+        return {
+          title: qz.title.trim() || `امتحان ${i + 1}`,
+          scope: qz.scope,
+          partIndex: qz.scope === 'part' ? qz.partIndex : null,
+          passingPercentage: qz.passingPercentage,
+          questionCount: parsed.length,
+          totalPoints: totalPoints(parsed)
+        }
+      })
     })
 
     setShowPreview(true)
@@ -289,6 +367,155 @@ export default function VideoAdd() {
               </div>
             )}
 
+            {/* ── Quizzes Section ───────────────────────────────────── */}
+            <div className="quizzes-section">
+              <div className="quizzes-head">
+                <div>
+                  <h3 className="section-title">📝 امتحانات قبل المشاهدة</h3>
+                  <p className="quizzes-hint">
+                    أضف امتحان أو أكثر يلزم الطالب اجتيازه قبل مشاهدة الفيديو.
+                    اختر إن كان للفيديو كاملًا أو لجزء معيّن، وحدد نسبة النجاح.
+                  </p>
+                </div>
+                <button className="btn btn-secondary" type="button" onClick={addQuiz}>
+                  ➕ إضافة امتحان
+                </button>
+              </div>
+
+              {quizzes.length === 0 && (
+                <div className="quizzes-empty">
+                  <i className="fas fa-circle-info"></i>
+                  لا يوجد امتحانات. اضغط «إضافة امتحان» لإنشاء أول امتحان.
+                </div>
+              )}
+
+              {quizzes.map((qz, qi) => {
+                const parsed = parseQuestionsText(qz.raw)
+                const pts = totalPoints(parsed)
+                const valid = validateQuestions(parsed)
+                return (
+                  <div key={qz.localId} className="quiz-block">
+                    <div className="quiz-block-head">
+                      <span className="quiz-block-num">امتحان {qi + 1}</span>
+                      <button
+                        type="button"
+                        className="quiz-remove"
+                        onClick={() => removeQuiz(qz.localId)}
+                        title="حذف الامتحان"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+
+                    <div className="form-group">
+                      <label>عنوان الامتحان</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: امتحان قبلي على المقدمة"
+                        value={qz.title}
+                        onChange={(e) => updateQuiz(qz.localId, 'title', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group flex-1">
+                        <label>نطاق الامتحان</label>
+                        <div className="quiz-scope">
+                          <label className={`quiz-scope-opt ${qz.scope === 'whole' ? 'is-on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`scope-${qz.localId}`}
+                              checked={qz.scope === 'whole'}
+                              onChange={() => updateQuiz(qz.localId, 'scope', 'whole')}
+                            />
+                            <i className="fas fa-film"></i>
+                            <span>للفيديو كامل</span>
+                          </label>
+                          <label className={`quiz-scope-opt ${qz.scope === 'part' ? 'is-on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`scope-${qz.localId}`}
+                              checked={qz.scope === 'part'}
+                              onChange={() => updateQuiz(qz.localId, 'scope', 'part')}
+                            />
+                            <i className="fas fa-puzzle-piece"></i>
+                            <span>لجزء محدد</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {qz.scope === 'part' && (
+                        <div className="form-group flex-1">
+                          <label>الجزء المرتبط</label>
+                          <select
+                            value={qz.partIndex}
+                            onChange={(e) => updateQuiz(qz.localId, 'partIndex', e.target.value)}
+                          >
+                            <option value="">-- اختر الجزء --</option>
+                            {videoParts.map((p, i) => (
+                              <option key={p.id} value={i}>
+                                الجزء {i + 1}{p.title ? ` — ${p.title}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          {videoParts.length === 0 && (
+                            <small className="quiz-warn">أنشئ أجزاء الفيديو أولاً</small>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="form-group flex-1">
+                        <label>نسبة النجاح (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={qz.passingPercentage}
+                          onChange={(e) => updateQuiz(qz.localId, 'passingPercentage', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>الأسئلة</label>
+                      <textarea
+                        className="quiz-textarea"
+                        rows={10}
+                        dir="rtl"
+                        placeholder={`@ ما ناتج 3 + 2؟\n# 4\n## 5\n# 6\n!2\n\n@ اختر الإجابات الصحيحة\n## أ\n# ب\n## ج`}
+                        value={qz.raw}
+                        onChange={(e) => updateQuiz(qz.localId, 'raw', e.target.value)}
+                      />
+                      <div className="quiz-syntax">
+                        <span><code>@</code> سؤال جديد</span>
+                        <span><code>#</code> اختيار</span>
+                        <span><code>##</code> إجابة صحيحة</span>
+                        <span><code>!2</code> نقاط السؤال</span>
+                      </div>
+                      <div className="quiz-stats">
+                        <span className="quiz-stat">
+                          <i className="fas fa-list-ol"></i> {parsed.length} سؤال
+                        </span>
+                        <span className="quiz-stat">
+                          <i className="fas fa-star"></i> {pts} نقطة
+                        </span>
+                        {qz.raw.trim() && !valid.valid && (
+                          <span className="quiz-stat quiz-stat-bad">
+                            <i className="fas fa-triangle-exclamation"></i> {valid.error}
+                          </span>
+                        )}
+                        {qz.raw.trim() && valid.valid && (
+                          <span className="quiz-stat quiz-stat-ok">
+                            <i className="fas fa-check"></i> الصيغة صحيحة
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
             {/* Restore Section */}
             {showRestoreSection && savedVideos.length > 0 && (
               <div className="restore-section">
@@ -362,6 +589,27 @@ export default function VideoAdd() {
                     <span className="info-label">مدة التفعيل:</span>
                     <span className="info-value">{previewData.activeHours} ساعة</span>
                   </div>
+
+                  {previewData.quizzes && previewData.quizzes.length > 0 && (
+                    <div className="parts-list">
+                      <h4>الامتحانات:</h4>
+                      {previewData.quizzes.map((qz, i) => (
+                        <div key={i} className="part-item">
+                          <span className="part-index">📝 {qz.title}</span>
+                          <div className="part-details">
+                            <div>
+                              {qz.scope === 'whole'
+                                ? 'يُطلب قبل مشاهدة الفيديو كامل'
+                                : `يُطلب قبل الجزء ${parseInt(qz.partIndex) + 1}`}
+                            </div>
+                            <div className="part-duration">
+                              {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح {qz.passingPercentage}%
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="parts-list">
                     <h4>أجزاء الفيديو:</h4>

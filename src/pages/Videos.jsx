@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
+import QuizRunner from '../components/QuizRunner'
 
 export default function Videos() {
   const navigate = useNavigate()
@@ -61,6 +62,29 @@ export default function Videos() {
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
 
+  // Quiz gating
+  const [activeQuiz, setActiveQuiz] = useState(null)   // quiz currently being run
+  const [pendingPart, setPendingPart] = useState(null) // part the student wanted to play
+  const [quizTick, setQuizTick] = useState(0)          // bump to re-evaluate gates after a pass
+
+  // Find the next unpassed quiz that gates this part (whole-video first, then part-specific)
+  const findBlockingQuiz = (video, part) => {
+    if (!video || !video.quizzes || video.quizzes.length === 0) return null
+    const partIdx = video.parts.findIndex(p => p.id === part.id)
+    const applies = (qz) =>
+      qz.scope === 'whole' ||
+      (qz.scope === 'part' && qz.partIndex === partIdx)
+    for (const qz of video.quizzes) {
+      if (!applies(qz)) continue
+      const key = `quiz-results-${video.id}-${qz.localId}`
+      const stored = JSON.parse(localStorage.getItem(key) || '{}')
+      if (!stored.passed) return qz
+    }
+    return null
+  }
+
+  const isPartUnlocked = (video, part) => !findBlockingQuiz(video, part)
+
   // Load current user
   useEffect(() => {
     try {
@@ -71,6 +95,27 @@ export default function Videos() {
       }
     } catch (err) {
       console.error('Error loading user:', err)
+    }
+  }, [])
+
+  // Merge admin-created videos (from VideoAdd → localStorage['videos']) into the
+  // grade buckets so quizzes and new uploads are visible to students.
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('videos')) || []
+      if (!Array.isArray(stored) || stored.length === 0) return
+      setVideos(prev => {
+        const next = { ...prev }
+        for (const g of Object.keys(next)) next[g] = [...(next[g] || [])]
+        for (const v of stored) {
+          const g = v.grade
+          if (!next[g]) next[g] = []
+          if (!next[g].some(x => x.id === v.id)) next[g].push(v)
+        }
+        return next
+      })
+    } catch (err) {
+      console.error('Error loading stored videos:', err)
     }
   }, [])
 
@@ -126,7 +171,7 @@ export default function Videos() {
   const playVideoPart = (part) => {
     const now = new Date()
     const expiryDate = new Date(currentVideo.expiryTime)
-    
+
     if (now > expiryDate) {
       showAlertModal('انتهت المدة', 'انتهت مدة تفعيل هذا الفيديو')
       return
@@ -137,15 +182,39 @@ export default function Videos() {
       return
     }
 
+    // Quiz gate: if any applicable quiz hasn't been passed, run it first.
+    const blocking = findBlockingQuiz(currentVideo, part)
+    if (blocking) {
+      setPendingPart(part)
+      setActiveQuiz(blocking)
+      return
+    }
+
     setSelectedPart(part)
     const videoId = extractVideoId(part.videoUrl)
-    
+
     if (videoId) {
       const videoFrame = document.getElementById('videoFrame')
       if (videoFrame) {
         videoFrame.innerHTML = `<iframe class="video-frame" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`
       }
     }
+  }
+
+  const handleQuizPass = () => {
+    setActiveQuiz(null)
+    setQuizTick(t => t + 1)
+    // Re-attempt to play the part the student originally clicked. If there's
+    // still another blocking quiz (e.g. whole-video then part-specific), the
+    // next call to playVideoPart will surface it.
+    const part = pendingPart
+    setPendingPart(null)
+    if (part) playVideoPart(part)
+  }
+
+  const handleQuizClose = () => {
+    setActiveQuiz(null)
+    setPendingPart(null)
   }
 
   return (
@@ -331,24 +400,34 @@ export default function Videos() {
                 <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>
                   أجزاء المحاضرة
                 </h3>
-                <div id="partsList">
-                  {currentVideo?.parts.map((part, index) => (
-                    <div
-                      key={part.id}
-                      className="part-item"
-                      onClick={() => playVideoPart(part)}
-                    >
-                      <div className="title-card" style={{ color: 'var(--text-primary)' }}>
-                        الجزء {index + 1}: {part.title}
+                <div id="partsList" data-quiz-tick={quizTick}>
+                  {currentVideo?.parts.map((part, index) => {
+                    const blocking = findBlockingQuiz(currentVideo, part)
+                    const locked = !!blocking
+                    return (
+                      <div
+                        key={part.id}
+                        className={`part-item ${locked ? 'part-item-locked' : ''}`}
+                        onClick={() => playVideoPart(part)}
+                      >
+                        <div className="title-card" style={{ color: 'var(--text-primary)' }}>
+                          {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
+                          الجزء {index + 1}: {part.title}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                          ⏱️ {part.duration}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--educational-accent)', marginTop: '4px' }}>
+                          👁️ المتبقي: {part.remainingViews}
+                        </div>
+                        {locked && (
+                          <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                        ⏱️ {part.duration}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--educational-accent)', marginTop: '4px' }}>
-                        👁️ المتبقي: {part.remainingViews}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -367,6 +446,16 @@ export default function Videos() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Quiz Gate */}
+      {activeQuiz && currentVideo && (
+        <QuizRunner
+          quiz={activeQuiz}
+          videoId={currentVideo.id}
+          onPass={handleQuizPass}
+          onClose={handleQuizClose}
+        />
       )}
 
       {/* Alert Modal */}
