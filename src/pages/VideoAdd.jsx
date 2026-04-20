@@ -9,6 +9,7 @@ const makeQuiz = () => ({
   scope: 'whole',           // 'whole' | 'part'
   partIndex: '',            // index into videoParts when scope === 'part'
   passingQuestions: 1,      // how many questions the student must answer correctly
+  maxAttempts: 3,           // how many tries the student gets before they're locked out
   raw: ''
 })
 
@@ -99,6 +100,7 @@ export default function VideoAdd() {
       scope: qz.scope || 'whole',
       partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
       passingQuestions: qz.passingQuestions ?? Math.max(1, Math.ceil((qz.questions?.length || 1) * (qz.passingPercentage || 60) / 100)),
+      maxAttempts: qz.maxAttempts ?? 3,
       raw: qz.raw || ''
     }))
     setQuizzes(restoredQuizzes)
@@ -144,12 +146,18 @@ export default function VideoAdd() {
         alert(`الامتحان ${i + 1}: اختر الجزء المرتبط بالامتحان`)
         return
       }
+      const maxAtt = parseInt(qz.maxAttempts)
+      if (Number.isNaN(maxAtt) || maxAtt < 1) {
+        alert(`الامتحان ${i + 1}: عدد المحاولات يجب أن يكون 1 على الأقل`)
+        return
+      }
       parsedQuizzes.push({
         localId: qz.localId,
         title: qz.title.trim() || `امتحان ${i + 1}`,
         scope: qz.scope,
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
         passingQuestions: pq,
+        maxAttempts: maxAtt,
         questions: parsed,
         totalPoints: totalPoints(parsed),
         raw: qz.raw
@@ -222,6 +230,7 @@ export default function VideoAdd() {
           scope: qz.scope,
           partIndex: qz.scope === 'part' ? qz.partIndex : null,
           passingQuestions: qz.passingQuestions,
+          maxAttempts: qz.maxAttempts,
           questionCount: parsed.length,
           totalPoints: totalPoints(parsed)
         }
@@ -481,6 +490,19 @@ export default function VideoAdd() {
                           من إجمالي {parsed.length} سؤال
                         </small>
                       </div>
+
+                      <div className="form-group flex-1">
+                        <label>عدد المحاولات المسموح بها</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={qz.maxAttempts}
+                          onChange={(e) => updateQuiz(qz.localId, 'maxAttempts', e.target.value)}
+                        />
+                        <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
+                          عدد مرات محاولة الطالب قبل القفل
+                        </small>
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -610,7 +632,7 @@ export default function VideoAdd() {
                                 : `يُطلب قبل الجزء ${parseInt(qz.partIndex) + 1}`}
                             </div>
                             <div className="part-duration">
-                              {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح: {qz.passingQuestions} من {qz.questionCount}
+                              {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح: {qz.passingQuestions} من {qz.questionCount} · {qz.maxAttempts} محاولة
                             </div>
                           </div>
                         </div>
