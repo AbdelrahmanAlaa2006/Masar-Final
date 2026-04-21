@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '../services/api'
 import './Login.css'
@@ -38,6 +38,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const canvasRef = useRef(null)
 
   const t = translations[lang]
 
@@ -51,6 +52,107 @@ export default function Login() {
     document.documentElement.dir = 'ltr'
     return () => {
       document.documentElement.dir = prevDir
+    }
+  }, [])
+
+  // Canvas animation with particles
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let width = 0, height = 0, raf = 0
+    const mouse = { x: -9999, y: -9999, active: false }
+
+    const COLORS = ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
+    const COUNT = Math.max(38, Math.floor((window.innerWidth * window.innerHeight) / 28000))
+    const particles = []
+
+    const resize = () => {
+      width = canvas.width = window.innerWidth
+      height = canvas.height = window.innerHeight
+    }
+    resize()
+
+    for (let i = 0; i < COUNT; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.06,
+        vy: (Math.random() - 0.5) * 0.06,
+        r: 1.8 + Math.random() * 2.2,
+        c: COLORS[Math.floor(Math.random() * COLORS.length)],
+      })
+    }
+
+    const step = () => {
+      ctx.clearRect(0, 0, width, height)
+
+      for (const p of particles) {
+        if (mouse.active) {
+          const dx = mouse.x - p.x
+          const dy = mouse.y - p.y
+          const d2 = dx * dx + dy * dy
+          if (d2 < 200 * 200) {
+            const d = Math.sqrt(d2) || 1
+            const f = (1 - d / 200) * 0.12
+            p.vx += (dx / d) * f
+            p.vy += (dy / d) * f
+          }
+        }
+
+        p.vx *= 0.9
+        p.vy *= 0.9
+        p.x += p.vx
+        p.y += p.vy
+
+        if (p.x < 0) p.x = width
+        if (p.x > width) p.x = 0
+        if (p.y < 0) p.y = height
+        if (p.y > height) p.y = 0
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i], b = particles[j]
+          const dx = a.x - b.x, dy = a.y - b.y
+          const d2 = dx * dx + dy * dy
+          if (d2 < 130 * 130) {
+            const alpha = 1 - Math.sqrt(d2) / 130
+            ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.35})`
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.stroke()
+          }
+        }
+      }
+
+      for (const p of particles) {
+        ctx.fillStyle = p.c
+        ctx.shadowColor = p.c
+        ctx.shadowBlur = 12
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.shadowBlur = 0
+
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+
+    const onMove = (e) => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.active = true }
+    const onLeave = () => { mouse.active = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseleave', onLeave)
+    window.addEventListener('resize', resize)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseleave', onLeave)
+      window.removeEventListener('resize', resize)
     }
   }, [])
 
@@ -218,6 +320,7 @@ export default function Login() {
 
   return (
     <div className="login-page-wrapper">
+    <canvas ref={canvasRef} className="login-constellation" aria-hidden="true" />
     <div className="login-container">
       <div className="top-controls">
         <div className="lang-toggle">
@@ -339,7 +442,9 @@ export default function Login() {
 
       <div className="right-section fade-all">
         <div className="right-content">
-          <img src="/images/logo.white.png" alt="Masar Logo" />
+          <div className="person-image-container">
+            <img src="/images/profile.jpg" alt="Masaar Instructor" className="person-image" />
+          </div>
           <h2>{t['platform-title']}</h2>
           <p>{t['platform-description']}</p>
           <a
