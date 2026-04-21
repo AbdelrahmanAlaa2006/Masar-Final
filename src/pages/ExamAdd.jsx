@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
+import { createExam, uiToDbGrade } from '../services/examsApi'
 
 export default function ExamAdd() {
+  const navigate = useNavigate()
   const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
+  const [examGrade, setExamGrade] = useState(
+    localStorage.getItem('selectedGrade') || 'first'
+  )
   const [duration, setDuration] = useState('')
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [examDurationHours, setExamDurationHours] = useState(72)
@@ -12,15 +18,10 @@ export default function ExamAdd() {
   const [questions, setQuestions] = useState([])
   const [questionsCopy, setQuestionsCopy] = useState('')
   const [showCopySection, setShowCopySection] = useState(false)
-  const [showRestoreSection, setShowRestoreSection] = useState(false)
-  const [savedExams, setSavedExams] = useState([])
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
-
-  useEffect(() => {
-    loadSavedExams()
-  }, [])
+  const [saving, setSaving] = useState(false)
 
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
@@ -40,7 +41,6 @@ export default function ExamAdd() {
 
     setQuestions(newQuestions)
     setShowCopySection(true)
-    setShowRestoreSection(true)
   }
 
   const updateQuestion = (id, field, value) => {
@@ -150,39 +150,16 @@ export default function ExamAdd() {
     setQuestions(parsedQuestions)
   }
 
-  const loadSavedExams = () => {
-    const exams = JSON.parse(localStorage.getItem('exams')) || []
-    setSavedExams(exams)
-  }
-
-  const restoreExam = (index) => {
-    if (index === '') return
-    
-    const exam = savedExams[parseInt(index)]
-    if (!exam) return
-
-    setExamNumber(exam.number.toString())
-    setExamTitle(exam.title)
-    setDuration(exam.duration.toString())
-    setMaxAttempts(exam.maxAttempts || 1)
-    setExamDurationHours(exam.examDurationHours || 72)
-
-    const restoredQuestions = exam.questions.map((q, i) => ({
-      id: i,
-      question: q.question,
-      options: q.options,
-      answers: q.answers,
-      points: q.points || 1,
-      isMultiple: q.isMultiple || false
-    }))
-
-    setQuestions(restoredQuestions)
-    setNumQuestions(restoredQuestions.length.toString())
-  }
-
-  const saveExam = () => {
-    if (!examNumber.trim() || !examTitle.trim() || !duration || questions.length === 0) {
+  const saveExam = async () => {
+    if (saving) return
+    if (!examTitle.trim() || !duration || questions.length === 0) {
       notify('يرجى ملء جميع البيانات المطلوبة', { type: 'warning' })
+      return
+    }
+
+    const dbGrade = uiToDbGrade(examGrade)
+    if (!dbGrade) {
+      notify('يرجى اختيار الصف الدراسي', { type: 'warning' })
       return
     }
 
@@ -198,34 +175,52 @@ export default function ExamAdd() {
       return
     }
 
-    const exam = {
-      number: examNumber,
-      title: examTitle,
-      duration: parseInt(duration),
-      maxAttempts: parseInt(maxAttempts),
-      examDurationHours: parseInt(examDurationHours),
-      questions: questions.map(q => ({
-        question: q.question,
-        options: q.options,
-        answers: q.answers,
-        points: q.points,
-        isMultiple: q.isMultiple
-      })),
-      totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
-      createdAt: new Date().toISOString()
+    const cleanQuestions = questions.map(q => ({
+      question: q.question,
+      options: q.options,
+      answers: q.answers,
+      points: q.points,
+      isMultiple: q.isMultiple,
+    }))
+    const total_points = cleanQuestions.reduce((sum, q) => sum + (q.points || 1), 0)
+
+    let createdBy = null
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      createdBy = u?.id || null
+    } catch { /* ignore */ }
+
+    setSaving(true)
+    try {
+      await createExam({
+        number: examNumber.trim() || null,
+        title: examTitle.trim(),
+        grade: dbGrade,
+        duration_minutes: parseInt(duration),
+        max_attempts: parseInt(maxAttempts),
+        available_hours: parseInt(examDurationHours),
+        questions: cleanQuestions,
+        total_points,
+        created_by: createdBy,
+      })
+
+      setPreviewData({
+        number: examNumber,
+        title: examTitle,
+        duration: parseInt(duration),
+        maxAttempts: parseInt(maxAttempts),
+        examDurationHours: parseInt(examDurationHours),
+        questions: cleanQuestions,
+        totalPoints: total_points,
+      })
+      setShowPreview(true)
+      setShowSuccess(true)
+
+      setTimeout(() => { navigate('/exams') }, 2000)
+    } catch (err) {
+      notify(err.message || 'تعذر حفظ الامتحان', { type: 'warning' })
+      setSaving(false)
     }
-
-    const exams = JSON.parse(localStorage.getItem('exams')) || []
-    exams.push(exam)
-    localStorage.setItem('exams', JSON.stringify(exams))
-
-    setPreviewData(exam)
-    setShowPreview(true)
-    setShowSuccess(true)
-
-    setTimeout(() => {
-      window.location.href = '/exams'
-    }, 3000)
   }
 
   return (
@@ -246,13 +241,26 @@ export default function ExamAdd() {
 
         <div className="form-group">
           <label htmlFor="examTitle">📝 عنوان الامتحان:</label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             id="examTitle"
             value={examTitle}
             onChange={(e) => setExamTitle(e.target.value)}
             placeholder="مثلاً: حساب تفاضلي متقدم"
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="examGrade">🎓 الصف الدراسي:</label>
+          <select
+            id="examGrade"
+            value={examGrade}
+            onChange={(e) => setExamGrade(e.target.value)}
+          >
+            <option value="first">الصف الأول الإعدادي</option>
+            <option value="second">الصف الثاني الإعدادي</option>
+            <option value="third">الصف الثالث الإعدادي</option>
+          </select>
         </div>
 
         <div className="form-group">
@@ -299,24 +307,6 @@ export default function ExamAdd() {
             placeholder="مثلاً 3"
           />
           <button className="btn" onClick={generateQuestions}>✨ إنشاء الأسئلة</button>
-
-          {showRestoreSection && (
-            <div className="restore-exam">
-              <label htmlFor="savedExams">💾 استرداد امتحان محفوظ:</label>
-              <select 
-                id="savedExams"
-                onChange={(e) => restoreExam(e.target.value)}
-                defaultValue=""
-              >
-                <option value="">-- اختر امتحان محفوظ --</option>
-                {savedExams.map((exam, idx) => (
-                  <option key={idx} value={idx}>
-                    {exam.title} (رقم {exam.number})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
 
         {showCopySection && (
@@ -416,7 +406,9 @@ export default function ExamAdd() {
         </div>
 
         {questions.length > 0 && (
-          <button className="btn btn-save" onClick={saveExam}>💾 حفظ ومعاينة الامتحان</button>
+          <button className="btn btn-save" onClick={saveExam} disabled={saving}>
+            {saving ? '⏳ جاري الحفظ...' : '💾 حفظ ومعاينة الامتحان'}
+          </button>
         )}
 
         {showSuccess && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { parseQuestionsText, validateQuestions, totalPoints } from '../utils/parseQuestions'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
+import { createVideo } from '../services/videosApi'
 
 const makeQuiz = () => ({
   localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -108,7 +109,7 @@ export default function VideoAdd() {
     setShowPreview(false)
   }
 
-  const saveVideo = () => {
+  const saveVideo = async () => {
     if (!videoTitle.trim()) {
       notify('يرجى إدخال عنوان الفيديو', { type: 'warning' })
       return
@@ -164,30 +165,36 @@ export default function VideoAdd() {
       })
     }
 
-    const newVideo = {
-      id: Date.now().toString(),
-      title: videoTitle,
-      description: videoDescription,
-      grade: videoGrade,
-      duration: videoDuration,
-      totalParts: videoParts.length,
-      parts: videoParts,
-      viewLimit: parseInt(viewLimit),
-      activeHours: parseInt(activeHours),
-      expiryTime: new Date(Date.now() + parseInt(activeHours) * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-      quizzes: parsedQuizzes
+    let createdBy = null
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      createdBy = u?.id || null
+    } catch { /* ignore */ }
+
+    try {
+      await createVideo({
+        title: videoTitle.trim(),
+        description: videoDescription.trim() || null,
+        grade: videoGrade,
+        duration_minutes: videoDuration || null,
+        view_limit: viewLimit,
+        active_hours: activeHours,
+        quizzes: parsedQuizzes,
+        created_by: createdBy,
+        parts: videoParts.map(p => ({
+          title: p.title.trim(),
+          youtube_url: p.videoUrl.trim(),
+          duration_minutes: p.duration || null,
+        })),
+      })
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+        resetForm()
+      }, 3000)
+    } catch (err) {
+      notify(err.message || 'تعذر حفظ الفيديو', { type: 'warning' })
     }
-
-    const videos = JSON.parse(localStorage.getItem('videos')) || []
-    videos.push(newVideo)
-    localStorage.setItem('videos', JSON.stringify(videos))
-
-    setShowSuccess(true)
-    setTimeout(() => {
-      setShowSuccess(false)
-      resetForm()
-    }, 3000)
   }
 
   const resetForm = () => {

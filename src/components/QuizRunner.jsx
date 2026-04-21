@@ -1,22 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import './QuizRunner.css'
+import { recordQuizAttempt } from '../services/progressApi'
 
 /**
- * Quiz gate modal. Runs a quiz inline; calls onPass when the student
- * meets the passing percentage. Stores the result in localStorage
- * under `quiz-results-{videoId}-{quizId}`.
+ * Quiz gate modal. Runs a quiz inline; calls onPass when the student meets
+ * the passing threshold. Persists progress in Supabase `quiz_attempts`.
  *
  * Props:
- *   quiz: { localId, title, scope, partIndex, passingPercentage, questions }
- *   videoId: string
- *   onPass: (result) => void
+ *   quiz: { localId, title, scope, partIndex, passingQuestions, maxAttempts, questions }
+ *   videoId: string (UUID)
+ *   studentId: string (UUID, profiles.id)
+ *   priorAttempt: { passed, attempts, best_correct } | undefined
+ *   onPass: (row) => void
  *   onClose: () => void
  */
-export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
-  // Map of questionIndex -> Set(optionIndex) — supports multi-answer
+export default function QuizRunner({ quiz, videoId, studentId, priorAttempt, onPass, onClose }) {
   const [answers, setAnswers] = useState({})
   const [submitted, setSubmitted] = useState(false)
-  const [result, setResult] = useState(null) // { score, total, percentage, passed }
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const [result, setResult] = useState(null)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -37,15 +40,9 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
   const passingQuestions = quiz.passingQuestions ?? totalQuestions
   const maxAttempts = quiz.maxAttempts || 1
 
-  // Read prior attempts so the UI can show "المحاولة X من Y" and lock the
-  // retry button once the cap is reached.
-  const storageKey = `quiz-results-${videoId}-${quiz.localId}`
-  const [priorAttempts, setPriorAttempts] = useState(() => {
-    const stored = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    return stored.attempts || 0
-  })
+  const priorAttempts = priorAttempt?.attempts || 0
   const attemptNumber = priorAttempts + 1
-  const outOfAttempts = priorAttempts >= maxAttempts
+  const outOfAttempts = priorAttempts >= maxAttempts && !priorAttempt?.passed
 
   const toggleOption = (qIdx, optIdx, isMultiple) => {
     if (submitted) return
@@ -64,7 +61,8 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
   const isOptionSelected = (qIdx, optIdx) =>
     (answers[qIdx] && answers[qIdx].has(optIdx)) || false
 
-  const submit = () => {
+  const submit = async () => {
+    if (saving) return
     let earned = 0
     let correctCount = 0
     quiz.questions.forEach((q, qIdx) => {
@@ -80,27 +78,42 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
     })
 
     const passed = correctCount >= passingQuestions
+    const attempts = priorAttempts + 1
+    const best_correct = Math.max(priorAttempt?.best_correct || 0, correctCount)
+    const nextPassed = passed || priorAttempt?.passed === true
 
-    const prev = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    const attempts = (prev.attempts || 0) + 1
-    const next = {
-      passed: passed || prev.passed === true,
-      lastScore: earned,
-      lastCorrect: correctCount,
-      bestCorrect: Math.max(prev.bestCorrect || 0, correctCount),
-      attempts,
-      lastAttemptAt: new Date().toISOString()
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await recordQuizAttempt({
+        student_id: studentId,
+        video_id: videoId,
+        quiz_local_id: quiz.localId,
+        passed: nextPassed,
+        best_correct,
+        attempts,
+      })
+    } catch (err) {
+      setSaveError(err.message || 'تعذر حفظ النتيجة')
+      setSaving(false)
+      return
     }
-    localStorage.setItem(storageKey, JSON.stringify(next))
-    setPriorAttempts(attempts)
+    setSaving(false)
 
-    const exhausted = !passed && attempts >= maxAttempts
-    setResult({ score: earned, total: totalPoints, correctCount, totalQuestions, passed, exhausted, attemptsUsed: attempts })
+    const exhausted = !nextPassed && attempts >= maxAttempts
+    setResult({
+      score: earned,
+      total: totalPoints,
+      correctCount,
+      totalQuestions,
+      passed: nextPassed,
+      exhausted,
+      attemptsUsed: attempts,
+    })
     setSubmitted(true)
 
-    if (passed) {
-      // Give the user a moment to see the success state, then unlock.
-      setTimeout(() => onPass(next), 1400)
+    if (nextPassed) {
+      setTimeout(() => onPass({ passed: true, best_correct, attempts }), 1400)
     }
   }
 
@@ -108,6 +121,7 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
     setAnswers({})
     setSubmitted(false)
     setResult(null)
+    setSaveError(null)
   }
 
   const allAnswered = quiz.questions.every(
@@ -151,6 +165,16 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
               يجب اجتياز هذا الامتحان قبل أن تتمكن من مشاهدة هذا{' '}
               {quiz.scope === 'whole' ? 'الفيديو' : 'الجزء'}.
             </p>
+          )}
+
+          {saveError && (
+            <div className="qr-result is-fail">
+              <div className="qr-result-icon"><i className="fas fa-triangle-exclamation"></i></div>
+              <div className="qr-result-text">
+                <h3>خطأ</h3>
+                <p>{saveError}</p>
+              </div>
+            </div>
           )}
 
           {submitted && result && (
@@ -235,32 +259,27 @@ export default function QuizRunner({ quiz, videoId, onPass, onClose }) {
         <footer className="qr-foot">
           {!submitted && (
             <>
-              <button className="qr-btn qr-btn-ghost" onClick={onClose}>
-                إلغاء
-              </button>
+              <button className="qr-btn qr-btn-ghost" onClick={onClose}>إلغاء</button>
               <button
                 className="qr-btn qr-btn-primary"
                 onClick={submit}
-                disabled={!allAnswered}
+                disabled={!allAnswered || saving || outOfAttempts}
               >
-                <i className="fas fa-paper-plane"></i> إرسال الإجابات
+                <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+                {' '}{saving ? 'جاري الحفظ...' : 'إرسال الإجابات'}
               </button>
             </>
           )}
           {submitted && !result.passed && !result.exhausted && (
             <>
-              <button className="qr-btn qr-btn-ghost" onClick={onClose}>
-                إغلاق
-              </button>
+              <button className="qr-btn qr-btn-ghost" onClick={onClose}>إغلاق</button>
               <button className="qr-btn qr-btn-primary" onClick={retry}>
                 <i className="fas fa-rotate-right"></i> إعادة المحاولة ({maxAttempts - result.attemptsUsed} متبقية)
               </button>
             </>
           )}
           {submitted && !result.passed && result.exhausted && (
-            <button className="qr-btn qr-btn-ghost" onClick={onClose}>
-              إغلاق
-            </button>
+            <button className="qr-btn qr-btn-ghost" onClick={onClose}>إغلاق</button>
           )}
           {submitted && result.passed && (
             <button className="qr-btn qr-btn-success" disabled>

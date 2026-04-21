@@ -48,7 +48,7 @@ body.dark .notif-bell:hover { background: rgba(168, 85, 247, 0.3); }
 .notif-panel {
   position: absolute;
   top: calc(100% + 10px);
-  left: 0;
+  right: 0;
   width: 360px;
   max-width: 92vw;
   max-height: 520px;
@@ -69,9 +69,71 @@ body.dark .notif-panel {
   border-color: rgba(168, 85, 247, 0.35);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
-@keyframes notifSlideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (max-width: 480px) {
+  .notif-panel {
+    width: 85vw;
+    max-width: 340px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 70vh;
+  }
+  .notif-list {
+    overflow-y: auto;
+    max-height: 55vh;
+  }
+  .notif-item {
+    padding: 12px 14px;
+    gap: 10px;
+    min-height: auto;
+  }
+  .notif-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  .notif-body {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .notif-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  .notif-message {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    margin-top: 4px;
+  }
+  .notif-time {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .notif-delete {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .notif-compose {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .notif-compose-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .notif-compose-row select {
+    flex: 1 1 100px;
+    min-width: 0;
+  }
 }
 
 .notif-panel-head {

@@ -232,6 +232,7 @@ body.dark .mh::before {
   object-fit: cover;
   border-radius: inherit;
   pointer-events: none;
+  transform: scale(0.92);
 }
 
 .mh__wordmark {
