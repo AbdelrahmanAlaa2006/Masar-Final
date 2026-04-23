@@ -292,6 +292,8 @@ export default function Login() {
     }, 1400)
   }
 
+  const [imgHover, setImgHover] = useState(false)
+
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'دروس تفاعلية', desc: 'محتوى تعليمي غني بالشرح والأمثلة لتثبيت المعلومة.' },
     { icon: 'fa-video', title: 'فيديوهات عالية الجودة', desc: 'شاهد الدروس في أي وقت ومن أي مكان بسهولة.' },
@@ -441,12 +443,48 @@ export default function Login() {
       </div>
 
       <div className="right-section fade-all">
-        <div className="right-content">
-          <div className="person-image-container">
-            <img src="/images/profile.jpg" alt="Masaar Instructor" className="person-image" />
+        <div className="instructor-showcase">
+          {/* Hero tagline */}
+          <div className="hero-tagline">
+            <h1 className="hero-tagline-title">
+              {lang === 'ar' ? 'منصة مسار' : 'Masar'}
+            </h1>
+            <p className="hero-tagline-sub">
+              {lang === 'ar'
+                ? 'ابدأ رحلتك التعليمية نحو التميز والنجاح'
+                : 'Start your learning journey towards excellence'}
+            </p>
           </div>
-          <h2>{t['platform-title']}</h2>
-          <p>{t['platform-description']}</p>
+
+          {/* Decorative background shapes */}
+          <div className="instructor-decor">
+            <div className="instructor-decor-block instructor-decor-block--1"></div>
+            <div className="instructor-decor-block instructor-decor-block--2"></div>
+            <div className="instructor-decor-block instructor-decor-block--3"></div>
+          </div>
+
+          {/* Instructor image with hover effect */}
+          <div
+            className={`instructor-img-wrapper ${imgHover ? 'is-hovered' : ''}`}
+            onMouseEnter={() => setImgHover(true)}
+            onMouseLeave={() => setImgHover(false)}
+          >
+            <img
+              src="/images/profile.jpg"
+              alt="Masaar Instructor"
+              className="instructor-img"
+              draggable="false"
+            />
+
+          </div>
+
+          {/* Instructor name badge */}
+          <div className="instructor-badge">
+            <span className="instructor-badge-dot"></span>
+            {lang === 'ar' ? 'المدرّس' : 'Instructor'}
+          </div>
+
+          {/* Scroll down link */}
           <a
             href="#features"
             className="scroll-down-btn"
@@ -491,6 +529,70 @@ export default function Login() {
               <p>{s.desc}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="login-location">
+      <div className="section-inner">
+        <h2 className="section-heading">{lang === 'ar' ? 'موقعنا' : 'Find Us'}</h2>
+        <p className="section-sub">{lang === 'ar' ? 'تعرف على مكاننا وتواصل معنا بسهولة' : 'Locate our center and reach us easily'}</p>
+
+        <div className="location-grid">
+          {/* Map embed */}
+          <div className="location-map-wrapper">
+            <iframe
+              title="Masar Location"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+              className="location-map"
+              allowFullScreen=""
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
+
+          {/* Contact info */}
+          <div className="location-info">
+            <div className="location-info-card">
+              <div className="location-info-icon">
+                <i className="fas fa-map-marker-alt"></i>
+              </div>
+              <div>
+                <h4>{lang === 'ar' ? 'العنوان' : 'Address'}</h4>
+                <p>{lang === 'ar' ? 'دمنهور، البحيرة، مصر' : 'Damanhour, Beheira, Egypt'}</p>
+              </div>
+            </div>
+
+            <div className="location-info-card">
+              <div className="location-info-icon">
+                <i className="fas fa-phone-alt"></i>
+              </div>
+              <div>
+                <h4>{lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}</h4>
+                <p dir="ltr">+20 XXX XXX XXXX</p>
+              </div>
+            </div>
+
+            <div className="location-info-card">
+              <div className="location-info-icon">
+                <i className="fas fa-clock"></i>
+              </div>
+              <div>
+                <h4>{lang === 'ar' ? 'ساعات العمل' : 'Working Hours'}</h4>
+                <p>{lang === 'ar' ? 'السبت – الخميس: ٩ ص – ٩ م' : 'Sat – Thu: 9 AM – 9 PM'}</p>
+              </div>
+            </div>
+
+            <a
+              href="https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="location-directions-btn"
+            >
+              <i className="fas fa-directions"></i>
+              {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+            </a>
+          </div>
         </div>
       </div>
     </section>
