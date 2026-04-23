@@ -835,13 +835,13 @@ body.dark .instructor-decor-block { opacity: 0.18; }
   max-width: 300px;
   aspect-ratio: 3 / 4;
   border-radius: 28px;
-  overflow: hidden;
+  /* overflow: hidden; Removed to allow back image to show */
   cursor: pointer;
-  box-shadow:
-    0 20px 60px -15px rgba(124, 58, 237, 0.35),
-    0 8px 24px -8px rgba(0, 0, 0, 0.2);
+  /* box-shadow: moved to inner images */
   transition: transform 0.5s cubic-bezier(.2,.8,.2,1), box-shadow 0.5s ease;
   animation: popIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+  perspective: 1200px;
+  transform-style: preserve-3d;
 }
 
 .instructor-img-wrapper::before {
@@ -849,32 +849,56 @@ body.dark .instructor-decor-block { opacity: 0.18; }
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, transparent 50%, rgba(124, 58, 237, 0.15) 100%);
-  z-index: 1;
+  z-index: 3;
   pointer-events: none;
   transition: opacity 0.4s ease;
+  border-radius: 28px;
 }
 
 .instructor-img-wrapper.is-hovered {
   transform: scale(1.04) rotate(-1.5deg);
-  box-shadow:
-    0 28px 70px -15px rgba(124, 58, 237, 0.5),
-    0 12px 30px -10px rgba(0, 0, 0, 0.25);
 }
 
 .instructor-img-wrapper.is-hovered::before {
   opacity: 0.5;
 }
 
-.instructor-img {
+.stack-img {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  transition: transform 0.6s cubic-bezier(.2,.8,.2,1);
+  border-radius: 28px;
+  box-shadow: 
+    0 20px 60px -15px rgba(124, 58, 237, 0.35),
+    0 8px 24px -8px rgba(0, 0, 0, 0.2);
+  transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center right;
 }
 
-.instructor-img-wrapper.is-hovered .instructor-img {
-  transform: scale(1.06);
+.stack-img.front {
+  z-index: 2;
+  transform: translateX(0) scale(1) rotate(0);
+  opacity: 1;
+}
+
+.stack-img.back {
+  z-index: 1;
+  transform: translateX(-25%) scale(0.9) rotate(-6deg);
+  opacity: 0.8;
+  filter: brightness(0.7);
+}
+
+.instructor-img-wrapper.is-hovered .stack-img.front {
+  transform: scale(1.03);
+}
+
+.instructor-img-wrapper.is-hovered .stack-img.back {
+  transform: translateX(-32%) scale(0.92) rotate(-8deg);
+  opacity: 0.9;
+  filter: brightness(0.85);
 }
 
 /* ── Cursor indicator ── */

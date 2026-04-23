@@ -247,6 +247,7 @@ export default function Login() {
   }
 
   const [imgHover, setImgHover] = useState(false)
+  const [activeImg, setActiveImg] = useState(0)
 
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'دروس تفاعلية', desc: 'محتوى تعليمي غني بالشرح والأمثلة لتثبيت المعلومة.' },
@@ -391,19 +392,25 @@ export default function Login() {
               <div className="instructor-decor-block instructor-decor-block--3"></div>
             </div>
 
-            {/* Instructor image with hover effect */}
+            {/* Instructor image with hover effect and stack animation */}
             <div
-              className={`instructor-img-wrapper ${imgHover ? 'is-hovered' : ''}`}
+              className={`instructor-img-wrapper stack-wrapper ${imgHover ? 'is-hovered' : ''}`}
               onMouseEnter={() => setImgHover(true)}
               onMouseLeave={() => setImgHover(false)}
+              onClick={() => setActiveImg(prev => (prev === 0 ? 1 : 0))}
             >
               <img
                 src="/images/profile.jpg"
                 alt="Masaar Instructor"
-                className="instructor-img"
+                className={`stack-img ${activeImg === 0 ? 'front' : 'back'}`}
                 draggable="false"
               />
-
+              <img
+                src="/images/me.jpeg"
+                alt="Masaar Instructor 2"
+                className={`stack-img ${activeImg === 1 ? 'front' : 'back'}`}
+                draggable="false"
+              />
             </div>
 
             {/* Instructor name badge */}
