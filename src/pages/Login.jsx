@@ -323,8 +323,12 @@ export default function Login() {
   return (
     <div className="login-page-wrapper">
     <canvas ref={canvasRef} className="login-constellation" aria-hidden="true" />
-    <div className="login-container">
-      <div className="top-controls">
+    <nav className="login-navbar">
+      <div className="navbar-brand">
+        <img src="/images/logo.white.png" alt="Masar Logo" className="navbar-logo" />
+        <span className="navbar-title">{lang === 'ar' ? 'منصة مسار' : 'Masar'}</span>
+      </div>
+      <div className="navbar-controls">
         <div className="lang-toggle">
           <button onClick={() => switchLang('en')} className={`lang-btn ${lang === 'en' ? 'active' : ''}`}>
             English
@@ -342,6 +346,8 @@ export default function Login() {
           <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
         </button>
       </div>
+    </nav>
+    <div className="login-container">
 
       <div className="left-section fade-all">
         <div className="overlay"></div>
@@ -598,7 +604,34 @@ export default function Login() {
     </section>
 
     <footer className="login-footer">
-      <p>{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة' : '© 2026 Masar Educational Platform. All rights reserved'}</p>
+      <div className="footer-inner">
+        <div className="footer-brand">
+          <img src="/images/logo.white.png" alt="Masar Logo" className="footer-logo" />
+          <span className="footer-brand-name">{lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</span>
+        </div>
+
+        <div className="footer-socials">
+          <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
+            <i className="fab fa-facebook-f"></i>
+          </a>
+          <a href="https://wa.me/" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="WhatsApp">
+            <i className="fab fa-whatsapp"></i>
+          </a>
+          <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
+            <i className="fab fa-instagram"></i>
+          </a>
+          <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="YouTube">
+            <i className="fab fa-youtube"></i>
+          </a>
+          <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="TikTok">
+            <i className="fab fa-tiktok"></i>
+          </a>
+        </div>
+
+        <div className="footer-divider"></div>
+
+        <p className="footer-copy">{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة' : '© 2026 Masar Educational Platform. All rights reserved'}</p>
+      </div>
     </footer>
     </div>
   )

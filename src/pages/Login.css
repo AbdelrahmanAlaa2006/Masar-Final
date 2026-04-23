@@ -186,21 +186,78 @@ body.dark {
   50% { transform: translate(30px, -20px) scale(1.1); }
 }
 
-.top-controls {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  right: 20px;
+/* ── Navbar ── */
+.login-navbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 999;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  pointer-events: none;
+  padding: 12px 28px;
+  background: rgba(13, 13, 32, 0.6);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.top-controls > * {
-  pointer-events: auto;
+body:not(.dark) .login-navbar {
+  background: rgba(255, 255, 255, 0.75);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 16px rgba(15, 23, 42, 0.06);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 10px;
+  filter: drop-shadow(0 2px 8px rgba(124, 58, 237, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.navbar-logo:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+body:not(.dark) .navbar-logo {
+  filter: none;
+}
+
+.navbar-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #a78bfa, #818cf8, #06b6d4);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: taglineGradient 6s ease-in-out infinite;
+}
+
+body:not(.dark) .navbar-title {
+  background: linear-gradient(135deg, #7c3aed, #6366f1, #7c3aed);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: taglineGradient 6s ease-in-out infinite;
+}
+
+.navbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .lang-toggle {
@@ -1301,16 +1358,7 @@ body.dark .location-map {
   }
 }
 
-/* Footer */
-.login-footer {
-  background: var(--footer-bg);
-  padding: 24px 20px;
-  text-align: center;
-  color: var(--footer-text);
-  font-size: 0.9rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.4s ease, color 0.4s ease;
-}
+/* Footer — see bottom of file for full styles */
 
 @media (max-width: 768px) {
   .login-container {
@@ -1326,10 +1374,17 @@ body.dark .location-map {
     opacity: 0.25;
   }
 
-  .top-controls {
-    top: 14px;
-    left: 14px;
-    right: 14px;
+  .login-navbar {
+    padding: 10px 16px;
+  }
+
+  .navbar-title {
+    font-size: 1.05rem;
+  }
+
+  .navbar-logo {
+    width: 32px;
+    height: 32px;
   }
 
   .lang-toggle .lang-btn {
@@ -1338,8 +1393,8 @@ body.dark .location-map {
   }
 
   .theme-toggle {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     font-size: 15px;
   }
 
@@ -1359,7 +1414,7 @@ body.dark .location-map {
   }
 
   .left-section {
-    padding: 80px 16px 32px;
+    padding: 32px 16px;
     animation: none;
   }
 
@@ -1513,7 +1568,174 @@ body:not(.dark) .step-card {
 .login-footer {
   background: transparent;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 40px 20px 28px;
 }
 body.dark .login-footer {
   border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Brand row */
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
+  filter: drop-shadow(0 4px 12px rgba(124, 58, 237, 0.25));
+  transition: transform 0.3s ease;
+}
+
+.footer-logo:hover {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+body:not(.dark) .footer-logo {
+  filter: none;
+}
+
+.footer-brand-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--section-text);
+  letter-spacing: 0.2px;
+}
+
+/* Social media links */
+.footer-socials {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.social-link {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  color: var(--section-sub);
+  background: var(--section-card-bg);
+  border: 1px solid var(--section-card-border);
+  text-decoration: none;
+  transition: all 0.35s cubic-bezier(.2,.8,.2,1);
+  position: relative;
+  overflow: hidden;
+}
+
+.social-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 0;
+}
+
+.social-link i {
+  position: relative;
+  z-index: 1;
+  transition: color 0.35s ease, transform 0.35s ease;
+}
+
+.social-link:hover {
+  transform: translateY(-4px);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 24px -6px rgba(124, 58, 237, 0.4);
+}
+
+.social-link:hover i {
+  transform: scale(1.15);
+}
+
+/* Individual social brand colors on hover */
+.social-link[aria-label="Facebook"]:hover {
+  background: #1877f2;
+  box-shadow: 0 8px 24px -6px rgba(24, 119, 242, 0.45);
+}
+
+.social-link[aria-label="WhatsApp"]:hover {
+  background: #25d366;
+  box-shadow: 0 8px 24px -6px rgba(37, 211, 102, 0.45);
+}
+
+.social-link[aria-label="Instagram"]:hover {
+  background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  box-shadow: 0 8px 24px -6px rgba(225, 48, 108, 0.45);
+}
+
+.social-link[aria-label="YouTube"]:hover {
+  background: #ff0000;
+  box-shadow: 0 8px 24px -6px rgba(255, 0, 0, 0.4);
+}
+
+.social-link[aria-label="TikTok"]:hover {
+  background: #010101;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+}
+
+body:not(.dark) .social-link {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+/* Divider */
+.footer-divider {
+  width: 80px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.35), transparent);
+}
+
+body:not(.dark) .footer-divider {
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.12), transparent);
+}
+
+/* Copyright text */
+.footer-copy {
+  font-size: 0.88rem;
+  color: var(--footer-text);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .footer-brand {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .footer-socials {
+    gap: 10px;
+  }
+
+  .social-link {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    border-radius: 10px;
+  }
+
+  .login-footer {
+    padding: 32px 16px 24px;
+  }
 }
