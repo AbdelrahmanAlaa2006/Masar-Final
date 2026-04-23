@@ -306,68 +306,72 @@ export default function Login() {
 
         <div className="left-section fade-all">
           <div className="overlay"></div>
-          <div className="login modern-login-box">
+          <div className="left-section-content">
+            <div className="login-intro">
+              <h2 className="login-intro-title">{lang === 'ar' ? 'مرحباً بك في مسار' : 'Welcome Back!'}</h2>
+              <p className="login-intro-sub">{lang === 'ar' ? 'سجل دخولك الآن لمتابعة رحلتك التعليمية' : 'Log in to continue your learning journey.'}</p>
+            </div>
+            
+            <div className="login modern-login-box">
 
+              <h2>{t.login}</h2>
 
-            <h2>{t.login}</h2>
+              {error && <div className="error-message show">{error}</div>}
 
-            {error && <div className="error-message show">{error}</div>}
+              <form onSubmit={handleLogin}>
 
-            <form onSubmit={handleLogin}>
+                <div className="input-wrapper">
+                  <i className="fas fa-phone"></i>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    required
+                    placeholder={t.phone}
+                    dir="ltr"
+                  />
+                </div>
 
-              <div className="input-wrapper">
-                <i className="fas fa-phone"></i>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  required
-                  placeholder={t.phone}
-                  dir="ltr"
-                />
-              </div>
+                <div className="input-wrapper">
+                  <i className="fas fa-lock"></i>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    placeholder={t.password}
+                    minLength="6"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="toggle-password-btn"
+                  >
+                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
 
-              <div className="input-wrapper">
-                <i className="fas fa-lock"></i>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  placeholder={t.password}
-                  minLength="6"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="toggle-password-btn"
-                >
-                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                <div className="form-options">
+                  <label className="switch">
+                    <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                    <span className="slider"></span>
+                  </label>
+                  <span className="remember-text">{t.remember}</span>
+                  <a href="#" className="forgot">
+                    {t.forgot}
+                  </a>
+                </div>
+
+                <button type="submit" className="modern-btn" disabled={loading}>
+                  <span className="btn-text">{t.login}</span>
+                  {loading && (
+                    <span className="btn-loader">
+                      <span className="spinner"></span>
+                    </span>
+                  )}
                 </button>
-              </div>
-
-              <div className="form-options">
-                <label className="switch">
-                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                  <span className="slider"></span>
-                </label>
-                <span className="remember-text">{t.remember}</span>
-                <a href="#" className="forgot">
-                  {t.forgot}
-                </a>
-              </div>
-
-              <button type="submit" className="modern-btn" disabled={loading}>
-                <span className="btn-text">{t.login}</span>
-                {loading && (
-                  <span className="btn-loader">
-                    <span className="spinner"></span>
-                  </span>
-                )}
-              </button>
-            </form>
-
-
+              </form>
+            </div>
           </div>
         </div>
 
