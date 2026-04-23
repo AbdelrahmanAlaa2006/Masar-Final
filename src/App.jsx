@@ -17,7 +17,7 @@ import ExamTaking from './pages/ExamTaking'
 import ExamAdd from './pages/ExamAdd'
 import VideoAdd from './pages/VideoAdd'
 import Profile from './pages/Profile'
-import { tokenAPI } from './services/api'
+import { tokenAPI } from '@backend/authApi'
 import './App.css'
 
 function App() {

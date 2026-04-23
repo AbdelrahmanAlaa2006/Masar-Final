@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { listVideos } from '@backend/videosApi'
+import { supabase } from '@backend/supabase'
 import './VideosReport.css'
+
+const fmtDate = (d) => {
+  if (!d) return '—'
+  const date = new Date(d)
+  if (isNaN(date)) return '—'
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
+}
 
 export default function VideosReport() {
   const [searchParams] = useSearchParams()
@@ -12,6 +21,9 @@ export default function VideosReport() {
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [remoteVideos, setRemoteVideos] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     try {
@@ -20,13 +32,102 @@ export default function VideosReport() {
     } catch { setIsAdmin(false) }
   }, [])
 
-  const videosData = [
+  /* Fetch real video progress for the current student when viewing own report. */
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('masar-user')) || null
+        const paramId = searchParams.get('id')
+        const viewingSelf = !paramId || paramId === u?.id
+        if (!u?.id || !viewingSelf) return
+
+        setLoading(true)
+        setLoadError('')
+
+        // Videos + parts (grade-scoped by RLS).
+        const videos = await listVideos()
+
+        // All progress rows for this student across those videos.
+        const { data: progressRows, error: progErr } = await supabase
+          .from('video_progress')
+          .select('video_id, part_id, views_used, last_watched_at')
+          .eq('student_id', u.id)
+        if (progErr) throw progErr
+
+        // Group progress by video_id.
+        const byVideo = new Map()
+        for (const p of (progressRows || [])) {
+          if (!byVideo.has(p.video_id)) byVideo.set(p.video_id, [])
+          byVideo.get(p.video_id).push(p)
+        }
+
+        const rows = videos.map((v) => {
+          const parts = v.video_parts || []
+          const progList = byVideo.get(v.id) || []
+          const viewedPartIds = new Set(
+            progList.filter((p) => (p.views_used || 0) > 0).map((p) => p.part_id)
+          )
+          const totalParts = parts.length || 1
+          const watchedParts = parts.filter((p) => viewedPartIds.has(p.id)).length
+          const progress = Math.round((watchedParts / totalParts) * 100)
+
+          let status = 'none'
+          let statusText = 'لم تتم المشاهدة'
+          if (progress >= 100) { status = 'completed'; statusText = 'تم المشاهدة بالكامل' }
+          else if (progress > 0) { status = 'partial'; statusText = `تم مشاهدة ${progress}%` }
+
+          const lastWatched = progList
+            .map((p) => p.last_watched_at)
+            .filter(Boolean)
+            .sort()
+            .pop()
+
+          const totalMins = parts.reduce((s, p) => s + (p.duration_minutes || 0), 0)
+            || v.duration_minutes || 0
+          const watchedMins = parts
+            .filter((p) => viewedPartIds.has(p.id))
+            .reduce((s, p) => s + (p.duration_minutes || 0), 0)
+
+          return {
+            id: v.id,
+            title: v.title,
+            subject: 'فيديو',
+            date: fmtDate(lastWatched),
+            status,
+            statusText,
+            progress,
+            watchedTime: `${watchedMins} دقيقة`,
+            totalTime: `${totalMins} دقيقة`,
+          }
+        })
+        if (!cancelled) setRemoteVideos(rows)
+      } catch (e) {
+        if (!cancelled) setLoadError(e.message || 'تعذّر تحميل التقرير')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [searchParams])
+
+  const mockVideosData = [
     { id: 1, title: 'مقدمة في البرمجة', subject: 'علوم الحاسب', date: '10/4/2024', status: 'completed', statusText: 'تم المشاهدة بالكامل', progress: 100, watchedTime: '45 دقيقة', totalTime: '45 دقيقة' },
     { id: 2, title: 'الدرس الثاني: المتغيرات', subject: 'علوم الحاسب', date: '12/4/2024', status: 'partial', statusText: 'تم مشاهدة النصف', progress: 50, watchedTime: '22 دقيقة', totalTime: '44 دقيقة' },
     { id: 3, title: 'الدرس الثالث: الدوال والطرق', subject: 'علوم الحاسب', date: '14/4/2024', status: 'completed', statusText: 'تم المشاهدة بالكامل', progress: 100, watchedTime: '50 دقيقة', totalTime: '50 دقيقة' },
     { id: 4, title: 'الدرس الرابع: التطبيق العملي', subject: 'علوم الحاسب', date: '15/4/2024', status: 'partial', statusText: 'تم مشاهدة 75%', progress: 75, watchedTime: '34 دقيقة', totalTime: '45 دقيقة' },
     { id: 5, title: 'الدرس الخامس: المصفوفات', subject: 'علوم الحاسب', date: '—', status: 'none', statusText: 'لم تتم المشاهدة', progress: 0, watchedTime: '0 دقيقة', totalTime: '40 دقيقة' },
   ]
+
+  /* Self view → Supabase-loaded rows (empty array while loading / when none);
+     admin impersonation view → mock placeholder data. */
+  let _selfView = true
+  try {
+    const _u = JSON.parse(localStorage.getItem('masar-user'))
+    const _param = searchParams.get('id')
+    _selfView = !_param || _param === _u?.id
+  } catch { /* ignore */ }
+  const videosData = _selfView ? (remoteVideos ?? []) : mockVideosData
 
   const filteredVideos =
     currentFilter === 'all'
@@ -39,18 +140,19 @@ export default function VideosReport() {
 
   useEffect(() => {
     const student = searchParams.get('student')
+    const idParam = searchParams.get('id')
     if (student) {
       setStudentName(student)
-      setStudentId('STD-' + Math.floor(1000 + Math.random() * 9000))
+      setStudentId(idParam || '')
     } else {
       try {
         const stored = localStorage.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
-          if (u?.name) setStudentName(u.name)
-          if (u?.id) setStudentId(u.id)
+          if (u?.name)  setStudentName(u.name)
+          if (u?.phone) setStudentId(u.phone)
         }
-      } catch {}
+      } catch { /* ignore */ }
     }
   }, [searchParams])
 
@@ -105,6 +207,17 @@ export default function VideosReport() {
           <h1>تقرير الفيديوهات</h1>
           <p>ملخص مشاهدات الفيديوهات التعليمية</p>
         </div>
+
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
+            <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل التقرير...
+          </div>
+        )}
+        {loadError && (
+          <div style={{ textAlign: 'center', padding: 16, color: '#c53030' }}>
+            <i className="fas fa-exclamation-triangle"></i> {loadError}
+          </div>
+        )}
 
         {/* Student Info Card */}
         {studentName && (

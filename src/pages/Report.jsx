@@ -56,12 +56,20 @@ function buildAllStudents() {
   return rows
 }
 
+/* Map DB grade enum → Arabic label shown in the UI */
+const GRADE_LABEL = {
+  'first-prep':  'الأول الإعدادي',
+  'second-prep': 'الثاني الإعدادي',
+  'third-prep':  'الثالث الإعدادي',
+}
+
 export default function Report() {
   const navigate = useNavigate()
   const [currentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('masar-user')) || null } catch { return null }
   })
   const isStudent = currentUser?.role !== 'admin'
+  const studentGradeLabel = GRADE_LABEL[currentUser?.grade] || ''
   const [studentInput, setStudentInput] = useState('')
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -136,23 +144,21 @@ export default function Report() {
 
   const navigateToReport = (type, student) => {
     const params = new URLSearchParams({
-      student: student.name,
-      id: student.id,
-      group: student.group,
-      prep: student.prep,
+      student: student.name || '',
+      id: student.id || '',
+      group: student.group || '',
+      prep: student.prep || '',
     }).toString()
     if (type === 'videos') navigate(`/videos-report?${params}`)
     else if (type === 'exams') navigate(`/exams-report?${params}`)
   }
 
+  /* Student viewing their own report: go in with no URL params.
+     The downstream pages read the logged-in profile from localStorage
+     and Supabase RLS scopes the data to auth.uid() automatically. */
   const goToMyReport = (type) => {
-    const me = {
-      name: currentUser?.name || 'الطالب',
-      id: currentUser?.id || currentUser?.studentId || '',
-      group: currentUser?.group || '',
-      prep: currentUser?.prep || currentUser?.grade || '',
-    }
-    navigateToReport(type, me)
+    if (type === 'videos') navigate('/videos-report')
+    else if (type === 'exams') navigate('/exams-report')
   }
 
   const initials = (name) =>
@@ -174,19 +180,24 @@ export default function Report() {
           </div>
 
           <div className="report-selected-chip" style={{ marginBottom: 24 }}>
-            <div className="report-selected-avatar">{initials(currentUser?.name || 'طالب')}</div>
+            <div className="report-selected-avatar">
+              {currentUser?.avatar_url
+                ? <img src={currentUser.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                : initials(currentUser?.name || 'طالب')}
+            </div>
             <div className="report-selected-info">
               <div className="report-selected-name">
                 <i className="fas fa-circle-check"></i>
                 {currentUser?.name || 'الطالب'}
               </div>
-              {(currentUser?.id || currentUser?.prep || currentUser?.group) && (
-                <div className="report-selected-meta">
-                  {currentUser?.id && <span><i className="fas fa-id-badge"></i> {currentUser.id}</span>}
-                  {(currentUser?.prep || currentUser?.grade) && <span><i className="fas fa-graduation-cap"></i> {currentUser.prep || currentUser.grade}</span>}
-                  {currentUser?.group && <span><i className="fas fa-users"></i> {currentUser.group}</span>}
-                </div>
-              )}
+              <div className="report-selected-meta">
+                {studentGradeLabel && (
+                  <span><i className="fas fa-graduation-cap"></i> {studentGradeLabel}</span>
+                )}
+                {currentUser?.phone && (
+                  <span><i className="fas fa-phone"></i> {currentUser.phone}</span>
+                )}
+              </div>
             </div>
           </div>
 

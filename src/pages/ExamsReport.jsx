@@ -1,6 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import './ExamsReport.css'
+
+/* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
+const fmtDate = (d) => {
+  if (!d) return '—'
+  const date = new Date(d)
+  if (isNaN(date)) return '—'
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
+}
+
+/* Rough subject inference from exam title — we don't store subject on exams
+   in the MVP schema, so we guess for the icon. */
+const inferSubject = (title = '') => {
+  const t = title.toLowerCase()
+  if (/(رياض|جبر|هندس|حساب)/.test(title)) return 'رياضيات'
+  if (/(علوم|فيزياء|كيمياء|أحياء)/.test(title)) return 'علوم'
+  return 'عام'
+}
 
 export default function ExamsReport() {
   const [searchParams] = useSearchParams()
@@ -13,6 +31,9 @@ export default function ExamsReport() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [remoteExams, setRemoteExams] = useState(null)   // null = not loaded, [] = empty
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     try {
@@ -21,7 +42,84 @@ export default function ExamsReport() {
     } catch { setIsAdmin(false) }
   }, [])
 
-  const examsData = [
+  /* Load real data when the current user is viewing their own report
+     (i.e. no ?student= / ?id= param OR the id matches the logged-in user). */
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('masar-user')) || null
+        const paramId = searchParams.get('id')
+        const viewingSelf = !paramId || paramId === u?.id
+        if (!u?.id || !viewingSelf) return
+
+        setLoading(true)
+        setLoadError('')
+
+        // All exams the student can see (RLS scopes by grade).
+        const allExams = await listExams()
+        // Only this student's submitted + in-flight attempts.
+        const attempts = await listAttemptsForStudent(u.id)
+
+        // Pick the best submitted attempt per exam.
+        const bestByExam = new Map()
+        const attemptsByExam = new Map()
+        for (const a of attempts) {
+          const key = a.exam_id
+          attemptsByExam.set(key, (attemptsByExam.get(key) || 0) + (a.submitted_at ? 1 : 0))
+          if (!a.submitted_at) continue
+          const prev = bestByExam.get(key)
+          if (!prev || (a.score || 0) > (prev.score || 0)) bestByExam.set(key, a)
+        }
+
+        const rows = allExams.map((ex, idx) => {
+          const best = bestByExam.get(ex.id) || null
+          const submittedCount = attemptsByExam.get(ex.id) || 0
+          const maxScore = ex.total_points || best?.max_score || 0
+          const scorePct = best && maxScore > 0
+            ? Math.round(((best.score || 0) / maxScore) * 100)
+            : 0
+          // Build review-friendly questions array from exam.questions + best.responses.
+          const qs = Array.isArray(ex.questions) ? ex.questions : []
+          const resp = Array.isArray(best?.responses) ? best.responses : []
+          const questions = qs.map((q, qi) => {
+            const r = resp[qi] || {}
+            return {
+              text: q.text || q.question || q.title || `سؤال ${qi + 1}`,
+              options: q.options || q.choices || [],
+              correct: typeof q.correct === 'number' ? q.correct
+                : typeof q.correct_index === 'number' ? q.correct_index
+                : typeof q.answer === 'number' ? q.answer : -1,
+              studentAnswer: typeof r.answer === 'number' ? r.answer
+                : typeof r.selected === 'number' ? r.selected : -1,
+            }
+          })
+          return {
+            id: ex.id,
+            title: ex.title,
+            subject: inferSubject(ex.title),
+            score: scorePct,
+            maxScore: 100,
+            status: best ? 'completed' : 'pending',
+            attempts: submittedCount,
+            maxAttempts: ex.max_attempts || 1,
+            duration: `${ex.duration_minutes} دقيقة`,
+            date: fmtDate(best?.submitted_at),
+            gradesRevealed: true,
+            questions,
+          }
+        })
+        if (!cancelled) setRemoteExams(rows)
+      } catch (e) {
+        if (!cancelled) setLoadError(e.message || 'تعذّر تحميل التقرير')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [searchParams])
+
+  const mockExamsData = [
     {
       id: 1,
       title: 'امتحان الرياضيات - الوحدة الأولى',
@@ -92,6 +190,17 @@ export default function ExamsReport() {
     },
   ]
 
+  /* If the URL carries a student id that isn't us, we're an admin impersonating
+     a search result — use mock placeholder data (no real per-student fetch yet).
+     Otherwise we're viewing our own report: use the Supabase-loaded rows. */
+  let _selfView = true
+  try {
+    const _u = JSON.parse(localStorage.getItem('masar-user'))
+    const _param = searchParams.get('id')
+    _selfView = !_param || _param === _u?.id
+  } catch { /* ignore */ }
+  const examsData = _selfView ? (remoteExams ?? []) : mockExamsData
+
   const filteredExams =
     currentFilter === 'all'
       ? examsData
@@ -105,18 +214,19 @@ export default function ExamsReport() {
 
   useEffect(() => {
     const student = searchParams.get('student')
+    const idParam  = searchParams.get('id')
     if (student) {
       setStudentName(student)
-      setStudentId('STD-' + Math.floor(1000 + Math.random() * 9000))
+      setStudentId(idParam || '')
     } else {
       try {
         const stored = localStorage.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
-          if (u?.name) setStudentName(u.name)
-          if (u?.id) setStudentId(u.id)
+          if (u?.name)  setStudentName(u.name)
+          if (u?.phone) setStudentId(u.phone)   // phone is the public-facing student id
         }
-      } catch {}
+      } catch { /* ignore */ }
     }
   }, [searchParams])
 
@@ -179,6 +289,17 @@ export default function ExamsReport() {
           <h1>تقرير الامتحانات</h1>
           <p>سجل الامتحانات والنتائج التفصيلية</p>
         </div>
+
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
+            <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل التقرير...
+          </div>
+        )}
+        {loadError && (
+          <div style={{ textAlign: 'center', padding: 16, color: '#c53030' }}>
+            <i className="fas fa-exclamation-triangle"></i> {loadError}
+          </div>
+        )}
 
         {/* Student Info Card */}
         {studentName && (

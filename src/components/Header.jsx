@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { authAPI } from '../services/api'
+import { authAPI } from '@backend/authApi'
 import Notifications from './Notifications'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
-import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '../services/examsApi'
+import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
 
 const PREP_META = {
   first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },

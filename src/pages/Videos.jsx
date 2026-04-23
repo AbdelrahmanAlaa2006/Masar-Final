@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
-import { listVideos, deleteVideo } from '../services/videosApi'
+import { listVideos, deleteVideo } from '@backend/videosApi'
 import {
   listQuizAttemptsForVideo,
   listProgressForVideo,
   incrementPartView,
-} from '../services/progressApi'
+} from '@backend/progressApi'
 
 const GRADES = [
   { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },

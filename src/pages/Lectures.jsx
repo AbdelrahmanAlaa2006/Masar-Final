@@ -8,7 +8,7 @@ import {
   deleteLecture,
   uiToDbGrade,
   dbToUiGrade,
-} from '../services/lecturesApi'
+} from '@backend/lecturesApi'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.

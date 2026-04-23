@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
-import { getExam, startAttempt, submitAttempt } from '../services/examsApi'
+import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
 
 export default function ExamTaking() {
   const navigate = useNavigate()

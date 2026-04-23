@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authAPI, tokenAPI } from '../services/api'
+import { authAPI, tokenAPI } from '@backend/authApi'
 import './Login.css'
 
 const translations = {

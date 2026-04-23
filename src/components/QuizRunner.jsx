@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import './QuizRunner.css'
-import { recordQuizAttempt } from '../services/progressApi'
+import { recordQuizAttempt } from '@backend/progressApi'
 
 /**
  * Quiz gate modal. Runs a quiz inline; calls onPass when the student meets

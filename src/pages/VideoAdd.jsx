@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { parseQuestionsText, validateQuestions, totalPoints } from '../utils/parseQuestions'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
-import { createVideo } from '../services/videosApi'
+import { createVideo } from '@backend/videosApi'
 
 const makeQuiz = () => ({
   localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
-import { createExam, uiToDbGrade } from '../services/examsApi'
+import { createExam, uiToDbGrade } from '@backend/examsApi'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
