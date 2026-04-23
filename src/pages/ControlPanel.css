@@ -125,6 +125,7 @@
 }
 .cp-accent-blue .cp-section-icon { background: linear-gradient(135deg, #4facfe, #00a3ff); }
 .cp-accent-orange .cp-section-icon { background: linear-gradient(135deg, #f6ad55, #dd6b20); }
+.cp-accent-purple .cp-section-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
 
 .cp-section-body { flex: 1; min-width: 0; }
 .cp-section-body h3 {

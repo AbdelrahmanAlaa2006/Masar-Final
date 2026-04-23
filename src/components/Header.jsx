@@ -19,9 +19,9 @@ const NAV_ITEMS_BASE = [
   { to: '/videos',   label: 'الفيديوهات', icon: 'fa-circle-play' },
   { to: '/exams',    label: 'الامتحانات', icon: 'fa-file-pen' },
   { to: '/lectures', label: 'المحاضرات',  icon: 'fa-book-open' },
+  { to: '/report',   label: 'التقارير',   icon: 'fa-chart-line' },
 ]
 const ADMIN_ITEMS = [
-  { to: '/report',        label: 'التقارير',   icon: 'fa-chart-line' },
   { to: '/control-panel', label: 'لوحة التحكم', icon: 'fa-sliders' },
 ]
 

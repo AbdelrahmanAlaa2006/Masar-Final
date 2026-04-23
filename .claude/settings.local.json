@@ -1,11 +1,7 @@
 {
   "permissions": {
     "allow": [
-<<<<<<< HEAD
       "Bash(npm run *)",
-=======
-      "Bash(npm run:*)",
->>>>>>> e333d28e90a20fa0e36929e92f294deb17586fa0
       "Bash(npx vite *)"
     ]
   }

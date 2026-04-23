@@ -17,7 +17,14 @@ export default function VideosReport() {
   const [studentName, setStudentName] = useState('')
   const [studentId, setStudentId] = useState('')
   const [currentFilter, setCurrentFilter] = useState('all')
-  const [viewMode, setViewMode] = useState('table')
+  // Students never see the detailed table view — force cards.
+  const initialViewMode = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      return u?.role === 'admin' ? 'table' : 'cards'
+    } catch { return 'cards' }
+  })()
+  const [viewMode, setViewMode] = useState(initialViewMode)
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -295,22 +302,24 @@ export default function VideosReport() {
               </button>
             ))}
           </div>
-          <div className="vr-view-toggle">
-            <button className={`vr-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
-              <i className="fas fa-table"></i> جدول
-            </button>
-            <button className={`vr-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
-              <i className="fas fa-th-large"></i> بطاقات
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="vr-view-toggle">
+              <button className={`vr-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
+                <i className="fas fa-table"></i> جدول
+              </button>
+              <button className={`vr-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
+                <i className="fas fa-th-large"></i> بطاقات
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="vr-results-count">
           عرض <strong>{filteredVideos.length}</strong> فيديو من أصل {total}
         </div>
 
-        {/* TABLE VIEW */}
-        {viewMode === 'table' && (
+        {/* TABLE VIEW — admin only (the detailed report card) */}
+        {isAdmin && viewMode === 'table' && (
           <div className="vr-card" id="vr-reportTable">
             <div className="vr-table-header">
               <h2 className="vr-card-title"><i className="fas fa-clipboard-list"></i> تقرير المشاهدة التفصيلي</h2>

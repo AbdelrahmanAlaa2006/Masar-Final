@@ -288,6 +288,26 @@ export default function ExamTaking() {
               )}
             </div>
           </>
+        ) : exam.reveal_grades === false ? (
+          /* Admin hasn't released results yet — don't leak the score. */
+          <div className="et-finished">
+            <div className="et-finished-icon">🔒</div>
+            <h2 className="et-finished-title">تم تسليم الامتحان بنجاح!</h2>
+            <p className="et-finished-sub">
+              إجاباتك تم حفظها. ستظهر درجتك عند إعلان المدرس النتائج في تقرير الامتحانات.
+            </p>
+            <div className="et-score-box">
+              <div className="et-score-item">
+                <span className="et-score-val">{answeredCount}/{questions.length}</span>
+                <span className="et-score-lbl">أجبت</span>
+              </div>
+              <div className="et-score-divider" />
+              <div className="et-score-item">
+                <span className="et-score-val">—</span>
+                <span className="et-score-lbl">النتيجة قيد المراجعة</span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="et-finished">
             <div className="et-finished-icon">🎉</div>

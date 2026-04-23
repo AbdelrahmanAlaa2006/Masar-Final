@@ -9,10 +9,22 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 export async function listExams() {
   const { data, error } = await supabase
     .from('exams')
-    .select('id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, created_at')
+    .select('id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, reveal_grades, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
+}
+
+/* Admin-only: flip the reveal_grades flag on an exam. Enforced by RLS. */
+export async function setExamRevealGrades(examId, reveal) {
+  const { data, error } = await supabase
+    .from('exams')
+    .update({ reveal_grades: !!reveal })
+    .eq('id', examId)
+    .select('id, reveal_grades')
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function getExam(id) {
@@ -96,7 +108,7 @@ export async function submitAttempt(attemptId, { score, max_score, responses }) 
 export async function listAttemptsForStudent(studentId) {
   const { data, error } = await supabase
     .from('exam_attempts')
-    .select('*, exams ( id, title, number, total_points, duration_minutes )')
+    .select('*, exams ( id, title, number, total_points, duration_minutes, reveal_grades )')
     .eq('student_id', studentId)
     .order('submitted_at', { ascending: false, nullsFirst: false })
   if (error) throw error

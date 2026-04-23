@@ -9,6 +9,7 @@
   color: #e2e8f0;
   position: relative;
   isolation: isolate;
+  z-index: 1;
 }
 
 /* ── animated gradient strip ── */

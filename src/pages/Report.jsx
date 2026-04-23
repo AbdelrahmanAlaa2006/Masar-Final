@@ -1,60 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { listStudents } from '@backend/profilesApi'
 import './Report.css'
-
-/* Mock student database — same structure used in group reports.
-   In production, replace with a fetch from Supabase. */
-const studentsByGroup = {
-  'مجموعة السبت 10ص': [
-    { name: 'أحمد علي محمد', id: 'ST001' },
-    { name: 'سارة محمد أحمد', id: 'ST002' },
-    { name: 'محمد أحمد', id: 'ST003' },
-    { name: 'فاطمة حسن', id: 'ST004' },
-  ],
-  'مجموعة الثلاثاء 3م': [
-    { name: 'محمود عبد الله', id: 'ST005' },
-    { name: 'منى حسين', id: 'ST006' },
-    { name: 'يوسف إبراهيم', id: 'ST007' },
-  ],
-  'مجموعة الخميس 5م': [
-    { name: 'محمد حسين', id: 'ST008' },
-    { name: 'نور الدين عمر', id: 'ST009' },
-    { name: 'هدى مصطفى', id: 'ST010' },
-  ],
-  'مجموعة الأحد 11ص': [
-    { name: 'كريم سامي', id: 'ST011' },
-    { name: 'ليلى أشرف', id: 'ST012' },
-    { name: 'عمر خالد', id: 'ST013' },
-  ],
-  'مجموعة الإثنين 4م': [
-    { name: 'مريم طارق', id: 'ST014' },
-    { name: 'حسن وليد', id: 'ST015' },
-  ],
-  'مجموعة الأربعاء 6م': [
-    { name: 'دينا فؤاد', id: 'ST016' },
-    { name: 'خالد رضا', id: 'ST017' },
-    { name: 'إيمان سعيد', id: 'ST018' },
-  ],
-}
-
-const groupsByGrade = {
-  'الأول الإعدادي': ['مجموعة السبت 10ص', 'مجموعة الثلاثاء 3م', 'مجموعة الخميس 5م'],
-  'الثاني الإعدادي': ['مجموعة الأحد 11ص', 'مجموعة الإثنين 4م'],
-  'الثالث الإعدادي': ['مجموعة الأربعاء 6م'],
-}
-
-/* Flatten into one searchable list: { name, id, group, prep } */
-function buildAllStudents() {
-  const rows = []
-  Object.entries(groupsByGrade).forEach(([prep, groups]) => {
-    groups.forEach((group) => {
-      ;(studentsByGroup[group] || []).forEach((s) => {
-        rows.push({ ...s, group, prep })
-      })
-    })
-  })
-  return rows
-}
 
 /* Map DB grade enum → Arabic label shown in the UI */
 const GRADE_LABEL = {
@@ -79,7 +27,39 @@ export default function Report() {
   const [pickerQuery, setPickerQuery] = useState('')
   const boxRef = useRef(null)
 
-  const allStudents = useMemo(() => buildAllStudents(), [])
+  /* Real students from Supabase (admin only — RLS lets admins read all profiles).
+     We shape them as { name, id, prep, group, phone, avatar_url } to stay
+     compatible with the existing UI that renders prep/group meta. There is
+     no "group" concept in the MVP schema, so we leave it blank. */
+  const [allStudents, setAllStudents] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError] = useState('')
+
+  useEffect(() => {
+    if (isStudent) return           // students don't need the roster
+    let cancelled = false
+    ;(async () => {
+      try {
+        setStudentsLoading(true)
+        setStudentsError('')
+        const rows = await listStudents()
+        if (cancelled) return
+        setAllStudents(rows.map((r) => ({
+          id:         r.id,
+          name:       r.name || '—',
+          phone:      r.phone || '',
+          prep:       GRADE_LABEL[r.grade] || '—',
+          group:      '',           // no groups in the current schema
+          avatar_url: r.avatar_url,
+        })))
+      } catch (e) {
+        if (!cancelled) setStudentsError(e.message || 'تعذّر تحميل قائمة الطلاب')
+      } finally {
+        if (!cancelled) setStudentsLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isStudent])
 
   /* close on outside click */
   useEffect(() => {
@@ -280,6 +260,17 @@ export default function Report() {
           <p>ابحث عن طالب واستعرض تقاريره الدراسية بالتفصيل</p>
         </div>
 
+        {studentsLoading && (
+          <div style={{ textAlign: 'center', padding: 12, color: '#718096' }}>
+            <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل قائمة الطلاب...
+          </div>
+        )}
+        {studentsError && (
+          <div style={{ textAlign: 'center', padding: 12, color: '#c53030' }}>
+            <i className="fas fa-exclamation-triangle"></i> {studentsError}
+          </div>
+        )}
+
         <div className="report-search-box" ref={boxRef}>
           <div className="report-search-row">
             <div className="report-search-field">
@@ -437,7 +428,7 @@ export default function Report() {
       </div>
 
       {/* ── Student Picker Modal (replaces browser alert) ── */}
-      {pickerOpen && (
+      {pickerOpen && createPortal(
         <div
           className="rp-modal-overlay"
           onClick={() => setPickerOpen(false)}
@@ -511,7 +502,8 @@ export default function Report() {
               )}
             </ul>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </main>
   )

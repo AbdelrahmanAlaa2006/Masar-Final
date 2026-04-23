@@ -26,7 +26,14 @@ export default function ExamsReport() {
   const [studentName, setStudentName] = useState('')
   const [studentId, setStudentId] = useState('')
   const [currentFilter, setCurrentFilter] = useState('all')
-  const [viewMode, setViewMode] = useState('table')
+  // Students never see the detailed table view — force cards.
+  const initialViewMode = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      return u?.role === 'admin' ? 'table' : 'cards'
+    } catch { return 'cards' }
+  })()
+  const [viewMode, setViewMode] = useState(initialViewMode)
   const [selectedExam, setSelectedExam] = useState(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -105,7 +112,9 @@ export default function ExamsReport() {
             maxAttempts: ex.max_attempts || 1,
             duration: `${ex.duration_minutes} دقيقة`,
             date: fmtDate(best?.submitted_at),
-            gradesRevealed: true,
+            /* The admin-controlled per-exam reveal flag. When false the
+               student sees "الدرجات لم تُعلَن بعد" instead of a score. */
+            gradesRevealed: ex.reveal_grades !== false,
             questions,
           }
         })
@@ -383,22 +392,24 @@ export default function ExamsReport() {
             ))}
           </div>
 
-          <div className="er-view-toggle">
-            <button className={`er-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
-              <i className="fas fa-table"></i> جدول
-            </button>
-            <button className={`er-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
-              <i className="fas fa-th-large"></i> بطاقات
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="er-view-toggle">
+              <button className={`er-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
+                <i className="fas fa-table"></i> جدول
+              </button>
+              <button className={`er-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
+                <i className="fas fa-th-large"></i> بطاقات
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="er-results-count">
           عرض <strong>{filteredExams.length}</strong> امتحان من أصل {total}
         </div>
 
-        {/* TABLE VIEW */}
-        {viewMode === 'table' && (
+        {/* TABLE VIEW — admin only (the detailed report card) */}
+        {isAdmin && viewMode === 'table' && (
           <div className="er-card" id="er-reportTable">
             <div className="er-table-header">
               <h2 className="er-card-title"><i className="fas fa-clipboard-list"></i> تقرير النتائج التفصيلي</h2>
