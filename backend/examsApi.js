@@ -66,13 +66,21 @@ export async function deleteExam(id) {
 // How many times this student has *submitted* this exam. In-flight attempts
 // (submitted_at is null) don't count — so a page refresh mid-exam doesn't
 // burn an attempt.
-export async function countSubmittedAttempts(examId, studentId) {
-  const { count, error } = await supabase
+//
+// `sinceIso` optionally restricts the count to attempts submitted at or
+// after that timestamp. We use it when an admin override exists: the
+// override's updated_at acts as a "reset point" so each time the admin
+// re-saves the bonus, the student's historical attempts stop counting
+// against the new allowance.
+export async function countSubmittedAttempts(examId, studentId, sinceIso = null) {
+  let q = supabase
     .from('exam_attempts')
     .select('*', { count: 'exact', head: true })
     .eq('exam_id', examId)
     .eq('student_id', studentId)
     .not('submitted_at', 'is', null)
+  if (sinceIso) q = q.gte('submitted_at', sinceIso)
+  const { count, error } = await q
   if (error) throw error
   return count || 0
 }

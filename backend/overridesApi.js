@@ -66,7 +66,7 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
 export async function listEffectiveOverrides({ studentId, grade, itemType }) {
   let q = supabase
     .from(TABLE)
-    .select('scope, target_id, item_type, item_id, allowed, attempts')
+    .select('scope, target_id, item_type, item_id, allowed, attempts, updated_at')
     .eq('item_type', itemType)
     .or(
       `and(scope.eq.student,target_id.eq.${studentId}),and(scope.eq.prep,target_id.eq.${grade})`
@@ -88,7 +88,13 @@ export function reduceEffective(rows) {
   }
   const out = new Map()
   for (const [k, r] of byItem) {
-    out.set(k, { allowed: r.allowed !== false, attempts: r.attempts ?? null })
+    out.set(k, {
+      allowed: r.allowed !== false,
+      attempts: r.attempts ?? null,
+      // updated_at doubles as a "reset point" — attempts submitted before
+      // this moment no longer count against the newly-granted allowance.
+      updatedAt: r.updated_at || null,
+    })
   }
   return out
 }

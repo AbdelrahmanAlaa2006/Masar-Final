@@ -7,6 +7,7 @@ import {
   upsertOverride,
   deleteOverride,
 } from '@backend/overridesApi'
+import { createNotification } from '@backend/notificationsApi'
 import './ControlPanel.css'
 
 const GRADE_LABEL = {
@@ -16,8 +17,10 @@ const GRADE_LABEL = {
 }
 const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
-const DEFAULT_VIDEO_ATTEMPTS = 3
-const DEFAULT_EXAM_ATTEMPTS = 1
+// The stepper now represents *bonus* tries granted on top of the item's
+// default — so "0" means "no extra tries" (the item's own default applies).
+const DEFAULT_VIDEO_ATTEMPTS = 0
+const DEFAULT_EXAM_ATTEMPTS = 0
 
 const initials = (name = '') =>
   name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('')
@@ -710,7 +713,7 @@ function ItemsManager({
           <i className="fas fa-ban"></i> منع الكل
         </button>
         <button className="cp-btn cp-btn-ghost" onClick={onBulkAddAttempt}>
-          <i className="fas fa-plus"></i> +1 محاولة للكل
+          <i className="fas fa-plus"></i> +1 محاولة إضافية للكل
         </button>
       </div>
 
@@ -741,6 +744,34 @@ function ItemsManager({
 }
 
 function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }) {
+  // Draft vs saved: the stepper now edits a local draft until the admin
+  // clicks Save. This makes the "I changed something" vs "I committed it"
+  // distinction visible, which matches how admins expect form controls
+  // to behave (and avoids the previous every-keystroke persistence).
+  const [draft, setDraft] = useState(state.attempts)
+  const [saving, setSaving] = useState(false)
+
+  // If the saved value changes (e.g. from a bulk action, reset, or a
+  // fresh load), reset the draft to match — but only when the user has
+  // no pending in-progress edit.
+  useEffect(() => {
+    setDraft(state.attempts)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.attempts])
+
+  const dirty = Number(draft) !== Number(state.attempts)
+
+  const setDraftClamped = (v) => {
+    const n = Math.max(0, Math.min(99, parseInt(v, 10) || 0))
+    setDraft(n)
+  }
+
+  const handleSave = async () => {
+    if (!dirty) return
+    setSaving(true)
+    try { await onAttempts(draft) } finally { setSaving(false) }
+  }
+
   return (
     <li className={`cp-item ${state.allowed ? '' : 'is-blocked'}`}>
       <div className="cp-item-icon">
@@ -758,34 +789,53 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }
             <i className={`fas ${state.allowed ? 'fa-circle-check' : 'fa-ban'}`}></i>
             {state.allowed ? 'مسموح' : 'محظور'}
           </span>
+          {dirty && (
+            <span className="cp-status-pill cp-status-dirty" style={{ background: '#fef3c7', color: '#92400e' }}>
+              <i className="fas fa-pen"></i>
+              تغييرات غير محفوظة
+            </span>
+          )}
         </div>
       </div>
 
       <div className="cp-item-controls">
-        {/* Allow toggle */}
+        {/* Allow toggle (saves instantly — it's a boolean) */}
         <label className="cp-switch" title={state.allowed ? 'مسموح بالوصول' : 'الوصول محظور'}>
           <input type="checkbox" checked={state.allowed} onChange={onToggle} />
           <span className="cp-switch-slider"></span>
         </label>
 
-        {/* Attempts stepper */}
-        <div className="cp-stepper" title="عدد المحاولات المسموح بها">
-          <button className="cp-stepper-btn" onClick={() => onBump(-1)} aria-label="إنقاص">
+        {/* Bonus-attempts stepper — draft until Save is clicked */}
+        <div className="cp-stepper" title="محاولات إضافية فوق الإعداد الافتراضي">
+          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft - 1)} aria-label="إنقاص">
             <i className="fas fa-minus"></i>
           </button>
           <input
             type="number"
             min="0"
             max="99"
-            value={state.attempts}
-            onChange={(e) => onAttempts(e.target.value)}
+            value={draft}
+            onChange={(e) => setDraftClamped(e.target.value)}
             className="cp-stepper-input"
           />
-          <button className="cp-stepper-btn" onClick={() => onBump(1)} aria-label="زيادة">
+          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft + 1)} aria-label="زيادة">
             <i className="fas fa-plus"></i>
           </button>
-          <span className="cp-stepper-lbl">محاولة</span>
+          <span className="cp-stepper-lbl">محاولات إضافية</span>
         </div>
+
+        <button
+          className={`cp-btn ${dirty ? 'cp-btn-success' : 'cp-btn-ghost'}`}
+          onClick={handleSave}
+          disabled={!dirty || saving}
+          title="حفظ عدد المحاولات الإضافية"
+        >
+          {saving ? (
+            <><i className="fas fa-spinner fa-spin"></i> جارٍ الحفظ...</>
+          ) : (
+            <><i className="fas fa-floppy-disk"></i> حفظ</>
+          )}
+        </button>
 
         <button className="cp-icon-btn" onClick={onReset} title="استرجاع الإعدادات الافتراضية">
           <i className="fas fa-rotate-left"></i>
@@ -796,25 +846,54 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }
 }
 
 /* ──────────────────────────────────────────────────────────────
-   RevealPanel — lists real exams and lets the admin toggle the
-   per-exam reveal_grades flag straight in Supabase.
+   RevealPanel — admin reveals an exam's results to one of three
+   audiences:
+
+     • all students    → flips exams.reveal_grades on the row itself
+                         (the global flag), and posts an "all" notification.
+     • a specific grade → upserts an access_override row
+                         (scope='prep', item_type='exam_reveal', allowed=true)
+                         and posts a grade-scoped notification.
+     • a specific student → upserts an override row
+                         (scope='student', item_type='exam_reveal', allowed=true)
+                         and posts a student-scoped notification.
+
+   Hiding is the inverse: clear the global flag / delete the override,
+   no notification.
    ────────────────────────────────────────────────────────────── */
 function RevealPanel({ onBack, flash }) {
-  const [rows, setRows]       = useState([])
+  // Audience the reveal action targets.
+  //   'all'     → flips exams.reveal_grades (global toggle)
+  //   'grade'   → upsert access_overrides scope='prep',  target_id=grade
+  //   'student' → upsert access_overrides scope='student', target_id=studentId
+  const [audience, setAudience] = useState('all')
+  const [grade, setGrade]       = useState('first-prep')
+  const [studentId, setStudentId] = useState('')
+
+  const [exams, setExams]       = useState([])
+  const [students, setStudents] = useState([])
+  // Maps examId -> {allowed} for the currently-selected target (grade/student)
+  const [overrides, setOverrides] = useState(new Map())
+
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
   const [busyId, setBusyId]   = useState(null)
   const [query, setQuery]     = useState('')
+  const [studentQuery, setStudentQuery] = useState('')
 
+  // Load exams + students once
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         setLoading(true)
-        const data = await listExams()
-        if (!cancelled) setRows(data)
+        const [ex, st] = await Promise.all([listExams(), listStudents()])
+        if (!cancelled) {
+          setExams(ex)
+          setStudents(st)
+        }
       } catch (e) {
-        if (!cancelled) setError(e.message || 'تعذّر تحميل الامتحانات')
+        if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -822,24 +901,133 @@ function RevealPanel({ onBack, flash }) {
     return () => { cancelled = true }
   }, [])
 
+  // When audience/target changes, fetch existing overrides for that target.
+  useEffect(() => {
+    if (audience === 'all') { setOverrides(new Map()); return }
+    const target = audience === 'grade' ? grade : studentId
+    if (!target) { setOverrides(new Map()); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const map = await listOverridesForTarget(
+          audience === 'grade' ? 'prep' : 'student',
+          target,
+          'exam_reveal'
+        )
+        if (cancelled) return
+        // listOverridesForTarget keys by "item_type:item_id" — unwrap.
+        const out = new Map()
+        for (const [k, v] of map) {
+          const [, id] = k.split(':')
+          out.set(id, v)
+        }
+        setOverrides(out)
+      } catch { if (!cancelled) setOverrides(new Map()) }
+    })()
+    return () => { cancelled = true }
+  }, [audience, grade, studentId])
+
+  // Effective revealed state per exam under the current audience.
+  const isRevealed = (ex) => {
+    if (audience === 'all') return !!ex.reveal_grades
+    // If the global flag is on, it's revealed for everyone regardless of overrides.
+    if (ex.reveal_grades === true) return true
+    const o = overrides.get(ex.id)
+    return !!o && o.allowed !== false
+  }
+
+  // List of exams relevant to this audience (grade-filtered when grade/student).
+  const targetGrade = audience === 'grade'
+    ? grade
+    : audience === 'student'
+      ? (students.find((s) => s.id === studentId)?.grade || null)
+      : null
+
+  const baseExams = useMemo(() => {
+    if (!targetGrade) return exams
+    return exams.filter((e) => e.grade === targetGrade)
+  }, [exams, targetGrade])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) =>
+    if (!q) return baseExams
+    return baseExams.filter((r) =>
       [r.title, r.number, GRADE_LABEL[r.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
     )
-  }, [rows, query])
+  }, [baseExams, query])
+
+  const filteredStudents = useMemo(() => {
+    const q = studentQuery.trim().toLowerCase()
+    if (!q) return students
+    return students.filter((s) =>
+      [s.name, s.phone, GRADE_LABEL[s.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [students, studentQuery])
+
+  const selectedStudent = students.find((s) => s.id === studentId) || null
+
+  // Build a human-friendly "audience label" for flashes + notification titles.
+  const audienceLabel = () => {
+    if (audience === 'all') return 'كل الطلاب'
+    if (audience === 'grade') return GRADE_LABEL[grade] || grade
+    if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
+    return ''
+  }
+
+  // Post a notification to match the audience so students see a real entry
+  // in their notification bell the moment the exam is revealed.
+  const notify = async (exam) => {
+    const title = `تم إعلان نتيجة: ${exam.title}`
+    const message = `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.`
+    try {
+      const me = JSON.parse(localStorage.getItem('masar-user') || 'null')
+      const createdBy = me?.id || null
+      if (audience === 'all') {
+        await createNotification({ title, message, level: 'success', scope: 'all',
+          meta: { examId: exam.id, kind: 'reveal' }, createdBy })
+      } else if (audience === 'grade') {
+        await createNotification({ title, message, level: 'success', scope: 'grade',
+          targetGrade: grade, meta: { examId: exam.id, kind: 'reveal' }, createdBy })
+      } else if (audience === 'student' && studentId) {
+        await createNotification({ title, message, level: 'success', scope: 'student',
+          targetStudent: studentId, meta: { examId: exam.id, kind: 'reveal' }, createdBy })
+      }
+    } catch { /* non-fatal — reveal already saved */ }
+  }
 
   const handleToggle = async (exam) => {
-    const next = !exam.reveal_grades
+    const currentlyRevealed = isRevealed(exam)
+    const next = !currentlyRevealed
     setBusyId(exam.id)
     try {
-      await setExamRevealGrades(exam.id, next)
-      setRows((prev) => prev.map((r) => r.id === exam.id ? { ...r, reveal_grades: next } : r))
+      if (audience === 'all') {
+        await setExamRevealGrades(exam.id, next)
+        setExams((prev) => prev.map((r) => r.id === exam.id ? { ...r, reveal_grades: next } : r))
+      } else {
+        const scope    = audience === 'grade' ? 'prep' : 'student'
+        const targetId = audience === 'grade' ? grade  : studentId
+        if (!targetId) { flash('اختر المرحلة أو الطالب أولاً', 'warning'); return }
+
+        if (next) {
+          await upsertOverride({
+            scope, targetId, itemType: 'exam_reveal',
+            itemId: exam.id, allowed: true,
+          })
+          setOverrides((p) => { const n = new Map(p); n.set(exam.id, { allowed: true, attempts: null }); return n })
+        } else {
+          await deleteOverride({
+            scope, targetId, itemType: 'exam_reveal', itemId: exam.id,
+          })
+          setOverrides((p) => { const n = new Map(p); n.delete(exam.id); return n })
+        }
+      }
+
+      if (next) await notify(exam)
+
       flash(
         next
-          ? `تم إظهار نتائج: ${exam.title} للطلاب`
-          : `تم إخفاء نتائج: ${exam.title}`,
+          ? `تم إظهار نتائج: ${exam.title} — ${audienceLabel()}`
+          : `تم إخفاء نتائج: ${exam.title} — ${audienceLabel()}`,
         next ? 'success' : 'warning'
       )
     } catch (e) {
@@ -849,8 +1037,11 @@ function RevealPanel({ onBack, flash }) {
     }
   }
 
-  const revealedCount = rows.filter((r) => r.reveal_grades).length
-  const hiddenCount   = rows.length - revealedCount
+  const revealedCount = filtered.filter(isRevealed).length
+  const hiddenCount   = filtered.length - revealedCount
+  const canInteract   = audience === 'all'
+                     || (audience === 'grade' && !!grade)
+                     || (audience === 'student' && !!studentId)
 
   return (
     <section className="cp-panel">
@@ -860,49 +1051,128 @@ function RevealPanel({ onBack, flash }) {
 
       <div className="cp-panel-header">
         <h2><i className="fas fa-eye"></i> إظهار نتائج الامتحانات</h2>
-        <p>تحكّم في ظهور درجات كل امتحان للطلاب في تقاريرهم الفردية.</p>
+        <p>اختر الجمهور أولاً، ثم فعِّل ظهور النتائج لكل امتحان — وسيصل إشعار تلقائي للطلاب.</p>
       </div>
+
+      {/* Audience selector */}
+      <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
+        {[
+          { id: 'all',     icon: 'fa-users',     label: 'كل الطلاب' },
+          { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
+          { id: 'student', icon: 'fa-user',      label: 'طالب محدد' },
+        ].map((opt) => (
+          <button
+            key={opt.id}
+            className={`cp-btn ${audience === opt.id ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            onClick={() => setAudience(opt.id)}
+          >
+            <i className={`fas ${opt.icon}`}></i> {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Grade dropdown */}
+      {audience === 'grade' && (
+        <div className="cp-search" style={{ marginTop: 12 }}>
+          <i className="fas fa-graduation-cap"></i>
+          <select value={grade} onChange={(e) => setGrade(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15 }}>
+            <option value="first-prep">الأول الإعدادي</option>
+            <option value="second-prep">الثاني الإعدادي</option>
+            <option value="third-prep">الثالث الإعدادي</option>
+          </select>
+        </div>
+      )}
+
+      {/* Student picker */}
+      {audience === 'student' && (
+        <div style={{ marginTop: 12 }}>
+          {selectedStudent ? (
+            <div className="cp-search" style={{ background: '#eef2ff' }}>
+              <i className="fas fa-user-check"></i>
+              <span style={{ flex: 1, fontWeight: 600 }}>
+                {selectedStudent.name} — {GRADE_LABEL[selectedStudent.grade] || '—'}
+              </span>
+              <button className="cp-search-clear" onClick={() => setStudentId('')}>
+                <i className="fas fa-xmark"></i>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="cp-search">
+                <i className="fas fa-search"></i>
+                <input
+                  type="text"
+                  placeholder="ابحث عن طالب بالاسم أو الهاتف..."
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                />
+              </div>
+              <ul className="cp-items" style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto' }}>
+                {filteredStudents.slice(0, 50).map((s) => (
+                  <li key={s.id} className="cp-item" style={{ cursor: 'pointer' }} onClick={() => setStudentId(s.id)}>
+                    <div className="cp-item-icon"><i className="fas fa-user"></i></div>
+                    <div className="cp-item-body">
+                      <div className="cp-item-title"><span>{s.name}</span></div>
+                      <div className="cp-item-meta">
+                        <span><i className="fas fa-phone"></i> {s.phone || '—'}</span>
+                        <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[s.grade] || '—'}</span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {filteredStudents.length === 0 && (
+                  <div className="cp-empty"><i className="fas fa-inbox"></i><p>لا يوجد طلاب مطابقون</p></div>
+                )}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
-      <div className="cp-stats-row">
-        <div className="cp-stat">
-          <i className="fas fa-file-alt"></i>
-          <div>
-            <div className="cp-stat-val">{rows.length}</div>
-            <div className="cp-stat-lbl">امتحانات</div>
+      {canInteract && (
+        <div className="cp-stats-row">
+          <div className="cp-stat">
+            <i className="fas fa-file-alt"></i>
+            <div>
+              <div className="cp-stat-val">{filtered.length}</div>
+              <div className="cp-stat-lbl">امتحانات</div>
+            </div>
+          </div>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-eye"></i>
+            <div>
+              <div className="cp-stat-val">{revealedCount}</div>
+              <div className="cp-stat-lbl">نتائج معلنة</div>
+            </div>
+          </div>
+          <div className="cp-stat cp-stat-bad">
+            <i className="fas fa-eye-slash"></i>
+            <div>
+              <div className="cp-stat-val">{hiddenCount}</div>
+              <div className="cp-stat-lbl">نتائج مخفية</div>
+            </div>
           </div>
         </div>
-        <div className="cp-stat cp-stat-info">
-          <i className="fas fa-eye"></i>
-          <div>
-            <div className="cp-stat-val">{revealedCount}</div>
-            <div className="cp-stat-lbl">نتائج معلنة</div>
-          </div>
-        </div>
-        <div className="cp-stat cp-stat-bad">
-          <i className="fas fa-eye-slash"></i>
-          <div>
-            <div className="cp-stat-val">{hiddenCount}</div>
-            <div className="cp-stat-lbl">نتائج مخفية</div>
-          </div>
-        </div>
-      </div>
+      )}
 
-      {/* Search */}
-      <div className="cp-search">
-        <i className="fas fa-search"></i>
-        <input
-          type="text"
-          placeholder="ابحث باسم الامتحان أو المرحلة..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {query && (
-          <button className="cp-search-clear" onClick={() => setQuery('')} aria-label="مسح">
-            <i className="fas fa-xmark"></i>
-          </button>
-        )}
-      </div>
+      {/* Exam search */}
+      {canInteract && (
+        <div className="cp-search">
+          <i className="fas fa-search"></i>
+          <input
+            type="text"
+            placeholder="ابحث باسم الامتحان أو المرحلة..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button className="cp-search-clear" onClick={() => setQuery('')} aria-label="مسح">
+              <i className="fas fa-xmark"></i>
+            </button>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="cp-empty">
@@ -917,7 +1187,7 @@ function RevealPanel({ onBack, flash }) {
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && canInteract && (
         filtered.length === 0 ? (
           <div className="cp-empty">
             <i className="fas fa-inbox"></i>
@@ -926,8 +1196,9 @@ function RevealPanel({ onBack, flash }) {
         ) : (
           <ul className="cp-items">
             {filtered.map((ex) => {
-              const revealed = !!ex.reveal_grades
+              const revealed = isRevealed(ex)
               const busy = busyId === ex.id
+              const forcedByGlobal = audience !== 'all' && ex.reveal_grades === true
               return (
                 <li key={ex.id} className="cp-item">
                   <div className="cp-item-icon">
@@ -950,14 +1221,21 @@ function RevealPanel({ onBack, flash }) {
                         <i className={`fas ${revealed ? 'fa-eye' : 'fa-eye-slash'}`}></i>
                         {revealed ? 'النتائج معلنة' : 'النتائج مخفية'}
                       </span>
+                      {forcedByGlobal && (
+                        <span className="cp-status-pill" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+                          <i className="fas fa-globe"></i> معلن للكل
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="cp-item-controls">
                     <button
                       className={`cp-btn ${revealed ? 'cp-btn-info-active' : 'cp-btn-info'}`}
                       onClick={() => handleToggle(ex)}
-                      disabled={busy}
-                      title="إظهار / إخفاء النتائج للطلاب"
+                      disabled={busy || forcedByGlobal}
+                      title={forcedByGlobal
+                        ? 'النتائج معلنة لكل الطلاب — ألغِ الإعلان العام من تبويب "كل الطلاب" أولاً'
+                        : 'إظهار / إخفاء النتائج للطلاب'}
                     >
                       {busy ? (
                         <><i className="fas fa-spinner fa-spin"></i> جارٍ...</>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import { getProfile } from '@backend/profilesApi'
+import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import './ExamsReport.css'
 
 /* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
@@ -82,6 +83,19 @@ export default function ExamsReport() {
         // The target student's attempts (admin can read any student via RLS).
         const attempts = await listAttemptsForStudent(targetId)
 
+        // Per-student / per-grade reveal overrides. An allow=true override
+        // reveals an exam's results for this student even when the exam's
+        // global reveal_grades flag is false.
+        let revealMap = new Map()
+        try {
+          if (targetGrade) {
+            const rows = await listEffectiveOverrides({
+              studentId: targetId, grade: targetGrade, itemType: 'exam_reveal',
+            })
+            revealMap = reduceEffective(rows)
+          }
+        } catch { /* ignore — defaults to "not revealed" */ }
+
         // Pick the best submitted attempt per exam.
         const bestByExam = new Map()
         const attemptsByExam = new Map()
@@ -126,9 +140,12 @@ export default function ExamsReport() {
             maxAttempts: ex.max_attempts || 1,
             duration: `${ex.duration_minutes} دقيقة`,
             date: fmtDate(best?.submitted_at),
-            /* The admin-controlled per-exam reveal flag. When false the
-               student sees "الدرجات لم تُعلَن بعد" instead of a score. */
-            gradesRevealed: ex.reveal_grades !== false,
+            /* Grades are revealed if EITHER the exam's global reveal_grades
+               flag is on, OR a per-target override (student/grade scope)
+               explicitly allows it for this student. */
+            gradesRevealed:
+              ex.reveal_grades === true ||
+              (revealMap.get(ex.id)?.allowed === true),
             questions,
           }
         })

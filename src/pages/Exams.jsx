@@ -71,7 +71,10 @@ export default function Exams() {
     return () => { cancelled = true }
   }, [userId])
 
-  // Fetch submitted-attempt counts for the currently displayed exams
+  // Fetch submitted-attempt counts for the currently displayed exams.
+  // If an admin override exists for this exam, we only count attempts
+  // submitted *since* the override was last saved — so bumping/re-saving
+  // the bonus acts as a fresh "N tries from now" grant.
   useEffect(() => {
     if (!userId || rows.length === 0) return
     let cancelled = false
@@ -79,7 +82,9 @@ export default function Exams() {
       const entries = await Promise.all(
         rows.map(async (e) => {
           try {
-            const n = await countSubmittedAttempts(e.id, userId)
+            const o = overridesMap.get(e.id)
+            const since = o?.updatedAt || null
+            const n = await countSubmittedAttempts(e.id, userId, since)
             return [e.id, n]
           } catch {
             return [e.id, 0]
@@ -90,7 +95,7 @@ export default function Exams() {
     }
     run()
     return () => { cancelled = true }
-  }, [rows, userId])
+  }, [rows, userId, overridesMap])
 
   const examsByLevel = useMemo(() => {
     const out = { first: [], second: [], third: [] }
@@ -101,11 +106,15 @@ export default function Exams() {
     return out
   }, [rows])
 
-  // Effective max attempts = admin override (if any) ?? exam's own max_attempts
+  // Effective max attempts = exam default + admin-granted extra attempts.
+  // The override's `attempts` field is a bonus granted on top of the default,
+  // so bumping it by +N always gives the student N more tries — even if they
+  // already exhausted their previous allowance.
   const effectiveMaxAttempts = (exam) => {
     const o = overridesMap.get(exam.id)
-    if (o && typeof o.attempts === 'number') return o.attempts
-    return exam.max_attempts || 1
+    const base = exam.max_attempts || 1
+    const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
+    return base + extra
   }
   const isAllowed = (exam) => {
     const o = overridesMap.get(exam.id)

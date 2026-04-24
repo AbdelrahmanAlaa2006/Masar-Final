@@ -178,11 +178,15 @@ export default function Videos() {
   const viewsUsedFor = (partId) =>
     progressRows.find(p => p.part_id === partId)?.views_used || 0
 
-  // Admin-set override beats the video's own default view_limit.
+  // Effective view limit = video default + admin-granted extra views.
+  // The override's `attempts` field is a bonus on top of the default, so
+  // bumping it by +N always grants the student N more views — even after
+  // they've exhausted their previous allowance.
   const effectiveViewLimit = (video) => {
     const o = videoOverrides.get(video?.id)
-    if (o && typeof o.attempts === 'number') return o.attempts
-    return video?.viewLimit || 0
+    const base = video?.viewLimit || 0
+    const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
+    return base + extra
   }
   const isVideoAllowed = (video) => {
     const o = videoOverrides.get(video?.id)

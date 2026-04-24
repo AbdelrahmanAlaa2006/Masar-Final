@@ -1,28 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import './Notifications.css'
-
-const STORAGE_KEY = 'masar-notifications'
-const readKey = (uid) => `masar-notifications-read-${uid || 'anon'}`
-
-const loadList = () => {
-  try {
-    const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    return Array.isArray(arr) ? arr : []
-  } catch {
-    return []
-  }
-}
-const saveList = (arr) => localStorage.setItem(STORAGE_KEY, JSON.stringify(arr))
-
-const loadRead = (uid) => {
-  try {
-    const arr = JSON.parse(localStorage.getItem(readKey(uid)) || '[]')
-    return new Set(Array.isArray(arr) ? arr : [])
-  } catch {
-    return new Set()
-  }
-}
-const saveRead = (uid, set) => localStorage.setItem(readKey(uid), JSON.stringify([...set]))
+import {
+  listNotifications,
+  listMyReadIds,
+  markRead as apiMarkRead,
+  markAllRead as apiMarkAllRead,
+  createNotification,
+  deleteNotification,
+} from '@backend/notificationsApi'
 
 const formatWhen = (iso) => {
   try {
@@ -37,51 +22,53 @@ const formatWhen = (iso) => {
   }
 }
 
+const GRADE_LABELS = {
+  all: 'كل المراحل',
+  'first-prep': 'الصف الأول الإعدادي',
+  'second-prep': 'الصف الثاني الإعدادي',
+  'third-prep': 'الصف الثالث الإعدادي',
+}
+
 export default function Notifications() {
   const [open, setOpen] = useState(false)
-  const [list, setList] = useState(loadList)
-  const [readIds, setReadIds] = useState(() => loadRead(getUid()))
+  const [list, setList] = useState([])
+  const [readIds, setReadIds] = useState(new Set())
   const [userRole, setUserRole] = useState(null)
-  const [userGrade, setUserGrade] = useState(null)
+  const [userId, setUserId] = useState(null)
   const [composeOpen, setComposeOpen] = useState(false)
   const [draft, setDraft] = useState({ title: '', message: '', level: 'warning', grade: 'all' })
+  const [loading, setLoading] = useState(false)
   const panelRef = useRef(null)
 
-  const GRADE_LABELS = {
-    all: 'كل المراحل',
-    'first-prep': 'الصف الأول الإعدادي',
-    'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep': 'الصف الثالث الإعدادي',
-  }
-
-  function getUid() {
-    try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
-      return u?.id || u?.name || 'anon'
-    } catch {
-      return 'anon'
-    }
-  }
-
+  // Load user once
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
-      setUserGrade(u?.grade || u?.level || null)
+      setUserId(u?.id || null)
     } catch {
       setUserRole(null)
-      setUserGrade(null)
     }
   }, [])
 
-  // Sync across tabs / other components
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === STORAGE_KEY) setList(loadList())
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  // Fetch notifications + my read state
+  const refresh = async (uid) => {
+    setLoading(true)
+    try {
+      const [rows, reads] = await Promise.all([
+        listNotifications(),
+        uid ? listMyReadIds(uid) : Promise.resolve([]),
+      ])
+      setList(rows)
+      setReadIds(new Set(reads))
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
+
+  // Pull whenever we know the user id, and again each time the panel opens
+  // (so a freshly-revealed exam shows up without reload).
+  useEffect(() => { if (userId !== null) refresh(userId) }, [userId])
+  useEffect(() => { if (open && userId) refresh(userId) }, [open, userId])
 
   // Close on outside click / Escape
   useEffect(() => {
@@ -99,59 +86,68 @@ export default function Notifications() {
     }
   }, [open])
 
-  const visible = list.filter((n) => {
-    if (userRole === 'admin') return true
-    const target = n.grade || 'all'
-    if (target === 'all') return true
-    return userGrade && target === userGrade
-  })
-  const sorted = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const sorted = useMemo(
+    () => [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    [list]
+  )
   const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length
 
-  const markAllRead = () => {
-    const next = new Set(readIds)
-    sorted.forEach((n) => next.add(n.id))
+  const markAllRead = async () => {
+    const ids = sorted.map((n) => n.id).filter((id) => !readIds.has(id))
+    if (!ids.length || !userId) return
+    const next = new Set(readIds); ids.forEach((id) => next.add(id))
     setReadIds(next)
-    saveRead(getUid(), next)
+    try { await apiMarkAllRead(ids, userId) } catch { /* ignore */ }
   }
 
-  const markOneRead = (id) => {
-    if (readIds.has(id)) return
-    const next = new Set(readIds)
-    next.add(id)
+  const markOneRead = async (id) => {
+    if (readIds.has(id) || !userId) return
+    const next = new Set(readIds); next.add(id)
     setReadIds(next)
-    saveRead(getUid(), next)
+    try { await apiMarkRead(id, userId) } catch { /* ignore */ }
   }
 
-  const deleteOne = (id) => {
-    const next = list.filter((n) => n.id !== id)
-    setList(next)
-    saveList(next)
+  const deleteOne = async (id) => {
+    const prev = list
+    setList(list.filter((n) => n.id !== id))
+    try { await deleteNotification(id) }
+    catch { setList(prev) }
   }
 
-  const sendNotification = (e) => {
+  const sendNotification = async (e) => {
     e.preventDefault()
     if (!draft.title.trim() && !draft.message.trim()) return
-    const entry = {
-      id: 'n_' + Math.random().toString(36).slice(2, 10),
-      title: draft.title.trim() || 'تنبيه',
-      message: draft.message.trim(),
-      level: draft.level,
-      grade: draft.grade || 'all',
-      createdAt: new Date().toISOString(),
+    const scope = draft.grade === 'all' ? 'all' : 'grade'
+    try {
+      const row = await createNotification({
+        title: draft.title.trim() || 'تنبيه',
+        message: draft.message.trim(),
+        level: draft.level,
+        scope,
+        targetGrade: scope === 'grade' ? draft.grade : null,
+        createdBy: userId,
+      })
+      setList((p) => [row, ...p])
+      setDraft({ title: '', message: '', level: 'warning', grade: 'all' })
+      setComposeOpen(false)
+    } catch (err) {
+      alert(err.message || 'تعذّر إرسال الإشعار')
     }
-    const next = [entry, ...list]
-    setList(next)
-    saveList(next)
-    setDraft({ title: '', message: '', level: 'warning', grade: 'all' })
-    setComposeOpen(false)
+  }
+
+  // For admin display: produce a readable "target" label per row.
+  const targetLabel = (n) => {
+    if (n.scope === 'all') return GRADE_LABELS.all
+    if (n.scope === 'grade') return GRADE_LABELS[n.target_grade] || n.target_grade
+    if (n.scope === 'student') return 'طالب محدد'
+    return ''
   }
 
   return (
     <div className="notif-root" ref={panelRef}>
       <button
         className="notif-bell"
-        onClick={() => { setOpen((v) => !v) }}
+        onClick={() => setOpen((v) => !v)}
         aria-label="الإشعارات"
         aria-expanded={open}
       >
@@ -205,6 +201,7 @@ export default function Notifications() {
                   <option value="info">معلومة</option>
                   <option value="warning">تحذير</option>
                   <option value="danger">هام</option>
+                  <option value="success">إيجابي</option>
                 </select>
                 <select
                   value={draft.grade}
@@ -224,7 +221,13 @@ export default function Notifications() {
           )}
 
           <div className="notif-list">
-            {sorted.length === 0 && (
+            {loading && (
+              <div className="notif-empty">
+                <i className="fas fa-spinner fa-spin"></i>
+                <p>جارٍ التحميل...</p>
+              </div>
+            )}
+            {!loading && sorted.length === 0 && (
               <div className="notif-empty">
                 <i className="far fa-bell-slash"></i>
                 <p>لا توجد إشعارات حتى الآن</p>
@@ -242,19 +245,20 @@ export default function Notifications() {
                     <i className={`fas ${
                       n.level === 'danger' ? 'fa-exclamation-circle' :
                       n.level === 'warning' ? 'fa-exclamation-triangle' :
+                      n.level === 'success' ? 'fa-check-circle' :
                       'fa-info-circle'
                     }`}></i>
                   </div>
                   <div className="notif-body">
                     <div className="notif-title-row">
                       <span className="notif-title">{n.title}</span>
-                      <span className="notif-time">{formatWhen(n.createdAt)}</span>
+                      <span className="notif-time">{formatWhen(n.created_at)}</span>
                     </div>
                     {n.message && <div className="notif-message">{n.message}</div>}
                     {userRole === 'admin' && (
                       <span className="notif-grade-tag">
                         <i className="fas fa-users"></i>
-                        {GRADE_LABELS[n.grade || 'all']}
+                        {targetLabel(n)}
                       </span>
                     )}
                   </div>
