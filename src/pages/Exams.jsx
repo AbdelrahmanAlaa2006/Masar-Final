@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
@@ -143,13 +144,20 @@ export default function Exams() {
     navigate('/exam-add')
   }
 
-  const handleDelete = async (exam) => {
-    if (!window.confirm(`حذف «${exam.title}»؟`)) return
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+
+  const requestDelete = (exam) => setConfirmDelete({ id: exam.id, title: exam.title })
+
+  const performDelete = async () => {
+    const target = confirmDelete
+    if (!target) return
     try {
-      await deleteExam(exam.id)
-      setRows(prev => prev.filter(e => e.id !== exam.id))
+      await deleteExam(target.id)
+      setRows(prev => prev.filter(e => e.id !== target.id))
+      setConfirmDelete(null)
     } catch (err) {
-      alert(err.message || 'تعذر الحذف')
+      setConfirmDelete(null)
+      setAlertModal('تعذر الحذف', err.message || 'حدث خطأ أثناء حذف الامتحان.')
     }
   }
 
@@ -198,7 +206,7 @@ export default function Exams() {
           <span className="ec-status-dot" />
           <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
           {userRole === 'admin' && (
-            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); handleDelete(exam) }}>
+            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestDelete(exam) }}>
               🗑 حذف
             </button>
           )}
@@ -334,6 +342,16 @@ export default function Exams() {
             <button className="modal-button" onClick={() => setBlockAlert(null)}>حسناً</button>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف الامتحان"
+          itemLabel={confirmDelete.title}
+          message="سيتم حذف الامتحان وجميع محاولات الطلاب المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={performDelete}
+        />
       )}
     </div>
   )

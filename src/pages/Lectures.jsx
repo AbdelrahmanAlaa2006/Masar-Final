@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import './Lectures.css'
 import PrepIllustration from '../components/PrepIllustration'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import {
   listLectures,
   createLecture,
@@ -9,6 +10,7 @@ import {
   uiToDbGrade,
   dbToUiGrade,
 } from '@backend/lecturesApi'
+import { uploadLecturePdf } from '@backend/r2'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -91,9 +93,11 @@ export default function Lectures() {
     teacher: '',
     week: '',
     cover_url: '',
-    pdf_url: '',
     grade: '',
   })
+  // The admin picks a PDF from their device; we upload it straight to R2.
+  const [pdfFile, setPdfFile] = useState(null)
+  const [uploadPct, setUploadPct] = useState(0)
 
   useEffect(() => {
     try {
@@ -161,9 +165,10 @@ export default function Lectures() {
       teacher: '',
       week: '',
       cover_url: '',
-      pdf_url: '',
       grade: grade || 'first',
     })
+    setPdfFile(null)
+    setUploadPct(0)
     setModalOpen(true)
   }
 
@@ -179,6 +184,21 @@ export default function Lectures() {
     }
     setSubmitting(true)
     try {
+      // If a PDF was picked, upload it to R2 first; then attach its URL + key.
+      let pdfUrl = null
+      let pdfKey = null
+      if (pdfFile) {
+        if (pdfFile.type && pdfFile.type !== 'application/pdf') {
+          throw new Error('الملف يجب أن يكون بصيغة PDF')
+        }
+        setUploadPct(1)
+        const { key, publicUrl } = await uploadLecturePdf(pdfFile, {
+          onProgress: (p) => setUploadPct(Math.max(1, p)),
+        })
+        pdfUrl = publicUrl
+        pdfKey = key
+      }
+
       await createLecture({
         title: form.title.trim(),
         description: form.desc.trim() || null,
@@ -187,7 +207,8 @@ export default function Lectures() {
         week: form.week.trim() || null,
         grade: dbGrade,
         cover_url: form.cover_url.trim() || null,
-        pdf_url: form.pdf_url.trim() || null,
+        pdf_url: pdfUrl,
+        pdf_key: pdfKey,
         created_by: userId,
       })
       flash('تمت إضافة المحاضرة بنجاح')
@@ -197,16 +218,26 @@ export default function Lectures() {
       flash(err.message || 'تعذر حفظ المحاضرة', 'warning')
     } finally {
       setSubmitting(false)
+      setUploadPct(0)
     }
   }
 
-  const removeLecture = async (id) => {
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+
+  const requestDeleteLecture = (lec) =>
+    setConfirmDelete({ id: lec.id, title: lec.title })
+
+  const performDeleteLecture = async () => {
+    const target = confirmDelete
+    if (!target) return
     try {
-      await deleteLecture(id)
-      setRows((prev) => prev.filter((r) => r.id !== id))
+      await deleteLecture(target.id)
+      setRows((prev) => prev.filter((r) => r.id !== target.id))
       flash('تم حذف المحاضرة', 'warning')
     } catch (err) {
       flash(err.message || 'تعذر حذف المحاضرة', 'warning')
+    } finally {
+      setConfirmDelete(null)
     }
   }
 
@@ -301,7 +332,7 @@ export default function Lectures() {
                       if (lec.pdf_url) window.open(lec.pdf_url, '_blank', 'noopener')
                       else flash('لا يوجد ملف PDF لهذه المحاضرة', 'warning')
                     }}
-                    onDelete={() => removeLecture(lec.id)}
+                    onDelete={() => requestDeleteLecture(lec)}
                   />
                 ))}
               </div>
@@ -318,7 +349,7 @@ export default function Lectures() {
               <div className="lec-modal-icon"><i className="fas fa-circle-plus"></i></div>
               <div>
                 <h3>إضافة محاضرة جديدة</h3>
-                <p>املأ بيانات المحاضرة وألصق رابط الـ PDF من R2</p>
+                <p>املأ بيانات المحاضرة وارفع ملف الـ PDF من جهازك</p>
               </div>
               <button type="button" className="lec-modal-close" onClick={() => setModalOpen(false)}>
                 <i className="fas fa-times"></i>
@@ -395,13 +426,70 @@ export default function Lectures() {
                 />
               </Field>
 
-              <Field label="رابط ملف PDF من R2" icon="fa-file-pdf">
-                <input
-                  type="url"
-                  value={form.pdf_url}
-                  onChange={(e) => setForm({ ...form, pdf_url: e.target.value })}
-                  placeholder="https://pub-xxx.r2.dev/lectures/xxx.pdf"
-                />
+              <Field label="ملف الـ PDF" icon="fa-file-pdf">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label
+                    htmlFor="lec-pdf-input"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px',
+                      border: '1px dashed #cbd5e0',
+                      borderRadius: 10,
+                      background: '#f8fafc',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      opacity: submitting ? 0.6 : 1,
+                      color: '#2d3748',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <i className="fas fa-cloud-arrow-up" style={{ color: '#667eea' }}></i>
+                    <span style={{
+                      flex: 1, overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {pdfFile ? pdfFile.name : 'اختر ملف PDF من جهازك'}
+                    </span>
+                    {pdfFile && (
+                      <span style={{ fontSize: 12, color: '#718096' }}>
+                        {(pdfFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    id="lec-pdf-input"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    style={{ display: 'none' }}
+                    disabled={submitting}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null
+                      setPdfFile(f)
+                      setUploadPct(0)
+                    }}
+                  />
+                  {uploadPct > 0 && uploadPct < 100 && (
+                    <div style={{
+                      height: 6, background: '#edf2f7',
+                      borderRadius: 999, overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        width: `${uploadPct}%`, height: '100%',
+                        background: 'linear-gradient(90deg,#667eea,#764ba2)',
+                        transition: 'width 0.15s ease',
+                      }} />
+                    </div>
+                  )}
+                  {uploadPct > 0 && (
+                    <span style={{ fontSize: 12, color: '#4a5568' }}>
+                      {uploadPct < 100
+                        ? `جاري الرفع... ${uploadPct}%`
+                        : 'تم رفع الملف ✓'}
+                    </span>
+                  )}
+                  <small style={{ color: '#718096', fontSize: 12 }}>
+                    يتم رفع الملف مباشرة إلى التخزين السحابي — لا حاجة لنسخ أي روابط.
+                  </small>
+                </div>
               </Field>
             </div>
 
@@ -416,7 +504,13 @@ export default function Lectures() {
               </button>
               <button type="submit" className="lec-btn lec-btn-primary" disabled={submitting}>
                 <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
-                {' '}{submitting ? 'جاري الحفظ...' : 'حفظ المحاضرة'}
+                {' '}{
+                  submitting
+                    ? (uploadPct > 0 && uploadPct < 100
+                        ? `جاري رفع الملف... ${uploadPct}%`
+                        : 'جاري الحفظ...')
+                    : 'حفظ المحاضرة'
+                }
               </button>
             </div>
           </form>
@@ -433,6 +527,16 @@ export default function Lectures() {
           }`}></i>
           <span>{toast.msg}</span>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف المحاضرة"
+          itemLabel={confirmDelete.title}
+          message="سيتم حذف المحاضرة وملف الـ PDF المرتبط بها نهائياً. لا يمكن التراجع عن هذا الإجراء."
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={performDeleteLecture}
+        />
       )}
     </main>
   )

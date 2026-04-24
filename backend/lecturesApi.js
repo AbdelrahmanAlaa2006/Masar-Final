@@ -10,7 +10,7 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 export async function listLectures() {
   const { data, error } = await supabase
     .from('lectures')
-    .select('id, title, description, subject, teacher, week, grade, cover_url, pdf_url, created_at')
+    .select('id, title, description, subject, teacher, week, grade, cover_url, pdf_url, pdf_key, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
@@ -26,6 +26,7 @@ export async function createLecture(input) {
     grade: input.grade,
     cover_url: input.cover_url || null,
     pdf_url: input.pdf_url || null,
+    pdf_key: input.pdf_key || null,
     created_by: input.created_by || null,
   }
   const { data, error } = await supabase

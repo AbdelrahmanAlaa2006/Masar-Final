@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { listExams, setExamRevealGrades } from '@backend/examsApi'
-import { listVideos } from '@backend/videosApi'
+import { listExams, setExamRevealGrades, updateExamAvailability } from '@backend/examsApi'
+import { listVideos, updateVideoAvailability } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
 import {
   listOverridesForTarget,
@@ -35,7 +35,10 @@ const fmtDate = (iso) => {
    ────────────────────────────────────────────────────────────── */
 export default function ControlPanel() {
   /* navigation */
-  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams' | 'reveal'
+  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams'
+  // Which sub-panel is active inside a section. Videos has: attempts, availability.
+  // Exams adds: reveal. Only meaningful when section !== 'home'.
+  const [subtab, setSubtab] = useState('attempts') // 'attempts' | 'availability' | 'reveal'
   const [scope, setScope] = useState(null) // 'prep' | 'student'
   const [target, setTarget] = useState(null) // { kind, id, name, prep?, ... }
   const [pickerQuery, setPickerQuery] = useState('')
@@ -205,7 +208,7 @@ export default function ControlPanel() {
 
   const setAttempts = (item, value) => {
     const v = Math.max(0, Math.min(99, parseInt(value, 10) || 0))
-    persistItem(item, { attempts: v })
+    return persistItem(item, { attempts: v })
   }
 
   const bumpAttempts = (item, delta) => {
@@ -263,12 +266,14 @@ export default function ControlPanel() {
     setScope(null)
     setTarget(null)
     setPickerQuery('')
+    setSubtab('attempts')
   }
   const enterSection = (s) => {
     setSection(s)
     setScope(null)
     setTarget(null)
     setPickerQuery('')
+    setSubtab('attempts')
   }
   const chooseScope = (s) => {
     setScope(s)
@@ -365,6 +370,13 @@ export default function ControlPanel() {
               desc="التحكم في إظهار أو إخفاء درجات كل امتحان للطلاب في تقاريرهم"
               onClick={() => enterSection('reveal')}
             />
+            <SectionCard
+              icon="fa-hourglass-half"
+              accent="green"
+              title="إدارة مدة الإتاحة"
+              desc="عدّل الفترة المتاحة لكل فيديو أو امتحان بعد إنشائه"
+              onClick={() => enterSection('availability')}
+            />
           </div>
         )}
 
@@ -373,8 +385,13 @@ export default function ControlPanel() {
           <RevealPanel onBack={goHome} flash={flash} />
         )}
 
+        {/* AVAILABILITY PANEL — edit available_hours / active_hours per item */}
+        {section === 'availability' && (
+          <AvailabilityPanel onBack={goHome} flash={flash} />
+        )}
+
         {/* Loading state for non-home sections */}
-        {section !== 'home' && section !== 'reveal' && loading && (
+        {(section === 'videos' || section === 'exams') && loading && (
           <div className="cp-empty">
             <i className="fas fa-spinner fa-spin"></i>
             <p>جارٍ التحميل...</p>
@@ -382,12 +399,12 @@ export default function ControlPanel() {
         )}
 
         {/* SCOPE PICKER */}
-        {section !== 'home' && section !== 'reveal' && !loading && !scope && (
+        {(section === 'videos' || section === 'exams') && !loading && !scope && (
           <ScopePicker section={section} onPick={chooseScope} onBack={goHome} />
         )}
 
         {/* TARGET PICKER */}
-        {section !== 'home' && section !== 'reveal' && !loading && scope && !target && (
+        {(section === 'videos' || section === 'exams') && !loading && scope && !target && (
           <TargetPicker
             scope={scope}
             list={pickerList}
@@ -399,7 +416,7 @@ export default function ControlPanel() {
         )}
 
         {/* ITEMS (videos/exams) FOR TARGET */}
-        {section !== 'home' && section !== 'reveal' && !loading && target && (
+        {(section === 'videos' || section === 'exams') && !loading && target && (
           <ItemsManager
             section={section}
             scope={scope}
@@ -446,6 +463,7 @@ function Breadcrumbs({ section, scope, target, onHome, onSection, onScope }) {
     section === 'videos' ? 'الفيديوهات'
     : section === 'exams' ? 'الامتحانات'
     : section === 'reveal' ? 'إظهار نتائج الامتحانات'
+    : section === 'availability' ? 'إدارة مدة الإتاحة'
     : ''
   const scopeLabel =
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
@@ -1251,5 +1269,227 @@ function RevealPanel({ onBack, flash }) {
         )
       )}
     </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   AvailabilityPanel — edit how many hours an exam or a video
+   remains available after it was created. For exams this updates
+   `available_hours`; for videos we update `active_hours` AND
+   recompute `expiry_at = created_at + hours`. Changes are saved
+   explicitly (Save button) so admins see when they've committed.
+   ────────────────────────────────────────────────────────────── */
+function AvailabilityPanel({ onBack, flash }) {
+  const [tab, setTab] = useState('exams') // 'exams' | 'videos'
+  const [exams, setExams] = useState([])
+  const [videos, setVideos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        setLoading(true)
+        const [ex, vd] = await Promise.all([listExams(), listVideos()])
+        if (!cancelled) { setExams(ex); setVideos(vd) }
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const rows = tab === 'exams' ? exams : videos
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) =>
+      [r.title, r.number, GRADE_LABEL[r.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [rows, query])
+
+  const saveRow = async (item, hours) => {
+    try {
+      if (tab === 'exams') {
+        await updateExamAvailability(item.id, hours)
+        setExams((p) => p.map((r) => r.id === item.id ? { ...r, available_hours: hours } : r))
+      } else {
+        const updated = await updateVideoAvailability(item.id, hours)
+        setVideos((p) => p.map((r) => r.id === item.id ? {
+          ...r, active_hours: hours, expiry_at: updated.expiry_at,
+        } : r))
+      }
+      flash(`تم تحديث مدة الإتاحة: ${item.title}`, 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر الحفظ', 'warning')
+      throw e
+    }
+  }
+
+  return (
+    <section className="cp-panel">
+      <button className="cp-back" onClick={onBack}>
+        <i className="fas fa-arrow-right"></i> رجوع
+      </button>
+
+      <div className="cp-panel-header">
+        <h2><i className="fas fa-hourglass-half"></i> إدارة مدة الإتاحة</h2>
+        <p>عدّل عدد الساعات التي يظل فيها كل امتحان أو فيديو متاحاً للطلاب.</p>
+      </div>
+
+      {/* Tab selector */}
+      <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
+        <button
+          className={`cp-btn ${tab === 'exams' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          onClick={() => setTab('exams')}
+        >
+          <i className="fas fa-file-alt"></i> الامتحانات
+        </button>
+        <button
+          className={`cp-btn ${tab === 'videos' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          onClick={() => setTab('videos')}
+        >
+          <i className="fas fa-play-circle"></i> الفيديوهات
+        </button>
+      </div>
+
+      <div className="cp-search">
+        <i className="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder={`ابحث باسم ${tab === 'exams' ? 'الامتحان' : 'الفيديو'} أو المرحلة...`}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {query && (
+          <button className="cp-search-clear" onClick={() => setQuery('')}>
+            <i className="fas fa-xmark"></i>
+          </button>
+        )}
+      </div>
+
+      {loading && (
+        <div className="cp-empty">
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>جارٍ التحميل...</p>
+        </div>
+      )}
+      {error && !loading && (
+        <div className="cp-empty">
+          <i className="fas fa-circle-exclamation" style={{ color: '#c53030' }}></i>
+          <p style={{ color: '#c53030' }}>{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && (
+        filtered.length === 0 ? (
+          <div className="cp-empty">
+            <i className="fas fa-inbox"></i>
+            <p>لا توجد عناصر مطابقة</p>
+          </div>
+        ) : (
+          <ul className="cp-items">
+            {filtered.map((item) => (
+              <AvailabilityRow
+                key={item.id}
+                item={item}
+                isExam={tab === 'exams'}
+                onSave={(h) => saveRow(item, h)}
+              />
+            ))}
+          </ul>
+        )
+      )}
+    </section>
+  )
+}
+
+function AvailabilityRow({ item, isExam, onSave }) {
+  const savedHours = isExam ? (item.available_hours || 72) : (item.active_hours || 24)
+  const [draft, setDraft] = useState(savedHours)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setDraft(savedHours) }, [savedHours])
+
+  const dirty = Number(draft) !== Number(savedHours)
+
+  // Show the concrete "available until" so admins see the consequence
+  // of their edit (anchor = created_at; changes to draft are preview only).
+  const anchor = item.created_at ? new Date(item.created_at).getTime() : Date.now()
+  const previewUntil = new Date(anchor + Math.max(1, draft) * 3600 * 1000)
+  const previewText = isNaN(previewUntil) ? '—' :
+    previewUntil.toLocaleDateString('ar-EG', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+
+  const clamp = (v) => Math.max(1, Math.min(24 * 365, parseInt(v, 10) || 1))
+
+  const handleSave = async () => {
+    if (!dirty) return
+    setSaving(true)
+    try { await onSave(clamp(draft)) } catch { /* flashed */ } finally { setSaving(false) }
+  }
+
+  return (
+    <li className="cp-item">
+      <div className="cp-item-icon">
+        <i className={`fas ${isExam ? 'fa-file-alt' : 'fa-play-circle'}`}></i>
+      </div>
+      <div className="cp-item-body">
+        <div className="cp-item-title">
+          <span>{item.title}</span>
+          {item.number && (
+            <span className="cp-id-pill cp-id-pill-sm">
+              <i className="fas fa-hashtag"></i>{item.number}
+            </span>
+          )}
+        </div>
+        <div className="cp-item-meta">
+          <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[item.grade] || item.grade}</span>
+          <span><i className="fas fa-hourglass-half"></i> {savedHours} ساعة محفوظة</span>
+          <span><i className="fas fa-calendar-check"></i> متاح حتى {previewText}</span>
+          {dirty && (
+            <span className="cp-status-pill" style={{ background: '#fef3c7', color: '#92400e' }}>
+              <i className="fas fa-pen"></i> تغييرات غير محفوظة
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="cp-item-controls">
+        <div className="cp-stepper" title="عدد الساعات المتاحة منذ إنشاء العنصر">
+          <button className="cp-stepper-btn" onClick={() => setDraft(clamp(draft - 1))}>
+            <i className="fas fa-minus"></i>
+          </button>
+          <input
+            type="number"
+            min="1"
+            value={draft}
+            onChange={(e) => setDraft(clamp(e.target.value))}
+            className="cp-stepper-input"
+            style={{ width: 72 }}
+          />
+          <button className="cp-stepper-btn" onClick={() => setDraft(clamp(draft + 1))}>
+            <i className="fas fa-plus"></i>
+          </button>
+          <span className="cp-stepper-lbl">ساعة</span>
+        </div>
+        <button
+          className={`cp-btn ${dirty ? 'cp-btn-success' : 'cp-btn-ghost'}`}
+          onClick={handleSave}
+          disabled={!dirty || saving}
+        >
+          {saving ? (
+            <><i className="fas fa-spinner fa-spin"></i> جارٍ الحفظ...</>
+          ) : (
+            <><i className="fas fa-floppy-disk"></i> حفظ</>
+          )}
+        </button>
+      </div>
+    </li>
   )
 }

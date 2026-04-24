@@ -4,6 +4,25 @@ import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
 
+// Pull a YouTube video id out of any common share URL. If the user already
+// pasted a bare 11-char id, keep it as-is.
+function extractYouTubeId(input) {
+  if (!input) return ''
+  const s = String(input).trim()
+  if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s
+  try {
+    const u = new URL(s)
+    const host = u.hostname.replace(/^www\./, '')
+    if (host === 'youtu.be') return u.pathname.slice(1, 12)
+    if (host.endsWith('youtube.com')) {
+      if (u.pathname === '/watch') return (u.searchParams.get('v') || '').slice(0, 11)
+      const m = u.pathname.match(/\/(embed|shorts|v)\/([a-zA-Z0-9_-]{11})/)
+      if (m) return m[2]
+    }
+  } catch { /* not a URL */ }
+  return ''
+}
+
 const makeQuiz = () => ({
   localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
   title: '',
@@ -17,10 +36,7 @@ const makeQuiz = () => ({
 export default function VideoAdd() {
   const [videoTitle, setVideoTitle] = useState('')
   const [videoDescription, setVideoDescription] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
-  const [videoDuration, setVideoDuration] = useState('')
   const [videoGrade, setVideoGrade] = useState('first-prep')
-  const [viewLimit, setViewLimit] = useState(3)
   const [activeHours, setActiveHours] = useState(24)
   const [videoParts, setVideoParts] = useState([])
   const [numParts, setNumParts] = useState('')
@@ -47,8 +63,7 @@ export default function VideoAdd() {
     const newParts = Array(count).fill(null).map((_, i) => ({
       id: i,
       title: '',
-      videoUrl: '',
-      duration: ''
+      videoId: '',
     }))
 
     setVideoParts(newParts)
@@ -79,16 +94,13 @@ export default function VideoAdd() {
 
     setVideoTitle(video.title)
     setVideoDescription(video.description)
-    setVideoDuration(video.duration || '')
-    setViewLimit(video.viewLimit || 3)
     setActiveHours(video.activeHours || 24)
     setVideoGrade(video.grade)
 
     const restoredParts = video.parts.map((p, i) => ({
       id: i,
       title: p.title,
-      videoUrl: p.videoUrl,
-      duration: p.duration
+      videoId: p.videoId || extractYouTubeId(p.videoUrl || ''),
     }))
 
     setVideoParts(restoredParts)
@@ -115,8 +127,12 @@ export default function VideoAdd() {
       return
     }
 
-    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoUrl.trim())) {
-      notify('يرجى ملء كل أجزاء الفيديو (العنوان والرابط)', { type: 'warning' })
+    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoId.trim())) {
+      notify('يرجى ملء كل أجزاء الفيديو (العنوان و معرّف الفيديو)', { type: 'warning' })
+      return
+    }
+    if (videoParts.some(p => !/^[a-zA-Z0-9_-]{11}$/.test(p.videoId.trim()))) {
+      notify('معرّف يوتيوب غير صالح — تأكد أنه 11 حرفًا', { type: 'warning' })
       return
     }
 
@@ -176,15 +192,12 @@ export default function VideoAdd() {
         title: videoTitle.trim(),
         description: videoDescription.trim() || null,
         grade: videoGrade,
-        duration_minutes: videoDuration || null,
-        view_limit: viewLimit,
         active_hours: activeHours,
         quizzes: parsedQuizzes,
         created_by: createdBy,
         parts: videoParts.map(p => ({
           title: p.title.trim(),
-          youtube_url: p.videoUrl.trim(),
-          duration_minutes: p.duration || null,
+          youtube_id: p.videoId.trim(),
         })),
       })
       setShowSuccess(true)
@@ -200,9 +213,6 @@ export default function VideoAdd() {
   const resetForm = () => {
     setVideoTitle('')
     setVideoDescription('')
-    setVideoUrl('')
-    setVideoDuration('')
-    setViewLimit(3)
     setActiveHours(24)
     setVideoParts([])
     setNumParts('')
@@ -216,7 +226,7 @@ export default function VideoAdd() {
       return
     }
 
-    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoUrl.trim())) {
+    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoId.trim())) {
       notify('يرجى ملء كل أجزاء الفيديو', { type: 'warning' })
       return
     }
@@ -225,10 +235,8 @@ export default function VideoAdd() {
       title: videoTitle,
       description: videoDescription,
       grade: videoGrade,
-      duration: videoDuration,
       totalParts: videoParts.length,
       parts: videoParts,
-      viewLimit: parseInt(viewLimit),
       activeHours: parseInt(activeHours),
       quizzes: quizzes.map((qz, i) => {
         const parsed = parseQuestionsText(qz.raw)
@@ -286,34 +294,12 @@ export default function VideoAdd() {
 
             <div className="form-row">
               <div className="form-group flex-1">
-                <label>المدة الكلية (دقيقة)</label>
-                <input
-                  type="number"
-                  placeholder="مثال: 45"
-                  value={videoDuration}
-                  onChange={(e) => setVideoDuration(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group flex-1">
                 <label>الصف الدراسي</label>
                 <select value={videoGrade} onChange={(e) => setVideoGrade(e.target.value)}>
                   <option value="first-prep">الصف الأول الإعدادي</option>
                   <option value="second-prep">الصف الثاني الإعدادي</option>
                   <option value="third-prep">الصف الثالث الإعدادي</option>
                 </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group flex-1">
-                <label>حد المشاهدات (عدد المحاولات)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={viewLimit}
-                  onChange={(e) => setViewLimit(e.target.value)}
-                />
               </div>
 
               <div className="form-group flex-1">
@@ -324,6 +310,9 @@ export default function VideoAdd() {
                   value={activeHours}
                   onChange={(e) => setActiveHours(e.target.value)}
                 />
+                <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                  يمكن تعديلها لاحقاً من «لوحة التحكم».
+                </small>
               </div>
             </div>
 
@@ -364,23 +353,27 @@ export default function VideoAdd() {
                     </div>
 
                     <div className="form-group">
-                      <label>رابط الفيديو (YouTube)</label>
+                      <label>معرّف فيديو يوتيوب (Video ID)</label>
                       <input
                         type="text"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={part.videoUrl}
-                        onChange={(e) => updatePart(part.id, 'videoUrl', e.target.value)}
+                        placeholder="مثال: dQw4w9WgXcQ"
+                        value={part.videoId}
+                        onChange={(e) => {
+                          // Auto-extract id if admin pastes a full URL.
+                          const v = e.target.value
+                          const extracted = extractYouTubeId(v)
+                          updatePart(part.id, 'videoId', extracted || v)
+                        }}
+                        maxLength={64}
                       />
-                    </div>
-
-                    <div className="form-group">
-                      <label>مدة الجزء (دقيقة)</label>
-                      <input
-                        type="number"
-                        placeholder="مثال: 15"
-                        value={part.duration}
-                        onChange={(e) => updatePart(part.id, 'duration', e.target.value)}
-                      />
+                      <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                        الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
+                      </small>
+                      {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
+                        <small style={{ color: '#c53030', fontSize: 12 }}>
+                          المعرّف يجب أن يكون 11 حرفاً.
+                        </small>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -607,18 +600,8 @@ export default function VideoAdd() {
                   </div>
 
                   <div className="info-row">
-                    <span className="info-label">المدة الكلية:</span>
-                    <span className="info-value">{previewData.duration || 'غير محددة'} دقيقة</span>
-                  </div>
-
-                  <div className="info-row">
                     <span className="info-label">عدد الأجزاء:</span>
                     <span className="info-value">{previewData.totalParts}</span>
-                  </div>
-
-                  <div className="info-row">
-                    <span className="info-label">حد المشاهدات:</span>
-                    <span className="info-value">{previewData.viewLimit} مرات</span>
                   </div>
 
                   <div className="info-row">
@@ -654,7 +637,7 @@ export default function VideoAdd() {
                         <span className="part-index">الجزء {index + 1}:</span>
                         <div className="part-details">
                           <div>{part.title}</div>
-                          <div className="part-duration">المدة: {part.duration || 'غير محددة'} دقيقة</div>
+                          <div className="part-duration">معرّف: <code>{part.videoId || '—'}</code></div>
                         </div>
                       </div>
                     ))}

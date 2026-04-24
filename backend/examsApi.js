@@ -63,6 +63,21 @@ export async function deleteExam(id) {
   if (error) throw error
 }
 
+/* Admin: change an exam's availability window after the fact.
+   Exams.jsx computes `availableUntil = created_at + available_hours`, so
+   updating this column alone extends / shortens the window. */
+export async function updateExamAvailability(examId, hours) {
+  const h = Math.max(1, parseInt(hours, 10) || 1)
+  const { data, error } = await supabase
+    .from('exams')
+    .update({ available_hours: h })
+    .eq('id', examId)
+    .select('id, available_hours, created_at')
+    .single()
+  if (error) throw error
+  return data
+}
+
 // How many times this student has *submitted* this exam. In-flight attempts
 // (submitted_at is null) don't count — so a page refresh mid-exam doesn't
 // burn an attempt.

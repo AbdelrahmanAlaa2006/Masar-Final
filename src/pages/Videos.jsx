@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import YouTubePlayer from '../components/YouTubePlayer'
 import { listVideos, deleteVideo } from '@backend/videosApi'
 import {
   listQuizAttemptsForVideo,
@@ -23,8 +25,7 @@ function shapeVideo(row) {
   const parts = (row.video_parts || []).map((p) => ({
     id: p.id,
     title: p.title,
-    videoUrl: p.youtube_url,
-    duration: p.duration_minutes ? `${p.duration_minutes} دقيقة` : '—',
+    youtubeId: p.youtube_id || '',
     part_index: p.part_index,
   }))
   return {
@@ -34,7 +35,6 @@ function shapeVideo(row) {
     grade: row.grade,
     totalParts: parts.length,
     parts,
-    viewLimit: row.view_limit,
     activeHours: row.active_hours,
     expiryTime: row.expiry_at,
     createdAt: row.created_at,
@@ -155,12 +155,6 @@ export default function Videos() {
   }, [currentVideo, currentUser, quizTick])
 
   // ── Helpers ──────────────────────────────────────────────────
-  const extractVideoId = (url) => {
-    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^\&\n\r\t\v\f?]+)/
-    const match = url?.match(regex)
-    return match ? match[1] : null
-  }
-
   const findBlockingQuiz = (video, part) => {
     if (!video || !video.quizzes || video.quizzes.length === 0) return null
     const partIdx = video.parts.findIndex(p => p.id === part.id)
@@ -175,26 +169,13 @@ export default function Videos() {
     return null
   }
 
-  const viewsUsedFor = (partId) =>
-    progressRows.find(p => p.part_id === partId)?.views_used || 0
-
-  // Effective view limit = video default + admin-granted extra views.
-  // The override's `attempts` field is a bonus on top of the default, so
-  // bumping it by +N always grants the student N more views — even after
-  // they've exhausted their previous allowance.
-  const effectiveViewLimit = (video) => {
-    const o = videoOverrides.get(video?.id)
-    const base = video?.viewLimit || 0
-    const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
-    return base + extra
-  }
+  // View-limit enforcement was removed — students can rewatch freely.
+  // We still keep the override's `allowed` flag so an admin can stop showing
+  // a video without deleting it (via Control Panel → إدارة الفيديوهات).
   const isVideoAllowed = (video) => {
     const o = videoOverrides.get(video?.id)
     return o ? o.allowed !== false : true
   }
-
-  const viewsRemainingFor = (partId) =>
-    Math.max(0, effectiveViewLimit(currentVideo) - viewsUsedFor(partId))
 
   // ── Navigation ───────────────────────────────────────────────
   const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos') }
@@ -220,13 +201,22 @@ export default function Videos() {
   const closeAlertModal = () => setShowAlert(false)
 
   // ── Delete (admin) ───────────────────────────────────────────
-  const handleDeleteVideo = async (video, e) => {
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+
+  const handleDeleteVideo = (video, e) => {
     e?.stopPropagation()
-    if (!window.confirm(`حذف «${video.title}»؟`)) return
+    setConfirmDelete({ id: video.id, title: video.title })
+  }
+
+  const performDeleteVideo = async () => {
+    const target = confirmDelete
+    if (!target) return
     try {
-      await deleteVideo(video.id)
-      setAllVideos(prev => prev.filter(v => v.id !== video.id))
+      await deleteVideo(target.id)
+      setAllVideos(prev => prev.filter(v => v.id !== target.id))
+      setConfirmDelete(null)
     } catch (err) {
+      setConfirmDelete(null)
       showAlertModal('خطأ', err.message || 'تعذر الحذف')
     }
   }
@@ -237,10 +227,6 @@ export default function Videos() {
     const expiryDate = currentVideo.expiryTime ? new Date(currentVideo.expiryTime) : null
     if (expiryDate && now > expiryDate) {
       return showAlertModal('انتهت المدة', 'انتهت مدة تفعيل هذا الفيديو')
-    }
-
-    if (userRole !== 'admin' && viewsRemainingFor(part.id) <= 0) {
-      return showAlertModal('انتهت المحاولات', 'لم تعد لديك محاولات متبقية لمشاهدة هذا الجزء')
     }
 
     // Quiz gate
@@ -260,7 +246,7 @@ export default function Videos() {
       return
     }
 
-    // Record a view for students (admins watch freely)
+    // Log the view (powers VideosReport). Not used for enforcement anymore.
     if (userRole !== 'admin' && currentUser?.id) {
       try {
         const updated = await incrementPartView({
@@ -277,14 +263,8 @@ export default function Videos() {
       }
     }
 
+    // The YouTubePlayer component mounts against `part.youtubeId`.
     setSelectedPart(part)
-    const videoId = extractVideoId(part.videoUrl)
-    if (videoId) {
-      const videoFrame = document.getElementById('videoFrame')
-      if (videoFrame) {
-        videoFrame.innerHTML = `<iframe class="video-frame" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`
-      }
-    }
   }
 
   const handleQuizPass = () => {
@@ -379,7 +359,6 @@ export default function Videos() {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                   hour: '2-digit', minute: '2-digit'
                 }) : '—'
-                const totalDuration = video.parts.reduce((sum, p) => sum + (parseInt(p.duration) || 0), 0)
 
                 return (
                   <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
@@ -407,16 +386,6 @@ export default function Videos() {
                         <span className="vc-stat-icon">🎬</span>
                         <span className="vc-stat-label">عدد الأجزاء</span>
                         <span className="vc-stat-value">{video.totalParts} جزء</span>
-                      </div>
-                      <div className="vc-stat">
-                        <span className="vc-stat-icon">⏱️</span>
-                        <span className="vc-stat-label">المدة الكلية</span>
-                        <span className="vc-stat-value">{totalDuration || video.totalParts * 18} دقيقة</span>
-                      </div>
-                      <div className="vc-stat">
-                        <span className="vc-stat-icon">👁️</span>
-                        <span className="vc-stat-label">عدد المشاهدات</span>
-                        <span className="vc-stat-value">{effectiveViewLimit(video)} مرات</span>
                       </div>
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🕒</span>
@@ -457,8 +426,10 @@ export default function Videos() {
 
           <div className="video-player-container">
             <div className="video-main">
-              <div className="card">
-                <div id="videoFrame">
+              <div className="card" style={{ padding: 12 }}>
+                {selectedPart && selectedPart.youtubeId ? (
+                  <YouTubePlayer key={selectedPart.id} videoId={selectedPart.youtubeId} />
+                ) : (
                   <div className="placeholder-video">
                     <div>
                       <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
@@ -466,7 +437,7 @@ export default function Videos() {
                       <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -477,22 +448,16 @@ export default function Videos() {
                   {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
                     const locked = !!blocking && userRole !== 'admin'
-                    const remaining = userRole === 'admin' ? '∞' : viewsRemainingFor(part.id)
+                    const isActive = selectedPart?.id === part.id
                     return (
                       <div
                         key={part.id}
-                        className={`part-item ${locked ? 'part-item-locked' : ''}`}
+                        className={`part-item ${locked ? 'part-item-locked' : ''} ${isActive ? 'part-item-active' : ''}`}
                         onClick={() => playVideoPart(part)}
                       >
                         <div className="title-card" style={{ color: 'var(--text-primary)' }}>
                           {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
                           الجزء {index + 1}: {part.title}
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                          ⏱️ {part.duration}
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--educational-accent)', marginTop: '4px' }}>
-                          👁️ المتبقي: {remaining}
                         </div>
                         {locked && (
                           <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
@@ -531,6 +496,17 @@ export default function Videos() {
             <button className="btn btn-primary" onClick={closeAlertModal}>حسناً</button>
           </div>
         </div>
+      )}
+
+      {/* Delete-confirmation modal */}
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف الفيديو"
+          itemLabel={confirmDelete.title}
+          message="سيتم حذف الفيديو وجميع أجزائه وبيانات تقدّم الطلاب المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={performDeleteVideo}
+        />
       )}
     </div>
   )
