@@ -420,7 +420,7 @@ export default function Login() {
             {/* Instructor name badge */}
             <div className="instructor-badge">
               <span className="instructor-badge-dot"></span>
-              {lang === 'ar' ? 'المدرّس' : 'Instructor'}
+              {lang === 'ar' ? 'المطورون' : 'Developers'}
             </div>
 
             {/* Scroll down link */}
