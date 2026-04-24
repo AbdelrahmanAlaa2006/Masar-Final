@@ -84,6 +84,15 @@ export default function YouTubePlayer({
   const [fullscreen, setFullscreen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  // Double-tap-to-seek state. We track the last tap's time + side so the
+  // second tap in the same half within DOUBLE_TAP_MS triggers a ±10s seek
+  // (instead of the single-tap play/pause). A fading overlay badge gives
+  // the student visual feedback when it fires.
+  const lastTapRef = useRef({ t: 0, side: null })
+  const [seekFlash, setSeekFlash] = useState(null) // {side:'left'|'right', key:number} | null
+  const DOUBLE_TAP_MS = 280
+  const SEEK_STEP = 10
+
   // ---------- Player lifecycle ----------
   useEffect(() => {
     let cancelled = false
@@ -114,10 +123,20 @@ export default function YouTubePlayer({
             setVolume(e.target.getVolume() ?? 100)
             setMuted(Boolean(e.target.isMuted?.()))
             if (startMuted) { try { e.target.mute() } catch {} }
-            try {
-              const qs = e.target.getAvailableQualityLevels?.() || []
-              setQualities(qs)
-            } catch {}
+            // Kick off playback briefly so YouTube resolves the real
+            // quality list (getAvailableQualityLevels returns [] until
+            // the video has actually loaded a stream).
+            const refreshQualities = () => {
+              try {
+                const qs = e.target.getAvailableQualityLevels?.() || []
+                if (qs.length) setQualities(qs)
+              } catch {}
+            }
+            refreshQualities()
+            // Retry a few times after load since YT populates the list
+            // lazily on the first buffer. Cheap + bounded.
+            const retries = [300, 900, 2000, 4000]
+            retries.forEach((ms) => setTimeout(refreshQualities, ms))
             if (typeof onReady === 'function') onReady(e.target)
           },
           onStateChange: (e) => {
@@ -135,6 +154,10 @@ export default function YouTubePlayer({
           },
           onPlaybackQualityChange: (e) => {
             setQuality(e.data || 'auto')
+            try {
+              const qs = e.target.getAvailableQualityLevels?.() || []
+              if (qs.length) setQualities(qs)
+            } catch {}
           },
         },
       })
@@ -182,6 +205,18 @@ export default function YouTubePlayer({
     p.seekTo(Math.max(0, Math.min(duration, sec)), true)
     setCurrent(sec)
   }, [duration])
+
+  // Seek by a delta relative to where we are *right now* (not the last
+  // polled `current`, which may be up to a frame stale). Used by the
+  // double-tap handler.
+  const seekBy = useCallback((delta) => {
+    const p = playerRef.current; if (!p) return
+    const now = (typeof p.getCurrentTime === 'function') ? p.getCurrentTime() : current
+    const d = (typeof p.getDuration === 'function' && p.getDuration()) || duration
+    const next = Math.max(0, Math.min(d || 0, now + delta))
+    p.seekTo(next, true)
+    setCurrent(next)
+  }, [current, duration])
 
   const onScrubberClick = (e) => {
     const bar = e.currentTarget
@@ -246,10 +281,40 @@ export default function YouTubePlayer({
 
       {/* Clickable transparent layer — catches clicks so YouTube's
           in-frame overlays (title, share, channel) are unreachable.
-          Clicking toggles play/pause. */}
+
+          Tap behaviour:
+            • single tap  → play / pause
+            • double tap on LEFT half  → rewind 10s
+            • double tap on RIGHT half → forward 10s
+          We roll our own double-tap detection instead of using the
+          DOM's `onDoubleClick` because we need to know which side
+          was tapped AND fire on the second tap (not wait for dblclick
+          delay). Fullscreen lives on the dedicated button now. */}
       <div
-        onClick={togglePlay}
-        onDoubleClick={toggleFullscreen}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const x = e.clientX - rect.left
+          const side = x < rect.width / 2 ? 'left' : 'right'
+          const now = Date.now()
+          const last = lastTapRef.current
+          if (last.t && now - last.t < DOUBLE_TAP_MS && last.side === side) {
+            // Double-tap: seek and flash, suppress play/pause.
+            const delta = side === 'left' ? -SEEK_STEP : SEEK_STEP
+            seekBy(delta)
+            setSeekFlash({ side, key: now })
+            lastTapRef.current = { t: 0, side: null }
+            return
+          }
+          lastTapRef.current = { t: now, side }
+          // Delay single-tap action so a follow-up tap can cancel it.
+          const myTs = now
+          setTimeout(() => {
+            if (lastTapRef.current.t === myTs) {
+              togglePlay()
+              lastTapRef.current = { t: 0, side: null }
+            }
+          }, DOUBLE_TAP_MS)
+        }}
         style={{
           position: 'absolute',
           inset: 0,
@@ -260,6 +325,44 @@ export default function YouTubePlayer({
           zIndex: 2,
         }}
       />
+
+      {/* Double-tap seek flash overlay — half-circle badge on the
+          tapped side that fades out in ~600ms. Keyed so repeated
+          taps restart the animation. */}
+      {seekFlash && (
+        <div
+          key={seekFlash.key}
+          onAnimationEnd={() => setSeekFlash(null)}
+          style={{
+            position: 'absolute',
+            top: 0, bottom: 56,
+            [seekFlash.side]: 0,
+            width: '35%',
+            display: 'grid', placeItems: 'center',
+            background: seekFlash.side === 'left'
+              ? 'radial-gradient(circle at 100% 50%, rgba(0,0,0,0.55), rgba(0,0,0,0) 70%)'
+              : 'radial-gradient(circle at 0% 50%, rgba(0,0,0,0.55), rgba(0,0,0,0) 70%)',
+            color: '#fff',
+            pointerEvents: 'none',
+            zIndex: 3,
+            animation: 'ytp-seek-flash 600ms ease-out forwards',
+          }}
+        >
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 6, fontSize: 14, fontWeight: 600,
+          }}>
+            <i className={`fas ${seekFlash.side === 'left' ? 'fa-backward' : 'fa-forward'}`}
+               style={{ fontSize: 28 }}></i>
+            <span>{SEEK_STEP} ثوانٍ</span>
+          </div>
+          <style>{`@keyframes ytp-seek-flash {
+            0%   { opacity: 0; transform: scale(0.92); }
+            20%  { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1); }
+          }`}</style>
+        </div>
+      )}
 
       {/* Center play-indicator when paused */}
       {ready && !playing && (
@@ -384,7 +487,15 @@ export default function YouTubePlayer({
               <div style={{
                 padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
               }}>الجودة</div>
-              {(qualities.length ? qualities : ['auto']).map((q) => (
+              {/* Always show "Auto" first, then all available concrete
+                  levels sorted best-to-worst. YouTube returns them in a
+                  mostly-sorted order but we normalise here so the list
+                  is consistent across videos. */}
+              {(() => {
+                const order = ['highres','hd2160','hd1440','hd1080','hd720','large','medium','small','tiny']
+                const concrete = order.filter((o) => qualities.includes(o))
+                const list = ['auto', ...concrete]
+                return list.map((q) => (
                 <button
                   key={q}
                   onClick={() => pickQuality(q)}
@@ -400,7 +511,8 @@ export default function YouTubePlayer({
                   <span>{QUALITY_LABEL[q] || q}</span>
                   {q === quality && <i className="fas fa-check" style={{ color: '#f56565' }}></i>}
                 </button>
-              ))}
+                ))
+              })()}
             </div>
           )}
         </div>

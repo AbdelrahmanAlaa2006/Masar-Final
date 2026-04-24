@@ -177,6 +177,24 @@ export default function Videos() {
     return o ? o.allowed !== false : true
   }
 
+  // Effective expiry for the current student. If the admin has set a
+  // per-audience `availableHours` override (grade- or student-scoped), we
+  // recompute expiry as `created_at + hours`. Otherwise we fall back to the
+  // video's own `expiry_at` which was computed at create time.
+  const effectiveExpiryFor = (video) => {
+    const o = videoOverrides.get(video?.id)
+    const hours = o?.availableHours
+    if (hours && video?.createdAt) {
+      return new Date(new Date(video.createdAt).getTime() + hours * 3600 * 1000)
+    }
+    return video?.expiryTime ? new Date(video.expiryTime) : null
+  }
+
+  const effectiveHoursFor = (video) => {
+    const o = videoOverrides.get(video?.id)
+    return o?.availableHours ?? video?.activeHours
+  }
+
   // ── Navigation ───────────────────────────────────────────────
   const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos') }
   const goBackToGrades = () => {
@@ -224,7 +242,7 @@ export default function Videos() {
   // ── Play a part ──────────────────────────────────────────────
   const playVideoPart = async (part) => {
     const now = new Date()
-    const expiryDate = currentVideo.expiryTime ? new Date(currentVideo.expiryTime) : null
+    const expiryDate = effectiveExpiryFor(currentVideo)
     if (expiryDate && now > expiryDate) {
       return showAlertModal('انتهت المدة', 'انتهت مدة تفعيل هذا الفيديو')
     }
@@ -353,8 +371,9 @@ export default function Videos() {
           ) : (
             <div className="videos-grid" id="videosGrid">
               {(videosByGrade[currentGrade] || []).map((video, index) => {
-                const expiry = video.expiryTime ? new Date(video.expiryTime) : null
+                const expiry = effectiveExpiryFor(video)
                 const isAvailable = !expiry || new Date() < expiry
+                const hours = effectiveHoursFor(video)
                 const formattedExpiry = expiry ? expiry.toLocaleDateString('ar-EG', {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                   hour: '2-digit', minute: '2-digit'
@@ -390,7 +409,7 @@ export default function Videos() {
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🕒</span>
                         <span className="vc-stat-label">متاح لمدة</span>
-                        <span className="vc-stat-value">{video.activeHours} ساعة</span>
+                        <span className="vc-stat-value">{hours} ساعة</span>
                       </div>
                     </div>
 

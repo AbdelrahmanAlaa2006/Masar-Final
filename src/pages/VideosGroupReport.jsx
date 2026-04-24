@@ -4,6 +4,7 @@ import './VideosGroupReport.css'
 import { listStudents } from '@backend/profilesApi'
 import { listVideos } from '@backend/videosApi'
 import { supabase } from '@backend/supabase'
+import { getYoutubeDurations } from '../services/youtubeMeta'
 
 // DB grade enum → Arabic label shown in the UI.
 const GRADE_LABEL = {
@@ -80,8 +81,8 @@ export default function VideosGroupReport() {
   const loadReport = async (videoId) => {
     const video = videos.find(v => v.id === videoId)
     if (!video) return
-    const totalParts = (video.video_parts || []).length || 0
-    const totalMinutes = video.duration_minutes || 0
+    const parts = video.video_parts || []
+    const totalParts = parts.length || 0
     const gradeStudents = studentsForGrade
     if (gradeStudents.length === 0) {
       setAllStudentsData([]); setDisplayedStudents([]); return
@@ -89,6 +90,14 @@ export default function VideosGroupReport() {
 
     setReportLoading(true)
     try {
+      // Real duration sourced from YouTube itself (minutes, ceiled).
+      // Cached per session, so flipping between videos is cheap after
+      // the first probe.
+      const partIds = parts.map(p => p.youtube_id).filter(Boolean)
+      const durMap = await getYoutubeDurations(partIds)
+      const totalSeconds = parts.reduce((s, p) => s + (durMap.get(p.youtube_id) || 0), 0)
+      const totalMinutes = Math.ceil(totalSeconds / 60)
+
       const ids = gradeStudents.map(s => s.id)
       const { data: progressRows, error } = await supabase
         .from('video_progress')

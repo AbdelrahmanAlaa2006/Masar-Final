@@ -346,65 +346,84 @@ export default function ControlPanel() {
           onScope={() => chooseScope(scope)}
         />
 
-        {/* HOME */}
+        {/* HOME — only two entry tiles; availability + reveal are
+            now sub-tabs inside those sections (user asked to merge
+            them to reduce clutter). */}
         {section === 'home' && (
           <div className="cp-home-grid">
             <SectionCard
               icon="fa-play-circle"
               accent="blue"
               title="إدارة الفيديوهات"
-              desc="تحكم في صلاحيات المشاهدة وعدد المحاولات لكل طالب أو مرحلة"
+              desc="صلاحيات المشاهدة، المحاولات الإضافية، ومدة الإتاحة"
               onClick={() => enterSection('videos')}
             />
             <SectionCard
               icon="fa-file-alt"
               accent="orange"
               title="إدارة الامتحانات"
-              desc="السماح بدخول الامتحانات وتعديل عدد المحاولات"
+              desc="المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات"
               onClick={() => enterSection('exams')}
-            />
-            <SectionCard
-              icon="fa-eye"
-              accent="purple"
-              title="إظهار نتائج الامتحانات"
-              desc="التحكم في إظهار أو إخفاء درجات كل امتحان للطلاب في تقاريرهم"
-              onClick={() => enterSection('reveal')}
-            />
-            <SectionCard
-              icon="fa-hourglass-half"
-              accent="green"
-              title="إدارة مدة الإتاحة"
-              desc="عدّل الفترة المتاحة لكل فيديو أو امتحان بعد إنشائه"
-              onClick={() => enterSection('availability')}
             />
           </div>
         )}
 
-        {/* REVEAL PANEL — real exams from DB, toggle reveal_grades */}
-        {section === 'reveal' && (
+        {/* SUB-TAB BAR — videos: attempts/availability. exams: + reveal. */}
+        {(section === 'videos' || section === 'exams') && (
+          <div className="cp-subtabs" style={{
+            display: 'flex', gap: 8, flexWrap: 'wrap',
+            margin: '12px 0 18px',
+          }}>
+            <button
+              className={`cp-btn ${subtab === 'attempts' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+              onClick={() => setSubtab('attempts')}
+            >
+              <i className="fas fa-user-shield"></i> الصلاحيات والمحاولات
+            </button>
+            <button
+              className={`cp-btn ${subtab === 'availability' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+              onClick={() => setSubtab('availability')}
+            >
+              <i className="fas fa-hourglass-half"></i> مدة الإتاحة
+            </button>
+            {section === 'exams' && (
+              <button
+                className={`cp-btn ${subtab === 'reveal' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+                onClick={() => setSubtab('reveal')}
+              >
+                <i className="fas fa-eye"></i> إظهار النتائج
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* AVAILABILITY sub-panel — restricted to the current section's type */}
+        {(section === 'videos' || section === 'exams') && subtab === 'availability' && (
+          <AvailabilityPanel
+            restrictTo={section === 'exams' ? 'exams' : 'videos'}
+            onBack={goHome}
+            flash={flash}
+          />
+        )}
+
+        {/* REVEAL sub-panel — only inside Exams */}
+        {section === 'exams' && subtab === 'reveal' && (
           <RevealPanel onBack={goHome} flash={flash} />
         )}
 
-        {/* AVAILABILITY PANEL — edit available_hours / active_hours per item */}
-        {section === 'availability' && (
-          <AvailabilityPanel onBack={goHome} flash={flash} />
-        )}
-
-        {/* Loading state for non-home sections */}
-        {(section === 'videos' || section === 'exams') && loading && (
+        {/* ATTEMPTS FLOW — the original scope/target/items navigation */}
+        {(section === 'videos' || section === 'exams') && subtab === 'attempts' && loading && (
           <div className="cp-empty">
             <i className="fas fa-spinner fa-spin"></i>
             <p>جارٍ التحميل...</p>
           </div>
         )}
 
-        {/* SCOPE PICKER */}
-        {(section === 'videos' || section === 'exams') && !loading && !scope && (
+        {(section === 'videos' || section === 'exams') && subtab === 'attempts' && !loading && !scope && (
           <ScopePicker section={section} onPick={chooseScope} onBack={goHome} />
         )}
 
-        {/* TARGET PICKER */}
-        {(section === 'videos' || section === 'exams') && !loading && scope && !target && (
+        {(section === 'videos' || section === 'exams') && subtab === 'attempts' && !loading && scope && !target && (
           <TargetPicker
             scope={scope}
             list={pickerList}
@@ -415,8 +434,7 @@ export default function ControlPanel() {
           />
         )}
 
-        {/* ITEMS (videos/exams) FOR TARGET */}
-        {(section === 'videos' || section === 'exams') && !loading && target && (
+        {(section === 'videos' || section === 'exams') && subtab === 'attempts' && !loading && target && (
           <ItemsManager
             section={section}
             scope={scope}
@@ -462,8 +480,6 @@ function Breadcrumbs({ section, scope, target, onHome, onSection, onScope }) {
   const sectionLabel =
     section === 'videos' ? 'الفيديوهات'
     : section === 'exams' ? 'الامتحانات'
-    : section === 'reveal' ? 'إظهار نتائج الامتحانات'
-    : section === 'availability' ? 'إدارة مدة الإتاحة'
     : ''
   const scopeLabel =
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
@@ -1063,10 +1079,6 @@ function RevealPanel({ onBack, flash }) {
 
   return (
     <section className="cp-panel">
-      <button className="cp-back" onClick={onBack}>
-        <i className="fas fa-arrow-right"></i> رجوع
-      </button>
-
       <div className="cp-panel-header">
         <h2><i className="fas fa-eye"></i> إظهار نتائج الامتحانات</h2>
         <p>اختر الجمهور أولاً، ثم فعِّل ظهور النتائج لكل امتحان — وسيصل إشعار تلقائي للطلاب.</p>
@@ -1089,16 +1101,9 @@ function RevealPanel({ onBack, flash }) {
         ))}
       </div>
 
-      {/* Grade dropdown */}
+      {/* Grade picker — card grid, visually consistent with the rest of CP. */}
       {audience === 'grade' && (
-        <div className="cp-search" style={{ marginTop: 12 }}>
-          <i className="fas fa-graduation-cap"></i>
-          <select value={grade} onChange={(e) => setGrade(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15 }}>
-            <option value="first-prep">الأول الإعدادي</option>
-            <option value="second-prep">الثاني الإعدادي</option>
-            <option value="third-prep">الثالث الإعدادي</option>
-          </select>
-        </div>
+        <GradePickerCards value={grade} onChange={setGrade} students={students} />
       )}
 
       {/* Student picker */}
@@ -1273,27 +1278,110 @@ function RevealPanel({ onBack, flash }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   AvailabilityPanel — edit how many hours an exam or a video
-   remains available after it was created. For exams this updates
-   `available_hours`; for videos we update `active_hours` AND
-   recompute `expiry_at = created_at + hours`. Changes are saved
-   explicitly (Save button) so admins see when they've committed.
+   GradePickerCards — shared 3-card grade chooser. Replaces the
+   plain <select> we used before; lines up visually with the rest
+   of the Control Panel (same shapes as prep TargetRow).
    ────────────────────────────────────────────────────────────── */
-function AvailabilityPanel({ onBack, flash }) {
-  const [tab, setTab] = useState('exams') // 'exams' | 'videos'
+function GradePickerCards({ value, onChange, students = [] }) {
+  // Tiny bar-chart-friendly student count per grade, so admins see
+  // at a glance how many people the pick will affect.
+  const counts = useMemo(() => {
+    const out = { 'first-prep': 0, 'second-prep': 0, 'third-prep': 0 }
+    for (const s of students) if (s?.grade && out[s.grade] !== undefined) out[s.grade]++
+    return out
+  }, [students])
+
+  // NB: we purposely do NOT hard-code colors here — the `.cp-target` rule
+  // already resolves to dark-mode-aware CSS vars (--card-bg, --text-color,
+  // etc.) set up by ControlPanel.css. The extra ring for the active card is
+  // applied through the `is-active` class, see the tiny CSS block below.
+  return (
+    <div
+      className="cp-grade-picker"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: 12,
+        marginTop: 12,
+      }}
+    >
+      {GRADE_ORDER.map((g) => {
+        const active = value === g
+        return (
+          <button
+            key={g}
+            onClick={() => onChange(g)}
+            className={`cp-target cp-target-prep ${active ? 'is-active' : ''}`}
+            style={{ padding: 14, borderRadius: 12, textAlign: 'start' }}
+          >
+            <div className="cp-avatar cp-avatar-orange" style={{ flexShrink: 0 }}>
+              <i className="fas fa-graduation-cap"></i>
+            </div>
+            <div className="cp-target-body">
+              <div className="cp-target-name">
+                <span>{GRADE_LABEL[g]}</span>
+                {active && (
+                  <span className="cp-id-pill cp-id-pill-active">
+                    <i className="fas fa-circle-check"></i> مختارة
+                  </span>
+                )}
+              </div>
+              <div className="cp-target-sub">
+                <span><i className="fas fa-user"></i> {counts[g] || 0} طالب</span>
+              </div>
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   AvailabilityPanel — edit how many hours an exam or a video
+   remains available after it was created.
+
+   Audience-aware (mirrors RevealPanel):
+     • 'all'     → writes to the item column itself (exams.available_hours,
+                   videos.active_hours) — affects every student.
+     • 'grade'   → upsert into access_overrides (scope='prep',
+                   available_hours=N) for exactly that prep.
+     • 'student' → same but scope='student'. Admin can also clear the
+                   override to fall back to the item's default.
+
+   For non-'all' audiences the draft starts from the override if it
+   exists, else from the item's default (shown as "موروث").
+   ────────────────────────────────────────────────────────────── */
+function AvailabilityPanel({ onBack, flash, restrictTo }) {
+  // `restrictTo` = 'exams' | 'videos' | undefined. When set, the internal
+  // tab bar is hidden and only the matching list is shown (this panel is
+  // now rendered inside the Videos / Exams sections, so the outer section
+  // tells us which type to show).
+  const [tab, setTab] = useState(restrictTo || 'exams')
+
+  // Audience targeting mirrors RevealPanel so admins learn one pattern.
+  const [audience, setAudience] = useState('all')
+  const [grade, setGrade]       = useState('first-prep')
+  const [studentId, setStudentId] = useState('')
+
   const [exams, setExams] = useState([])
   const [videos, setVideos] = useState([])
+  const [students, setStudents] = useState([])
+  // itemId -> { available_hours:int|null, allowed:bool } for the selected audience
+  const [overrides, setOverrides] = useState(new Map())
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [studentQuery, setStudentQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, vd] = await Promise.all([listExams(), listVideos()])
-        if (!cancelled) { setExams(ex); setVideos(vd) }
+        const [ex, vd, st] = await Promise.all([listExams(), listVideos(), listStudents()])
+        if (!cancelled) { setExams(ex); setVideos(vd); setStudents(st) }
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
       } finally {
@@ -1303,74 +1391,242 @@ function AvailabilityPanel({ onBack, flash }) {
     return () => { cancelled = true }
   }, [])
 
+  const itemType = tab === 'exams' ? 'exam' : 'video'
+
+  // When audience/target/tab changes, refetch overrides for that audience.
+  useEffect(() => {
+    if (audience === 'all') { setOverrides(new Map()); return }
+    const target = audience === 'grade' ? grade : studentId
+    if (!target) { setOverrides(new Map()); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const map = await listOverridesForTarget(
+          audience === 'grade' ? 'prep' : 'student',
+          target,
+          itemType
+        )
+        if (cancelled) return
+        const out = new Map()
+        for (const [, r] of map) {
+          out.set(r.item_id, { available_hours: r.available_hours ?? null, allowed: r.allowed !== false })
+        }
+        setOverrides(out)
+      } catch { if (!cancelled) setOverrides(new Map()) }
+    })()
+    return () => { cancelled = true }
+  }, [audience, grade, studentId, itemType])
+
+  // Filter by grade when an audience is selected so admins don't see
+  // items irrelevant to their audience (e.g. exams from other preps).
   const rows = tab === 'exams' ? exams : videos
+  const targetGrade =
+    audience === 'grade' ? grade
+    : audience === 'student' ? (students.find((s) => s.id === studentId)?.grade || null)
+    : null
+
+  const baseRows = useMemo(() => {
+    if (!targetGrade) return rows
+    return rows.filter((r) => r.grade === targetGrade)
+  }, [rows, targetGrade])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) =>
+    if (!q) return baseRows
+    return baseRows.filter((r) =>
       [r.title, r.number, GRADE_LABEL[r.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
     )
-  }, [rows, query])
+  }, [baseRows, query])
 
+  const filteredStudents = useMemo(() => {
+    const q = studentQuery.trim().toLowerCase()
+    if (!q) return students
+    return students.filter((s) =>
+      [s.name, s.phone, GRADE_LABEL[s.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [students, studentQuery])
+
+  const selectedStudent = students.find((s) => s.id === studentId) || null
+
+  const audienceLabel = () => {
+    if (audience === 'all') return 'كل الطلاب'
+    if (audience === 'grade') return GRADE_LABEL[grade] || grade
+    if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
+    return ''
+  }
+
+  // Save handler: 'all' updates the item column itself; grade/student
+  // upserts an override row with available_hours. Returning the new saved
+  // state lets the row re-sync its dirty flag.
   const saveRow = async (item, hours) => {
     try {
-      if (tab === 'exams') {
-        await updateExamAvailability(item.id, hours)
-        setExams((p) => p.map((r) => r.id === item.id ? { ...r, available_hours: hours } : r))
+      if (audience === 'all') {
+        if (tab === 'exams') {
+          await updateExamAvailability(item.id, hours)
+          setExams((p) => p.map((r) => r.id === item.id ? { ...r, available_hours: hours } : r))
+        } else {
+          const updated = await updateVideoAvailability(item.id, hours)
+          setVideos((p) => p.map((r) => r.id === item.id ? {
+            ...r, active_hours: hours, expiry_at: updated.expiry_at,
+          } : r))
+        }
       } else {
-        const updated = await updateVideoAvailability(item.id, hours)
-        setVideos((p) => p.map((r) => r.id === item.id ? {
-          ...r, active_hours: hours, expiry_at: updated.expiry_at,
-        } : r))
+        const scope = audience === 'grade' ? 'prep' : 'student'
+        const targetId = audience === 'grade' ? grade : studentId
+        if (!targetId) { flash('اختر المرحلة أو الطالب أولاً', 'warning'); return }
+        await upsertOverride({ scope, targetId, itemType, itemId: item.id, availableHours: hours })
+        setOverrides((p) => {
+          const n = new Map(p)
+          const prev = n.get(item.id) || { allowed: true }
+          n.set(item.id, { ...prev, available_hours: hours })
+          return n
+        })
       }
-      flash(`تم تحديث مدة الإتاحة: ${item.title}`, 'success')
+      flash(`تم تحديث مدة الإتاحة: ${item.title} — ${audienceLabel()}`, 'success')
     } catch (e) {
       flash(e.message || 'تعذّر الحفظ', 'warning')
       throw e
     }
   }
 
+  // Clear a per-audience override — row falls back to the item default.
+  const clearOverride = async (item) => {
+    if (audience === 'all') return // 'all' can't be "cleared" — it IS the default
+    const scope = audience === 'grade' ? 'prep' : 'student'
+    const targetId = audience === 'grade' ? grade : studentId
+    if (!targetId) return
+    try {
+      // Use upsert with available_hours:null so we don't wipe allowed/attempts
+      // if the admin set those in another panel — only the hours override
+      // goes back to inherit.
+      await upsertOverride({ scope, targetId, itemType, itemId: item.id, availableHours: null })
+      setOverrides((p) => {
+        const n = new Map(p)
+        const prev = n.get(item.id)
+        if (prev) n.set(item.id, { ...prev, available_hours: null })
+        return n
+      })
+      flash(`تم استرجاع الإعداد الافتراضي: ${item.title}`, 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر الاسترجاع', 'warning')
+    }
+  }
+
+  const canInteract = audience === 'all'
+                   || (audience === 'grade'   && !!grade)
+                   || (audience === 'student' && !!studentId)
+
   return (
     <section className="cp-panel">
-      <button className="cp-back" onClick={onBack}>
-        <i className="fas fa-arrow-right"></i> رجوع
-      </button>
-
       <div className="cp-panel-header">
-        <h2><i className="fas fa-hourglass-half"></i> إدارة مدة الإتاحة</h2>
-        <p>عدّل عدد الساعات التي يظل فيها كل امتحان أو فيديو متاحاً للطلاب.</p>
+        <h2><i className="fas fa-hourglass-half"></i> مدة الإتاحة</h2>
+        <p>
+          حدّد الجمهور، ثم عدّل عدد الساعات التي يظل فيها كل {tab === 'exams' ? 'امتحان' : 'فيديو'} متاحاً.
+        </p>
       </div>
 
-      {/* Tab selector */}
-      <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
-        <button
-          className={`cp-btn ${tab === 'exams' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-          onClick={() => setTab('exams')}
-        >
-          <i className="fas fa-file-alt"></i> الامتحانات
-        </button>
-        <button
-          className={`cp-btn ${tab === 'videos' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-          onClick={() => setTab('videos')}
-        >
-          <i className="fas fa-play-circle"></i> الفيديوهات
-        </button>
-      </div>
-
-      <div className="cp-search">
-        <i className="fas fa-search"></i>
-        <input
-          type="text"
-          placeholder={`ابحث باسم ${tab === 'exams' ? 'الامتحان' : 'الفيديو'} أو المرحلة...`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {query && (
-          <button className="cp-search-clear" onClick={() => setQuery('')}>
-            <i className="fas fa-xmark"></i>
+      {/* (legacy) type tabs — hidden when the parent section restricts us */}
+      {!restrictTo && (
+        <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
+          <button
+            className={`cp-btn ${tab === 'exams' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            onClick={() => setTab('exams')}
+          >
+            <i className="fas fa-file-alt"></i> الامتحانات
           </button>
-        )}
+          <button
+            className={`cp-btn ${tab === 'videos' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            onClick={() => setTab('videos')}
+          >
+            <i className="fas fa-play-circle"></i> الفيديوهات
+          </button>
+        </div>
+      )}
+
+      {/* Audience selector — mirrors RevealPanel for familiarity. */}
+      <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
+        {[
+          { id: 'all',     icon: 'fa-users',       label: 'كل الطلاب' },
+          { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
+          { id: 'student', icon: 'fa-user',        label: 'طالب محدد' },
+        ].map((opt) => (
+          <button
+            key={opt.id}
+            className={`cp-btn ${audience === opt.id ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            onClick={() => setAudience(opt.id)}
+          >
+            <i className={`fas ${opt.icon}`}></i> {opt.label}
+          </button>
+        ))}
       </div>
+
+      {/* Grade card picker */}
+      {audience === 'grade' && (
+        <GradePickerCards value={grade} onChange={setGrade} students={students} />
+      )}
+
+      {/* Student picker (reuse same pattern as RevealPanel) */}
+      {audience === 'student' && (
+        <div style={{ marginTop: 12 }}>
+          {selectedStudent ? (
+            <div className="cp-search" style={{ background: '#eef2ff' }}>
+              <i className="fas fa-user-check"></i>
+              <span style={{ flex: 1, fontWeight: 600 }}>
+                {selectedStudent.name} — {GRADE_LABEL[selectedStudent.grade] || '—'}
+              </span>
+              <button className="cp-search-clear" onClick={() => setStudentId('')}>
+                <i className="fas fa-xmark"></i>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="cp-search">
+                <i className="fas fa-search"></i>
+                <input
+                  type="text"
+                  placeholder="ابحث عن طالب بالاسم أو الهاتف..."
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                />
+              </div>
+              <ul className="cp-items" style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto' }}>
+                {filteredStudents.slice(0, 50).map((s) => (
+                  <li key={s.id} className="cp-item" style={{ cursor: 'pointer' }} onClick={() => setStudentId(s.id)}>
+                    <div className="cp-item-icon"><i className="fas fa-user"></i></div>
+                    <div className="cp-item-body">
+                      <div className="cp-item-title"><span>{s.name}</span></div>
+                      <div className="cp-item-meta">
+                        <span><i className="fas fa-phone"></i> {s.phone || '—'}</span>
+                        <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[s.grade] || '—'}</span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {filteredStudents.length === 0 && (
+                  <div className="cp-empty"><i className="fas fa-inbox"></i><p>لا يوجد طلاب مطابقون</p></div>
+                )}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
+      {canInteract && (
+        <div className="cp-search">
+          <i className="fas fa-search"></i>
+          <input
+            type="text"
+            placeholder={`ابحث باسم ${tab === 'exams' ? 'الامتحان' : 'الفيديو'} أو المرحلة...`}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button className="cp-search-clear" onClick={() => setQuery('')}>
+              <i className="fas fa-xmark"></i>
+            </button>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="cp-empty">
@@ -1385,7 +1641,7 @@ function AvailabilityPanel({ onBack, flash }) {
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && canInteract && (
         filtered.length === 0 ? (
           <div className="cp-empty">
             <i className="fas fa-inbox"></i>
@@ -1398,7 +1654,10 @@ function AvailabilityPanel({ onBack, flash }) {
                 key={item.id}
                 item={item}
                 isExam={tab === 'exams'}
+                audience={audience}
+                overrideHours={overrides.get(item.id)?.available_hours ?? null}
                 onSave={(h) => saveRow(item, h)}
+                onClear={audience !== 'all' ? () => clearOverride(item) : null}
               />
             ))}
           </ul>
@@ -1408,8 +1667,16 @@ function AvailabilityPanel({ onBack, flash }) {
   )
 }
 
-function AvailabilityRow({ item, isExam, onSave }) {
-  const savedHours = isExam ? (item.available_hours || 72) : (item.active_hours || 24)
+function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClear }) {
+  // The item's default (the "all-students" value) — always read from row.
+  const defaultHours = isExam ? (item.available_hours || 72) : (item.active_hours || 24)
+  // The "currently-saved" value for this audience is either the override
+  // hours (when set) or the item default (inherited).
+  const savedHours = audience === 'all'
+    ? defaultHours
+    : (overrideHours ?? defaultHours)
+  const inherited = audience !== 'all' && overrideHours == null
+
   const [draft, setDraft] = useState(savedHours)
   const [saving, setSaving] = useState(false)
 
@@ -1417,8 +1684,8 @@ function AvailabilityRow({ item, isExam, onSave }) {
 
   const dirty = Number(draft) !== Number(savedHours)
 
-  // Show the concrete "available until" so admins see the consequence
-  // of their edit (anchor = created_at; changes to draft are preview only).
+  // Preview "available until" anchored on created_at so admins see the
+  // consequence of their edit before they save.
   const anchor = item.created_at ? new Date(item.created_at).getTime() : Date.now()
   const previewUntil = new Date(anchor + Math.max(1, draft) * 3600 * 1000)
   const previewText = isNaN(previewUntil) ? '—' :
@@ -1451,8 +1718,18 @@ function AvailabilityRow({ item, isExam, onSave }) {
         </div>
         <div className="cp-item-meta">
           <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[item.grade] || item.grade}</span>
-          <span><i className="fas fa-hourglass-half"></i> {savedHours} ساعة محفوظة</span>
+          <span><i className="fas fa-hourglass-half"></i> {savedHours} ساعة</span>
           <span><i className="fas fa-calendar-check"></i> متاح حتى {previewText}</span>
+          {inherited && (
+            <span className="cp-status-pill" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+              <i className="fas fa-link"></i> موروث من الافتراضي
+            </span>
+          )}
+          {audience !== 'all' && !inherited && (
+            <span className="cp-status-pill" style={{ background: '#dcfce7', color: '#166534' }}>
+              <i className="fas fa-user-shield"></i> مخصص لهذا الجمهور
+            </span>
+          )}
           {dirty && (
             <span className="cp-status-pill" style={{ background: '#fef3c7', color: '#92400e' }}>
               <i className="fas fa-pen"></i> تغييرات غير محفوظة
@@ -1489,6 +1766,15 @@ function AvailabilityRow({ item, isExam, onSave }) {
             <><i className="fas fa-floppy-disk"></i> حفظ</>
           )}
         </button>
+        {onClear && !inherited && (
+          <button
+            className="cp-icon-btn"
+            onClick={onClear}
+            title="استرجاع الإعداد الافتراضي لهذا الجمهور"
+          >
+            <i className="fas fa-rotate-left"></i>
+          </button>
+        )}
       </div>
     </li>
   )

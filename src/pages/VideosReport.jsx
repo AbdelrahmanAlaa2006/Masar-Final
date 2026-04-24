@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
 import { getProfile } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
+import { getYoutubeDurations } from '../services/youtubeMeta'
 import './VideosReport.css'
 
 const fmtDate = (d) => {
@@ -85,6 +86,17 @@ export default function VideosReport() {
           byVideo.get(p.video_id).push(p)
         }
 
+        // Probe REAL durations from YouTube for every unique part across
+        // the videos this student has access to. We no longer store
+        // admin-entered minutes on the row — duration comes from the
+        // player itself. Results are cached per-tab so subsequent report
+        // loads on the same videos are instant.
+        const allPartIds = videos.flatMap((v) =>
+          (v.video_parts || []).map((p) => p.youtube_id).filter(Boolean)
+        )
+        const durMap = await getYoutubeDurations(allPartIds)
+        if (cancelled) return
+
         const rows = videos.map((v) => {
           const parts = v.video_parts || []
           const progList = byVideo.get(v.id) || []
@@ -106,11 +118,15 @@ export default function VideosReport() {
             .sort()
             .pop()
 
-          const totalMins = parts.reduce((s, p) => s + (p.duration_minutes || 0), 0)
-            || v.duration_minutes || 0
-          const watchedMins = parts
+          // Real durations (in seconds) → minutes, rounded up so a 30-sec
+          // outro still contributes 1 minute to the total.
+          const partSeconds = (p) => durMap.get(p.youtube_id) || 0
+          const totalSecs = parts.reduce((s, p) => s + partSeconds(p), 0)
+          const watchedSecs = parts
             .filter((p) => viewedPartIds.has(p.id))
-            .reduce((s, p) => s + (p.duration_minutes || 0), 0)
+            .reduce((s, p) => s + partSeconds(p), 0)
+          const totalMins = Math.ceil(totalSecs / 60)
+          const watchedMins = Math.ceil(watchedSecs / 60)
 
           return {
             id: v.id,

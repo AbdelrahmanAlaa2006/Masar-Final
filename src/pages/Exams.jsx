@@ -192,7 +192,11 @@ export default function Exams() {
   const renderExamItem = (exam, index) => {
     const remaining = remainingFor(exam)
     const createdAt = new Date(exam.created_at)
-    const availableUntil = new Date(createdAt.getTime() + (exam.available_hours * 60 * 60 * 1000))
+    // Per-audience availability override wins over the exam's own default.
+    // `overridesMap` is keyed by exam.id and may carry `availableHours`.
+    const o = overridesMap.get(exam.id)
+    const effectiveHours = o?.availableHours ?? exam.available_hours
+    const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
     const isAvailable = new Date() < availableUntil
     const formattedDate = availableUntil.toLocaleDateString('ar-EG', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -229,7 +233,7 @@ export default function Exams() {
           <div className="ec-stat">
             <span className="ec-stat-icon">🕒</span>
             <span className="ec-stat-label">المدة المتاحة</span>
-            <span className="ec-stat-value">{exam.available_hours} ساعة</span>
+            <span className="ec-stat-value">{effectiveHours} ساعة</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">❓</span>

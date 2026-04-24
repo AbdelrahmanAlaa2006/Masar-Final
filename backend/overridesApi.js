@@ -17,7 +17,7 @@ const TABLE = 'access_overrides'
 export async function listOverridesForTarget(scope, targetId, itemType) {
   const { data, error } = await supabase
     .from(TABLE)
-    .select('item_id, item_type, allowed, attempts')
+    .select('item_id, item_type, allowed, attempts, available_hours')
     .eq('scope', scope)
     .eq('target_id', String(targetId))
     .eq('item_type', itemType)
@@ -29,14 +29,15 @@ export async function listOverridesForTarget(scope, targetId, itemType) {
 
 /* Admin: upsert one override row. Pass { allowed, attempts } — either may be
    omitted to keep its previous/default value. */
-export async function upsertOverride({ scope, targetId, itemType, itemId, allowed, attempts }) {
+export async function upsertOverride({ scope, targetId, itemType, itemId, allowed, attempts, availableHours }) {
   const payload = {
     scope,
     target_id: String(targetId),
     item_type: itemType,
     item_id: itemId,
-    ...(allowed  !== undefined ? { allowed }  : {}),
-    ...(attempts !== undefined ? { attempts } : {}),
+    ...(allowed        !== undefined ? { allowed }  : {}),
+    ...(attempts       !== undefined ? { attempts } : {}),
+    ...(availableHours !== undefined ? { available_hours: availableHours } : {}),
   }
   const { data, error } = await supabase
     .from(TABLE)
@@ -66,7 +67,7 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
 export async function listEffectiveOverrides({ studentId, grade, itemType }) {
   let q = supabase
     .from(TABLE)
-    .select('scope, target_id, item_type, item_id, allowed, attempts, updated_at')
+    .select('scope, target_id, item_type, item_id, allowed, attempts, available_hours, updated_at')
     .eq('item_type', itemType)
     .or(
       `and(scope.eq.student,target_id.eq.${studentId}),and(scope.eq.prep,target_id.eq.${grade})`
@@ -91,6 +92,8 @@ export function reduceEffective(rows) {
     out.set(k, {
       allowed: r.allowed !== false,
       attempts: r.attempts ?? null,
+      // Per-audience availability override — null means "use the item default".
+      availableHours: r.available_hours ?? null,
       // updated_at doubles as a "reset point" — attempts submitted before
       // this moment no longer count against the newly-granted allowance.
       updatedAt: r.updated_at || null,
