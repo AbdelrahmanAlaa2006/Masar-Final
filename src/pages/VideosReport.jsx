@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
+import { getProfile } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
 import './VideosReport.css'
 
@@ -39,27 +40,42 @@ export default function VideosReport() {
     } catch { setIsAdmin(false) }
   }, [])
 
-  /* Fetch real video progress for the current student when viewing own report. */
+  /* Fetch real video progress for the target student (self by default, or the
+     student id carried in the ?id= query param when an admin is impersonating). */
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         const u = JSON.parse(localStorage.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
-        const viewingSelf = !paramId || paramId === u?.id
-        if (!u?.id || !viewingSelf) return
+        const targetId = paramId || u?.id
+        if (!targetId) return
 
         setLoading(true)
         setLoadError('')
 
-        // Videos + parts (grade-scoped by RLS).
-        const videos = await listVideos()
+        // Resolve the target student's grade so we only show videos of their
+        // own grade. When an admin views the page, RLS lets listVideos() return
+        // every grade — so we must filter client-side by targetProfile.grade.
+        let targetGrade = u?.grade || null
+        if (paramId && paramId !== u?.id) {
+          const p = await getProfile(paramId)
+          targetGrade = p?.grade || null
+          if (p?.name) setStudentName(p.name)
+          if (p?.phone) setStudentId(p.phone)
+        }
 
-        // All progress rows for this student across those videos.
+        // Videos + parts. Admin sees all grades through RLS, so we narrow.
+        const allVideos = await listVideos()
+        const videos = targetGrade
+          ? allVideos.filter((v) => v.grade === targetGrade)
+          : allVideos
+
+        // All progress rows for the target student across those videos.
         const { data: progressRows, error: progErr } = await supabase
           .from('video_progress')
           .select('video_id, part_id, views_used, last_watched_at')
-          .eq('student_id', u.id)
+          .eq('student_id', targetId)
         if (progErr) throw progErr
 
         // Group progress by video_id.
@@ -118,23 +134,9 @@ export default function VideosReport() {
     return () => { cancelled = true }
   }, [searchParams])
 
-  const mockVideosData = [
-    { id: 1, title: 'مقدمة في البرمجة', subject: 'علوم الحاسب', date: '10/4/2024', status: 'completed', statusText: 'تم المشاهدة بالكامل', progress: 100, watchedTime: '45 دقيقة', totalTime: '45 دقيقة' },
-    { id: 2, title: 'الدرس الثاني: المتغيرات', subject: 'علوم الحاسب', date: '12/4/2024', status: 'partial', statusText: 'تم مشاهدة النصف', progress: 50, watchedTime: '22 دقيقة', totalTime: '44 دقيقة' },
-    { id: 3, title: 'الدرس الثالث: الدوال والطرق', subject: 'علوم الحاسب', date: '14/4/2024', status: 'completed', statusText: 'تم المشاهدة بالكامل', progress: 100, watchedTime: '50 دقيقة', totalTime: '50 دقيقة' },
-    { id: 4, title: 'الدرس الرابع: التطبيق العملي', subject: 'علوم الحاسب', date: '15/4/2024', status: 'partial', statusText: 'تم مشاهدة 75%', progress: 75, watchedTime: '34 دقيقة', totalTime: '45 دقيقة' },
-    { id: 5, title: 'الدرس الخامس: المصفوفات', subject: 'علوم الحاسب', date: '—', status: 'none', statusText: 'لم تتم المشاهدة', progress: 0, watchedTime: '0 دقيقة', totalTime: '40 دقيقة' },
-  ]
-
-  /* Self view → Supabase-loaded rows (empty array while loading / when none);
-     admin impersonation view → mock placeholder data. */
-  let _selfView = true
-  try {
-    const _u = JSON.parse(localStorage.getItem('masar-user'))
-    const _param = searchParams.get('id')
-    _selfView = !_param || _param === _u?.id
-  } catch { /* ignore */ }
-  const videosData = _selfView ? (remoteVideos ?? []) : mockVideosData
+  /* All rows come from Supabase — self view for the student, or the target
+     student when an admin passes ?id=. No more mock placeholder rows. */
+  const videosData = remoteVideos ?? []
 
   const filteredVideos =
     currentFilter === 'all'

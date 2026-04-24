@@ -11,3 +11,16 @@ export async function listStudents() {
   if (error) throw error
   return data || []
 }
+
+/* Fetch one profile (used to look up the target student's grade when an
+   admin views "<student>/report"). RLS returns the row for the viewer
+   themselves, or any row when the viewer is an admin. */
+export async function getProfile(id) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, phone, grade, role, avatar_url')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}

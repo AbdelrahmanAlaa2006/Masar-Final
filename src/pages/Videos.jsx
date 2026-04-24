@@ -9,6 +9,7 @@ import {
   listProgressForVideo,
   incrementPartView,
 } from '@backend/progressApi'
+import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
 const GRADES = [
   { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -54,6 +55,7 @@ export default function Videos() {
   const [allVideos, setAllVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [videoOverrides, setVideoOverrides] = useState(new Map()) // videoId -> {allowed, attempts}
 
   // Per-video progress+quiz cache for the one currently-open video
   const [quizAttempts, setQuizAttempts] = useState([]) // rows from quiz_attempts
@@ -99,6 +101,23 @@ export default function Videos() {
   }
 
   useEffect(() => { refreshVideos() }, [])
+
+  // Load admin-set overrides for this student (prep + student scope merged).
+  useEffect(() => {
+    if (!currentUser?.id || !currentUser?.grade || currentUser.role === 'admin') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await listEffectiveOverrides({
+          studentId: currentUser.id,
+          grade: currentUser.grade,
+          itemType: 'video',
+        })
+        if (!cancelled) setVideoOverrides(reduceEffective(rows))
+      } catch { /* defaults apply */ }
+    })()
+    return () => { cancelled = true }
+  }, [currentUser])
 
   // ── Group by grade for the grid ──────────────────────────────
   const videosByGrade = useMemo(() => {
@@ -159,8 +178,19 @@ export default function Videos() {
   const viewsUsedFor = (partId) =>
     progressRows.find(p => p.part_id === partId)?.views_used || 0
 
+  // Admin-set override beats the video's own default view_limit.
+  const effectiveViewLimit = (video) => {
+    const o = videoOverrides.get(video?.id)
+    if (o && typeof o.attempts === 'number') return o.attempts
+    return video?.viewLimit || 0
+  }
+  const isVideoAllowed = (video) => {
+    const o = videoOverrides.get(video?.id)
+    return o ? o.allowed !== false : true
+  }
+
   const viewsRemainingFor = (partId) =>
-    Math.max(0, (currentVideo?.viewLimit || 0) - viewsUsedFor(partId))
+    Math.max(0, effectiveViewLimit(currentVideo) - viewsUsedFor(partId))
 
   // ── Navigation ───────────────────────────────────────────────
   const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos') }
@@ -172,6 +202,9 @@ export default function Videos() {
     setCurrentVideo(null); setSelectedPart(null); setView('videos')
   }
   const openVideoPlayer = (video) => {
+    if (userRole !== 'admin' && !isVideoAllowed(video)) {
+      return showAlertModal('الوصول محظور', 'تم تقييد هذا الفيديو من قِبَل الإدارة.')
+    }
     setCurrentVideo(video); setSelectedPart(null); setView('player')
   }
   const goToAddVideo = () => {
@@ -379,7 +412,7 @@ export default function Videos() {
                       <div className="vc-stat">
                         <span className="vc-stat-icon">👁️</span>
                         <span className="vc-stat-label">عدد المشاهدات</span>
-                        <span className="vc-stat-value">{video.viewLimit} مرات</span>
+                        <span className="vc-stat-value">{effectiveViewLimit(video)} مرات</span>
                       </div>
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🕒</span>

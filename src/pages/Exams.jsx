@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
+import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
 const PREP_META = {
   first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -20,6 +21,7 @@ export default function Exams() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
+  const [overridesMap, setOverridesMap] = useState(new Map()) // examId -> {allowed, attempts}
 
   useEffect(() => {
     try {
@@ -49,6 +51,25 @@ export default function Exams() {
   }
 
   useEffect(() => { refresh() }, [])
+
+  // Pull effective overrides (admin scope 'prep' + student scope 'student')
+  // for this student once we know their id+grade.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('masar-user')) || {}
+        const grade = u.grade
+        if (!grade) return
+        const rows = await listEffectiveOverrides({
+          studentId: userId, grade, itemType: 'exam',
+        })
+        if (!cancelled) setOverridesMap(reduceEffective(rows))
+      } catch { /* ignore — defaults apply */ }
+    })()
+    return () => { cancelled = true }
+  }, [userId])
 
   // Fetch submitted-attempt counts for the currently displayed exams
   useEffect(() => {
@@ -80,16 +101,33 @@ export default function Exams() {
     return out
   }, [rows])
 
+  // Effective max attempts = admin override (if any) ?? exam's own max_attempts
+  const effectiveMaxAttempts = (exam) => {
+    const o = overridesMap.get(exam.id)
+    if (o && typeof o.attempts === 'number') return o.attempts
+    return exam.max_attempts || 1
+  }
+  const isAllowed = (exam) => {
+    const o = overridesMap.get(exam.id)
+    return o ? o.allowed !== false : true
+  }
   const remainingFor = (exam) =>
-    Math.max(0, (exam.max_attempts || 1) - (attemptsMap[exam.id] || 0))
+    Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
   const startExam = (exam) => {
+    if (userRole !== 'admin' && !isAllowed(exam)) {
+      setAlertModal('الوصول محظور', 'تم تقييد هذا الامتحان من قِبَل الإدارة.')
+      return
+    }
     if (userRole !== 'admin' && remainingFor(exam) <= 0) {
       setShowModal(true)
       return
     }
     navigate(`/exam-taking?id=${exam.id}`)
   }
+
+  const [blockAlert, setBlockAlert] = useState(null)
+  const setAlertModal = (title, message) => setBlockAlert({ title, message })
 
   const addExam = (level) => {
     localStorage.setItem('selectedGrade', level)
@@ -189,7 +227,7 @@ export default function Exams() {
           <div className="ec-stat">
             <span className="ec-stat-icon">🔁</span>
             <span className="ec-stat-label">المحاولات المتبقية</span>
-            <span className="ec-stat-value">{remaining}/{exam.max_attempts}</span>
+            <span className="ec-stat-value">{remaining}/{effectiveMaxAttempts(exam)}</span>
           </div>
         </div>
 
@@ -275,6 +313,16 @@ export default function Exams() {
             <h3 className="modal-title">انتهت المحاولات</h3>
             <p className="modal-message">لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.</p>
             <button className="modal-button" onClick={() => setShowModal(false)}>حسناً</button>
+          </div>
+        </div>
+      )}
+
+      {blockAlert && (
+        <div className="modal active">
+          <div className="modal-content">
+            <h3 className="modal-title">{blockAlert.title}</h3>
+            <p className="modal-message">{blockAlert.message}</p>
+            <button className="modal-button" onClick={() => setBlockAlert(null)}>حسناً</button>
           </div>
         </div>
       )}

@@ -2,6 +2,11 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { listExams, setExamRevealGrades } from '@backend/examsApi'
 import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
+import {
+  listOverridesForTarget,
+  upsertOverride,
+  deleteOverride,
+} from '@backend/overridesApi'
 import './ControlPanel.css'
 
 const GRADE_LABEL = {
@@ -39,9 +44,10 @@ export default function ControlPanel() {
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState('')
 
-  /* per-target overrides (client-side only for MVP — no access_overrides table yet):
+  /* per-target overrides, loaded from access_overrides when a target is chosen:
      key = `${kind}:${targetId}:${itemId}` -> { allowed, attempts } */
   const [overrides, setOverrides] = useState({})
+  const [savingKey, setSavingKey] = useState(null)
 
   /* toast */
   const [toast, setToast] = useState(null)
@@ -129,51 +135,123 @@ export default function ControlPanel() {
     return []
   }, [section, targetGrade, videos, exams])
 
+  /* ── Load existing overrides for the chosen target+section ── */
+  useEffect(() => {
+    if (!target || (section !== 'videos' && section !== 'exams')) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const itemType = section === 'videos' ? 'video' : 'exam'
+        const rows = await listOverridesForTarget(target.kind, target.id, itemType)
+        if (cancelled) return
+        const next = {}
+        for (const [, r] of rows) {
+          next[`${target.kind}:${target.id}:${r.item_id}`] = {
+            allowed: r.allowed !== false,
+            attempts: r.attempts ?? null,
+          }
+        }
+        setOverrides(next)
+      } catch (e) {
+        if (!cancelled) flash(e.message || 'تعذر تحميل الإعدادات', 'warning')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [target, section]) // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ───── override helpers ───── */
   const keyFor = (item) =>
     target ? `${target.kind}:${target.id}:${item.id}` : ''
+
+  const defaultAttemptsFor = () =>
+    section === 'videos' ? DEFAULT_VIDEO_ATTEMPTS : DEFAULT_EXAM_ATTEMPTS
 
   const stateFor = (item) => {
     const o = overrides[keyFor(item)]
     return {
       allowed: o?.allowed ?? true,
-      attempts:
-        o?.attempts ??
-        (section === 'videos' ? DEFAULT_VIDEO_ATTEMPTS : DEFAULT_EXAM_ATTEMPTS),
+      attempts: (o?.attempts ?? null) ?? defaultAttemptsFor(),
+      hasOverride: !!o,
     }
   }
 
-  const updateItem = (item, patch) => {
+  /* Persist + optimistic UI update. `patch` is a partial of {allowed, attempts}. */
+  const persistItem = async (item, patch) => {
     const key = keyFor(item)
-    setOverrides((prev) => ({
-      ...prev,
-      [key]: { ...stateFor(item), ...prev[key], ...patch },
-    }))
+    const prev = overrides[key] || { allowed: true, attempts: null }
+    const next = { ...prev, ...patch }
+    setOverrides((p) => ({ ...p, [key]: next }))
+    setSavingKey(key)
+    try {
+      await upsertOverride({
+        scope: target.kind,
+        targetId: target.id,
+        itemType: section === 'videos' ? 'video' : 'exam',
+        itemId: item.id,
+        ...(patch.allowed  !== undefined ? { allowed:  patch.allowed }  : {}),
+        ...(patch.attempts !== undefined ? { attempts: patch.attempts } : {}),
+      })
+    } catch (e) {
+      // rollback
+      setOverrides((p) => ({ ...p, [key]: prev }))
+      flash(e.message || 'تعذر حفظ التعديل', 'warning')
+    } finally {
+      setSavingKey(null)
+    }
   }
 
   const setAttempts = (item, value) => {
     const v = Math.max(0, Math.min(99, parseInt(value, 10) || 0))
-    updateItem(item, { attempts: v })
+    persistItem(item, { attempts: v })
   }
 
   const bumpAttempts = (item, delta) => {
     const cur = stateFor(item).attempts
-    setAttempts(item, cur + delta)
+    const v = Math.max(0, Math.min(99, cur + delta))
+    persistItem(item, { attempts: v })
   }
 
   const toggleAllowed = (item) => {
     const cur = stateFor(item).allowed
-    updateItem(item, { allowed: !cur })
+    persistItem(item, { allowed: !cur })
   }
 
-  const bulkSet = (allowed) => {
-    items.forEach((item) => updateItem(item, { allowed }))
-    flash(allowed ? 'تم السماح بكل العناصر' : 'تم منع كل العناصر')
+  const resetItem = async (item) => {
+    const key = keyFor(item)
+    const prev = overrides[key]
+    if (!prev) return // already default
+    setOverrides((p) => { const n = { ...p }; delete n[key]; return n })
+    try {
+      await deleteOverride({
+        scope: target.kind,
+        targetId: target.id,
+        itemType: section === 'videos' ? 'video' : 'exam',
+        itemId: item.id,
+      })
+      flash('تم استرجاع الإعدادات الافتراضية')
+    } catch (e) {
+      setOverrides((p) => ({ ...p, [key]: prev }))
+      flash(e.message || 'تعذر الاسترجاع', 'warning')
+    }
   }
 
-  const bulkAddAttempt = () => {
-    items.forEach((item) => bumpAttempts(item, 1))
-    flash('تم إضافة محاولة لكل العناصر')
+  const bulkSet = async (allowed) => {
+    try {
+      await Promise.all(items.map((item) =>
+        persistItem(item, { allowed })
+      ))
+      flash(allowed ? 'تم السماح بكل العناصر' : 'تم منع كل العناصر')
+    } catch (e) { /* individual errors already flashed */ }
+  }
+
+  const bulkAddAttempt = async () => {
+    try {
+      await Promise.all(items.map((item) => {
+        const cur = stateFor(item).attempts
+        return persistItem(item, { attempts: Math.min(99, cur + 1) })
+      }))
+      flash('تم إضافة محاولة لكل العناصر')
+    } catch (e) { /* ignore */ }
   }
 
   /* ───── navigation helpers ───── */
@@ -329,15 +407,7 @@ export default function ControlPanel() {
             onToggle={toggleAllowed}
             onAttempts={setAttempts}
             onBump={bumpAttempts}
-            onReset={(item) => {
-              const key = keyFor(item)
-              setOverrides((prev) => {
-                const n = { ...prev }
-                delete n[key]
-                return n
-              })
-              flash('تم استرجاع الإعدادات الافتراضية')
-            }}
+            onReset={(item) => resetItem(item)}
             onBulkAllow={() => bulkSet(true)}
             onBulkBlock={() => bulkSet(false)}
             onBulkAddAttempt={bulkAddAttempt}

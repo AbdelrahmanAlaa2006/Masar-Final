@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listAttemptsForStudent, listExams } from '@backend/examsApi'
+import { getProfile } from '@backend/profilesApi'
 import './ExamsReport.css'
 
 /* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
@@ -57,16 +58,29 @@ export default function ExamsReport() {
       try {
         const u = JSON.parse(localStorage.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
-        const viewingSelf = !paramId || paramId === u?.id
-        if (!u?.id || !viewingSelf) return
+        const targetId = paramId || u?.id
+        if (!targetId) return
 
         setLoading(true)
         setLoadError('')
 
-        // All exams the student can see (RLS scopes by grade).
-        const allExams = await listExams()
-        // Only this student's submitted + in-flight attempts.
-        const attempts = await listAttemptsForStudent(u.id)
+        // Resolve the target student's grade so we only show their grade's
+        // exams. An admin would otherwise get every grade via RLS.
+        let targetGrade = u?.grade || null
+        if (paramId && paramId !== u?.id) {
+          const p = await getProfile(paramId)
+          targetGrade = p?.grade || null
+          if (p?.name) setStudentName(p.name)
+          if (p?.phone) setStudentId(p.phone)
+        }
+
+        // All exams the viewer can see, then filter to the target's grade.
+        const allExamsRaw = await listExams()
+        const allExams = targetGrade
+          ? allExamsRaw.filter((e) => e.grade === targetGrade)
+          : allExamsRaw
+        // The target student's attempts (admin can read any student via RLS).
+        const attempts = await listAttemptsForStudent(targetId)
 
         // Pick the best submitted attempt per exam.
         const bestByExam = new Map()
@@ -128,87 +142,9 @@ export default function ExamsReport() {
     return () => { cancelled = true }
   }, [searchParams])
 
-  const mockExamsData = [
-    {
-      id: 1,
-      title: 'امتحان الرياضيات - الوحدة الأولى',
-      subject: 'رياضيات',
-      score: 85,
-      maxScore: 100,
-      status: 'completed',
-      attempts: 1,
-      maxAttempts: 2,
-      duration: '60 دقيقة',
-      date: '15/4/2024',
-      gradesRevealed: true,
-      questions: [
-        { text: 'ما هو حاصل ضرب 7 × 8؟', options: ['54', '56', '48', '64'], correct: 1, studentAnswer: 1 },
-        { text: 'ما هي قيمة س في المعادلة: 2س + 4 = 10؟', options: ['2', '3', '4', '5'], correct: 1, studentAnswer: 2 },
-        { text: 'ما هو ناتج 144 ÷ 12؟', options: ['10', '11', '12', '13'], correct: 2, studentAnswer: 2 },
-        { text: 'أيٌّ من التالي عدد أولي؟', options: ['9', '15', '17', '21'], correct: 2, studentAnswer: 2 },
-        { text: 'ما هو مربع العدد 13؟', options: ['156', '169', '144', '196'], correct: 1, studentAnswer: 3 },
-      ],
-    },
-    {
-      id: 2,
-      title: 'امتحان العلوم - الفصل الأول',
-      subject: 'علوم',
-      score: 72,
-      maxScore: 100,
-      status: 'completed',
-      attempts: 2,
-      maxAttempts: 2,
-      duration: '45 دقيقة',
-      date: '20/4/2024',
-      gradesRevealed: true,
-      questions: [
-        { text: 'ما هو أصغر وحدة في الكائن الحي؟', options: ['النسيج', 'الخلية', 'الجزيء', 'العضو'], correct: 1, studentAnswer: 1 },
-        { text: 'أي الغازات يُستخدم في عملية التنفس؟', options: ['ثاني أكسيد الكربون', 'النيتروجين', 'الأكسجين', 'الهيدروجين'], correct: 2, studentAnswer: 0 },
-        { text: 'كم عدد كواكب المجموعة الشمسية؟', options: ['7', '8', '9', '10'], correct: 1, studentAnswer: 1 },
-      ],
-    },
-    {
-      id: 3,
-      title: 'امتحان الجبر المتقدم',
-      subject: 'رياضيات',
-      score: 0,
-      maxScore: 100,
-      status: 'pending',
-      attempts: 0,
-      maxAttempts: 2,
-      duration: '90 دقيقة',
-      date: '—',
-      gradesRevealed: false,
-      questions: [],
-    },
-    {
-      id: 4,
-      title: 'امتحان الهندسة',
-      subject: 'رياضيات',
-      score: 91,
-      maxScore: 100,
-      status: 'completed',
-      attempts: 1,
-      maxAttempts: 3,
-      duration: '75 دقيقة',
-      date: '18/4/2024',
-      gradesRevealed: false,
-      questions: [
-        { text: 'ما مساحة مثلث قاعدته 6 وارتفاعه 4؟', options: ['10', '12', '24', '8'], correct: 1, studentAnswer: 1 },
-      ],
-    },
-  ]
-
-  /* If the URL carries a student id that isn't us, we're an admin impersonating
-     a search result — use mock placeholder data (no real per-student fetch yet).
-     Otherwise we're viewing our own report: use the Supabase-loaded rows. */
-  let _selfView = true
-  try {
-    const _u = JSON.parse(localStorage.getItem('masar-user'))
-    const _param = searchParams.get('id')
-    _selfView = !_param || _param === _u?.id
-  } catch { /* ignore */ }
-  const examsData = _selfView ? (remoteExams ?? []) : mockExamsData
+  /* All rows come from Supabase — the logged-in student's own exams, or the
+     target student's exams when an admin passes ?id=. No mock placeholders. */
+  const examsData = remoteExams ?? []
 
   const filteredExams =
     currentFilter === 'all'
