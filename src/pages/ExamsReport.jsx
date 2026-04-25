@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import { getProfile } from '@backend/profilesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
-import { useI18n } from '../i18n'
 import './ExamsReport.css'
 
 /* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
@@ -26,7 +25,6 @@ const inferSubject = (title = '') => {
 export default function ExamsReport() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { t, lang } = useI18n()
   const [studentName, setStudentName] = useState('')
   const [studentId, setStudentId] = useState('')
   const [currentFilter, setCurrentFilter] = useState('all')
@@ -140,7 +138,7 @@ export default function ExamsReport() {
             status: best ? 'completed' : 'pending',
             attempts: submittedCount,
             maxAttempts: ex.max_attempts || 1,
-            duration: `${ex.duration_minutes} ${t('common.minutes')}`,
+            duration: `${ex.duration_minutes} دقيقة`,
             date: fmtDate(best?.submitted_at),
             /* Grades are revealed if EITHER the exam's global reveal_grades
                flag is on, OR a per-target override (student/grade scope)
@@ -153,7 +151,7 @@ export default function ExamsReport() {
         })
         if (!cancelled) setRemoteExams(rows)
       } catch (e) {
-        if (!cancelled) setLoadError(e.message || t('reports.loadFailed'))
+        if (!cancelled) setLoadError(e.message || 'تعذّر تحميل التقرير')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -201,9 +199,9 @@ export default function ExamsReport() {
   }
 
   const getRating = (score) => {
-    if (score >= 80) return t('reports.ratingExcellent')
-    if (score >= 60) return t('reports.ratingGood')
-    return t('reports.ratingNeedsWork')
+    if (score >= 80) return 'ممتاز'
+    if (score >= 60) return 'جيد'
+    return 'يحتاج تحسين'
   }
 
   const getRatingClass = (score) => {
@@ -233,7 +231,7 @@ export default function ExamsReport() {
 
   const correctCount = (exam) => exam.questions.filter((q) => q.studentAnswer === q.correct).length
   const wrongCount = (exam) => exam.questions.filter((q) => q.studentAnswer !== q.correct).length
-  const letters = lang === 'ar' ? ['أ', 'ب', 'ج', 'د'] : ['A', 'B', 'C', 'D']
+  const letters = ['أ', 'ب', 'ج', 'د']
 
   return (
     <main className="er-page">
@@ -241,8 +239,8 @@ export default function ExamsReport() {
 
         {/* Back button */}
         <button className="er-back-btn" onClick={() => navigate(-1)}>
-          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i>
-          {t('common.back')}
+          <i className="fas fa-arrow-right"></i>
+          رجوع
         </button>
 
         {/* Page Header */}
@@ -250,13 +248,13 @@ export default function ExamsReport() {
           <div className="er-header-icon">
             <i className="fas fa-file-alt"></i>
           </div>
-          <h1>{t('reports.examsReportTitle')}</h1>
-          <p>{t('reports.examsReportSubtitle')}</p>
+          <h1>تقرير الامتحانات</h1>
+          <p>سجل الامتحانات والنتائج التفصيلية</p>
         </div>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
-            <i className="fas fa-spinner fa-spin"></i> {t('reports.loadingReport')}
+            <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل التقرير...
           </div>
         )}
         {loadError && (
@@ -275,22 +273,22 @@ export default function ExamsReport() {
               <table className="er-student-table">
                 <tbody>
                   <tr>
-                    <td className="er-info-label"><i className="fas fa-user"></i> {t('reports.studentName')}</td>
+                    <td className="er-info-label"><i className="fas fa-user"></i> الاسم</td>
                     <td className="er-info-value">{studentName}</td>
                   </tr>
                   {studentId && (
                     <tr>
-                      <td className="er-info-label"><i className="fas fa-id-badge"></i> {t('reports.studentId')}</td>
+                      <td className="er-info-label"><i className="fas fa-id-badge"></i> رقم الطالب</td>
                       <td className="er-info-value">{studentId}</td>
                     </tr>
                   )}
                   <tr>
-                    <td className="er-info-label"><i className="fas fa-chart-line"></i> {t('reports.average')}</td>
+                    <td className="er-info-label"><i className="fas fa-chart-line"></i> المتوسط</td>
                     <td className="er-info-value">{revealed.length > 0 ? `${avgScore}%` : '—'}</td>
                   </tr>
                   <tr>
-                    <td className="er-info-label"><i className="fas fa-tasks"></i> {t('reports.completed')}</td>
-                    <td className="er-info-value">{completed} {t('common.of')} {total} {t('reports.exam')}</td>
+                    <td className="er-info-label"><i className="fas fa-tasks"></i> الإكمال</td>
+                    <td className="er-info-value">{completed} من {total} امتحان</td>
                   </tr>
                 </tbody>
               </table>
@@ -303,27 +301,27 @@ export default function ExamsReport() {
           <div className="er-stat-card">
             <i className="fas fa-list-ol er-stat-icon" style={{color: 'var(--primary)'}}></i>
             <span className="er-stat-value" style={{color: 'var(--primary)'}}>{total}</span>
-            <span className="er-stat-label">{t('reports.total')}</span>
+            <span className="er-stat-label">إجمالي</span>
           </div>
           <div className="er-stat-card">
             <i className="fas fa-check-circle er-stat-icon" style={{color: '#48bb78'}}></i>
             <span className="er-stat-value" style={{color: '#48bb78'}}>{completed}</span>
-            <span className="er-stat-label">{t('reports.completedCount')}</span>
+            <span className="er-stat-label">مُكتملة</span>
           </div>
           <div className="er-stat-card">
             <i className="fas fa-clock er-stat-icon" style={{color: '#a0aec0'}}></i>
             <span className="er-stat-value" style={{color: '#a0aec0'}}>{pending}</span>
-            <span className="er-stat-label">{t('reports.pending')}</span>
+            <span className="er-stat-label">لم تُؤدَّ</span>
           </div>
           <div className="er-stat-card">
             <i className="fas fa-trophy er-stat-icon" style={{color: '#38a169'}}></i>
             <span className="er-stat-value" style={{color: '#38a169'}}>{passed}</span>
-            <span className="er-stat-label">{t('reports.filterPassed')}</span>
+            <span className="er-stat-label">ناجح</span>
           </div>
           <div className="er-stat-card">
             <i className="fas fa-percentage er-stat-icon" style={{color: '#ed8936'}}></i>
             <span className="er-stat-value" style={{color: '#ed8936'}}>{revealed.length > 0 ? `${avgScore}%` : '—'}</span>
-            <span className="er-stat-label">{t('reports.average')}</span>
+            <span className="er-stat-label">المتوسط</span>
           </div>
         </div>
 
@@ -331,11 +329,11 @@ export default function ExamsReport() {
         <div className="er-controls">
           <div className="er-filter-group">
             {[
-              { key: 'all', label: t('reports.filterAll'), icon: 'fa-th-list' },
-              { key: 'passed', label: t('reports.filterPassed'), icon: 'fa-check' },
-              { key: 'failed', label: t('reports.filterFailed'), icon: 'fa-times' },
-              { key: 'excellent', label: t('reports.filterExcellent'), icon: 'fa-star' },
-              { key: 'pending', label: t('reports.filterPending'), icon: 'fa-hourglass-half' },
+              { key: 'all', label: 'الكل', icon: 'fa-th-list' },
+              { key: 'passed', label: 'ناجح', icon: 'fa-check' },
+              { key: 'failed', label: 'راسب', icon: 'fa-times' },
+              { key: 'excellent', label: 'ممتاز', icon: 'fa-star' },
+              { key: 'pending', label: 'لم يُؤدَّ', icon: 'fa-hourglass-half' },
             ].map(({ key, label, icon }) => (
               <button
                 key={key}
@@ -350,27 +348,27 @@ export default function ExamsReport() {
           {isAdmin && (
             <div className="er-view-toggle">
               <button className={`er-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
-                <i className="fas fa-table"></i> {t('common.table')}
+                <i className="fas fa-table"></i> جدول
               </button>
               <button className={`er-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
-                <i className="fas fa-th-large"></i> {t('common.cards')}
+                <i className="fas fa-th-large"></i> بطاقات
               </button>
             </div>
           )}
         </div>
 
         <div className="er-results-count">
-          {t('reports.showingExams')} <strong>{filteredExams.length}</strong> {t('reports.showingExamsOf')} {total}
+          عرض <strong>{filteredExams.length}</strong> امتحان من أصل {total}
         </div>
 
         {/* TABLE VIEW — admin only (the detailed report card) */}
         {isAdmin && viewMode === 'table' && (
           <div className="er-card" id="er-reportTable">
             <div className="er-table-header">
-              <h2 className="er-card-title"><i className="fas fa-clipboard-list"></i> {t('reports.detailedExamReport')}</h2>
+              <h2 className="er-card-title"><i className="fas fa-clipboard-list"></i> تقرير النتائج التفصيلي</h2>
               {isAdmin && (
                 <button className="er-print-btn" onClick={() => window.print()}>
-                  <i className="fas fa-print"></i> {t('common.print')}
+                  <i className="fas fa-print"></i> طباعة
                 </button>
               )}
             </div>
@@ -380,20 +378,20 @@ export default function ExamsReport() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>{t('reports.examName')}</th>
-                    <th>{t('reports.subject')}</th>
-                    <th>{t('reports.dateLabel')}</th>
-                    <th>{t('reports.attemptsLabel')}</th>
-                    <th>{t('reports.statusLabel')}</th>
-                    <th>{t('reports.scoreCol')}</th>
-                    <th>{t('reports.ratingLabel')}</th>
-                    <th>{t('reports.actions')}</th>
+                    <th>الامتحان</th>
+                    <th>المادة</th>
+                    <th>التاريخ</th>
+                    <th>المحاولات</th>
+                    <th>الحالة</th>
+                    <th>الدرجة</th>
+                    <th>التقييم</th>
+                    <th>إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredExams.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="er-empty-row">{t('reports.noExamsFilter')}</td>
+                      <td colSpan={9} className="er-empty-row">لا توجد امتحانات تطابق هذا الفلتر</td>
                     </tr>
                   ) : (
                     filteredExams.map((exam, index) => (
@@ -414,9 +412,9 @@ export default function ExamsReport() {
                         </td>
                         <td>
                           {exam.status === 'pending' ? (
-                            <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> {t('reports.pending')}</span>
+                            <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
                           ) : (
-                            <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> {t('reports.done')}</span>
+                            <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> مُكتمل</span>
                           )}
                         </td>
                         <td>
@@ -430,7 +428,7 @@ export default function ExamsReport() {
                               <span className="er-score-text" style={{ color: getScoreColor(exam.score) }}>{exam.score}/{exam.maxScore}</span>
                             </div>
                           ) : (
-                            <span className="er-badge er-badge-hidden"><i className="fas fa-lock"></i> {t('reports.gradesNotRevealed')}</span>
+                            <span className="er-badge er-badge-hidden"><i className="fas fa-lock"></i> لم تُعلَن</span>
                           )}
                         </td>
                         <td>
@@ -443,11 +441,11 @@ export default function ExamsReport() {
                         <td>
                           <div className="er-actions">
                             <button className="er-btn-detail" onClick={() => openDetail(exam)}>
-                              <i className="fas fa-info-circle"></i> {t('reports.detail')}
+                              <i className="fas fa-info-circle"></i> تفاصيل
                             </button>
                             {exam.status === 'completed' && exam.gradesRevealed && exam.questions.length > 0 && (
                               <button className="er-btn-review" onClick={() => openReview(exam)}>
-                                <i className="fas fa-eye"></i> {t('reports.review')}
+                                <i className="fas fa-eye"></i> مراجعة
                               </button>
                             )}
                           </div>
@@ -465,7 +463,7 @@ export default function ExamsReport() {
         {viewMode === 'cards' && (
           <div className="er-cards-grid">
             {filteredExams.length === 0 ? (
-              <div className="er-no-results">{t('reports.noExamsFilter')}</div>
+              <div className="er-no-results">لا توجد امتحانات تطابق هذا الفلتر</div>
             ) : (
               filteredExams.map((exam) => (
                 <div key={exam.id} className={`er-exam-card ${exam.status === 'pending' ? 'er-card-pending' : ''}`}>
@@ -474,9 +472,9 @@ export default function ExamsReport() {
                       <i className={`fas ${getExamIcon(exam.subject)}`}></i>
                     </div>
                     {exam.status === 'pending' ? (
-                      <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> {t('reports.pending')}</span>
+                      <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
                     ) : (
-                      <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> {t('reports.done')}</span>
+                      <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> مُكتمل</span>
                     )}
                   </div>
 
@@ -498,7 +496,7 @@ export default function ExamsReport() {
                       ) : (
                         <div className="er-grades-pending-box">
                           <i className="fas fa-lock er-grades-lock-icon"></i>
-                          <span>{t('reports.gradesNotRevealed')}</span>
+                          <span>الدرجات لم تُعلَن بعد</span>
                         </div>
                       )}
                     </div>
@@ -507,16 +505,16 @@ export default function ExamsReport() {
                   <div className="er-card-meta">
                     <span><i className="fas fa-clock"></i> {exam.duration}</span>
                     <span><i className="fas fa-calendar-alt"></i> {exam.date}</span>
-                    <span><i className="fas fa-redo-alt"></i> {t('reports.attemptsLabel')}: {exam.attempts}/{exam.maxAttempts}</span>
+                    <span><i className="fas fa-redo-alt"></i> محاولات: {exam.attempts}/{exam.maxAttempts}</span>
                   </div>
 
                   <div className="er-card-actions">
                     <button className="er-btn-detail" onClick={() => openDetail(exam)}>
-                      <i className="fas fa-info-circle"></i> {t('reports.detail')}
+                      <i className="fas fa-info-circle"></i> تفاصيل
                     </button>
                     {exam.status === 'completed' && exam.gradesRevealed && exam.questions.length > 0 && (
                       <button className="er-btn-review" onClick={() => openReview(exam)}>
-                        <i className="fas fa-eye"></i> {t('reports.review')}
+                        <i className="fas fa-eye"></i> مراجعة
                       </button>
                     )}
                   </div>
@@ -543,44 +541,44 @@ export default function ExamsReport() {
               <div className="er-detail-ring" style={{ background: `conic-gradient(${getScoreColor(selectedExam.score)} ${selectedExam.score}%, rgba(102,126,234,0.1) 0%)` }}>
                 <div className="er-ring-inner-lg">
                   <span className="er-ring-num-lg" style={{ color: getScoreColor(selectedExam.score) }}>{selectedExam.score}</span>
-                  <span className="er-ring-max-lg">{t('common.of')} {selectedExam.maxScore}</span>
+                  <span className="er-ring-max-lg">من {selectedExam.maxScore}</span>
                 </div>
               </div>
             ) : selectedExam.status !== 'pending' ? (
               <div className="er-grades-pending-box er-grades-box-lg">
                 <i className="fas fa-lock er-grades-lock-icon"></i>
-                <span>{t('reports.gradesNotRevealed')}</span>
+                <span>الدرجات لم تُعلَن بعد</span>
               </div>
             ) : null}
 
             <div className="er-modal-rows">
               <div className="er-modal-row">
-                <span className="er-modal-label">{t('reports.statusLabel')}</span>
-                <span>{selectedExam.status === 'pending' ? t('reports.notTakenYet') : t('reports.done')}</span>
+                <span className="er-modal-label">الحالة</span>
+                <span>{selectedExam.status === 'pending' ? 'لم يُؤدَّ بعد' : 'مُكتمل'}</span>
               </div>
               {selectedExam.status !== 'pending' && selectedExam.gradesRevealed && (
                 <div className="er-modal-row">
-                  <span className="er-modal-label">{t('reports.ratingLabel')}</span>
+                  <span className="er-modal-label">التقييم</span>
                   <span className={`er-rating ${getRatingClass(selectedExam.score)}`}>{getRating(selectedExam.score)}</span>
                 </div>
               )}
               <div className="er-modal-row">
-                <span className="er-modal-label">{t('reports.durationLabel')}</span>
+                <span className="er-modal-label">المدة</span>
                 <span>{selectedExam.duration}</span>
               </div>
               <div className="er-modal-row">
-                <span className="er-modal-label">{t('reports.attemptsLabel')}</span>
+                <span className="er-modal-label">المحاولات</span>
                 <span>{selectedExam.attempts} / {selectedExam.maxAttempts}</span>
               </div>
               <div className="er-modal-row">
-                <span className="er-modal-label">{t('reports.dateLabel')}</span>
+                <span className="er-modal-label">التاريخ</span>
                 <span>{selectedExam.date}</span>
               </div>
             </div>
 
             {selectedExam.status === 'completed' && selectedExam.gradesRevealed && selectedExam.questions.length > 0 && (
               <button className="er-btn-review er-review-full" onClick={() => { setShowDetailModal(false); setShowReviewModal(true) }}>
-                <i className="fas fa-eye"></i> {t('reports.reviewAnswers')}
+                <i className="fas fa-eye"></i> مراجعة الإجابات التفصيلية
               </button>
             )}
           </div>
@@ -598,7 +596,7 @@ export default function ExamsReport() {
                 <i className={`fas ${getExamIcon(selectedExam.subject)}`}></i>
               </div>
               <div>
-                <h2 className="er-review-title">{t('reports.reviewTitle')}</h2>
+                <h2 className="er-review-title">مراجعة الإجابات</h2>
                 <p className="er-review-exam-name">{selectedExam.title}</p>
               </div>
             </div>
@@ -606,17 +604,17 @@ export default function ExamsReport() {
             <div className="er-review-summary">
               <div className="er-sum-item er-sum-correct">
                 <span className="er-sum-val">{correctCount(selectedExam)}</span>
-                <span className="er-sum-lbl">{t('reports.correctAnswer')}</span>
+                <span className="er-sum-lbl">إجابة صحيحة</span>
               </div>
               <div className="er-sum-divider" />
               <div className="er-sum-item er-sum-wrong">
                 <span className="er-sum-val">{wrongCount(selectedExam)}</span>
-                <span className="er-sum-lbl">{t('reports.wrongAnswer')}</span>
+                <span className="er-sum-lbl">إجابة خاطئة</span>
               </div>
               <div className="er-sum-divider" />
               <div className="er-sum-item er-sum-score">
                 <span className="er-sum-val" style={{ color: getScoreColor(selectedExam.score) }}>{selectedExam.score}%</span>
-                <span className="er-sum-lbl">{t('reports.finalScore')}</span>
+                <span className="er-sum-lbl">الدرجة النهائية</span>
               </div>
             </div>
 
@@ -628,7 +626,7 @@ export default function ExamsReport() {
                     <div className="er-q-header">
                       <span className="er-q-num">س{qi + 1}</span>
                       <span className={`er-q-result ${isCorrect ? 'er-res-correct' : 'er-res-wrong'}`}>
-                        {isCorrect ? (<><i className="fas fa-check"></i> {t('reports.correct')}</>) : (<><i className="fas fa-times"></i> {t('reports.wrong')}</>)}
+                        {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
                       </span>
                     </div>
                     <p className="er-q-text">{q.text}</p>
@@ -654,7 +652,7 @@ export default function ExamsReport() {
                     {!isCorrect && (
                       <div className="er-q-correction">
                         <i className="fas fa-lightbulb"></i>
-                        <span> {t('reports.correctAnswerIs')} </span>
+                        <span> الإجابة الصحيحة: </span>
                         <strong>{letters[q.correct]}. {q.options[q.correct]}</strong>
                       </div>
                     )}
@@ -664,7 +662,7 @@ export default function ExamsReport() {
             </div>
 
             <button className="er-close-review-btn" onClick={closeAll}>
-              <i className="fas fa-times"></i> {t('reports.closeReview')}
+              <i className="fas fa-times"></i> إغلاق المراجعة
             </button>
           </div>
         </div>

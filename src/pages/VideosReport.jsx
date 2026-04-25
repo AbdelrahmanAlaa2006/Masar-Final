@@ -4,7 +4,6 @@ import { listVideos } from '@backend/videosApi'
 import { getProfile } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
-import { useI18n } from '../i18n'
 import './VideosReport.css'
 
 const fmtDate = (d) => {
@@ -15,7 +14,6 @@ const fmtDate = (d) => {
 }
 
 export default function VideosReport() {
-  const { t, lang } = useI18n()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [studentName, setStudentName] = useState('')
@@ -77,7 +75,7 @@ export default function VideosReport() {
         // All progress rows for the target student across those videos.
         const { data: progressRows, error: progErr } = await supabase
           .from('video_progress')
-          .select('video_id, part_id, views_used, seconds_watched, last_watched_at')
+          .select('video_id, part_id, views_used, last_watched_at')
           .eq('student_id', targetId)
         if (progErr) throw progErr
 
@@ -102,7 +100,17 @@ export default function VideosReport() {
         const rows = videos.map((v) => {
           const parts = v.video_parts || []
           const progList = byVideo.get(v.id) || []
-          const progByPart = new Map(progList.map((p) => [p.part_id, p]))
+          const viewedPartIds = new Set(
+            progList.filter((p) => (p.views_used || 0) > 0).map((p) => p.part_id)
+          )
+          const totalParts = parts.length || 1
+          const watchedParts = parts.filter((p) => viewedPartIds.has(p.id)).length
+          const progress = Math.round((watchedParts / totalParts) * 100)
+
+          let status = 'none'
+          let statusText = 'لم تتم المشاهدة'
+          if (progress >= 100) { status = 'completed'; statusText = 'تم المشاهدة بالكامل' }
+          else if (progress > 0) { status = 'partial'; statusText = `تم مشاهدة ${progress}%` }
 
           const lastWatched = progList
             .map((p) => p.last_watched_at)
@@ -110,48 +118,31 @@ export default function VideosReport() {
             .sort()
             .pop()
 
-          // Compare watched seconds against the part's real duration.
-          // A part counts as "watched in full" at >=90% to allow for
-          // intros/outros the student naturally skips. Watched seconds
-          // are clamped to [0, duration] so weird player states never
-          // exaggerate progress past 100%.
-          const partDuration = (p) => durMap.get(p.youtube_id) || 0
-          const partWatched = (p) => {
-            const row = progByPart.get(p.id)
-            const raw = row?.seconds_watched || 0
-            const dur = partDuration(p)
-            return dur ? Math.min(raw, dur) : raw
-          }
-
-          const totalSecs   = parts.reduce((s, p) => s + partDuration(p), 0)
-          const watchedSecs = parts.reduce((s, p) => s + partWatched(p), 0)
-          const progress = totalSecs > 0
-            ? Math.min(100, Math.round((watchedSecs / totalSecs) * 100))
-            : 0
-
-          let status = 'none'
-          let statusText = t('reports.resultNotTaken') || (lang === 'ar' ? 'لم تتم المشاهدة' : 'Not Watched')
-          if (progress >= 90) { status = 'completed'; statusText = t('reports.completedLabel') || (lang === 'ar' ? 'تم المشاهدة بالكامل' : 'Watched Completely') }
-          else if (progress > 0) { status = 'partial'; statusText = lang === 'ar' ? `تم مشاهدة ${progress}%` : `Watched ${progress}%` }
-
+          // Real durations (in seconds) → minutes, rounded up so a 30-sec
+          // outro still contributes 1 minute to the total.
+          const partSeconds = (p) => durMap.get(p.youtube_id) || 0
+          const totalSecs = parts.reduce((s, p) => s + partSeconds(p), 0)
+          const watchedSecs = parts
+            .filter((p) => viewedPartIds.has(p.id))
+            .reduce((s, p) => s + partSeconds(p), 0)
           const totalMins = Math.ceil(totalSecs / 60)
           const watchedMins = Math.ceil(watchedSecs / 60)
 
           return {
             id: v.id,
             title: v.title,
-            subject: lang === 'ar' ? 'فيديو' : 'Video',
+            subject: 'فيديو',
             date: fmtDate(lastWatched),
             status,
             statusText,
             progress,
-            watchedTime: `${watchedMins} ${lang === 'ar' ? 'دقيقة' : 'min'}`,
-            totalTime: `${totalMins} ${lang === 'ar' ? 'دقيقة' : 'min'}`,
+            watchedTime: `${watchedMins} دقيقة`,
+            totalTime: `${totalMins} دقيقة`,
           }
         })
         if (!cancelled) setRemoteVideos(rows)
       } catch (e) {
-        if (!cancelled) setLoadError(e.message || (lang === 'ar' ? 'تعذّر تحميل التقرير' : 'Failed to load report'))
+        if (!cancelled) setLoadError(e.message || 'تعذّر تحميل التقرير')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -197,9 +188,9 @@ export default function VideosReport() {
   }
 
   const getStatusLabel = (status) => {
-    if (status === 'completed') return t('reports.completedLabel') || (lang === 'ar' ? 'مكتمل' : 'Completed')
-    if (status === 'partial') return t('reports.partialLabel') || (lang === 'ar' ? 'جزئي' : 'Partial')
-    return t('reports.notWatchedLabel') || (lang === 'ar' ? 'لم يُشاهَد' : 'Not Watched')
+    if (status === 'completed') return 'مكتمل'
+    if (status === 'partial') return 'جزئي'
+    return 'لم يُشاهَد'
   }
 
   const getStatusClass = (status) => {
@@ -229,8 +220,8 @@ export default function VideosReport() {
 
         {/* Back */}
         <button className="vr-back-btn" onClick={() => navigate(-1)}>
-          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i>
-          {t('common.back')}
+          <i className="fas fa-arrow-right"></i>
+          رجوع
         </button>
 
         {/* Header */}
@@ -238,13 +229,13 @@ export default function VideosReport() {
           <div className="vr-header-icon">
             <i className="fas fa-play-circle"></i>
           </div>
-          <h1>{t('reports.videosTitle') || (lang === 'ar' ? 'تقرير الفيديوهات' : 'Videos Report')}</h1>
-          <p>{lang === 'ar' ? 'ملخص مشاهدات الفيديوهات التعليمية' : 'Summary of educational videos viewing'}</p>
+          <h1>تقرير الفيديوهات</h1>
+          <p>ملخص مشاهدات الفيديوهات التعليمية</p>
         </div>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
-            <i className="fas fa-spinner fa-spin"></i> {t('common.loading')}...
+            <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل التقرير...
           </div>
         )}
         {loadError && (
@@ -263,22 +254,22 @@ export default function VideosReport() {
               <table className="vr-student-table">
                 <tbody>
                   <tr>
-                    <td className="vr-info-label"><i className="fas fa-user"></i> {t('reports.studentNameCol')}</td>
+                    <td className="vr-info-label"><i className="fas fa-user"></i> الاسم</td>
                     <td className="vr-info-value">{studentName}</td>
                   </tr>
                   {studentId && (
                     <tr>
-                      <td className="vr-info-label"><i className="fas fa-id-badge"></i> {t('reports.studentIdCol')}</td>
+                      <td className="vr-info-label"><i className="fas fa-id-badge"></i> رقم الطالب</td>
                       <td className="vr-info-value">{studentId}</td>
                     </tr>
                   )}
                   <tr>
-                    <td className="vr-info-label"><i className="fas fa-chart-line"></i> {t('reports.avgProgressLabel') || (lang === 'ar' ? 'متوسط التقدم' : 'Avg Progress')}</td>
+                    <td className="vr-info-label"><i className="fas fa-chart-line"></i> متوسط التقدم</td>
                     <td className="vr-info-value">{avgProgress}%</td>
                   </tr>
                   <tr>
-                    <td className="vr-info-label"><i className="fas fa-video"></i> {t('reports.completedLabel')}</td>
-                    <td className="vr-info-value">{completed} {lang === 'ar' ? 'من' : 'of'} {total} {lang === 'ar' ? 'فيديو' : 'video'}</td>
+                    <td className="vr-info-label"><i className="fas fa-video"></i> المُكتمل</td>
+                    <td className="vr-info-value">{completed} من {total} فيديو</td>
                   </tr>
                 </tbody>
               </table>
@@ -290,30 +281,28 @@ export default function VideosReport() {
         <div className="vr-stats">
           <div className="vr-stat-card">
             <i className="fas fa-film vr-stat-icon" style={{color: 'var(--primary)'}}></i>
-          <div className="vr-stat-card">
-            <i className="fas fa-film vr-stat-icon" style={{color: 'var(--primary)'}}></i>
             <span className="vr-stat-value" style={{color: 'var(--primary)'}}>{total}</span>
-            <span className="vr-stat-label">{lang === 'ar' ? 'إجمالي' : 'Total'}</span>
+            <span className="vr-stat-label">إجمالي</span>
           </div>
           <div className="vr-stat-card">
             <i className="fas fa-check-circle vr-stat-icon" style={{color: '#48bb78'}}></i>
             <span className="vr-stat-value" style={{color: '#48bb78'}}>{completed}</span>
-            <span className="vr-stat-label">{t('reports.completedLabel')}</span>
+            <span className="vr-stat-label">مكتملة</span>
           </div>
           <div className="vr-stat-card">
             <i className="fas fa-adjust vr-stat-icon" style={{color: '#ed8936'}}></i>
             <span className="vr-stat-value" style={{color: '#ed8936'}}>{partial}</span>
-            <span className="vr-stat-label">{t('reports.partialLabel')}</span>
+            <span className="vr-stat-label">جزئية</span>
           </div>
           <div className="vr-stat-card">
             <i className="fas fa-times-circle vr-stat-icon" style={{color: '#ef4444'}}></i>
             <span className="vr-stat-value" style={{color: '#ef4444'}}>{notWatched}</span>
-            <span className="vr-stat-label">{t('reports.notWatchedLabel')}</span>
+            <span className="vr-stat-label">لم تُشاهَد</span>
           </div>
           <div className="vr-stat-card">
             <i className="fas fa-percentage vr-stat-icon" style={{color: 'var(--secondary)'}}></i>
             <span className="vr-stat-value" style={{color: 'var(--secondary)'}}>{avgProgress}%</span>
-            <span className="vr-stat-label">{t('reports.averageLabel')}</span>
+            <span className="vr-stat-label">المتوسط</span>
           </div>
         </div>
 
@@ -321,10 +310,10 @@ export default function VideosReport() {
         <div className="vr-controls">
           <div className="vr-filter-group">
             {[
-              { key: 'all', label: t('reports.everyone') || (lang === 'ar' ? 'الكل' : 'All'), icon: 'fa-th-list' },
-              { key: 'completed', label: t('reports.completedLabel'), icon: 'fa-check' },
-              { key: 'partial', label: t('reports.partialLabel'), icon: 'fa-adjust' },
-              { key: 'none', label: t('reports.notWatchedLabel'), icon: 'fa-times' },
+              { key: 'all', label: 'الكل', icon: 'fa-th-list' },
+              { key: 'completed', label: 'مكتمل', icon: 'fa-check' },
+              { key: 'partial', label: 'جزئي', icon: 'fa-adjust' },
+              { key: 'none', label: 'لم يُشاهَد', icon: 'fa-times' },
             ].map(({ key, label, icon }) => (
               <button key={key} className={`vr-filter-btn ${currentFilter === key ? 'active' : ''}`} onClick={() => setCurrentFilter(key)}>
                 <i className={`fas ${icon}`}></i> {label}
@@ -334,27 +323,27 @@ export default function VideosReport() {
           {isAdmin && (
             <div className="vr-view-toggle">
               <button className={`vr-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
-                <i className="fas fa-table"></i> {lang === 'ar' ? 'جدول' : 'Table'}
+                <i className="fas fa-table"></i> جدول
               </button>
               <button className={`vr-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
-                <i className="fas fa-th-large"></i> {lang === 'ar' ? 'بطاقات' : 'Cards'}
+                <i className="fas fa-th-large"></i> بطاقات
               </button>
             </div>
           )}
         </div>
 
         <div className="vr-results-count">
-          {t('reports.showingVideos')} <strong>{filteredVideos.length}</strong> {t('reports.showingVideosOf')} {total}
+          عرض <strong>{filteredVideos.length}</strong> فيديو من أصل {total}
         </div>
 
         {/* TABLE VIEW — admin only (the detailed report card) */}
         {isAdmin && viewMode === 'table' && (
           <div className="vr-card" id="vr-reportTable">
             <div className="vr-table-header">
-              <h2 className="vr-card-title"><i className="fas fa-clipboard-list"></i> {t('reports.detailedVideoReport')}</h2>
+              <h2 className="vr-card-title"><i className="fas fa-clipboard-list"></i> تقرير المشاهدة التفصيلي</h2>
               {isAdmin && (
                 <button className="vr-print-btn" onClick={() => window.print()}>
-                  <i className="fas fa-print"></i> {t('reports.printReport') || (lang === 'ar' ? 'طباعة' : 'Print')}
+                  <i className="fas fa-print"></i> طباعة
                 </button>
               )}
             </div>
@@ -363,18 +352,18 @@ export default function VideosReport() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>{t('reports.videoStep') || (lang === 'ar' ? 'الفيديو' : 'Video')}</th>
-                    <th>{t('reports.subject') || (lang === 'ar' ? 'المادة' : 'Subject')}</th>
-                    <th>{t('reports.date') || (lang === 'ar' ? 'التاريخ' : 'Date')}</th>
-                    <th>{t('reports.statusCol')}</th>
-                    <th>{t('reports.progressCol')}</th>
-                    <th>{t('reports.timeCol')}</th>
-                    <th>{t('reports.details') || (lang === 'ar' ? 'التفاصيل' : 'Details')}</th>
+                    <th>الفيديو</th>
+                    <th>المادة</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>نسبة المشاهدة</th>
+                    <th>الوقت</th>
+                    <th>التفاصيل</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVideos.length === 0 ? (
-                    <tr><td colSpan={8} className="vr-empty-row">{t('reports.noVideosFilter')}</td></tr>
+                    <tr><td colSpan={8} className="vr-empty-row">لا توجد فيديوهات تطابق هذا الفلتر</td></tr>
                   ) : (
                     filteredVideos.map((video, index) => (
                       <tr key={video.id} className="vr-tr">
@@ -401,7 +390,7 @@ export default function VideosReport() {
                         <td>{video.watchedTime} / {video.totalTime}</td>
                         <td>
                           <button className="vr-detail-btn" onClick={() => openVideoDetail(video)}>
-                            <i className="fas fa-info-circle"></i> {t('common.view')}
+                            <i className="fas fa-info-circle"></i> عرض
                           </button>
                         </td>
                       </tr>
@@ -417,7 +406,7 @@ export default function VideosReport() {
         {viewMode === 'cards' && (
           <div className="vr-cards-grid">
             {filteredVideos.length === 0 ? (
-              <div className="vr-no-results">{t('reports.noVideosFilter')}</div>
+              <div className="vr-no-results">لا توجد فيديوهات تطابق هذا الفلتر</div>
             ) : (
               filteredVideos.map((video) => (
                 <div key={video.id} className="vr-video-card" onClick={() => openVideoDetail(video)}>
@@ -475,26 +464,25 @@ export default function VideosReport() {
 
             <div className="vr-modal-details">
               <div className="vr-modal-row">
-                <span className="vr-modal-label">{t('reports.statusCol')}</span>
+                <span className="vr-modal-label">الحالة</span>
                 <span className={`vr-badge ${getStatusClass(selectedVideo.status)}`}>{selectedVideo.statusText}</span>
               </div>
               <div className="vr-modal-row">
-                <span className="vr-modal-label">{t('reports.watchedTime') || (lang === 'ar' ? 'وقت المشاهدة' : 'Watched Time')}</span>
+                <span className="vr-modal-label">وقت المشاهدة</span>
                 <span className="vr-modal-val">{selectedVideo.watchedTime}</span>
               </div>
               <div className="vr-modal-row">
-                <span className="vr-modal-label">{t('reports.totalTime') || (lang === 'ar' ? 'المدة الكاملة' : 'Total Duration')}</span>
+                <span className="vr-modal-label">المدة الكاملة</span>
                 <span className="vr-modal-val">{selectedVideo.totalTime}</span>
               </div>
               <div className="vr-modal-row">
-                <span className="vr-modal-label">{t('reports.date') || (lang === 'ar' ? 'التاريخ' : 'Date')}</span>
+                <span className="vr-modal-label">التاريخ</span>
                 <span className="vr-modal-val">{selectedVideo.date}</span>
               </div>
             </div>
           </div>
         </div>
       )}
-      </div>
     </main>
   )
 }

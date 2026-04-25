@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import HomeDashboard from '../components/HomeDashboard'
-import { useI18n } from '../i18n'
 import './Home.css'
 import examsIcon from '../assets/exams.png'
 import lecturesIcon from '../assets/lectures.png'
@@ -8,7 +7,6 @@ import reportsIcon from '../assets/reports.png'
 import videosIcon from '../assets/videos.png'
 
 export default function Home() {
-  const { t } = useI18n()
   const [username, setUsername] = useState('')
   const [role, setRole] = useState(null)
   const canvasRef = useRef(null)
@@ -196,14 +194,13 @@ export default function Home() {
   }, [])
 
   const marqueeItems = [
-    t('home.marquee1'),
-    t('home.marquee2'),
-    t('home.marquee3'),
-    t('home.marquee4'),
-    t('home.marquee5'),
-    t('home.marquee6'),
+    '🚀 قريبًا: دورات مكثفة للمرحلة الإعدادية',
+    '📅 امتحانات شهرية جديدة كل أسبوع',
+    '🎁 خصومات خاصة لأوائل المشتركين',
+    '🎥 فيديوهات حصرية قادمة هذا الشهر',
+    '💬 انضم لمجتمع الطلاب على الواتساب',
+    '🏆 مسابقة شهرية بجوائز قيمة',
   ]
-  const displayName = username || (role === 'admin' ? t('home.defaultAdmin') : t('home.defaultStudent'))
 
   return (
     <main className="home">
@@ -212,10 +209,12 @@ export default function Home() {
       {/* Greeting banner */}
       <section className="home-greeting">
         <h2 className="home-greeting-title">
-          {t('home.welcomeBack')} <span className="home-greeting-name">{displayName}</span>
+          أهلاً بك، <span className="home-greeting-name">{username || (role === 'admin' ? 'المشرف' : 'الطالب')}</span>
         </h2>
         <p className="home-greeting-sub">
-          {role === 'admin' ? t('home.adminWelcome') : t('home.wishYou')}
+          {role === 'admin'
+            ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
+            : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨'}
         </p>
       </section>
 
@@ -223,7 +222,7 @@ export default function Home() {
       <HomeDashboard role={role} />
 
       {/* Upcoming news marquee */}
-      <div className="home-marquee" aria-label={t('home.marqueeAria')} dir="ltr">
+      <div className="home-marquee" aria-label="أحدث الإعلانات" dir="ltr">
         <div className="home-marquee-track">
           <div className="home-marquee-set">
             {marqueeItems.map((t, i) => (

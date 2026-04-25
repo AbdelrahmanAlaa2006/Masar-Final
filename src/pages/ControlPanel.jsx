@@ -8,9 +8,13 @@ import {
   deleteOverride,
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
-import { useI18n } from '../i18n'
 import './ControlPanel.css'
 
+const GRADE_LABEL = {
+  'first-prep':  'الأول الإعدادي',
+  'second-prep': 'الثاني الإعدادي',
+  'third-prep':  'الثالث الإعدادي',
+}
 const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
 // The stepper now represents *bonus* tries granted on top of the item's
@@ -30,14 +34,6 @@ const fmtDate = (iso) => {
    Component
    ────────────────────────────────────────────────────────────── */
 export default function ControlPanel() {
-  const { t, lang } = useI18n()
-  
-  const GRADE_LABEL = {
-    'first-prep':  t('grades.first'),
-    'second-prep': t('grades.second'),
-    'third-prep':  t('grades.third'),
-  }
-
   /* navigation */
   const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams'
   // Which sub-panel is active inside a section. Videos has: attempts, availability.
@@ -77,7 +73,7 @@ export default function ControlPanel() {
         setVideos(v)
         setExams(e)
       } catch (err) {
-        if (!cancelled) setLoadError(err.message || (lang === 'ar' ? 'تعذر تحميل البيانات' : 'Failed to load data'))
+        if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -163,7 +159,7 @@ export default function ControlPanel() {
         }
         setOverrides(next)
       } catch (e) {
-        if (!cancelled) flash(e.message || (lang === 'ar' ? 'تعذر تحميل الإعدادات' : 'Failed to load settings'), 'warning')
+        if (!cancelled) flash(e.message || 'تعذر تحميل الإعدادات', 'warning')
       }
     })()
     return () => { cancelled = true }
@@ -204,7 +200,7 @@ export default function ControlPanel() {
     } catch (e) {
       // rollback
       setOverrides((p) => ({ ...p, [key]: prev }))
-      flash(e.message || (lang === 'ar' ? 'تعذر حفظ التعديل' : 'Failed to save changes'), 'warning')
+      flash(e.message || 'تعذر حفظ التعديل', 'warning')
     } finally {
       setSavingKey(null)
     }
@@ -238,10 +234,10 @@ export default function ControlPanel() {
         itemType: section === 'videos' ? 'video' : 'exam',
         itemId: item.id,
       })
-      flash(lang === 'ar' ? 'تم استرجاع الإعدادات الافتراضية' : 'Default settings restored')
+      flash('تم استرجاع الإعدادات الافتراضية')
     } catch (e) {
       setOverrides((p) => ({ ...p, [key]: prev }))
-      flash(e.message || (lang === 'ar' ? 'تعذر الاسترجاع' : 'Failed to restore'), 'warning')
+      flash(e.message || 'تعذر الاسترجاع', 'warning')
     }
   }
 
@@ -250,7 +246,7 @@ export default function ControlPanel() {
       await Promise.all(items.map((item) =>
         persistItem(item, { allowed })
       ))
-      flash(allowed ? (lang === 'ar' ? 'تم السماح بكل العناصر' : 'All items allowed') : (lang === 'ar' ? 'تم منع كل العناصر' : 'All items blocked'))
+      flash(allowed ? 'تم السماح بكل العناصر' : 'تم منع كل العناصر')
     } catch (e) { /* individual errors already flashed */ }
   }
 
@@ -260,7 +256,7 @@ export default function ControlPanel() {
         const cur = stateFor(item).attempts
         return persistItem(item, { attempts: Math.min(99, cur + 1) })
       }))
-      flash(lang === 'ar' ? 'تم إضافة محاولة لكل العناصر' : 'Added an attempt to all items')
+      flash('تم إضافة محاولة لكل العناصر')
     } catch (e) { /* ignore */ }
   }
 
@@ -328,8 +324,8 @@ export default function ControlPanel() {
             <i className="fas fa-sliders"></i>
           </div>
           <div>
-            <h1>{t('adminPanel.controlPanelTitle') || (lang === 'ar' ? 'لوحة التحكم' : 'Control Panel')}</h1>
-            <p>{lang === 'ar' ? 'إدارة صلاحيات الفيديوهات والامتحانات للطلاب والمراحل الدراسية' : 'Manage video and exam permissions for students and grades'}</p>
+            <h1>لوحة التحكم</h1>
+            <p>إدارة صلاحيات الفيديوهات والامتحانات للطلاب والمراحل الدراسية</p>
           </div>
         </div>
 
@@ -348,8 +344,6 @@ export default function ControlPanel() {
           onHome={goHome}
           onSection={() => enterSection(section)}
           onScope={() => chooseScope(scope)}
-          t={t}
-          lang={lang}
         />
 
         {/* HOME — only two entry tiles; availability + reveal are
@@ -360,15 +354,15 @@ export default function ControlPanel() {
             <SectionCard
               icon="fa-play-circle"
               accent="blue"
-              title={lang === 'ar' ? 'إدارة الفيديوهات' : 'Videos Management'}
-              desc={lang === 'ar' ? 'صلاحيات المشاهدة، المحاولات الإضافية، ومدة الإتاحة' : 'Viewing permissions, extra attempts, and availability duration'}
+              title="إدارة الفيديوهات"
+              desc="صلاحيات المشاهدة، المحاولات الإضافية، ومدة الإتاحة"
               onClick={() => enterSection('videos')}
             />
             <SectionCard
               icon="fa-file-alt"
               accent="orange"
-              title={lang === 'ar' ? 'إدارة الامتحانات' : 'Exams Management'}
-              desc={lang === 'ar' ? 'المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات' : 'Extra attempts, availability, and exam results reveal'}
+              title="إدارة الامتحانات"
+              desc="المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات"
               onClick={() => enterSection('exams')}
             />
           </div>
@@ -384,20 +378,20 @@ export default function ControlPanel() {
               className={`cp-btn ${subtab === 'attempts' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
               onClick={() => setSubtab('attempts')}
             >
-              <i className="fas fa-user-shield"></i> {lang === 'ar' ? 'الصلاحيات والمحاولات' : 'Permissions & Attempts'}
+              <i className="fas fa-user-shield"></i> الصلاحيات والمحاولات
             </button>
             <button
               className={`cp-btn ${subtab === 'availability' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
               onClick={() => setSubtab('availability')}
             >
-              <i className="fas fa-hourglass-half"></i> {lang === 'ar' ? 'مدة الإتاحة' : 'Availability Duration'}
+              <i className="fas fa-hourglass-half"></i> مدة الإتاحة
             </button>
             {section === 'exams' && (
               <button
                 className={`cp-btn ${subtab === 'reveal' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
                 onClick={() => setSubtab('reveal')}
               >
-                <i className="fas fa-eye"></i> {lang === 'ar' ? 'إظهار النتائج' : 'Reveal Results'}
+                <i className="fas fa-eye"></i> إظهار النتائج
               </button>
             )}
           </div>
@@ -409,26 +403,24 @@ export default function ControlPanel() {
             restrictTo={section === 'exams' ? 'exams' : 'videos'}
             onBack={goHome}
             flash={flash}
-            t={t}
-            lang={lang}
           />
         )}
 
         {/* REVEAL sub-panel — only inside Exams */}
         {section === 'exams' && subtab === 'reveal' && (
-          <RevealPanel onBack={goHome} flash={flash} t={t} lang={lang} />
+          <RevealPanel onBack={goHome} flash={flash} />
         )}
 
         {/* ATTEMPTS FLOW — the original scope/target/items navigation */}
         {(section === 'videos' || section === 'exams') && subtab === 'attempts' && loading && (
           <div className="cp-empty">
             <i className="fas fa-spinner fa-spin"></i>
-            <p>{t('common.loading')}...</p>
+            <p>جارٍ التحميل...</p>
           </div>
         )}
 
         {(section === 'videos' || section === 'exams') && subtab === 'attempts' && !loading && !scope && (
-          <ScopePicker section={section} onPick={chooseScope} onBack={goHome} t={t} lang={lang} />
+          <ScopePicker section={section} onPick={chooseScope} onBack={goHome} />
         )}
 
         {(section === 'videos' || section === 'exams') && subtab === 'attempts' && !loading && scope && !target && (
@@ -439,8 +431,6 @@ export default function ControlPanel() {
             onQuery={setPickerQuery}
             onPick={chooseTarget}
             onBack={backFromScope}
-            t={t}
-            lang={lang}
           />
         )}
 
@@ -460,8 +450,6 @@ export default function ControlPanel() {
             onBulkBlock={() => bulkSet(false)}
             onBulkAddAttempt={bulkAddAttempt}
             onBack={backFromTarget}
-            t={t}
-            lang={lang}
           />
         )}
       </div>
@@ -488,18 +476,17 @@ export default function ControlPanel() {
    Sub-components
    ────────────────────────────────────────────────────────────── */
 
-function Breadcrumbs({ section, scope, target, onHome, onSection, onScope, t, lang }) {
+function Breadcrumbs({ section, scope, target, onHome, onSection, onScope }) {
   const sectionLabel =
-    section === 'videos' ? (lang === 'ar' ? 'الفيديوهات' : 'Videos')
-    : section === 'exams' ? (lang === 'ar' ? 'الامتحانات' : 'Exams')
+    section === 'videos' ? 'الفيديوهات'
+    : section === 'exams' ? 'الامتحانات'
     : ''
   const scopeLabel =
-    scope === 'student' ? (lang === 'ar' ? 'حسب الطالب' : 'By Student') 
-    : scope === 'prep' ? (lang === 'ar' ? 'حسب المرحلة' : 'By Grade') : ''
+    scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
   return (
     <nav className="cp-crumbs" aria-label="breadcrumb">
       <button onClick={onHome} className={section === 'home' ? 'is-active' : ''}>
-        <i className="fas fa-house"></i> {t('common.home') || (lang === 'ar' ? 'الرئيسية' : 'Home')}
+        <i className="fas fa-house"></i> الرئيسية
       </button>
       {section !== 'home' && (
         <>
@@ -542,41 +529,39 @@ function SectionCard({ icon, title, desc, accent, onClick }) {
   )
 }
 
-function ScopePicker({ section, onPick, onBack, t, lang }) {
-  const verb = section === 'videos' ? (lang === 'ar' ? 'الفيديوهات' : 'Videos') : (lang === 'ar' ? 'الامتحانات' : 'Exams')
+function ScopePicker({ section, onPick, onBack }) {
+  const verb = section === 'videos' ? 'الفيديوهات' : 'الامتحانات'
   return (
     <section className="cp-panel">
       <button className="cp-back" onClick={onBack}>
-        <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
+        <i className="fas fa-arrow-right"></i> رجوع
       </button>
       <header className="cp-panel-header">
-        <h2>{lang === 'ar' ? `اختر نطاق التحكم في ${verb}` : `Choose control scope for ${verb}`}</h2>
-        <p>{lang === 'ar' ? 'حدّد المستوى الذي تريد تطبيق التغييرات عليه' : 'Select the level to apply changes to'}</p>
+        <h2>اختر نطاق التحكم في {verb}</h2>
+        <p>حدّد المستوى الذي تريد تطبيق التغييرات عليه</p>
       </header>
 
       <div className="cp-scope-grid">
         <ScopeCard
           icon="fa-user"
           color="purple"
-          title={lang === 'ar' ? 'حسب الطالب' : 'By Student'}
-          desc={lang === 'ar' ? 'تحكم في صلاحيات طالب محدد بشكل فردي' : 'Control permissions for a specific student'}
+          title="حسب الطالب"
+          desc="تحكم في صلاحيات طالب محدد بشكل فردي"
           onClick={() => onPick('student')}
-          lang={lang}
         />
         <ScopeCard
           icon="fa-graduation-cap"
           color="orange"
-          title={lang === 'ar' ? 'حسب المرحلة الدراسية' : 'By Grade Level'}
-          desc={lang === 'ar' ? 'طبّق التغييرات على جميع طلاب المرحلة' : 'Apply changes to all students in the grade'}
+          title="حسب المرحلة الدراسية"
+          desc="طبّق التغييرات على جميع طلاب المرحلة"
           onClick={() => onPick('prep')}
-          lang={lang}
         />
       </div>
     </section>
   )
 }
 
-function ScopeCard({ icon, title, desc, color, onClick, lang }) {
+function ScopeCard({ icon, title, desc, color, onClick }) {
   return (
     <button className={`cp-scope-card cp-color-${color}`} onClick={onClick}>
       <div className="cp-scope-icon">
@@ -585,23 +570,23 @@ function ScopeCard({ icon, title, desc, color, onClick, lang }) {
       <h4>{title}</h4>
       <p>{desc}</p>
       <span className="cp-scope-cta">
-        {lang === 'ar' ? 'اختر' : 'Choose'} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i>
+        اختر <i className="fas fa-arrow-left"></i>
       </span>
     </button>
   )
 }
 
-function TargetPicker({ scope, list, query, onQuery, onPick, onBack, t, lang }) {
-  const label = scope === 'student' ? (lang === 'ar' ? 'الطلاب' : 'Students') : (lang === 'ar' ? 'المراحل الدراسية' : 'Grade Levels')
+function TargetPicker({ scope, list, query, onQuery, onPick, onBack }) {
+  const label = scope === 'student' ? 'الطلاب' : 'المراحل الدراسية'
   return (
     <section className="cp-panel">
       <button className="cp-back" onClick={onBack}>
-        <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
+        <i className="fas fa-arrow-right"></i> رجوع
       </button>
 
       <header className="cp-panel-header">
-        <h2>{lang === 'ar' ? `اختر من ${label}` : `Choose from ${label}`}</h2>
-        <p>{lang === 'ar' ? 'ابحث ثم انقر على العنصر للانتقال إلى لوحة التحكم الخاصة به' : 'Search and click on an item to open its control panel'}</p>
+        <h2>اختر من {label}</h2>
+        <p>ابحث ثم انقر على العنصر للانتقال إلى لوحة التحكم الخاصة به</p>
       </header>
 
       <div className="cp-search">
@@ -613,8 +598,8 @@ function TargetPicker({ scope, list, query, onQuery, onPick, onBack, t, lang }) 
           onChange={(e) => onQuery(e.target.value)}
           placeholder={
             scope === 'student'
-              ? (lang === 'ar' ? 'ابحث بالاسم أو رقم الطالب أو المرحلة...' : 'Search by name, ID or grade...')
-              : (lang === 'ar' ? 'ابحث بالمرحلة...' : 'Search by grade...')
+              ? 'ابحث بالاسم أو رقم الطالب أو المرحلة...'
+              : 'ابحث بالمرحلة...'
           }
         />
         {query && (
@@ -626,13 +611,13 @@ function TargetPicker({ scope, list, query, onQuery, onPick, onBack, t, lang }) 
 
       <div className="cp-target-meta">
         <i className="fas fa-list-ul"></i>
-        <span>{list.length} {lang === 'ar' ? 'نتيجة' : 'results'}</span>
+        <span>{list.length} نتيجة</span>
       </div>
 
       {list.length === 0 ? (
         <div className="cp-empty">
           <i className="fas fa-folder-open"></i>
-          <p>{lang === 'ar' ? 'لا توجد نتائج مطابقة' : 'No matching results'}</p>
+          <p>لا توجد نتائج مطابقة</p>
         </div>
       ) : (
         <div className="cp-target-grid">
@@ -693,16 +678,14 @@ function ItemsManager({
   onBulkBlock,
   onBulkAddAttempt,
   onBack,
-  t,
-  lang,
 }) {
   const isVideo = section === 'videos'
-  const scopeLabel = scope === 'student' ? (lang === 'ar' ? 'الطالب' : 'Student') : (lang === 'ar' ? 'المرحلة' : 'Grade')
+  const scopeLabel = scope === 'student' ? 'الطالب' : 'المرحلة'
 
   return (
     <section className="cp-panel">
       <button className="cp-back" onClick={onBack}>
-        <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
+        <i className="fas fa-arrow-right"></i> رجوع
       </button>
 
       {/* Target summary */}
@@ -734,37 +717,37 @@ function ItemsManager({
           <i className={`fas ${isVideo ? 'fa-play-circle' : 'fa-file-alt'}`}></i>
           <div>
             <div className="cp-stat-val">{stats.total}</div>
-            <div className="cp-stat-lbl">{isVideo ? (lang === 'ar' ? 'فيديوهات' : 'Videos') : (lang === 'ar' ? 'امتحانات' : 'Exams')}</div>
+            <div className="cp-stat-lbl">{isVideo ? 'فيديوهات' : 'امتحانات'}</div>
           </div>
         </div>
         <div className="cp-stat cp-stat-good">
           <i className="fas fa-circle-check"></i>
           <div>
             <div className="cp-stat-val">{stats.allowed}</div>
-            <div className="cp-stat-lbl">{lang === 'ar' ? 'مسموح' : 'Allowed'}</div>
+            <div className="cp-stat-lbl">مسموح</div>
           </div>
         </div>
         <div className="cp-stat cp-stat-bad">
           <i className="fas fa-ban"></i>
           <div>
             <div className="cp-stat-val">{stats.blocked}</div>
-            <div className="cp-stat-lbl">{lang === 'ar' ? 'محظور' : 'Blocked'}</div>
+            <div className="cp-stat-lbl">محظور</div>
           </div>
         </div>
       </div>
 
       <div className="cp-bulk-bar">
         <span className="cp-bulk-label">
-          <i className="fas fa-bolt"></i> {lang === 'ar' ? 'إجراءات جماعية:' : 'Bulk Actions:'}
+          <i className="fas fa-bolt"></i> إجراءات جماعية:
         </span>
         <button className="cp-btn cp-btn-success" onClick={onBulkAllow}>
-          <i className="fas fa-check-double"></i> {lang === 'ar' ? 'سماح الكل' : 'Allow All'}
+          <i className="fas fa-check-double"></i> سماح الكل
         </button>
         <button className="cp-btn cp-btn-danger" onClick={onBulkBlock}>
-          <i className="fas fa-ban"></i> {lang === 'ar' ? 'منع الكل' : 'Block All'}
+          <i className="fas fa-ban"></i> منع الكل
         </button>
         <button className="cp-btn cp-btn-ghost" onClick={onBulkAddAttempt}>
-          <i className="fas fa-plus"></i> {lang === 'ar' ? '+1 محاولة إضافية للكل' : '+1 Additional Attempt All'}
+          <i className="fas fa-plus"></i> +1 محاولة إضافية للكل
         </button>
       </div>
 
@@ -772,7 +755,7 @@ function ItemsManager({
       {items.length === 0 ? (
         <div className="cp-empty">
           <i className="fas fa-inbox"></i>
-          <p>{lang === 'ar' ? `لا توجد ${isVideo ? 'فيديوهات' : 'امتحانات'} في هذه المرحلة بعد` : `No ${isVideo ? 'videos' : 'exams'} in this grade yet`}</p>
+          <p>لا توجد {isVideo ? 'فيديوهات' : 'امتحانات'} في هذه المرحلة بعد</p>
         </div>
       ) : (
         <ul className="cp-items">
@@ -786,7 +769,6 @@ function ItemsManager({
               onAttempts={(v) => onAttempts(item, v)}
               onBump={(d) => onBump(item, d)}
               onReset={() => onReset(item)}
-              lang={lang}
             />
           ))}
         </ul>
@@ -795,7 +777,7 @@ function ItemsManager({
   )
 }
 
-function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset, lang }) {
+function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }) {
   // Draft vs saved: the stepper now edits a local draft until the admin
   // clicks Save. This makes the "I changed something" vs "I committed it"
   // distinction visible, which matches how admins expect form controls
@@ -839,12 +821,12 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset, 
           {item.date && <span><i className="fas fa-calendar"></i> {item.date}</span>}
           <span className={`cp-status-pill ${state.allowed ? 'cp-status-on' : 'cp-status-off'}`}>
             <i className={`fas ${state.allowed ? 'fa-circle-check' : 'fa-ban'}`}></i>
-            {state.allowed ? (lang === 'ar' ? 'مسموح' : 'Allowed') : (lang === 'ar' ? 'محظور' : 'Blocked')}
+            {state.allowed ? 'مسموح' : 'محظور'}
           </span>
           {dirty && (
             <span className="cp-status-pill cp-status-dirty" style={{ background: '#fef3c7', color: '#92400e' }}>
               <i className="fas fa-pen"></i>
-              {lang === 'ar' ? 'تغييرات غير محفوظة' : 'Unsaved changes'}
+              تغييرات غير محفوظة
             </span>
           )}
         </div>
@@ -852,14 +834,14 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset, 
 
       <div className="cp-item-controls">
         {/* Allow toggle (saves instantly — it's a boolean) */}
-        <label className="cp-switch" title={state.allowed ? (lang === 'ar' ? 'مسموح بالوصول' : 'Access Allowed') : (lang === 'ar' ? 'الوصول محظور' : 'Access Blocked')}>
+        <label className="cp-switch" title={state.allowed ? 'مسموح بالوصول' : 'الوصول محظور'}>
           <input type="checkbox" checked={state.allowed} onChange={onToggle} />
           <span className="cp-switch-slider"></span>
         </label>
 
         {/* Bonus-attempts stepper — draft until Save is clicked */}
-        <div className="cp-stepper" title={lang === 'ar' ? 'محاولات إضافية فوق الإعداد الافتراضي' : 'Extra attempts beyond default'}>
-          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft - 1)} aria-label={lang === 'ar' ? 'إنقاص' : 'Decrease'}>
+        <div className="cp-stepper" title="محاولات إضافية فوق الإعداد الافتراضي">
+          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft - 1)} aria-label="إنقاص">
             <i className="fas fa-minus"></i>
           </button>
           <input
@@ -870,26 +852,26 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset, 
             onChange={(e) => setDraftClamped(e.target.value)}
             className="cp-stepper-input"
           />
-          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft + 1)} aria-label={lang === 'ar' ? 'زيادة' : 'Increase'}>
+          <button className="cp-stepper-btn" onClick={() => setDraftClamped(draft + 1)} aria-label="زيادة">
             <i className="fas fa-plus"></i>
           </button>
-          <span className="cp-stepper-lbl">{lang === 'ar' ? 'محاولات إضافية' : 'Extra Attempts'}</span>
+          <span className="cp-stepper-lbl">محاولات إضافية</span>
         </div>
 
         <button
           className={`cp-btn ${dirty ? 'cp-btn-success' : 'cp-btn-ghost'}`}
           onClick={handleSave}
           disabled={!dirty || saving}
-          title={lang === 'ar' ? 'حفظ عدد المحاولات الإضافية' : 'Save extra attempts'}
+          title="حفظ عدد المحاولات الإضافية"
         >
           {saving ? (
-            <><i className="fas fa-spinner fa-spin"></i> {lang === 'ar' ? 'جارٍ الحفظ...' : 'Saving...'}</>
+            <><i className="fas fa-spinner fa-spin"></i> جارٍ الحفظ...</>
           ) : (
-            <><i className="fas fa-floppy-disk"></i> {lang === 'ar' ? 'حفظ' : 'Save'}</>
+            <><i className="fas fa-floppy-disk"></i> حفظ</>
           )}
         </button>
 
-        <button className="cp-icon-btn" onClick={onReset} title={lang === 'ar' ? 'استرجاع الإعدادات الافتراضية' : 'Restore Default Settings'}>
+        <button className="cp-icon-btn" onClick={onReset} title="استرجاع الإعدادات الافتراضية">
           <i className="fas fa-rotate-left"></i>
         </button>
       </div>
@@ -913,7 +895,7 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset, 
    Hiding is the inverse: clear the global flag / delete the override,
    no notification.
    ────────────────────────────────────────────────────────────── */
-function RevealPanel({ onBack, flash, t, lang }) {
+function RevealPanel({ onBack, flash }) {
   // Audience the reveal action targets.
   //   'all'     → flips exams.reveal_grades (global toggle)
   //   'grade'   → upsert access_overrides scope='prep',  target_id=grade
@@ -1020,17 +1002,17 @@ function RevealPanel({ onBack, flash, t, lang }) {
 
   // Build a human-friendly "audience label" for flashes + notification titles.
   const audienceLabel = () => {
-    if (audience === 'all') return lang === 'ar' ? 'كل الطلاب' : 'All Students'
+    if (audience === 'all') return 'كل الطلاب'
     if (audience === 'grade') return GRADE_LABEL[grade] || grade
-    if (audience === 'student') return selectedStudent?.name || (lang === 'ar' ? 'طالب محدد' : 'Specific Student')
+    if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
     return ''
   }
 
   // Post a notification to match the audience so students see a real entry
   // in their notification bell the moment the exam is revealed.
   const notify = async (exam) => {
-    const title = lang === 'ar' ? `تم إعلان نتيجة: ${exam.title}` : `Result Announced: ${exam.title}`
-    const message = lang === 'ar' ? `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.` : `Your exam result is now available in your reports page.`
+    const title = `تم إعلان نتيجة: ${exam.title}`
+    const message = `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.`
     try {
       const me = JSON.parse(localStorage.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
@@ -1078,12 +1060,12 @@ function RevealPanel({ onBack, flash, t, lang }) {
 
       flash(
         next
-          ? (lang === 'ar' ? `تم إظهار نتائج: ${exam.title} — ${audienceLabel()}` : `Revealed results: ${exam.title} — ${audienceLabel()}`)
-          : (lang === 'ar' ? `تم إخفاء نتائج: ${exam.title} — ${audienceLabel()}` : `Hidden results: ${exam.title} — ${audienceLabel()}`),
+          ? `تم إظهار نتائج: ${exam.title} — ${audienceLabel()}`
+          : `تم إخفاء نتائج: ${exam.title} — ${audienceLabel()}`,
         next ? 'success' : 'warning'
       )
     } catch (e) {
-      flash(e.message || (lang === 'ar' ? 'تعذّر تحديث الحالة' : 'Failed to update status'), 'warning')
+      flash(e.message || 'تعذّر تحديث الحالة', 'warning')
     } finally {
       setBusyId(null)
     }
@@ -1098,16 +1080,16 @@ function RevealPanel({ onBack, flash, t, lang }) {
   return (
     <section className="cp-panel">
       <div className="cp-panel-header">
-        <h2><i className="fas fa-eye"></i> {lang === 'ar' ? 'إظهار نتائج الامتحانات' : 'Reveal Exam Results'}</h2>
-        <p>{lang === 'ar' ? 'اختر الجمهور أولاً، ثم فعِّل ظهور النتائج لكل امتحان — وسيصل إشعار تلقائي للطلاب.' : 'Select the audience first, then reveal results per exam — an automatic notification will be sent fully to students.'}</p>
+        <h2><i className="fas fa-eye"></i> إظهار نتائج الامتحانات</h2>
+        <p>اختر الجمهور أولاً، ثم فعِّل ظهور النتائج لكل امتحان — وسيصل إشعار تلقائي للطلاب.</p>
       </div>
 
       {/* Audience selector */}
       <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
         {[
-          { id: 'all',     icon: 'fa-users',     label: lang === 'ar' ? 'كل الطلاب' : 'All Students' },
-          { id: 'grade',   icon: 'fa-layer-group', label: lang === 'ar' ? 'مرحلة محددة' : 'Specific Grade' },
-          { id: 'student', icon: 'fa-user',      label: lang === 'ar' ? 'طالب محدد' : 'Specific Student' },
+          { id: 'all',     icon: 'fa-users',     label: 'كل الطلاب' },
+          { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
+          { id: 'student', icon: 'fa-user',      label: 'طالب محدد' },
         ].map((opt) => (
           <button
             key={opt.id}
@@ -1177,21 +1159,21 @@ function RevealPanel({ onBack, flash, t, lang }) {
             <i className="fas fa-file-alt"></i>
             <div>
               <div className="cp-stat-val">{filtered.length}</div>
-              <div className="cp-stat-lbl">{lang === 'ar' ? 'امتحانات' : 'Exams'}</div>
+              <div className="cp-stat-lbl">امتحانات</div>
             </div>
           </div>
           <div className="cp-stat cp-stat-info">
             <i className="fas fa-eye"></i>
             <div>
               <div className="cp-stat-val">{revealedCount}</div>
-              <div className="cp-stat-lbl">{lang === 'ar' ? 'نتائج معلنة' : 'Revealed'}</div>
+              <div className="cp-stat-lbl">نتائج معلنة</div>
             </div>
           </div>
           <div className="cp-stat cp-stat-bad">
             <i className="fas fa-eye-slash"></i>
             <div>
               <div className="cp-stat-val">{hiddenCount}</div>
-              <div className="cp-stat-lbl">{lang === 'ar' ? 'نتائج مخفية' : 'Hidden'}</div>
+              <div className="cp-stat-lbl">نتائج مخفية</div>
             </div>
           </div>
         </div>
@@ -1203,7 +1185,7 @@ function RevealPanel({ onBack, flash, t, lang }) {
           <i className="fas fa-search"></i>
           <input
             type="text"
-            placeholder={lang === 'ar' ? 'ابحث باسم الامتحان أو المرحلة...' : 'Search by exam name or grade...'}
+            placeholder="ابحث باسم الامتحان أو المرحلة..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -1232,7 +1214,7 @@ function RevealPanel({ onBack, flash, t, lang }) {
         filtered.length === 0 ? (
           <div className="cp-empty">
             <i className="fas fa-inbox"></i>
-            <p>{lang === 'ar' ? 'لا توجد امتحانات مطابقة' : 'No matching exams'}</p>
+            <p>لا توجد امتحانات مطابقة</p>
           </div>
         ) : (
           <ul className="cp-items">
@@ -1256,15 +1238,15 @@ function RevealPanel({ onBack, flash, t, lang }) {
                     </div>
                     <div className="cp-item-meta">
                       <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[ex.grade] || ex.grade}</span>
-                      <span><i className="fas fa-clock"></i> {ex.duration_minutes} {lang === 'ar' ? 'دقيقة' : 'min'}</span>
-                      <span><i className="fas fa-star"></i> {ex.total_points} {lang === 'ar' ? 'درجة' : 'pts'}</span>
+                      <span><i className="fas fa-clock"></i> {ex.duration_minutes} دقيقة</span>
+                      <span><i className="fas fa-star"></i> {ex.total_points} درجة</span>
                       <span className={`cp-status-pill ${revealed ? 'cp-status-reveal' : 'cp-status-hidden'}`}>
                         <i className={`fas ${revealed ? 'fa-eye' : 'fa-eye-slash'}`}></i>
-                        {revealed ? (lang === 'ar' ? 'النتائج معلنة' : 'Results Revealed') : (lang === 'ar' ? 'النتائج مخفية' : 'Results Hidden')}
+                        {revealed ? 'النتائج معلنة' : 'النتائج مخفية'}
                       </span>
                       {forcedByGlobal && (
                         <span className="cp-status-pill" style={{ background: '#e0e7ff', color: '#3730a3' }}>
-                          <i className="fas fa-globe"></i> {lang === 'ar' ? 'معلن للكل' : 'Revealed to All'}
+                          <i className="fas fa-globe"></i> معلن للكل
                         </span>
                       )}
                     </div>
@@ -1275,13 +1257,13 @@ function RevealPanel({ onBack, flash, t, lang }) {
                       onClick={() => handleToggle(ex)}
                       disabled={busy || forcedByGlobal}
                       title={forcedByGlobal
-                        ? (lang === 'ar' ? 'النتائج معلنة لكل الطلاب — ألغِ الإعلان العام من تبويب "كل الطلاب" أولاً' : 'Results revealed to all — Uncheck global reveal from "All students" first')
-                        : (lang === 'ar' ? 'إظهار / إخفاء النتائج للطلاب' : 'Reveal / hide results')}
+                        ? 'النتائج معلنة لكل الطلاب — ألغِ الإعلان العام من تبويب "كل الطلاب" أولاً'
+                        : 'إظهار / إخفاء النتائج للطلاب'}
                     >
                       {busy ? (
-                        <><i className="fas fa-spinner fa-spin"></i> {lang === 'ar' ? 'جارٍ...' : 'Loading...'}</>
+                        <><i className="fas fa-spinner fa-spin"></i> جارٍ...</>
                       ) : (
-                        <><i className={`fas ${revealed ? 'fa-eye-slash' : 'fa-eye'}`}></i> {revealed ? (lang === 'ar' ? 'إخفاء النتائج' : 'Hide Results') : (lang === 'ar' ? 'إظهار النتائج' : 'Reveal Results')}</>
+                        <><i className={`fas ${revealed ? 'fa-eye-slash' : 'fa-eye'}`}></i> {revealed ? 'إخفاء النتائج' : 'إظهار النتائج'}</>
                       )}
                     </button>
                   </div>
@@ -1300,7 +1282,7 @@ function RevealPanel({ onBack, flash, t, lang }) {
    plain <select> we used before; lines up visually with the rest
    of the Control Panel (same shapes as prep TargetRow).
    ────────────────────────────────────────────────────────────── */
-function GradePickerCards({ value, onChange, students = [], lang }) {
+function GradePickerCards({ value, onChange, students = [] }) {
   // Tiny bar-chart-friendly student count per grade, so admins see
   // at a glance how many people the pick will affect.
   const counts = useMemo(() => {
@@ -1340,12 +1322,12 @@ function GradePickerCards({ value, onChange, students = [], lang }) {
                 <span>{GRADE_LABEL[g]}</span>
                 {active && (
                   <span className="cp-id-pill cp-id-pill-active">
-                    <i className="fas fa-circle-check"></i> {lang === 'ar' ? 'مختارة' : 'Selected'}
+                    <i className="fas fa-circle-check"></i> مختارة
                   </span>
                 )}
               </div>
               <div className="cp-target-sub">
-                <span><i className="fas fa-user"></i> {counts[g] || 0} {lang === 'ar' ? 'طالب' : 'student(s)'}</span>
+                <span><i className="fas fa-user"></i> {counts[g] || 0} طالب</span>
               </div>
             </div>
           </button>
@@ -1370,15 +1352,15 @@ function GradePickerCards({ value, onChange, students = [], lang }) {
    For non-'all' audiences the draft starts from the override if it
    exists, else from the item's default (shown as "موروث").
    ────────────────────────────────────────────────────────────── */
-function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
+function AvailabilityPanel({ onBack, flash, restrictTo }) {
   // `restrictTo` = 'exams' | 'videos' | undefined. When set, the internal
   // tab bar is hidden and only the matching list is shown (this panel is
-    // now rendered inside the Videos / Exams sections, so the outer section
-    // tells us which type to show).
-    const [tab, setTab] = useState(restrictTo || 'exams')
-  
-    // Audience targeting mirrors RevealPanel so admins learn one pattern.
-    const [audience, setAudience] = useState('all')
+  // now rendered inside the Videos / Exams sections, so the outer section
+  // tells us which type to show).
+  const [tab, setTab] = useState(restrictTo || 'exams')
+
+  // Audience targeting mirrors RevealPanel so admins learn one pattern.
+  const [audience, setAudience] = useState('all')
   const [grade, setGrade]       = useState('first-prep')
   const [studentId, setStudentId] = useState('')
 
@@ -1467,9 +1449,9 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
   const selectedStudent = students.find((s) => s.id === studentId) || null
 
   const audienceLabel = () => {
-    if (audience === 'all') return lang === 'ar' ? 'كل الطلاب' : 'All Students'
+    if (audience === 'all') return 'كل الطلاب'
     if (audience === 'grade') return GRADE_LABEL[grade] || grade
-    if (audience === 'student') return selectedStudent?.name || (lang === 'ar' ? 'طالب محدد' : 'Specific Student')
+    if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
     return ''
   }
 
@@ -1537,9 +1519,9 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
   return (
     <section className="cp-panel">
       <div className="cp-panel-header">
-        <h2><i className="fas fa-hourglass-half"></i> {lang === 'ar' ? 'مدة الإتاحة' : 'Availability Duration'}</h2>
+        <h2><i className="fas fa-hourglass-half"></i> مدة الإتاحة</h2>
         <p>
-          {lang === 'ar' ? `حدّد الجمهور، ثم عدّل عدد الساعات التي يظل فيها كل ${tab === 'exams' ? 'امتحان' : 'فيديو'} متاحاً.` : `Select the audience, then adjust the duration for which each ${tab === 'exams' ? 'exam' : 'video'} remains available.`}
+          حدّد الجمهور، ثم عدّل عدد الساعات التي يظل فيها كل {tab === 'exams' ? 'امتحان' : 'فيديو'} متاحاً.
         </p>
       </div>
 
@@ -1550,13 +1532,13 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
             className={`cp-btn ${tab === 'exams' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
             onClick={() => setTab('exams')}
           >
-            <i className="fas fa-file-alt"></i> {lang === 'ar' ? 'الامتحانات' : 'Exams'}
+            <i className="fas fa-file-alt"></i> الامتحانات
           </button>
           <button
             className={`cp-btn ${tab === 'videos' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
             onClick={() => setTab('videos')}
           >
-            <i className="fas fa-play-circle"></i> {lang === 'ar' ? 'الفيديوهات' : 'Videos'}
+            <i className="fas fa-play-circle"></i> الفيديوهات
           </button>
         </div>
       )}
@@ -1564,9 +1546,9 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
       {/* Audience selector — mirrors RevealPanel for familiarity. */}
       <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
         {[
-          { id: 'all',     icon: 'fa-users',       label: lang === 'ar' ? 'كل الطلاب' : 'All Students' },
-          { id: 'grade',   icon: 'fa-layer-group', label: lang === 'ar' ? 'مرحلة محددة' : 'Specific Grade' },
-          { id: 'student', icon: 'fa-user',        label: lang === 'ar' ? 'طالب محدد' : 'Specific Student' },
+          { id: 'all',     icon: 'fa-users',       label: 'كل الطلاب' },
+          { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
+          { id: 'student', icon: 'fa-user',        label: 'طالب محدد' },
         ].map((opt) => (
           <button
             key={opt.id}
@@ -1580,7 +1562,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
 
       {/* Grade card picker */}
       {audience === 'grade' && (
-        <GradePickerCards value={grade} onChange={setGrade} students={students} lang={lang} />
+        <GradePickerCards value={grade} onChange={setGrade} students={students} />
       )}
 
       {/* Student picker (reuse same pattern as RevealPanel) */}
@@ -1663,7 +1645,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
         filtered.length === 0 ? (
           <div className="cp-empty">
             <i className="fas fa-inbox"></i>
-            <p>{lang === 'ar' ? 'لا توجد عناصر مطابقة' : 'No matching items'}</p>
+            <p>لا توجد عناصر مطابقة</p>
           </div>
         ) : (
           <ul className="cp-items">
@@ -1676,7 +1658,6 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
                 overrideHours={overrides.get(item.id)?.available_hours ?? null}
                 onSave={(h) => saveRow(item, h)}
                 onClear={audience !== 'all' ? () => clearOverride(item) : null}
-                lang={lang}
               />
             ))}
           </ul>
@@ -1686,7 +1667,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo, t, lang }) {
   )
 }
 
-function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClear, lang }) {
+function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClear }) {
   // The item's default (the "all-students" value) — always read from row.
   const defaultHours = isExam ? (item.available_hours || 72) : (item.active_hours || 24)
   // The "currently-saved" value for this audience is either the override
@@ -1721,13 +1702,6 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
     try { await onSave(clamp(draft)) } catch { /* flashed */ } finally { setSaving(false) }
   }
 
-  // A helper since GradePickerCards maps grades
-  const GRADE_LABEL = {
-    'first-prep':  lang === 'ar' ? 'الأول الإعدادي' : 'First Prep',
-    'second-prep': lang === 'ar' ? 'الثاني الإعدادي' : 'Second Prep',
-    'third-prep':  lang === 'ar' ? 'الثالث الإعدادي' : 'Third Prep',
-  }
-
   return (
     <li className="cp-item">
       <div className="cp-item-icon">
@@ -1744,27 +1718,27 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
         </div>
         <div className="cp-item-meta">
           <span><i className="fas fa-graduation-cap"></i> {GRADE_LABEL[item.grade] || item.grade}</span>
-          <span><i className="fas fa-hourglass-half"></i> {savedHours} {lang === 'ar' ? 'ساعة' : 'hours'}</span>
-          <span><i className="fas fa-calendar-check"></i> {lang === 'ar' ? 'متاح حتى' : 'Available until'} {previewText}</span>
+          <span><i className="fas fa-hourglass-half"></i> {savedHours} ساعة</span>
+          <span><i className="fas fa-calendar-check"></i> متاح حتى {previewText}</span>
           {inherited && (
             <span className="cp-status-pill" style={{ background: '#e0e7ff', color: '#3730a3' }}>
-              <i className="fas fa-link"></i> {lang === 'ar' ? 'موروث من الافتراضي' : 'Inherited from default'}
+              <i className="fas fa-link"></i> موروث من الافتراضي
             </span>
           )}
           {audience !== 'all' && !inherited && (
             <span className="cp-status-pill" style={{ background: '#dcfce7', color: '#166534' }}>
-              <i className="fas fa-user-shield"></i> {lang === 'ar' ? 'مخصص لهذا الجمهور' : 'Assigned to this audience'}
+              <i className="fas fa-user-shield"></i> مخصص لهذا الجمهور
             </span>
           )}
           {dirty && (
             <span className="cp-status-pill" style={{ background: '#fef3c7', color: '#92400e' }}>
-              <i className="fas fa-pen"></i> {lang === 'ar' ? 'تغييرات غير محفوظة' : 'Unsaved changes'}
+              <i className="fas fa-pen"></i> تغييرات غير محفوظة
             </span>
           )}
         </div>
       </div>
       <div className="cp-item-controls">
-        <div className="cp-stepper" title={lang === 'ar' ? 'عدد الساعات المتاحة منذ إنشاء العنصر' : 'Number of hours available since creation'}>
+        <div className="cp-stepper" title="عدد الساعات المتاحة منذ إنشاء العنصر">
           <button className="cp-stepper-btn" onClick={() => setDraft(clamp(draft - 1))}>
             <i className="fas fa-minus"></i>
           </button>
@@ -1779,7 +1753,7 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
           <button className="cp-stepper-btn" onClick={() => setDraft(clamp(draft + 1))}>
             <i className="fas fa-plus"></i>
           </button>
-          <span className="cp-stepper-lbl">{lang === 'ar' ? 'ساعة' : 'h'}</span>
+          <span className="cp-stepper-lbl">ساعة</span>
         </div>
         <button
           className={`cp-btn ${dirty ? 'cp-btn-success' : 'cp-btn-ghost'}`}
@@ -1787,16 +1761,16 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
           disabled={!dirty || saving}
         >
           {saving ? (
-            <><i className="fas fa-spinner fa-spin"></i> {lang === 'ar' ? 'جارٍ الحفظ...' : 'Saving...'}</>
+            <><i className="fas fa-spinner fa-spin"></i> جارٍ الحفظ...</>
           ) : (
-            <><i className="fas fa-floppy-disk"></i> {lang === 'ar' ? 'حفظ' : 'Save'}</>
+            <><i className="fas fa-floppy-disk"></i> حفظ</>
           )}
         </button>
         {onClear && !inherited && (
           <button
             className="cp-icon-btn"
             onClick={onClear}
-            title={lang === 'ar' ? 'استرجاع الإعداد الافتراضي لهذا الجمهور' : 'Reset default setting for this audience'}
+            title="استرجاع الإعداد الافتراضي لهذا الجمهور"
           >
             <i className="fas fa-rotate-left"></i>
           </button>

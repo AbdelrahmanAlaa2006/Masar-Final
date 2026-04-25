@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
-import { useI18n } from '../i18n'
 import './Profile.css'
 
 export default function Profile() {
   const navigate = useNavigate()
   const fileRef = useRef(null)
-  const { t, lang } = useI18n()
   const [user, setUser] = useState(null)
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -26,7 +24,7 @@ export default function Profile() {
   }, [navigate])
 
   const initial = (user?.name || 'U').trim().charAt(0).toUpperCase()
-  const roleName = user?.role === 'admin' ? t('common.admin') : t('common.student')
+  const roleName = user?.role === 'admin' ? 'مشرف' : 'طالب'
   const isAdmin = user?.role === 'admin'
 
   // Upload avatar
@@ -36,11 +34,11 @@ export default function Profile() {
 
     // Validate file
     if (!file.type.startsWith('image/')) {
-      setErrorMsg(t('profile.invalidImage'))
+      setErrorMsg('يرجى اختيار صورة صالحة')
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      setErrorMsg(t('profile.imageTooLarge'))
+      setErrorMsg('حجم الصورة يجب أن لا يتجاوز 2 ميجابايت')
       return
     }
 
@@ -81,11 +79,11 @@ export default function Profile() {
       const updated = { ...user, avatar_url: urlWithCacheBust }
       localStorage.setItem('masar-user', JSON.stringify(updated))
       setUser(updated)
-      setSuccessMsg(t('profile.photoUpdated'))
+      setSuccessMsg('تم تحديث الصورة بنجاح')
       setTimeout(() => setSuccessMsg(''), 3000)
     } catch (err) {
       console.error('Avatar upload error:', err)
-      setErrorMsg(t('profile.photoUploadFailed') + (err.message || t('profile.unknownError')))
+      setErrorMsg('فشل رفع الصورة: ' + (err.message || 'خطأ غير معروف'))
     } finally {
       setUploading(false)
     }
@@ -109,10 +107,10 @@ export default function Profile() {
       const updated = { ...user, avatar_url: null }
       localStorage.setItem('masar-user', JSON.stringify(updated))
       setUser(updated)
-      setSuccessMsg(t('profile.photoRemoved'))
+      setSuccessMsg('تم حذف الصورة')
       setTimeout(() => setSuccessMsg(''), 3000)
     } catch (err) {
-      setErrorMsg(t('profile.photoRemoveFailed'))
+      setErrorMsg('فشل حذف الصورة')
     } finally {
       setUploading(false)
     }
@@ -121,7 +119,7 @@ export default function Profile() {
   if (!user) return null
 
   return (
-    <div className="profile-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="profile-page" dir="rtl">
       {/* Decorative background */}
       <div className="profile-bg-decor">
         <div className="profile-bg-blob profile-bg-blob--1" />
@@ -138,7 +136,7 @@ export default function Profile() {
             <div className="profile-avatar-wrapper">
               <div className={`profile-avatar ${uploading ? 'is-uploading' : ''}`}>
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={t('profile.avatarAlt')} className="profile-avatar-img" />
+                  <img src={avatarUrl} alt="صورة شخصية" className="profile-avatar-img" />
                 ) : (
                   <span className="profile-avatar-letter">{initial}</span>
                 )}
@@ -155,7 +153,7 @@ export default function Profile() {
                   className="profile-avatar-btn profile-avatar-btn--upload"
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
-                  title={t('profile.uploadPhoto')}
+                  title="تغيير الصورة"
                 >
                   <i className="fas fa-camera" />
                 </button>
@@ -165,7 +163,7 @@ export default function Profile() {
                     className="profile-avatar-btn profile-avatar-btn--remove"
                     onClick={handleRemoveAvatar}
                     disabled={uploading}
-                    title={t('profile.removePhoto')}
+                    title="إزالة الصورة"
                   >
                     <i className="fas fa-trash-can" />
                   </button>
@@ -203,13 +201,13 @@ export default function Profile() {
         <div className="profile-form-card">
           <h2 className="profile-form-title">
             <i className="fas fa-user" />
-            <span>{t('profile.personalInfo')}</span>
+            <span>المعلومات الشخصية</span>
           </h2>
 
           <div className="profile-info-row">
             <span className="profile-info-label">
               <i className="fas fa-user" />
-              {t('profile.fullName')}
+              الاسم الكامل
             </span>
             <span className="profile-info-value">{user.name || '—'}</span>
           </div>
@@ -217,7 +215,7 @@ export default function Profile() {
           <div className="profile-info-row">
             <span className="profile-info-label">
               <i className="fas fa-phone" />
-              {t('profile.phone')}
+              رقم الهاتف
             </span>
             <span className="profile-info-value" dir="ltr">{user.phone || '—'}</span>
           </div>
@@ -227,9 +225,9 @@ export default function Profile() {
             <div className="profile-info-row">
               <span className="profile-info-label">
                 <i className="fas fa-graduation-cap" />
-                {t('profile.grade')}
+                المرحلة الدراسية
               </span>
-              <span className="profile-coming-badge">{t('profile.soon')}</span>
+              <span className="profile-coming-badge">قريبًا</span>
             </div>
           )}
         </div>
@@ -238,14 +236,14 @@ export default function Profile() {
         <div className="profile-info-card">
           <h2 className="profile-form-title">
             <i className="fas fa-shield-halved" />
-            <span>{t('profile.accountInfo')}</span>
+            <span>معلومات الحساب</span>
           </h2>
           <div className="profile-info-row">
-            <span className="profile-info-label">{t('profile.role')}</span>
+            <span className="profile-info-label">نوع الحساب</span>
             <span className="profile-info-value profile-info-value--badge">{roleName}</span>
           </div>
           <div className="profile-info-row">
-            <span className="profile-info-label">{t('profile.userId')}</span>
+            <span className="profile-info-label">معرّف المستخدم</span>
             <span className="profile-info-value profile-info-value--mono">{user.id?.slice(0, 8)}...</span>
           </div>
         </div>

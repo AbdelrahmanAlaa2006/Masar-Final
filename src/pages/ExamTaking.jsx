@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useI18n } from '../i18n'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const { t, lang } = useI18n()
   const examId = params.get('id')
 
   const [exam, setExam] = useState(null)
@@ -39,11 +37,11 @@ export default function ExamTaking() {
 
     let cancelled = false
     const run = async () => {
-      if (!examId) { setLoadError(t('examTaking.noExamSpecified')); return }
+      if (!examId) { setLoadError('لم يتم تحديد الامتحان'); return }
       try {
         const u = JSON.parse(localStorage.getItem('masar-user'))
         const sid = u?.id
-        if (!sid) { setLoadError(t('examTaking.mustLogin')); return }
+        if (!sid) { setLoadError('يجب تسجيل الدخول'); return }
         setUserId(sid)
 
         const e = await getExam(examId)
@@ -58,7 +56,7 @@ export default function ExamTaking() {
         })
         if (!cancelled) setAttemptId(att.id)
       } catch (err) {
-        if (!cancelled) setLoadError(err.message || t('examTaking.loadFailed'))
+        if (!cancelled) setLoadError(err.message || 'تعذر تحميل الامتحان')
         // Allow a real retry if the load itself failed.
         startedRef.current = false
       }
@@ -171,10 +169,10 @@ export default function ExamTaking() {
     return (
       <div className="et-wrapper">
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
-          <h2>{t('examTaking.error')}</h2>
+          <h2>خطأ</h2>
           <p>{loadError}</p>
           <button className="et-btn et-btn-prev" onClick={() => navigate('/exams')}>
-            {t('examTaking.backToExams')}
+            العودة إلى الامتحانات
           </button>
         </div>
       </div>
@@ -186,7 +184,7 @@ export default function ExamTaking() {
       <div className="et-wrapper">
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
           <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem' }}></i>
-          <p>{t('examTaking.loading')}</p>
+          <p>جاري تحميل الامتحان...</p>
         </div>
       </div>
     )
@@ -196,15 +194,15 @@ export default function ExamTaking() {
     return (
       <div className="et-wrapper">
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
-          <h2>{t('examTaking.noQuestions')}</h2>
-          <button className="et-btn et-btn-prev" onClick={() => navigate('/exams')}>{t('examTaking.back')}</button>
+          <h2>لا توجد أسئلة في هذا الامتحان</h2>
+          <button className="et-btn et-btn-prev" onClick={() => navigate('/exams')}>العودة</button>
         </div>
       </div>
     )
   }
 
   const currentQ = questions[currentQuestion]
-  const letters = lang === 'ar' ? ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح'] : ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+  const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
   const progress = ((currentQuestion + 1) / questions.length) * 100
 
   return (
@@ -212,7 +210,7 @@ export default function ExamTaking() {
       {examFinished && (
         <div className="et-back-row">
           <button className="et-back-btn" onClick={() => navigate('/exams')}>
-            {t('examTaking.backToExams')}
+            العودة إلى الامتحانات
           </button>
         </div>
       )}
@@ -222,10 +220,10 @@ export default function ExamTaking() {
             <div className="et-topbar">
               <div className="et-topbar-stat">
                 <span>✅</span>
-                <span>{t('examTaking.answered')} <strong>{answeredCount}</strong></span>
+                <span>أجبت: <strong>{answeredCount}</strong></span>
               </div>
               <div className="et-topbar-center">
-                {t('examTaking.questionOf').replace('{current}', currentQuestion + 1).replace('{total}', questions.length)}
+                السؤال {currentQuestion + 1} من {questions.length}
               </div>
               <div className={`et-timer ${timeLeft <= 60 ? 'et-timer-critical' : ''}`}>
                 <span>⏱</span>
@@ -240,10 +238,10 @@ export default function ExamTaking() {
             <div className="et-question-area">
               <div className="et-question-meta">
                 <span className="et-q-badge et-q-num">س {currentQuestion + 1}</span>
-                <span className="et-q-badge et-q-pts">{currentQ.points || 1} {t('examTaking.points')}</span>
-                <span className="et-q-badge et-q-rem">{t('examTaking.remaining')} {remainingCount}</span>
+                <span className="et-q-badge et-q-pts">{currentQ.points || 1} درجات</span>
+                <span className="et-q-badge et-q-rem">متبقي: {remainingCount}</span>
                 {currentQ.isMultiple && (
-                  <span className="et-q-badge et-q-rem">{t('examTaking.multipleChoice')}</span>
+                  <span className="et-q-badge et-q-rem">اختيارات متعددة</span>
                 )}
               </div>
               <p className="et-question-text">{currentQ.question}</p>
@@ -283,7 +281,7 @@ export default function ExamTaking() {
                 onClick={() => setCurrentQuestion(q => q - 1)}
                 disabled={currentQuestion === 0}
               >
-                {t('examTaking.prevQuestion')}
+                ← السابق
               </button>
               {currentQuestion === questions.length - 1 ? (
                 <button
@@ -291,14 +289,14 @@ export default function ExamTaking() {
                   onClick={() => handleFinishExam(false)}
                   disabled={submitting}
                 >
-                  {submitting ? t('examTaking.submittingExam') : t('examTaking.finishExam')}
+                  {submitting ? '⏳ جاري الإرسال...' : 'إنهاء الامتحان ✓'}
                 </button>
               ) : (
                 <button
                   className="et-btn et-btn-next"
                   onClick={() => setCurrentQuestion(q => q + 1)}
                 >
-                  {t('examTaking.nextQuestion')}
+                  التالي →
                 </button>
               )}
             </div>
@@ -307,41 +305,41 @@ export default function ExamTaking() {
           /* Admin hasn't released results yet — don't leak the score. */
           <div className="et-finished">
             <div className="et-finished-icon">🔒</div>
-            <h2 className="et-finished-title">{t('examTaking.gradesHidden')}</h2>
+            <h2 className="et-finished-title">تم تسليم الامتحان بنجاح!</h2>
             <p className="et-finished-sub">
-              {t('examTaking.gradesHiddenSub')}
+              إجاباتك تم حفظها. ستظهر درجتك عند إعلان المدرس النتائج في تقرير الامتحانات.
             </p>
             <div className="et-score-box">
               <div className="et-score-item">
                 <span className="et-score-val">{answeredCount}/{questions.length}</span>
-                <span className="et-score-lbl">{t('examTaking.answeredCount')}</span>
+                <span className="et-score-lbl">أجبت</span>
               </div>
               <div className="et-score-divider" />
               <div className="et-score-item">
                 <span className="et-score-val">—</span>
-                <span className="et-score-lbl">{t('examTaking.resultUnderReview')}</span>
+                <span className="et-score-lbl">النتيجة قيد المراجعة</span>
               </div>
             </div>
           </div>
         ) : (
           <div className="et-finished">
             <div className="et-finished-icon">🎉</div>
-            <h2 className="et-finished-title">{t('examTaking.examFinished')}</h2>
-            <p className="et-finished-sub">{t('examTaking.thankYou')}</p>
+            <h2 className="et-finished-title">تم إنهاء الامتحان بنجاح!</h2>
+            <p className="et-finished-sub">شكراً لك على إكمال الاختبار</p>
             <div className="et-score-box">
               <div className="et-score-item">
                 <span className="et-score-val">{finalScore ?? 0}</span>
-                <span className="et-score-lbl">{t('examTaking.yourScore')}</span>
+                <span className="et-score-lbl">درجتك</span>
               </div>
               <div className="et-score-divider" />
               <div className="et-score-item">
                 <span className="et-score-val">{exam.total_points}</span>
-                <span className="et-score-lbl">{t('examTaking.outOf')}</span>
+                <span className="et-score-lbl">من</span>
               </div>
               <div className="et-score-divider" />
               <div className="et-score-item">
                 <span className="et-score-val">{answeredCount}/{questions.length}</span>
-                <span className="et-score-lbl">{t('examTaking.answeredCount')}</span>
+                <span className="et-score-lbl">أجبت</span>
               </div>
             </div>
           </div>

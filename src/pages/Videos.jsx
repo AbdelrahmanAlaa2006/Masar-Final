@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useI18n } from '../i18n'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
@@ -17,14 +16,13 @@ import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
 export default function Videos() {
   const navigate = useNavigate()
-  const { t, lang } = useI18n()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
 
   const GRADES = [
-    { id: 'first-prep',  ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },
-    { id: 'second-prep', ar: t('grades.second'), en: 'Second Prep', accent: 'blue',   desc: lang === 'ar' ? 'تعميق المفاهيم وبناء المهارات' : 'Deepening concepts and skill building' },
-    { id: 'third-prep',  ar: t('grades.third'), en: 'Third Prep',  accent: 'orange', desc: lang === 'ar' ? 'الاستعداد لاختبارات الشهادة' : 'Preparing for certificate exams' },
+    { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+    { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+    { id: 'third-prep',  ar: 'الصف الثالث الإعدادي',  en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
   ]
 
 // Convert a DB video row (with embedded video_parts) into the shape the
@@ -102,7 +100,7 @@ function shapeVideo(row) {
       const data = await listVideos()
       setAllVideos(data.map(shapeVideo))
     } catch (err) {
-      setLoadError(err.message || t('videos.loading'))
+      setLoadError(err.message || 'جاري التحميل...')
     } finally {
       setLoading(false)
     }
@@ -241,7 +239,7 @@ function shapeVideo(row) {
   }
   const openVideoPlayer = (video) => {
     if (userRole !== 'admin' && !isVideoAllowed(video)) {
-      return showAlertModal(t('common.error'), t('videos.unavailable'))
+      return showAlertModal('خطأ', 'غير متاح')
     }
     setCurrentVideo(video); setSelectedPart(null); setView('player')
   }
@@ -270,7 +268,7 @@ function shapeVideo(row) {
       setConfirmDelete(null)
     } catch (err) {
       setConfirmDelete(null)
-      showAlertModal(t('common.error'), err.message || t('common.error'))
+      showAlertModal('خطأ', err.message || 'حدث خطأ')
     }
   }
 
@@ -279,7 +277,7 @@ function shapeVideo(row) {
     const now = new Date()
     const expiryDate = effectiveExpiryFor(currentVideo)
     if (expiryDate && now > expiryDate) {
-      return showAlertModal(t('common.error'), t('videos.unavailable'))
+      return showAlertModal('خطأ', 'انتهت صلاحية إتاحة هذا الفيديو')
     }
 
     // Trial-cap gate (per-part view limit). Admins are exempt — they need
@@ -302,8 +300,8 @@ function shapeVideo(row) {
       const max = blocking.maxAttempts || 1
       if (!att?.passed && attempts >= max) {
         return showAlertModal(
-          t('common.error'),
-          t('common.error')
+          'انتهت محاولات الامتحان',
+          `لقد استنفدت جميع المحاولات (${max}) لامتحان "${blocking.title}" ولم تنجح. يُرجى التواصل مع المعلم.`
         )
       }
       setPendingPart(part)
@@ -356,8 +354,8 @@ function shapeVideo(row) {
           <div className="vid-prep-head">
             <div className="vid-prep-icon"><i className="fas fa-video"></i></div>
             <div>
-              <h1>{t('videos.pageTitle')}</h1>
-              <p>{t('videos.pickGrade')}</p>
+              <h1>الفيديوهات التعليمية</h1>
+              <p>اختر المرحلة الدراسية لعرض الفيديوهات الخاصة بها</p>
             </div>
           </div>
 
@@ -374,8 +372,8 @@ function shapeVideo(row) {
                     <h3>{p.ar}</h3>
                     <p>{p.desc}</p>
                     <div className="prep-foot">
-                      <span className="prep-count"><i className="fas fa-play-circle"></i> {count} {t('videos.video')}</span>
-                      <span className="prep-cta">{t('common.view')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i></span>
+                      <span className="prep-count"><i className="fas fa-play-circle"></i> {count} فيديو</span>
+                      <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
                     </div>
                   </div>
                 </button>
@@ -391,17 +389,17 @@ function shapeVideo(row) {
           <div className="flex justify-between items-center mb-8">
             {userRole === 'admin' ? (
               <button className="btn btn-outline" onClick={goBackToGrades}>
-                ← {t('common.back')}
+                ← العودة للصفوف
               </button>
             ) : <div style={{ width: '120px' }} />}
 
             <div className="text-center">
-              <h1 id="gradeTitle" className="title-main gradient-text">📺 {t('videos.pageTitle')}</h1>
+              <h1 id="gradeTitle" className="title-main gradient-text">📺 الفيديوهات التعليمية</h1>
             </div>
 
             {userRole === 'admin' ? (
               <button className="btn btn-primary" onClick={goToAddVideo}>
-                ➕ {t('videos.addVideo')}
+                ➕ إضافة فيديو جديد
               </button>
             ) : <div style={{ width: '120px' }} />}
           </div>
@@ -409,7 +407,7 @@ function shapeVideo(row) {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem' }}></i>
-              <p>{t('videos.loading')}</p>
+              <p>جاري التحميل...</p>
             </div>
           ) : loadError ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#e53e3e' }}>
@@ -433,10 +431,10 @@ function shapeVideo(row) {
                   <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
                     <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
                       <span className="vc-status-dot" />
-                      <span>{isAvailable ? t('videos.available') : t('videos.unavailable')}</span>
+                      <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
                       {userRole === 'admin' && (
                         <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
-                          🗑 {t('common.delete')}
+                          🗑 حذف
                         </button>
                       )}
                     </div>
@@ -453,19 +451,19 @@ function shapeVideo(row) {
                     <div className="vc-stats">
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🎬</span>
-                        <span className="vc-stat-label">{t('videos.parts')}</span>
-                        <span className="vc-stat-value">{video.totalParts} {t('common.part')}</span>
+                        <span className="vc-stat-label">عدد الأجزاء</span>
+                        <span className="vc-stat-value">{video.totalParts} جزء</span>
                       </div>
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🕒</span>
-                        <span className="vc-stat-label">{t('videos.availableFor')}</span>
-                        <span className="vc-stat-value">{hours} {t('common.hours')}</span>
+                        <span className="vc-stat-label">متاح لمدة</span>
+                        <span className="vc-stat-value">{hours} ساعة</span>
                       </div>
                     </div>
 
                     <div className="vc-footer">
                       <span>⏳</span>
-                      <span>{lang === 'ar' ? 'متاح حتى' : 'Available until'} {formattedExpiry}</span>
+                      <span>متاح حتى {formattedExpiry}</span>
                     </div>
                   </div>
                 )
@@ -473,7 +471,7 @@ function shapeVideo(row) {
               {!loading && (videosByGrade[currentGrade] || []).length === 0 && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
                   <i className="fas fa-folder-open" style={{ fontSize: '2rem', color: '#a0aec0' }}></i>
-                  <p>{t('videos.noVideos')}</p>
+                  <p>لا توجد فيديوهات في هذه المرحلة بعد</p>
                 </div>
               )}
             </div>
@@ -485,7 +483,7 @@ function shapeVideo(row) {
       {view === 'player' && (
         <div>
           <div className="flex justify-between items-center mb-8 max-w-7xl mx-auto">
-            <button className="btn btn-outline" onClick={goBackToVideos}>← {t('common.back')}</button>
+            <button className="btn btn-outline" onClick={goBackToVideos}>← العودة للفيديوهات</button>
             <div className="text-center">
               <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
               <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
@@ -527,8 +525,8 @@ function shapeVideo(row) {
                   <div className="placeholder-video">
                     <div>
                       <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{t('videos.selectPart')}</h3>
-                      <p style={{ opacity: 0.8 }}>{t('videos.selectPartDesc')}</p>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
+                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
                     </div>
                   </div>
                 )}
@@ -537,7 +535,7 @@ function shapeVideo(row) {
 
             <div className="video-sidebar">
               <div className="card">
-                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>{t('videos.partsTitle')}</h3>
+                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
                 <div id="partsList" data-quiz-tick={quizTick}>
                   {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
@@ -558,7 +556,7 @@ function shapeVideo(row) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div className="title-card" style={{ color: 'var(--text-primary)', flex: 1 }}>
                             {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
-                            {t('videos.partLabel')} {index + 1}: {part.title}
+                            الجزء {index + 1}: {part.title}
                           </div>
                           {showTrials && (
                             <span
@@ -582,7 +580,7 @@ function shapeVideo(row) {
                         </div>
                         {blocking && userRole !== 'admin' && (
                           <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-graduation-cap"></i> {t('videos.quizRequired')}: {blocking.title}
+                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
                           </div>
                         )}
                         {outOfTrials && (
@@ -619,7 +617,7 @@ function shapeVideo(row) {
             <button className="close-btn" onClick={closeAlertModal}>&times;</button>
             <h3 className="title-card mb-4">{alertData.title}</h3>
             <p className="mb-6">{alertData.message}</p>
-            <button className="btn btn-primary" onClick={closeAlertModal}>{t('common.confirm')}</button>
+            <button className="btn btn-primary" onClick={closeAlertModal}>حسناً</button>
           </div>
         </div>
       )}
@@ -627,9 +625,9 @@ function shapeVideo(row) {
       {/* Delete-confirmation modal */}
       {confirmDelete && (
         <ConfirmDeleteDialog
-          title={t('videos.confirmDeleteTitle')}
+          title="تأكيد حذف الفيديو"
           itemLabel={confirmDelete.title}
-          message={t('videos.deleteWarning')}
+          message="سيتم حذف الفيديو وجميع أجزائه وبيانات تقدّم الطلاب المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
           onCancel={() => setConfirmDelete(null)}
           onConfirm={performDeleteVideo}
         />

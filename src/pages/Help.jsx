@@ -1,42 +1,73 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useI18n } from '../i18n'
 import './PolicyPage.css'
+
+const FAQS = [
+  {
+    q: 'كيف أبدأ مشاهدة الفيديوهات؟',
+    a: 'انتقل إلى قسم «الفيديوهات» من القائمة العلوية. سيظهر لك جميع الفيديوهات المتاحة لمرحلتك الدراسية. اضغط على الفيديو لفتحه ثم اختر الجزء الذي تريد مشاهدته. بعض الأجزاء قد تتطلب اجتياز امتحان قصير قبل فتحها.',
+  },
+  {
+    q: 'لماذا لا أستطيع مشاهدة فيديو معيّن؟',
+    a: 'هناك ثلاثة أسباب محتملة: (١) انتهت مدة إتاحة الفيديو لمرحلتك. (٢) يوجد امتحان مرتبط بالفيديو يجب اجتيازه أولاً. (٣) لم يقم المشرف بتفعيل الفيديو لطلاب صفك بعد. تواصل مع المعلم في حال استمرار المشكلة.',
+  },
+  {
+    q: 'كم مرة يمكنني محاولة الامتحان؟',
+    a: 'كل امتحان له عدد محاولات محدد يحدّده المشرف. ستظهر لك المحاولات المتبقية أعلى الامتحان. عند استنفاد المحاولات لن تتمكن من إعادة الامتحان إلا بطلب من المعلم.',
+  },
+  {
+    q: 'متى تظهر نتيجة الامتحان؟',
+    a: 'تظهر النتيجة بشكل فوري بعد إنهاء الامتحان مع توضيح الإجابات الصحيحة. في بعض الامتحانات قد يقوم المشرف بإخفاء النتائج حتى موعد محدد ليراها الطلاب جميعاً في الوقت نفسه.',
+  },
+  {
+    q: 'هل يمكنني تغيير صورتي الشخصية أو معلوماتي؟',
+    a: 'يمكنك رفع صورة شخصية أو حذفها من صفحة «الملف الشخصي». باقي المعلومات (الاسم، رقم الهاتف، المرحلة) لا يمكن للطالب تعديلها بنفسه؛ يرجى التواصل مع المعلم لتحديثها.',
+  },
+  {
+    q: 'كيف أعرف تقدّمي الدراسي؟',
+    a: 'انتقل إلى «التقارير» لرؤية ملخص أدائك في الفيديوهات والامتحانات. ستجد نسبة المشاهدة الحقيقية لكل فيديو، ودرجاتك في كل امتحان مع الحالة (مكتمل / جزئي / لم يُشاهَد).',
+  },
+  {
+    q: 'نسيت كلمة المرور، ماذا أفعل؟',
+    a: 'تواصل مع المعلم أو إدارة المنصّة. لأسباب أمنية لا تتم إعادة تعيين كلمة المرور تلقائياً، وإنما يدوياً عبر المشرف بعد التحقق من هويتك.',
+  },
+  {
+    q: 'هل يمكن استخدام المنصّة من الموبايل؟',
+    a: 'نعم، المنصّة مصمّمة لتعمل على الهاتف والكمبيوتر اللوحي والحاسوب بنفس الكفاءة. يُفضّل استخدام أحدث إصدار من Chrome أو Safari أو Edge.',
+  },
+]
 
 export default function Help() {
   const navigate = useNavigate()
-  const { t, lang } = useI18n()
   const [open, setOpen] = useState(0)
 
-  const faqs = t('help.faqs') || []
-
   return (
-    <main className="pp-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="pp-page" dir="rtl">
       <div className="pp-container">
         <button className="pp-back-btn" onClick={() => navigate(-1)}>
-          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
+          <i className="fas fa-arrow-right"></i> رجوع
         </button>
 
         <div className="pp-hero">
           <div className="pp-hero-icon"><i className="fas fa-circle-question"></i></div>
-          <h1>{t('help.pageTitle')}</h1>
-          <p>{t('help.pageDesc')}</p>
+          <h1>المساعدة والدعم</h1>
+          <p>دليل مختصر يساعدك في الاستفادة الكاملة من منصة مسار التعليمية، مع إجابات للأسئلة الأكثر تكراراً من الطلاب.</p>
         </div>
 
         <div className="pp-card">
-          <h2><span className="pp-num"><i className="fas fa-book"></i></span> {t('help.startHere')}</h2>
-          <p>{t('help.startHereDesc')}</p>
+          <h2><span className="pp-num"><i className="fas fa-book"></i></span> ابدأ من هنا</h2>
+          <p>منصة مسار تتيح لك المحاضرات، الفيديوهات التعليمية، والامتحانات الإلكترونية لمرحلتك الدراسية. الخطوات الأساسية:</p>
           <ul>
-            <li>{t('help.startBullet1')}</li>
-            <li>{t('help.startBullet2')}</li>
-            <li>{t('help.startBullet3')}</li>
-            <li>{t('help.startBullet4')}</li>
+            <li>سجّل الدخول باستخدام بياناتك التي تسلّمتها من المعلم.</li>
+            <li>تأكّد من اختيار المرحلة الصحيحة في ملفك الشخصي.</li>
+            <li>تابع المحاضرات بالترتيب — بعض الفيديوهات تتطلب اجتياز امتحان قبلها.</li>
+            <li>راجع تقدّمك من قسم «التقارير» أسبوعياً.</li>
           </ul>
         </div>
 
         <div className="pp-card">
-          <h2><span className="pp-num"><i className="fas fa-comments-question"></i></span> {t('help.faq')}</h2>
-          {faqs.map((f, i) => (
+          <h2><span className="pp-num"><i className="fas fa-comments-question"></i></span> الأسئلة الشائعة</h2>
+          {FAQS.map((f, i) => (
             <div key={i} className={`pp-faq-item ${open === i ? 'is-open' : ''}`}>
               <button className="pp-faq-q" onClick={() => setOpen(open === i ? -1 : i)}>
                 <span>{f.q}</span>
@@ -48,12 +79,12 @@ export default function Help() {
         </div>
 
         <div className="pp-contact-card">
-          <h3>{t('help.notFound')}</h3>
-          <p>{t('help.notFoundDesc')}</p>
+          <h3>لم تجد ما تبحث عنه؟</h3>
+          <p>تواصل معنا مباشرة وسنقوم بمساعدتك في أقرب وقت ممكن.</p>
           <div className="pp-contact-row">
             <a href="mailto:support@masar.edu"><i className="fas fa-envelope"></i> support@masar.edu</a>
             <a href="tel:+201000000000" dir="ltr"><i className="fas fa-phone"></i> +20 100 000 0000</a>
-            <a href="https://wa.me/201000000000" target="_blank" rel="noreferrer"><i className="fab fa-whatsapp"></i> {t('help.whatsapp')}</a>
+            <a href="https://wa.me/201000000000" target="_blank" rel="noreferrer"><i className="fab fa-whatsapp"></i> واتساب</a>
           </div>
         </div>
       </div>

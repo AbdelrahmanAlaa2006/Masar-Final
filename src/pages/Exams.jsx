@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useI18n } from '../i18n'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
+const PREP_META = {
+  first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+  third:  { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+}
+
 export default function Exams() {
   const navigate = useNavigate()
-  const { t, lang } = useI18n()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
-
-  const PREP_META = {
-    first:  { ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },
-    second: { ar: t('grades.second'), en: 'Second Prep', accent: 'blue',   desc: lang === 'ar' ? 'تعميق المفاهيم وبناء المهارات' : 'Deepening concepts and skill building' },
-    third:  { ar: t('grades.third'), en: 'Third Prep',  accent: 'orange', desc: lang === 'ar' ? 'الاستعداد لاختبارات الشهادة' : 'Preparing for certificate exams' },
-  }
   const [currentLevel, setCurrentLevel] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [userRole, setUserRole] = useState(null)
@@ -49,7 +47,7 @@ export default function Exams() {
       const data = await listExams()
       setRows(data)
     } catch (err) {
-      setLoadError(err.message || t('exams.loading'))
+      setLoadError(err.message || 'تعذر تحميل الامتحانات')
     } finally {
       setLoading(false)
     }
@@ -130,7 +128,7 @@ export default function Exams() {
 
   const startExam = (exam) => {
     if (userRole !== 'admin' && !isAllowed(exam)) {
-      setAlertModal(t('exams.noExams'), t('exams.noExams'))
+      setAlertModal('الوصول محظور', 'تم تقييد هذا الامتحان من قِبَل الإدارة.')
       return
     }
     if (userRole !== 'admin' && remainingFor(exam) <= 0) {
@@ -161,14 +159,14 @@ export default function Exams() {
       setConfirmDelete(null)
     } catch (err) {
       setConfirmDelete(null)
-      setAlertModal(t('common.error'), err.message || t('common.error'))
+      setAlertModal('تعذر الحذف', err.message || 'حدث خطأ أثناء حذف الامتحان.')
     }
   }
 
   const levelTitles = {
-    first: `${t('exams.pageTitle')} - ${t('grades.firstShort')}`,
-    second: `${t('exams.pageTitle')} - ${t('grades.secondShort')}`,
-    third: `${t('exams.pageTitle')} - ${t('grades.thirdShort')}`,
+    first: 'امتحانات الصف الأول الإعدادي',
+    second: 'امتحانات الصف الثاني الإعدادي',
+    third: 'امتحانات الصف الثالث الإعدادي',
   }
 
   const levelEmojis = { first: '1️⃣', second: '2️⃣', third: '3️⃣' }
@@ -185,8 +183,8 @@ export default function Exams() {
           <h3>{m.ar}</h3>
           <p>{m.desc}</p>
           <div className="prep-foot">
-            <span className="prep-count"><i className="fas fa-file-alt"></i> {examsByLevel[level].length} {t('exams.pageTitle')}</span>
-            <span className="prep-cta">{t('common.view')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i></span>
+            <span className="prep-count"><i className="fas fa-file-alt"></i> {examsByLevel[level].length} امتحان</span>
+            <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
           </div>
         </div>
       </button>
@@ -212,10 +210,10 @@ export default function Exams() {
       <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>
         <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
           <span className="ec-status-dot" />
-          <span>{isAvailable ? t('videos.available') : t('videos.unavailable')}</span>
+          <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
           {userRole === 'admin' && (
             <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestDelete(exam) }}>
-              🗑 {t('common.delete')}
+              🗑 حذف
             </button>
           )}
         </div>
@@ -231,27 +229,27 @@ export default function Exams() {
         <div className="ec-stats">
           <div className="ec-stat">
             <span className="ec-stat-icon">⏱️</span>
-            <span className="ec-stat-label">{t('exams.duration')}</span>
-            <span className="ec-stat-value">{exam.duration_minutes} {t('common.minutes')}</span>
+            <span className="ec-stat-label">مدة الامتحان</span>
+            <span className="ec-stat-value">{exam.duration_minutes} دقيقة</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🕒</span>
-            <span className="ec-stat-label">{t('exams.availableHours').replace('{n}', '')}</span>
-            <span className="ec-stat-value">{effectiveHours} {t('common.hours')}</span>
+            <span className="ec-stat-label">المدة المتاحة</span>
+            <span className="ec-stat-value">{effectiveHours} ساعة</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">❓</span>
-            <span className="ec-stat-label">{t('exams.questions')}</span>
-            <span className="ec-stat-value">{qCount} {t('common.question')}</span>
+            <span className="ec-stat-label">عدد الأسئلة</span>
+            <span className="ec-stat-value">{qCount} سؤال</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🏆</span>
-            <span className="ec-stat-label">{t('exams.totalPoints')}</span>
-            <span className="ec-stat-value">{exam.total_points} {t('common.point')}</span>
+            <span className="ec-stat-label">درجة الامتحان</span>
+            <span className="ec-stat-value">{exam.total_points} درجة</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🔁</span>
-            <span className="ec-stat-label">{t('exams.attempts')}</span>
+            <span className="ec-stat-label">المحاولات المتبقية</span>
             <span className="ec-stat-value">{remaining}/{effectiveMaxAttempts(exam)}</span>
           </div>
         </div>
@@ -268,7 +266,7 @@ export default function Exams() {
     <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
       {userRole === 'admin' && (
         <button className="back-button" onClick={() => setCurrentLevel(null)}>
-          ← {t('common.back')}
+          ← العودة للمستويات
         </button>
       )}
       <div className="section-header">
@@ -278,13 +276,13 @@ export default function Exams() {
         </div>
         {userRole === 'admin' && (
           <button className="add-exam" onClick={() => addExam(level)}>
-            ➕ {t('exams.addExam')}
+            ➕ إضافة امتحان جديد
           </button>
         )}
       </div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>
-          <i className="fas fa-spinner fa-spin"></i> {t('exams.loading')}
+          <i className="fas fa-spinner fa-spin"></i> جاري التحميل...
         </div>
       ) : loadError ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#e53e3e' }}>
@@ -292,7 +290,7 @@ export default function Exams() {
         </div>
       ) : examsByLevel[level].length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#a0aec0' }}>
-          {t('exams.noExams')}
+          لا توجد امتحانات في هذه المرحلة بعد
         </div>
       ) : (
         <div className="exam-list">
@@ -310,8 +308,8 @@ export default function Exams() {
           <div className="exm-prep-head">
             <div className="exm-prep-icon"><i className="fas fa-file-alt"></i></div>
             <div>
-              <h1>{t('exams.pageTitle')}</h1>
-              <p>{t('exams.pickGrade')}</p>
+              <h1>الامتحانات</h1>
+              <p>اختر المرحلة الدراسية لاستعراض الامتحانات المتاحة</p>
             </div>
           </div>
           <div className="prep-grid">
@@ -324,7 +322,7 @@ export default function Exams() {
 
       {currentLevel && userRole === 'admin' && (
         <div className="breadcrumb" id="breadcrumb">
-          <span className="breadcrumb-item active" onClick={() => setCurrentLevel(null)}>{t('exams.pageTitle')}</span>
+          <span className="breadcrumb-item active" onClick={() => setCurrentLevel(null)}>الامتحانات</span>
           <span>›</span>
           <span className="breadcrumb-item active">{levelTitles[currentLevel]}</span>
         </div>
@@ -335,9 +333,9 @@ export default function Exams() {
       {showModal && (
         <div className="modal active">
           <div className="modal-content">
-            <h3 className="modal-title">{t('exams.attempts')}</h3>
-            <p className="modal-message">{t('exams.noExams')}</p>
-            <button className="modal-button" onClick={() => setShowModal(false)}>{t('common.confirm')}</button>
+            <h3 className="modal-title">انتهت المحاولات</h3>
+            <p className="modal-message">لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.</p>
+            <button className="modal-button" onClick={() => setShowModal(false)}>حسناً</button>
           </div>
         </div>
       )}
@@ -347,16 +345,16 @@ export default function Exams() {
           <div className="modal-content">
             <h3 className="modal-title">{blockAlert.title}</h3>
             <p className="modal-message">{blockAlert.message}</p>
-            <button className="modal-button" onClick={() => setBlockAlert(null)}>{t('common.confirm')}</button>
+            <button className="modal-button" onClick={() => setBlockAlert(null)}>حسناً</button>
           </div>
         </div>
       )}
 
       {confirmDelete && (
         <ConfirmDeleteDialog
-          title={t('exams.confirmDeleteTitle')}
+          title="تأكيد حذف الامتحان"
           itemLabel={confirmDelete.title}
-          message={t('exams.deleteWarning')}
+          message="سيتم حذف الامتحان وجميع محاولات الطلاب المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
           onCancel={() => setConfirmDelete(null)}
           onConfirm={performDelete}
         />

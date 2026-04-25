@@ -21,16 +21,13 @@ import Help from './pages/Help'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { tokenAPI } from '@backend/authApi'
-import { LanguageProvider } from './i18n'
 import './App.css'
 
 function App() {
   return (
-    <LanguageProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </LanguageProvider>
+    <Router>
+      <AppContent />
+    </Router>
   )
 }
 

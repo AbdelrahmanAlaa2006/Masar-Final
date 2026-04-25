@@ -1,28 +1,88 @@
 import { useNavigate } from 'react-router-dom'
-import { useI18n } from '../i18n'
 import './PolicyPage.css'
+
+const SECTIONS = [
+  {
+    icon: 'fa-database',
+    title: 'البيانات التي نجمعها',
+    body: 'نقوم بجمع الحد الأدنى من البيانات اللازمة لتقديم الخدمة:',
+    bullets: [
+      'بيانات التسجيل: الاسم، رقم الهاتف، المرحلة الدراسية.',
+      'الصورة الشخصية (اختيارية) إذا قمت برفعها.',
+      'سجلات النشاط: الفيديوهات التي شاهدتها، نتائج الامتحانات، الوقت المُستغرق.',
+      'بيانات تقنية أساسية لازمة لتشغيل التطبيق (نوع المتصفح، توقيت الدخول).',
+    ],
+  },
+  {
+    icon: 'fa-bullseye',
+    title: 'كيف نستخدم بياناتك',
+    body: 'تُستخدم بياناتك حصرياً لـ:',
+    bullets: [
+      'إتاحة المحتوى المناسب لمرحلتك الدراسية.',
+      'تقديم تقارير دقيقة عن أدائك للمعلم وللطالب نفسه.',
+      'منع الغش وضمان عدالة الامتحانات.',
+      'تحسين تجربة الاستخدام واكتشاف المشكلات التقنية.',
+    ],
+  },
+  {
+    icon: 'fa-handshake-slash',
+    title: 'مع من نشارك بياناتك',
+    body: 'لا نبيع بياناتك ولا نشاركها مع أي طرف خارجي لأغراض تسويقية. الجهات الوحيدة التي قد تطّلع على بعض بياناتك:',
+    bullets: [
+      'المعلم/المشرف المسؤول عن مرحلتك (لمتابعة أدائك).',
+      'مزوّدو الخدمات التقنية الذين نعتمد عليهم لاستضافة البيانات (يخضعون لاتفاقيات سرية).',
+      'الجهات القضائية في حالة طلب رسمي وفق القانون.',
+    ],
+  },
+  {
+    icon: 'fa-lock',
+    title: 'حماية البيانات',
+    body: 'نتّبع إجراءات أمنية متعددة الطبقات لحماية بياناتك، تشمل: تشفير الاتصال (HTTPS)، تشفير كلمات المرور، صلاحيات وصول صارمة على مستوى قاعدة البيانات (RLS)، ونسخ احتياطية دورية. ومع ذلك، لا يوجد نظام محصّن بنسبة 100%، لذا ننصح دوماً بعدم مشاركة بياناتك مع أحد.',
+    bullets: null,
+  },
+  {
+    icon: 'fa-user-pen',
+    title: 'حقوقك',
+    body: 'يحقّ لك:',
+    bullets: [
+      'الاطلاع على البيانات المخزّنة عنك.',
+      'طلب تصحيح أي بيانات غير دقيقة.',
+      'طلب حذف حسابك بعد انتهاء العام الدراسي (مع الالتزام بمتطلبات الاحتفاظ القانونية).',
+      'سحب صورتك الشخصية في أي وقت من صفحة الملف الشخصي.',
+    ],
+  },
+  {
+    icon: 'fa-cookie-bite',
+    title: 'ملفات تعريف الارتباط (Cookies)',
+    body: 'نستخدم Cookies تقنية فقط — لازمة لتسجيل الدخول وتذكّر تفضيلاتك (مثل الوضع الداكن). لا نستخدم أي Cookies إعلانية أو تتبّعية من أطراف ثالثة.',
+    bullets: null,
+  },
+  {
+    icon: 'fa-children',
+    title: 'خصوصية القاصرين',
+    body: 'بما أن المنصّة موجّهة لطلاب المرحلة الإعدادية (دون سن 18)، فإن تسجيل الطالب يتم عبر المعلم بموافقة ولي الأمر الضمنية. لا نطلب من الطلاب أي بيانات شخصية إضافية غير ما تم جمعه عند التسجيل.',
+    bullets: null,
+  },
+]
 
 export default function Privacy() {
   const navigate = useNavigate()
-  const { t, lang } = useI18n()
-
-  const sections = t('privacy.sections') || []
 
   return (
-    <main className="pp-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="pp-page" dir="rtl">
       <div className="pp-container">
         <button className="pp-back-btn" onClick={() => navigate(-1)}>
-          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
+          <i className="fas fa-arrow-right"></i> رجوع
         </button>
 
         <div className="pp-hero">
           <div className="pp-hero-icon"><i className="fas fa-shield-halved"></i></div>
-          <h1>{t('privacy.pageTitle')}</h1>
-          <p>{t('privacy.pageDesc')}</p>
-          <div className="pp-meta">{t('privacy.lastUpdate')}</div>
+          <h1>سياسة الخصوصية</h1>
+          <p>نأخذ خصوصيتك بجدية تامة. هذه الصفحة توضّح بالتفصيل ما نجمعه من بيانات، ولماذا، وكيف نحميها.</p>
+          <div className="pp-meta">آخر تحديث: يناير 2026</div>
         </div>
 
-        {sections.map((s, i) => (
+        {SECTIONS.map((s, i) => (
           <div key={i} className="pp-card">
             <h2>
               <span className="pp-num"><i className={`fas ${s.icon}`}></i></span>
@@ -36,8 +96,8 @@ export default function Privacy() {
         ))}
 
         <div className="pp-contact-card">
-          <h3>{t('privacy.questionTitle')}</h3>
-          <p>{t('privacy.questionDesc')}</p>
+          <h3>أسئلة حول الخصوصية؟</h3>
+          <p>تواصل مع مسؤول حماية البيانات في فريقنا.</p>
           <div className="pp-contact-row">
             <a href="mailto:privacy@masar.edu"><i className="fas fa-envelope"></i> privacy@masar.edu</a>
           </div>
