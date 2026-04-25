@@ -5,17 +5,19 @@ import { listStudents } from '@backend/profilesApi'
 import { listVideos } from '@backend/videosApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
+import { useI18n } from '../i18n'
 
-// DB grade enum → Arabic label shown in the UI.
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-}
 const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
 export default function VideosGroupReport() {
+  const { t, lang } = useI18n()
   const navigate = useNavigate()
+
+  const GRADE_LABEL = {
+    'first-prep':  t('grades.first'),
+    'second-prep': t('grades.second'),
+    'third-prep':  t('grades.third'),
+  }
 
   const [students, setStudents] = useState([])   // real profiles
   const [videos, setVideos]     = useState([])   // real videos
@@ -40,7 +42,7 @@ export default function VideosGroupReport() {
         setStudents(s)
         setVideos(v)
       } catch (e) {
-        if (!cancelled) setLoadError(e.message || 'تعذر تحميل البيانات')
+        if (!cancelled) setLoadError(e.message || (lang === 'ar' ? 'تعذر تحميل البيانات' : 'Failed to load data'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -101,7 +103,7 @@ export default function VideosGroupReport() {
       const ids = gradeStudents.map(s => s.id)
       const { data: progressRows, error } = await supabase
         .from('video_progress')
-        .select('student_id, part_id, views_used, last_watched_at')
+        .select('student_id, part_id, views_used, seconds_watched, last_watched_at')
         .eq('video_id', videoId)
         .in('student_id', ids)
       if (error) throw error
@@ -113,19 +115,29 @@ export default function VideosGroupReport() {
         byStudent[r.student_id].push(r)
       }
 
+      // Map part_id -> youtube_id so we can clamp watched-seconds to the
+      // real part length when computing percentage per student.
+      const partDurById = new Map(
+        parts.map(p => [p.id, durMap.get(p.youtube_id) || 0])
+      )
+
       const rows = gradeStudents.map(stu => {
         const rs = byStudent[stu.id] || []
-        const watchedParts = rs.filter(r => (r.views_used || 0) > 0).length
-        const percentage = totalParts > 0
-          ? Math.round((watchedParts / totalParts) * 100)
+        const watchedSecs = rs.reduce((s, r) => {
+          const dur = partDurById.get(r.part_id) || 0
+          const raw = r.seconds_watched || 0
+          return s + (dur ? Math.min(raw, dur) : raw)
+        }, 0)
+        const percentage = totalSeconds > 0
+          ? Math.min(100, Math.round((watchedSecs / totalSeconds) * 100))
           : 0
-        const watchedTime = Math.floor((percentage / 100) * totalMinutes)
+        const watchedTime = Math.ceil(watchedSecs / 60)
         const lastWatched = rs.reduce((max, r) => {
           const t = r.last_watched_at ? new Date(r.last_watched_at).getTime() : 0
           return t > max ? t : max
         }, 0)
         const dateStr = lastWatched
-          ? new Date(lastWatched).toLocaleDateString('ar-EG')
+          ? new Date(lastWatched).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')
           : '—'
         return {
           name: stu.name,
@@ -134,16 +146,16 @@ export default function VideosGroupReport() {
           video: video.title,
           date: dateStr,
           percentage,
-          status: percentage >= 75 ? 'مكتمل' : 'غير مكتمل',
-          watchedTime: `${watchedTime} دقيقة`,
-          totalTime: totalMinutes ? `${totalMinutes} دقيقة` : '—',
+          status: percentage >= 75 ? (t('reports.completedLabel') || (lang === 'ar' ? 'مكتمل' : 'Completed')) : (t('reports.resultNotTaken') || (lang === 'ar' ? 'غير مكتمل' : 'Incomplete')),
+          watchedTime: `${watchedTime} ${lang === 'ar' ? 'دقيقة' : 'min'}`,
+          totalTime: totalMinutes ? `${totalMinutes} ${lang === 'ar' ? 'دقيقة' : 'min'}` : '—',
         }
       })
 
       setAllStudentsData(rows)
       setDisplayedStudents(rows)
     } catch (e) {
-      setLoadError(e.message || 'تعذر تحميل تقرير الفيديو')
+      setLoadError(e.message || (lang === 'ar' ? 'تعذر تحميل تقرير الفيديو' : 'Failed to load report'))
     } finally {
       setReportLoading(false)
     }
@@ -177,7 +189,7 @@ export default function VideosGroupReport() {
         <div className="vgr-container">
           <div className="vgr-header" style={{textAlign:'center', padding:'40px'}}>
             <i className="fas fa-spinner fa-spin" style={{fontSize:'2rem'}}></i>
-            <p>جاري التحميل...</p>
+            <p>{t('common.loading')}...</p>
           </div>
         </div>
       </main>
@@ -190,8 +202,8 @@ export default function VideosGroupReport() {
 
         {/* Back */}
         <button className="vgr-back-btn" onClick={() => navigate(-1)}>
-          <i className="fas fa-arrow-right"></i>
-          رجوع
+          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i>
+          {t('common.back')}
         </button>
 
         {/* Header */}
@@ -199,8 +211,8 @@ export default function VideosGroupReport() {
           <div className="vgr-header-icon">
             <i className="fas fa-chart-line"></i>
           </div>
-          <h1>التقرير الجماعي للفيديوهات</h1>
-          <p>متابعة مشاهدات الطلاب المسجلين وتحليل نشاط الصفوف</p>
+          <h1>{t('reports.videosTitle') || (lang === 'ar' ? 'التقرير الجماعي للفيديوهات' : 'Videos Group Report')}</h1>
+          <p>{lang === 'ar' ? 'متابعة مشاهدات الطلاب المسجلين وتحليل نشاط الصفوف' : 'Track enrolled students views and analyze grade activity'}</p>
         </div>
 
         {loadError && (
@@ -215,14 +227,14 @@ export default function VideosGroupReport() {
             <div className="vgr-step-num">
               {currentGrade ? <i className="fas fa-check"></i> : 1}
             </div>
-            <span>الصف</span>
+            <span>{t('profile.grade') || (lang === 'ar' ? 'الصف' : 'Grade')}</span>
           </div>
           <div className="vgr-step-line"></div>
           <div className={`vgr-step ${currentVideo ? 'done' : currentGrade ? 'active' : ''}`}>
             <div className="vgr-step-num">
               {currentVideo ? <i className="fas fa-check"></i> : 2}
             </div>
-            <span>الفيديو</span>
+            <span>{t('reports.videoStep') || (lang === 'ar' ? 'الفيديو' : 'Video')}</span>
           </div>
         </div>
 
@@ -230,10 +242,10 @@ export default function VideosGroupReport() {
         <div className="vgr-section">
           <h2 className="vgr-section-title">
             <i className="fas fa-school"></i>
-            اختر الصف الدراسي
+            {lang === 'ar' ? 'اختر الصف الدراسي' : 'Select Grade'}
           </h2>
           {availableGrades.length === 0 ? (
-            <p style={{textAlign:'center', color:'#6b7280'}}>لا يوجد طلاب مسجلون بعد.</p>
+            <p style={{textAlign:'center', color:'#6b7280'}}>{lang === 'ar' ? 'لا يوجد طلاب مسجلون بعد.' : 'No enrolled students yet.'}</p>
           ) : (
             <div className="vgr-chips">
               {availableGrades.map((grade) => (
@@ -258,10 +270,10 @@ export default function VideosGroupReport() {
           <div className="vgr-section">
             <h2 className="vgr-section-title">
               <i className="fas fa-play-circle"></i>
-              اختر الفيديو
+              {lang === 'ar' ? 'اختر الفيديو' : 'Select Video'}
             </h2>
             {videosForGrade.length === 0 ? (
-              <p style={{textAlign:'center', color:'#6b7280'}}>لا توجد فيديوهات منشورة لهذا الصف.</p>
+              <p style={{textAlign:'center', color:'#6b7280'}}>{lang === 'ar' ? 'لا توجد فيديوهات منشورة لهذا الصف.' : 'No videos published for this grade.'}</p>
             ) : (
               <div className="vgr-select-wrap">
                 <i className="fas fa-film vgr-select-icon"></i>
@@ -270,7 +282,7 @@ export default function VideosGroupReport() {
                   value={currentVideo}
                   onChange={(e) => handleVideoChange(e.target.value)}
                 >
-                  <option value="">-- اختر الفيديو --</option>
+                  <option value="">{lang === 'ar' ? '-- اختر الفيديو --' : '-- Select Video --'}</option>
                   {videosForGrade.map((video) => (
                     <option key={video.id} value={video.id}>{video.title}</option>
                   ))}
@@ -284,7 +296,7 @@ export default function VideosGroupReport() {
         {reportLoading && (
           <div style={{textAlign:'center', padding:'20px'}}>
             <i className="fas fa-spinner fa-spin"></i>
-            <span style={{marginInlineStart:8}}>جاري حساب التقرير...</span>
+            <span style={{marginInlineStart:8}}>{t('common.computing') || (lang === 'ar' ? 'جاري حساب التقرير...' : 'Computing report...')}</span>
           </div>
         )}
 
@@ -294,32 +306,32 @@ export default function VideosGroupReport() {
             <div className="vgr-sum-card">
               <i className="fas fa-users vgr-sum-icon" style={{color:'var(--primary)'}}></i>
               <span className="vgr-sum-val" style={{color:'var(--primary)'}}>{totalStudents}</span>
-              <span className="vgr-sum-lbl">إجمالي الطلاب</span>
+              <span className="vgr-sum-lbl">{t('groupExams.totalStudents') || (lang === 'ar' ? 'إجمالي الطلاب' : 'Total Students')}</span>
             </div>
             <div className="vgr-sum-card">
               <i className="fas fa-check-circle vgr-sum-icon" style={{color:'#48bb78'}}></i>
               <span className="vgr-sum-val" style={{color:'#48bb78'}}>{completeCount}</span>
-              <span className="vgr-sum-lbl">شاهدوا كامل</span>
+              <span className="vgr-sum-lbl">{lang === 'ar' ? 'شاهدوا كامل' : 'Completed'}</span>
             </div>
             <div className="vgr-sum-card">
               <i className="fas fa-adjust vgr-sum-icon" style={{color:'#ed8936'}}></i>
               <span className="vgr-sum-val" style={{color:'#ed8936'}}>{partialCount}</span>
-              <span className="vgr-sum-lbl">جزئياً</span>
+              <span className="vgr-sum-lbl">{lang === 'ar' ? 'جزئياً' : 'Partially'}</span>
             </div>
             <div className="vgr-sum-card">
               <i className="fas fa-times-circle vgr-sum-icon" style={{color:'#ef4444'}}></i>
               <span className="vgr-sum-val" style={{color:'#ef4444'}}>{noneCount}</span>
-              <span className="vgr-sum-lbl">لم يشاهدوا</span>
+              <span className="vgr-sum-lbl">{lang === 'ar' ? 'لم يشاهدوا' : 'Not Watched'}</span>
             </div>
             <div className="vgr-sum-card">
               <i className="fas fa-percentage vgr-sum-icon" style={{color:'var(--secondary)'}}></i>
               <span className="vgr-sum-val" style={{color:'var(--secondary)'}}>{avgProgress}%</span>
-              <span className="vgr-sum-lbl">متوسط التقدم</span>
+              <span className="vgr-sum-lbl">{t('reports.avgProgressLabel') || (lang === 'ar' ? 'متوسط التقدم' : 'Avg Progress')}</span>
             </div>
             <div className="vgr-sum-card">
               <i className="fas fa-trophy vgr-sum-icon" style={{color:'#f59e0b'}}></i>
               <span className="vgr-sum-val" style={{color:'#f59e0b'}}>{completeRate}%</span>
-              <span className="vgr-sum-lbl">نسبة الإكمال</span>
+              <span className="vgr-sum-lbl">{lang === 'ar' ? 'نسبة الإكمال' : 'Completion Rate'}</span>
             </div>
           </div>
         )}
@@ -329,14 +341,14 @@ export default function VideosGroupReport() {
           <div className="vgr-section">
             <h2 className="vgr-section-title">
               <i className="fas fa-filter"></i>
-              تصفية النتائج
+              {t('reports.filterResults') || (lang === 'ar' ? 'تصفية النتائج' : 'Filter Results')}
             </h2>
             <div className="vgr-chips">
               {[
-                { key: 'all', label: 'الجميع', icon: 'fa-th-list' },
-                { key: 'complete', label: 'شاهدوا كامل (≥75%)', icon: 'fa-check' },
-                { key: 'partial', label: 'نصف أو أقل (≤50%)', icon: 'fa-adjust' },
-                { key: 'none', label: 'لم يشاهدوا', icon: 'fa-times' },
+                { key: 'all', label: t('groupExams.filterAll') || (lang === 'ar' ? 'الجميع' : 'All'), icon: 'fa-th-list' },
+                { key: 'complete', label: lang === 'ar' ? 'شاهدوا كامل (≥75%)' : 'Completed (≥75%)', icon: 'fa-check' },
+                { key: 'partial', label: lang === 'ar' ? 'نصف أو أقل (≤50%)' : 'Partial (≤50%)', icon: 'fa-adjust' },
+                { key: 'none', label: t('reports.notWatchedLabel') || (lang === 'ar' ? 'لم يشاهدوا' : 'Not Watched'), icon: 'fa-times' },
               ].map(({ key, label, icon }) => (
                 <button
                   key={key}
@@ -357,12 +369,12 @@ export default function VideosGroupReport() {
             <div className="vgr-card-header">
               <h2 className="vgr-card-title">
                 <i className="fas fa-clipboard-list"></i>
-                تقرير المشاهدة التفصيلي
+                {t('reports.detailedVideoReport') || (lang === 'ar' ? 'تقرير المشاهدة التفصيلي' : 'Detailed Viewing Report')}
                 <span className="vgr-count-badge">{displayedStudents.length}</span>
               </h2>
               <button onClick={() => window.print()} className="vgr-print-btn">
                 <i className="fas fa-print"></i>
-                طباعة التقرير
+                {t('reports.printReport') || (lang === 'ar' ? 'طباعة التقرير' : 'Print Report')}
               </button>
             </div>
 
@@ -371,13 +383,13 @@ export default function VideosGroupReport() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>اسم الطالب</th>
-                    <th>رقم الطالب</th>
-                    <th>الصف</th>
-                    <th>آخر مشاهدة</th>
-                    <th>الحالة</th>
-                    <th>نسبة المشاهدة</th>
-                    <th>الوقت</th>
+                    <th>{t('reports.studentNameCol') || (lang === 'ar' ? 'اسم الطالب' : 'Student Name')}</th>
+                    <th>{t('reports.studentIdCol') || (lang === 'ar' ? 'رقم الطالب' : 'Student ID')}</th>
+                    <th>{t('profile.grade') || (lang === 'ar' ? 'الصف' : 'Grade')}</th>
+                    <th>{lang === 'ar' ? 'آخر مشاهدة' : 'Last Viewed'}</th>
+                    <th>{t('reports.statusCol') || (lang === 'ar' ? 'الحالة' : 'Status')}</th>
+                    <th>{t('reports.progressCol') || (lang === 'ar' ? 'نسبة المشاهدة' : 'Progress')}</th>
+                    <th>{t('reports.timeCol') || (lang === 'ar' ? 'الوقت' : 'Time')}</th>
                   </tr>
                 </thead>
                 <tbody>

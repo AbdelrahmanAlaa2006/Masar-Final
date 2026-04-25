@@ -12,36 +12,11 @@ import {
 } from '@backend/lecturesApi'
 import { uploadLecturePdf } from '@backend/r2'
 
+import { useI18n } from '../i18n'
+
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
    ────────────────────────────────────────────────────────────── */
-
-const PREPS = [
-  {
-    id: 'first',
-    nameAr: 'الصف الأول الإعدادي',
-    nameEn: 'First Prep',
-    icon: 'fa-seedling',
-    accent: 'green',
-    desc: 'بداية المرحلة الإعدادية والتأسيس',
-  },
-  {
-    id: 'second',
-    nameAr: 'الصف الثاني الإعدادي',
-    nameEn: 'Second Prep',
-    icon: 'fa-book-open-reader',
-    accent: 'blue',
-    desc: 'تعميق المفاهيم وبناء المهارات',
-  },
-  {
-    id: 'third',
-    nameAr: 'الصف الثالث الإعدادي',
-    nameEn: 'Third Prep',
-    icon: 'fa-trophy',
-    accent: 'orange',
-    desc: 'الاستعداد لاختبارات الشهادة',
-  },
-]
 
 const PLACEHOLDER_COVER =
   'data:image/svg+xml;utf8,' +
@@ -55,17 +30,17 @@ const PLACEHOLDER_COVER =
       </defs>
       <rect width="600" height="340" fill="url(#g)"/>
       <text x="50%" y="50%" font-family="Cairo, Arial" font-size="44" font-weight="700"
-        fill="rgba(255,255,255,0.85)" text-anchor="middle" dominant-baseline="middle">محاضرة</text>
+        fill="rgba(255,255,255,0.85)" text-anchor="middle" dominant-baseline="middle">Masar</text>
     </svg>`
   )
 
 // Normalize a DB row into the shape the card components expect.
-function rowToCard(row) {
+function rowToCard(row, lang) {
   return {
     id: row.id,
     title: row.title,
     desc: row.description || '—',
-    subject: row.subject || 'عام',
+    subject: row.subject || (lang === 'ar' ? 'عام' : 'General'),
     teacher: row.teacher || '—',
     week: row.week || '—',
     date: (row.created_at || '').slice(0, 10),
@@ -76,6 +51,34 @@ function rowToCard(row) {
 }
 
 export default function Lectures() {
+  const { t, lang } = useI18n()
+  const PREPS = [
+    {
+      id: 'first',
+      nameAr: t('grades.first'),
+      nameEn: 'First Prep',
+      icon: 'fa-seedling',
+      accent: 'green',
+      desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation',
+    },
+    {
+      id: 'second',
+      nameAr: t('grades.second'),
+      nameEn: 'Second Prep',
+      icon: 'fa-book-open-reader',
+      accent: 'blue',
+      desc: lang === 'ar' ? 'تعميق المفاهيم وبناء المهارات' : 'Deepening concepts and skill building',
+    },
+    {
+      id: 'third',
+      nameAr: t('grades.third'),
+      nameEn: 'Third Prep',
+      icon: 'fa-trophy',
+      accent: 'orange',
+      desc: lang === 'ar' ? 'الاستعداد لاختبارات الشهادة' : 'Preparing for certificate exams',
+    },
+  ]
+
   const [grade, setGrade] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [userId, setUserId] = useState(null)
@@ -120,7 +123,7 @@ export default function Lectures() {
       const data = await listLectures()
       setRows(data)
     } catch (err) {
-      setLoadError(err.message || 'تعذر تحميل المحاضرات')
+      setLoadError(err.message || t('common.error'))
     } finally {
       setLoading(false)
     }
@@ -134,10 +137,10 @@ export default function Lectures() {
     const grouped = { first: [], second: [], third: [] }
     for (const r of rows) {
       const ui = dbToUiGrade(r.grade)
-      if (ui && grouped[ui]) grouped[ui].push(rowToCard(r))
+      if (ui && grouped[ui]) grouped[ui].push(rowToCard(r, lang))
     }
     return grouped
-  }, [rows])
+  }, [rows, lang])
 
   const flash = (msg, kind = 'success') => {
     setToast({ msg, kind })
@@ -179,7 +182,7 @@ export default function Lectures() {
     const uiGrade = form.grade || grade
     const dbGrade = uiToDbGrade(uiGrade)
     if (!dbGrade) {
-      flash('يجب اختيار الصف الدراسي', 'warning')
+      flash(t('common.error'), 'warning')
       return
     }
     setSubmitting(true)
@@ -189,7 +192,7 @@ export default function Lectures() {
       let pdfKey = null
       if (pdfFile) {
         if (pdfFile.type && pdfFile.type !== 'application/pdf') {
-          throw new Error('الملف يجب أن يكون بصيغة PDF')
+          throw new Error(t('common.error'))
         }
         setUploadPct(1)
         const { key, publicUrl } = await uploadLecturePdf(pdfFile, {
@@ -211,11 +214,11 @@ export default function Lectures() {
         pdf_key: pdfKey,
         created_by: userId,
       })
-      flash('تمت إضافة المحاضرة بنجاح')
+      flash(t('lectures.lectureSaved'))
       setModalOpen(false)
       await refresh()
     } catch (err) {
-      flash(err.message || 'تعذر حفظ المحاضرة', 'warning')
+      flash(err.message || t('common.error'), 'warning')
     } finally {
       setSubmitting(false)
       setUploadPct(0)
@@ -233,9 +236,9 @@ export default function Lectures() {
     try {
       await deleteLecture(target.id)
       setRows((prev) => prev.filter((r) => r.id !== target.id))
-      flash('تم حذف المحاضرة', 'warning')
+      flash(t('lectures.lectureDeleted'), 'warning')
     } catch (err) {
-      flash(err.message || 'تعذر حذف المحاضرة', 'warning')
+      flash(err.message || t('common.error'), 'warning')
     } finally {
       setConfirmDelete(null)
     }
@@ -251,8 +254,8 @@ export default function Lectures() {
             <div className="lec-prep-head">
               <div className="lec-prep-icon"><i className="fas fa-book-bookmark"></i></div>
               <div>
-                <h1>المحاضرات</h1>
-                <p>اختر المرحلة الدراسية لاستعراض المحاضرات الخاصة بها</p>
+                <h1>{t('lectures.pageTitle')}</h1>
+                <p>{t('lectures.pickGrade')}</p>
               </div>
             </div>
             <div className="prep-grid">
@@ -262,6 +265,8 @@ export default function Lectures() {
                   prep={p}
                   count={(lectures[p.id] || []).length}
                   onClick={() => setGrade(p.id)}
+                  t={t}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -274,14 +279,14 @@ export default function Lectures() {
             <div className="lec-toolbar">
               {userRole === 'admin' && (
                 <button className="lec-back" onClick={() => { setGrade(null); setSearch('') }}>
-                  <i className="fas fa-arrow-right"></i> العودة للمراحل
+                  <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i> {t('common.back')}
                 </button>
               )}
               <div className="lec-search-wrap">
                 <i className="fas fa-search"></i>
                 <input
                   type="text"
-                  placeholder="ابحث بعنوان المحاضرة، المادة، أو المعلم..."
+                  placeholder={t('lectures.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -293,7 +298,7 @@ export default function Lectures() {
               </div>
               {userRole === 'admin' && (
                 <button className="lec-add-btn" onClick={openAddModal}>
-                  <i className="fas fa-plus"></i> محاضرة جديدة
+                  <i className="fas fa-plus"></i> {t('lectures.addNew')}
                 </button>
               )}
             </div>
@@ -301,15 +306,15 @@ export default function Lectures() {
             <div className="lec-section-head">
               <h2>
                 <i className="fas fa-layer-group"></i>
-                {' '}محاضرات {PREPS.find((p) => p.id === grade)?.nameAr}
+                {' '}{t('lectures.pageTitle')} {PREPS.find((p) => p.id === grade)?.nameAr}
               </h2>
-              <span className="lec-count-pill">{filtered.length} محاضرة</span>
+              <span className="lec-count-pill">{filtered.length} {t('lectures.pageTitle')}</span>
             </div>
 
             {loading ? (
               <div className="lec-empty">
                 <i className="fas fa-spinner fa-spin"></i>
-                <p>جاري التحميل...</p>
+                <p>{t('lectures.loading')}</p>
               </div>
             ) : loadError ? (
               <div className="lec-empty">
@@ -319,7 +324,7 @@ export default function Lectures() {
             ) : filtered.length === 0 ? (
               <div className="lec-empty">
                 <i className="fas fa-folder-open"></i>
-                <p>لا توجد محاضرات مطابقة</p>
+                <p>{t('lectures.noLectures')}</p>
               </div>
             ) : (
               <div className="lec-grid">
@@ -330,9 +335,10 @@ export default function Lectures() {
                     isAdmin={userRole === 'admin'}
                     onOpen={() => {
                       if (lec.pdf_url) window.open(lec.pdf_url, '_blank', 'noopener')
-                      else flash('لا يوجد ملف PDF لهذه المحاضرة', 'warning')
+                      else flash(t('common.error'), 'warning')
                     }}
                     onDelete={() => requestDeleteLecture(lec)}
+                    t={t}
                   />
                 ))}
               </div>
@@ -348,8 +354,8 @@ export default function Lectures() {
             <div className="lec-modal-head">
               <div className="lec-modal-icon"><i className="fas fa-circle-plus"></i></div>
               <div>
-                <h3>إضافة محاضرة جديدة</h3>
-                <p>املأ بيانات المحاضرة وارفع ملف الـ PDF من جهازك</p>
+                <h3>{t('lectures.addNew')}</h3>
+                <p>{t('lectures.addDescPlaceholder')}</p>
               </div>
               <button type="button" className="lec-modal-close" onClick={() => setModalOpen(false)}>
                 <i className="fas fa-times"></i>
@@ -358,66 +364,66 @@ export default function Lectures() {
 
             <div className="lec-modal-body">
               <div className="lec-form-row">
-                <Field label="عنوان المحاضرة" icon="fa-heading" required>
+                <Field label={t('lectures.addLectureTitle')} icon="fa-heading" required>
                   <input
                     type="text"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="مثال: مقدمة في الجبر"
+                    placeholder={t('lectures.addLecturePlaceholder')}
                     required
                   />
                 </Field>
-                <Field label="الصف الدراسي" icon="fa-graduation-cap" required>
+                <Field label={t('lectures.grade')} icon="fa-graduation-cap" required>
                   <select
                     value={form.grade}
                     onChange={(e) => setForm({ ...form, grade: e.target.value })}
                     required
                   >
-                    <option value="first">الأول الإعدادي</option>
-                    <option value="second">الثاني الإعدادي</option>
-                    <option value="third">الثالث الإعدادي</option>
+                    <option value="first">{t('grades.first')}</option>
+                    <option value="second">{t('grades.second')}</option>
+                    <option value="third">{t('grades.third')}</option>
                   </select>
                 </Field>
               </div>
 
               <div className="lec-form-row">
-                <Field label="المادة" icon="fa-book">
+                <Field label={t('reports.subject')} icon="fa-book">
                   <input
                     type="text"
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    placeholder="رياضيات / علوم / لغة..."
+                    placeholder={t('reports.subject')}
                   />
                 </Field>
-                <Field label="المعلم" icon="fa-chalkboard-user">
+                <Field label={t('lectures.teacher') || 'Teacher'} icon="fa-chalkboard-user">
                   <input
                     type="text"
                     value={form.teacher}
                     onChange={(e) => setForm({ ...form, teacher: e.target.value })}
-                    placeholder="اسم المدرس"
+                    placeholder={t('lectures.teacher') || 'Teacher'}
                   />
                 </Field>
               </div>
 
-              <Field label="الأسبوع / الترم" icon="fa-calendar-week">
+              <Field label={t('lectures.week') || 'Week'} icon="fa-calendar-week">
                 <input
                   type="text"
                   value={form.week}
                   onChange={(e) => setForm({ ...form, week: e.target.value })}
-                  placeholder="الأسبوع الأول"
+                  placeholder={t('lectures.week') || 'Week'}
                 />
               </Field>
 
-              <Field label="الوصف" icon="fa-align-right">
+              <Field label={t('lectures.description')} icon="fa-align-right">
                 <textarea
                   rows="3"
                   value={form.desc}
                   onChange={(e) => setForm({ ...form, desc: e.target.value })}
-                  placeholder="نبذة قصيرة عن محتوى المحاضرة..."
+                  placeholder={t('lectures.addDescPlaceholder')}
                 />
               </Field>
 
-              <Field label="رابط صورة الغلاف (اختياري)" icon="fa-image">
+              <Field label={t('lectures.coverUrl') || 'Cover URL (Optional)'} icon="fa-image">
                 <input
                   type="url"
                   value={form.cover_url}
@@ -426,7 +432,7 @@ export default function Lectures() {
                 />
               </Field>
 
-              <Field label="ملف الـ PDF" icon="fa-file-pdf">
+              <Field label={t('lectures.pdfFile') || 'PDF File'} icon="fa-file-pdf">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label
                     htmlFor="lec-pdf-input"
@@ -447,7 +453,7 @@ export default function Lectures() {
                       flex: 1, overflow: 'hidden',
                       textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {pdfFile ? pdfFile.name : 'اختر ملف PDF من جهازك'}
+                      {pdfFile ? pdfFile.name : (t('lectures.uploadPdf') || 'Upload PDF')}
                     </span>
                     {pdfFile && (
                       <span style={{ fontSize: 12, color: '#718096' }}>
@@ -482,12 +488,12 @@ export default function Lectures() {
                   {uploadPct > 0 && (
                     <span style={{ fontSize: 12, color: '#4a5568' }}>
                       {uploadPct < 100
-                        ? `جاري الرفع... ${uploadPct}%`
-                        : 'تم رفع الملف ✓'}
+                        ? `${t('common.loading')}... ${uploadPct}%`
+                        : `${t('common.save')} ✓`}
                     </span>
                   )}
                   <small style={{ color: '#718096', fontSize: 12 }}>
-                    يتم رفع الملف مباشرة إلى التخزين السحابي — لا حاجة لنسخ أي روابط.
+                    {t('lectures.uploadDirectly') || 'File will be uploaded directly'}
                   </small>
                 </div>
               </Field>
@@ -500,16 +506,16 @@ export default function Lectures() {
                 onClick={() => setModalOpen(false)}
                 disabled={submitting}
               >
-                إلغاء
+                {t('common.cancel')}
               </button>
               <button type="submit" className="lec-btn lec-btn-primary" disabled={submitting}>
                 <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
                 {' '}{
                   submitting
                     ? (uploadPct > 0 && uploadPct < 100
-                        ? `جاري رفع الملف... ${uploadPct}%`
-                        : 'جاري الحفظ...')
-                    : 'حفظ المحاضرة'
+                        ? `${t('common.loading')}... ${uploadPct}%`
+                        : t('common.loading'))
+                    : t('common.save')
                 }
               </button>
             </div>
@@ -531,9 +537,9 @@ export default function Lectures() {
 
       {confirmDelete && (
         <ConfirmDeleteDialog
-          title="تأكيد حذف المحاضرة"
+          title={t('lectures.confirmDeleteTitle')}
           itemLabel={confirmDelete.title}
-          message="سيتم حذف المحاضرة وملف الـ PDF المرتبط بها نهائياً. لا يمكن التراجع عن هذا الإجراء."
+          message={t('lectures.deleteWarning')}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={performDeleteLecture}
         />
@@ -544,7 +550,7 @@ export default function Lectures() {
 
 /* ─────────────────────── sub-components ─────────────────────── */
 
-function PrepCard({ prep, count, onClick }) {
+function PrepCard({ prep, count, onClick, t, lang }) {
   return (
     <button className={`prep-card prep-${prep.accent}`} onClick={onClick}>
       <div className="prep-cover">
@@ -556,10 +562,10 @@ function PrepCard({ prep, count, onClick }) {
         <p>{prep.desc}</p>
         <div className="prep-foot">
           <span className="prep-count">
-            <i className="fas fa-book"></i> {count} محاضرة
+            <i className="fas fa-book"></i> {count} {t('lectures.pageTitle')}
           </span>
           <span className="prep-cta">
-            استعراض <i className="fas fa-arrow-left"></i>
+            {t('common.view')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i>
           </span>
         </div>
       </div>
@@ -567,14 +573,14 @@ function PrepCard({ prep, count, onClick }) {
   )
 }
 
-function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
+function LectureCard({ lec, isAdmin, onOpen, onDelete, t }) {
   return (
     <article className="lec-card">
       <div className="lec-card-cover">
         <img src={lec.cover} alt={lec.title} loading="lazy" />
         <div className="lec-card-cover-grad"></div>
         <div className="lec-card-ribbon">
-          <i className="fas fa-circle-play"></i> محاضرة
+          <i className="fas fa-circle-play"></i> {t('lectures.pageTitle')}
         </div>
         <div className="lec-card-title-pill">
           <i className="fas fa-bookmark"></i> {lec.week}
@@ -601,7 +607,7 @@ function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
 
         <div className="lec-card-actions">
           <button className="lec-btn lec-btn-primary" onClick={onOpen}>
-            <i className="fas fa-eye"></i> فتح المحاضرة
+            <i className="fas fa-eye"></i> {t('lectures.open')}
           </button>
           {lec.pdf_url && (
             <a
@@ -611,11 +617,11 @@ function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
               rel="noopener noreferrer"
               download
             >
-              <i className="fas fa-download"></i> تحميل
+              <i className="fas fa-download"></i> {t('lectures.download')}
             </a>
           )}
           {isAdmin && (
-            <button className="lec-btn lec-btn-danger lec-btn-icon" onClick={onDelete} title="حذف">
+            <button className="lec-btn lec-btn-danger lec-btn-icon" onClick={onDelete} title={t('common.delete')}>
               <i className="fas fa-trash"></i>
             </button>
           )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
@@ -10,14 +11,19 @@ import {
   listQuizAttemptsForVideo,
   listProgressForVideo,
   incrementPartView,
+  updatePartProgress,
 } from '@backend/progressApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
-const GRADES = [
-  { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-  { id: 'third-prep',  ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-]
+export default function Videos() {
+  const navigate = useNavigate()
+  const { t, lang } = useI18n()
+
+  const GRADES = [
+    { id: 'first-prep',  ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },
+    { id: 'second-prep', ar: t('grades.second'), en: 'Second Prep', accent: 'blue',   desc: lang === 'ar' ? 'تعميق المفاهيم وبناء المهارات' : 'Deepening concepts and skill building' },
+    { id: 'third-prep',  ar: t('grades.third'), en: 'Third Prep',  accent: 'orange', desc: lang === 'ar' ? 'الاستعداد لاختبارات الشهادة' : 'Preparing for certificate exams' },
+  ]
 
 // Convert a DB video row (with embedded video_parts) into the shape the
 // rest of the page was built around (parts[], totalParts, quizzes[]).
@@ -42,8 +48,7 @@ function shapeVideo(row) {
   }
 }
 
-export default function Videos() {
-  const navigate = useNavigate()
+
   const [userRole, setUserRole] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
 
@@ -94,7 +99,7 @@ export default function Videos() {
       const data = await listVideos()
       setAllVideos(data.map(shapeVideo))
     } catch (err) {
-      setLoadError(err.message || 'تعذر تحميل الفيديوهات')
+      setLoadError(err.message || t('videos.loading'))
     } finally {
       setLoading(false)
     }
@@ -206,7 +211,7 @@ export default function Videos() {
   }
   const openVideoPlayer = (video) => {
     if (userRole !== 'admin' && !isVideoAllowed(video)) {
-      return showAlertModal('الوصول محظور', 'تم تقييد هذا الفيديو من قِبَل الإدارة.')
+      return showAlertModal(t('common.error'), t('videos.unavailable'))
     }
     setCurrentVideo(video); setSelectedPart(null); setView('player')
   }
@@ -235,7 +240,7 @@ export default function Videos() {
       setConfirmDelete(null)
     } catch (err) {
       setConfirmDelete(null)
-      showAlertModal('خطأ', err.message || 'تعذر الحذف')
+      showAlertModal(t('common.error'), err.message || t('common.error'))
     }
   }
 
@@ -244,7 +249,7 @@ export default function Videos() {
     const now = new Date()
     const expiryDate = effectiveExpiryFor(currentVideo)
     if (expiryDate && now > expiryDate) {
-      return showAlertModal('انتهت المدة', 'انتهت مدة تفعيل هذا الفيديو')
+      return showAlertModal(t('common.error'), t('videos.unavailable'))
     }
 
     // Quiz gate
@@ -255,8 +260,8 @@ export default function Videos() {
       const max = blocking.maxAttempts || 1
       if (!att?.passed && attempts >= max) {
         return showAlertModal(
-          'انتهت محاولات الامتحان',
-          `لقد استخدمت جميع المحاولات (${max}) لامتحان «${blocking.title}» ولم تجتزه. تواصل مع المعلم.`
+          t('common.error'),
+          t('common.error')
         )
       }
       setPendingPart(part)
@@ -309,8 +314,8 @@ export default function Videos() {
           <div className="vid-prep-head">
             <div className="vid-prep-icon"><i className="fas fa-video"></i></div>
             <div>
-              <h1>الفيديوهات التعليمية</h1>
-              <p>اختر المرحلة الدراسية لعرض الفيديوهات الخاصة بها</p>
+              <h1>{t('videos.pageTitle')}</h1>
+              <p>{t('videos.pickGrade')}</p>
             </div>
           </div>
 
@@ -327,8 +332,8 @@ export default function Videos() {
                     <h3>{p.ar}</h3>
                     <p>{p.desc}</p>
                     <div className="prep-foot">
-                      <span className="prep-count"><i className="fas fa-play-circle"></i> {count} فيديو</span>
-                      <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
+                      <span className="prep-count"><i className="fas fa-play-circle"></i> {count} {t('videos.video')}</span>
+                      <span className="prep-cta">{t('common.view')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i></span>
                     </div>
                   </div>
                 </button>
@@ -344,17 +349,17 @@ export default function Videos() {
           <div className="flex justify-between items-center mb-8">
             {userRole === 'admin' ? (
               <button className="btn btn-outline" onClick={goBackToGrades}>
-                ← العودة للصفوف
+                ← {t('common.back')}
               </button>
             ) : <div style={{ width: '120px' }} />}
 
             <div className="text-center">
-              <h1 id="gradeTitle" className="title-main gradient-text">📺 الفيديوهات التعليمية</h1>
+              <h1 id="gradeTitle" className="title-main gradient-text">📺 {t('videos.pageTitle')}</h1>
             </div>
 
             {userRole === 'admin' ? (
               <button className="btn btn-primary" onClick={goToAddVideo}>
-                ➕ إضافة فيديو جديد
+                ➕ {t('videos.addVideo')}
               </button>
             ) : <div style={{ width: '120px' }} />}
           </div>
@@ -362,7 +367,7 @@ export default function Videos() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem' }}></i>
-              <p>جاري التحميل...</p>
+              <p>{t('videos.loading')}</p>
             </div>
           ) : loadError ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#e53e3e' }}>
@@ -383,10 +388,10 @@ export default function Videos() {
                   <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
                     <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
                       <span className="vc-status-dot" />
-                      <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+                      <span>{isAvailable ? t('videos.available') : t('videos.unavailable')}</span>
                       {userRole === 'admin' && (
                         <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
-                          🗑 حذف
+                          🗑 {t('common.delete')}
                         </button>
                       )}
                     </div>
@@ -403,19 +408,19 @@ export default function Videos() {
                     <div className="vc-stats">
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🎬</span>
-                        <span className="vc-stat-label">عدد الأجزاء</span>
-                        <span className="vc-stat-value">{video.totalParts} جزء</span>
+                        <span className="vc-stat-label">{t('videos.parts')}</span>
+                        <span className="vc-stat-value">{video.totalParts} {t('common.part')}</span>
                       </div>
                       <div className="vc-stat">
                         <span className="vc-stat-icon">🕒</span>
-                        <span className="vc-stat-label">متاح لمدة</span>
-                        <span className="vc-stat-value">{hours} ساعة</span>
+                        <span className="vc-stat-label">{t('videos.availableFor')}</span>
+                        <span className="vc-stat-value">{hours} {t('common.hours')}</span>
                       </div>
                     </div>
 
                     <div className="vc-footer">
                       <span>⏳</span>
-                      <span>متاح حتى {formattedExpiry}</span>
+                      <span>{lang === 'ar' ? 'متاح حتى' : 'Available until'} {formattedExpiry}</span>
                     </div>
                   </div>
                 )
@@ -423,7 +428,7 @@ export default function Videos() {
               {!loading && (videosByGrade[currentGrade] || []).length === 0 && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
                   <i className="fas fa-folder-open" style={{ fontSize: '2rem', color: '#a0aec0' }}></i>
-                  <p>لا توجد فيديوهات في هذه المرحلة بعد</p>
+                  <p>{t('videos.noVideos')}</p>
                 </div>
               )}
             </div>
@@ -435,7 +440,7 @@ export default function Videos() {
       {view === 'player' && (
         <div>
           <div className="flex justify-between items-center mb-8 max-w-7xl mx-auto">
-            <button className="btn btn-outline" onClick={goBackToVideos}>← العودة للفيديوهات</button>
+            <button className="btn btn-outline" onClick={goBackToVideos}>← {t('common.back')}</button>
             <div className="text-center">
               <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
               <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
@@ -447,13 +452,32 @@ export default function Videos() {
             <div className="video-main">
               <div className="card" style={{ padding: 12 }}>
                 {selectedPart && selectedPart.youtubeId ? (
-                  <YouTubePlayer key={selectedPart.id} videoId={selectedPart.youtubeId} />
+                  <YouTubePlayer
+                    key={selectedPart.id}
+                    videoId={selectedPart.youtubeId}
+                    onProgress={({ currentTime }) => {
+                      // Students only — admins shouldn't pollute progress rows.
+                      if (userRole === 'admin' || !currentUser?.id) return
+                      updatePartProgress({
+                        student_id: currentUser.id,
+                        video_id: currentVideo.id,
+                        part_id: selectedPart.id,
+                        seconds: currentTime,
+                      }).then((row) => {
+                        if (!row) return
+                        setProgressRows(prev => {
+                          const others = prev.filter(p => p.part_id !== selectedPart.id)
+                          return [...others, row]
+                        })
+                      }).catch((e) => console.error('updatePartProgress failed', e))
+                    }}
+                  />
                 ) : (
                   <div className="placeholder-video">
                     <div>
                       <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
-                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{t('videos.selectPart')}</h3>
+                      <p style={{ opacity: 0.8 }}>{t('videos.selectPartDesc')}</p>
                     </div>
                   </div>
                 )}
@@ -462,7 +486,7 @@ export default function Videos() {
 
             <div className="video-sidebar">
               <div className="card">
-                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
+                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>{t('videos.partsTitle')}</h3>
                 <div id="partsList" data-quiz-tick={quizTick}>
                   {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
@@ -476,11 +500,11 @@ export default function Videos() {
                       >
                         <div className="title-card" style={{ color: 'var(--text-primary)' }}>
                           {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
-                          الجزء {index + 1}: {part.title}
+                          {t('videos.partLabel')} {index + 1}: {part.title}
                         </div>
                         {locked && (
                           <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                            <i className="fas fa-graduation-cap"></i> {t('videos.quizRequired')}: {blocking.title}
                           </div>
                         )}
                       </div>
@@ -512,7 +536,7 @@ export default function Videos() {
             <button className="close-btn" onClick={closeAlertModal}>&times;</button>
             <h3 className="title-card mb-4">{alertData.title}</h3>
             <p className="mb-6">{alertData.message}</p>
-            <button className="btn btn-primary" onClick={closeAlertModal}>حسناً</button>
+            <button className="btn btn-primary" onClick={closeAlertModal}>{t('common.confirm')}</button>
           </div>
         </div>
       )}
@@ -520,9 +544,9 @@ export default function Videos() {
       {/* Delete-confirmation modal */}
       {confirmDelete && (
         <ConfirmDeleteDialog
-          title="تأكيد حذف الفيديو"
+          title={t('videos.confirmDeleteTitle')}
           itemLabel={confirmDelete.title}
-          message="سيتم حذف الفيديو وجميع أجزائه وبيانات تقدّم الطلاب المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
+          message={t('videos.deleteWarning')}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={performDeleteVideo}
         />

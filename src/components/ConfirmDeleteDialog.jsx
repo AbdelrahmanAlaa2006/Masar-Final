@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useI18n } from '../i18n'
 
 /* Track the global theme (body.dark class, managed by useTheme) so the
    modal can re-render when the user toggles themes while it's open. */
@@ -21,23 +22,31 @@ function useIsDark() {
    Used from Exams / Videos / (future) Lectures delete actions.
 
    Props:
-     title       — dialog heading (e.g. "تأكيد حذف الامتحان")
+     title       — dialog heading (e.g. "Confirm exam deletion")
      itemLabel   — the thing being deleted (quoted in the body)
      message     — optional body paragraph (defaults to a generic warning)
-     confirmText — button label (default: "نعم، احذف")
-     cancelText  — button label (default: "إلغاء")
+     confirmText — button label (default: "Yes, Delete")
+     cancelText  — button label (default: "Cancel")
      onConfirm   — async-friendly handler
      onCancel    — close handler (overlay click / Esc / cancel button)
 */
 export default function ConfirmDeleteDialog({
-  title = 'تأكيد الحذف',
+  title,
   itemLabel = '',
-  message = 'سيتم حذف هذا العنصر نهائياً. لا يمكن التراجع عن هذا الإجراء.',
-  confirmText = 'نعم، احذف',
-  cancelText  = 'إلغاء',
+  message,
+  confirmText,
+  cancelText,
   onConfirm,
   onCancel,
 }) {
+  const { t, lang } = useI18n()
+
+  // Use translation defaults if props not provided
+  const resolvedTitle = title || t('confirmDialog.defaultTitle')
+  const resolvedMessage = message || t('confirmDialog.defaultMessage')
+  const resolvedConfirm = confirmText || t('confirmDialog.confirmBtn')
+  const resolvedCancel = cancelText || t('confirmDialog.cancelBtn')
+
   // Close on Escape so keyboard users aren't trapped.
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onCancel?.() }
@@ -111,7 +120,7 @@ export default function ConfirmDeleteDialog({
     fontSize: 30,
     border: c.iconRing,
   }
-  const body = { padding: '0 28px 8px', direction: 'rtl' }
+  const body = { padding: '0 28px 8px', direction: lang === 'ar' ? 'rtl' : 'ltr' }
   const heading = {
     margin: '4px 0 10px',
     fontSize: 20, fontWeight: 700,
@@ -141,7 +150,7 @@ export default function ConfirmDeleteDialog({
     padding: '14px 22px 22px',
     background: c.footerBg,
     borderTop: c.footerBorder,
-    direction: 'rtl',
+    direction: lang === 'ar' ? 'rtl' : 'ltr',
   }
   const btnBase = {
     flex: 1,
@@ -185,16 +194,16 @@ export default function ConfirmDeleteDialog({
           <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
         </div>
         <div style={body}>
-          <h3 id="cdd-title" style={heading}>{title}</h3>
+          <h3 id="cdd-title" style={heading}>{resolvedTitle}</h3>
           {itemLabel && <div style={itemPill}>{itemLabel}</div>}
-          <p style={messageStyle}>{message}</p>
+          <p style={messageStyle}>{resolvedMessage}</p>
         </div>
         <div style={actions}>
           <button type="button" className="cdd-btn" style={confirmBtn} onClick={onConfirm}>
-            <i className="fas fa-trash"></i> {confirmText}
+            <i className="fas fa-trash"></i> {resolvedConfirm}
           </button>
           <button type="button" className="cdd-btn" style={cancelBtn} onClick={onCancel}>
-            {cancelText}
+            {resolvedCancel}
           </button>
         </div>
       </div>

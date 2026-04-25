@@ -65,6 +65,7 @@ export default function YouTubePlayer({
   videoId,
   onEnded,
   onReady,
+  onProgress,
   startMuted = false,
 }) {
   const hostRef = useRef(null)          // the <div> we mount the iframe on
@@ -171,21 +172,37 @@ export default function YouTubePlayer({
   }, [videoId])
 
   // Time + buffer polling loop (YT has no time-update event).
+  // Also throttles `onProgress` callbacks to ~once every 5s while playing,
+  // so the parent can persist watched-seconds without spamming the network.
+  const lastProgressRef = useRef({ t: 0, secs: 0 })
   useEffect(() => {
     function tick() {
       const p = playerRef.current
       if (p && typeof p.getCurrentTime === 'function') {
         try {
-          setCurrent(p.getCurrentTime() || 0)
+          const t = p.getCurrentTime() || 0
+          const d = p.getDuration?.() || 0
+          setCurrent(t)
           const frac = p.getVideoLoadedFraction?.() || 0
-          setBuffered((p.getDuration?.() || 0) * frac)
+          setBuffered(d * frac)
+          // Throttled progress emission
+          if (typeof onProgress === 'function') {
+            const now = Date.now()
+            if (
+              now - lastProgressRef.current.t >= 5000 &&
+              Math.abs(t - lastProgressRef.current.secs) >= 1
+            ) {
+              lastProgressRef.current = { t: now, secs: t }
+              try { onProgress({ currentTime: t, duration: d }) } catch {}
+            }
+          }
         } catch {}
       }
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [])
+  }, [onProgress])
 
   // Fullscreen change listener (OS-level Esc still works).
   useEffect(() => {

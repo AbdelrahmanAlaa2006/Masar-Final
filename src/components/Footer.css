@@ -276,6 +276,25 @@
 }
 .sf-badge i { color: #43e97b; font-size: 0.8rem; }
 
+/* Static stages — display-only rows (no link / hover) */
+.sf-links--static li > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.4rem;
+  font-size: 0.92rem;
+  color: #cbd5e0;
+  cursor: default;
+  user-select: none;
+}
+.sf-links--static li > span i {
+  width: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #43e97b;
+}
+body:not(.dark) .sf-links--static li > span { color: #475569; }
+
 /* Contact */
 .sf-contact {
   list-style: none;

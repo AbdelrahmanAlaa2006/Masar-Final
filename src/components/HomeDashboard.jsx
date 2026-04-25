@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n'
 import './HomeDashboard.css'
 
 const safeParse = (key, fallback) => {
@@ -12,10 +13,10 @@ const safeParse = (key, fallback) => {
 }
 
 const ROUTE_META = {
-  lectures: { label: 'المحاضرات',  icon: 'fa-book-bookmark',  route: '/lectures' },
-  exams:    { label: 'الامتحانات', icon: 'fa-file-alt',       route: '/exams' },
-  videos:   { label: 'الفيديوهات', icon: 'fa-video',          route: '/videos' },
-  report:   { label: 'التقارير',   icon: 'fa-chart-line',     route: '/report' },
+  lectures: { icon: 'fa-book-bookmark',  route: '/lectures' },
+  exams:    { icon: 'fa-file-alt',       route: '/exams' },
+  videos:   { icon: 'fa-video',          route: '/videos' },
+  report:   { icon: 'fa-chart-line',     route: '/report' },
 }
 
 export default function HomeDashboard({ role }) {
@@ -26,6 +27,7 @@ export default function HomeDashboard({ role }) {
 
 function StudentDashboard() {
   const navigate = useNavigate()
+  const { t, lang } = useI18n()
   const [recent, setRecent] = useState(() => safeParse('masar-recent', []))
   const [progress] = useState(() => safeParse('masar-progress', {
     lectures: { done: 0, total: 0 },
@@ -33,6 +35,13 @@ function StudentDashboard() {
     exams:    { done: 0, total: 0 },
   }))
   const [upcoming] = useState(() => safeParse('masar-upcoming-exam', null))
+
+  const routeLabels = {
+    lectures: t('dashboard.lecturesLabel'),
+    exams: t('dashboard.examsLabel'),
+    videos: t('dashboard.videosLabel'),
+    report: t('reports.pageTitle'),
+  }
 
   // Sync across tabs
   useEffect(() => {
@@ -50,7 +59,7 @@ function StudentDashboard() {
     <section className="hdash hdash-student">
       <WidgetCard
         icon="fa-clock-rotate-left"
-        title="أكمل من حيث توقفت"
+        title={t('dashboard.continueTitle')}
         accent="violet"
       >
         {lastItem ? (
@@ -59,46 +68,46 @@ function StudentDashboard() {
             onClick={() => navigate(lastItem.route)}
           >
             <div className="hdash-continue-main">
-              <span className="hdash-continue-label">{ROUTE_META[lastItem.type]?.label || lastItem.type}</span>
-              <span className="hdash-continue-hint">آخر زيارة: {relTime(lastItem.at)}</span>
+              <span className="hdash-continue-label">{routeLabels[lastItem.type] || lastItem.type}</span>
+              <span className="hdash-continue-hint">{t('dashboard.lastVisit')} {relTime(lastItem.at, t)}</span>
             </div>
-            <i className="fas fa-arrow-left"></i>
+            <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i>
           </button>
         ) : (
-          <EmptyHint icon="fa-seedling" text="ابدأ التعلم ليظهر آخر نشاط هنا" />
+          <EmptyHint icon="fa-seedling" text={t('dashboard.startLearning')} />
         )}
       </WidgetCard>
 
       <WidgetCard
         icon="fa-chart-simple"
-        title="تقدمك"
+        title={t('dashboard.progressTitle')}
         accent="cyan"
       >
-        <ProgressRow label="المحاضرات" data={progress.lectures} accent="#8b5cf6" />
-        <ProgressRow label="الفيديوهات" data={progress.videos}   accent="#06b6d4" />
-        <ProgressRow label="الامتحانات" data={progress.exams}    accent="#f59e0b" />
+        <ProgressRow label={t('dashboard.lecturesLabel')} data={progress.lectures} accent="#8b5cf6" />
+        <ProgressRow label={t('dashboard.videosLabel')} data={progress.videos}   accent="#06b6d4" />
+        <ProgressRow label={t('dashboard.examsLabel')} data={progress.exams}    accent="#f59e0b" />
       </WidgetCard>
 
       <WidgetCard
         icon="fa-hourglass-half"
-        title="الامتحان القادم"
+        title={t('dashboard.nextExam')}
         accent="amber"
       >
         {upcoming && countdown ? (
           <div className="hdash-countdown">
             <div className="hdash-countdown-title">{upcoming.title}</div>
             <div className="hdash-countdown-grid">
-              <CountCell value={countdown.days} label="يوم" />
-              <CountCell value={countdown.hours} label="ساعة" />
-              <CountCell value={countdown.minutes} label="دقيقة" />
-              <CountCell value={countdown.seconds} label="ثانية" />
+              <CountCell value={countdown.days} label={t('common.day')} />
+              <CountCell value={countdown.hours} label={t('common.hour')} />
+              <CountCell value={countdown.minutes} label={t('common.minute')} />
+              <CountCell value={countdown.seconds} label={t('common.second')} />
             </div>
             <Link to="/exams" className="hdash-countdown-cta">
-              استعد الآن <i className="fas fa-arrow-left"></i>
+              {t('dashboard.getReady')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i>
             </Link>
           </div>
         ) : (
-          <EmptyHint icon="fa-calendar-check" text="لا توجد امتحانات مجدولة حاليًا" />
+          <EmptyHint icon="fa-calendar-check" text={t('dashboard.noScheduledExams')} />
         )}
       </WidgetCard>
     </section>
@@ -137,44 +146,52 @@ function CountCell({ value, label }) {
 /* ─────────── Admin ─────────── */
 
 function AdminDashboard() {
+  const { t } = useI18n()
   const stats = useMemo(() => safeParse('masar-content-counts', {
     students: 0, lectures: 0, videos: 0, exams: 0,
   }), [])
   const recent = safeParse('masar-content-recent', [])
 
+  const routeLabels = {
+    lectures: t('dashboard.lectures'),
+    exams: t('dashboard.exams'),
+    videos: t('dashboard.videos'),
+    report: t('reports.pageTitle'),
+  }
+
   return (
     <section className="hdash hdash-admin">
-      <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
+      <WidgetCard icon="fa-gauge-high" title={t('dashboard.overview')} accent="violet">
         <div className="hdash-stats">
-          <StatCell icon="fa-user-graduate" label="الطلاب"     value={stats.students} />
-          <StatCell icon="fa-book"          label="المحاضرات" value={stats.lectures} />
-          <StatCell icon="fa-video"         label="الفيديوهات" value={stats.videos} />
-          <StatCell icon="fa-file-alt"      label="الامتحانات" value={stats.exams} />
+          <StatCell icon="fa-user-graduate" label={t('dashboard.students')}     value={stats.students} />
+          <StatCell icon="fa-book"          label={t('dashboard.lectures')} value={stats.lectures} />
+          <StatCell icon="fa-video"         label={t('dashboard.videos')} value={stats.videos} />
+          <StatCell icon="fa-file-alt"      label={t('dashboard.exams')} value={stats.exams} />
         </div>
       </WidgetCard>
 
-      <WidgetCard icon="fa-clock" title="أحدث الإضافات" accent="cyan">
+      <WidgetCard icon="fa-clock" title={t('dashboard.recentAdds')} accent="cyan">
         {recent.length ? (
           <ul className="hdash-recent-list">
             {recent.slice(0, 5).map((r, i) => (
               <li key={i}>
                 <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
                 <span className="hdash-recent-title">{r.title}</span>
-                <span className="hdash-recent-time">{relTime(r.at)}</span>
+                <span className="hdash-recent-time">{relTime(r.at, t)}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <EmptyHint icon="fa-inbox" text="لم تتم إضافة محتوى مؤخرًا" />
+          <EmptyHint icon="fa-inbox" text={t('dashboard.noRecentContent')} />
         )}
       </WidgetCard>
 
-      <WidgetCard icon="fa-bolt" title="إجراءات سريعة" accent="amber">
+      <WidgetCard icon="fa-bolt" title={t('dashboard.quickActions')} accent="amber">
         <div className="hdash-quick">
-          <Link to="/exams"  className="hdash-quick-btn"><i className="fas fa-plus"></i> امتحان جديد</Link>
-          <Link to="/videos" className="hdash-quick-btn"><i className="fas fa-plus"></i> فيديو جديد</Link>
-          <Link to="/report"       className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-chart-line"></i> التقارير</Link>
-          <Link to="/control-panel" className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-gear"></i> لوحة التحكم</Link>
+          <Link to="/exams"  className="hdash-quick-btn"><i className="fas fa-plus"></i> {t('dashboard.newExam')}</Link>
+          <Link to="/videos" className="hdash-quick-btn"><i className="fas fa-plus"></i> {t('dashboard.newVideo')}</Link>
+          <Link to="/report"       className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-chart-line"></i> {t('dashboard.reportsLink')}</Link>
+          <Link to="/control-panel" className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-gear"></i> {t('dashboard.controlPanelLink')}</Link>
         </div>
       </WidgetCard>
     </section>
@@ -216,14 +233,14 @@ function EmptyHint({ icon, text }) {
   )
 }
 
-function relTime(iso) {
+function relTime(iso, t) {
   if (!iso) return ''
   try {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000
-    if (diff < 60) return 'الآن'
-    if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`
-    if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`
-    return `منذ ${Math.floor(diff / 86400)} يوم`
+    if (diff < 60) return t('common.now')
+    if (diff < 3600) return t('common.minutesAgo').replace('{n}', Math.floor(diff / 60))
+    if (diff < 86400) return t('common.hoursAgo').replace('{n}', Math.floor(diff / 3600))
+    return t('common.daysAgo').replace('{n}', Math.floor(diff / 86400))
   } catch {
     return ''
   }

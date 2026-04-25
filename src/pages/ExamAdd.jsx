@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade } from '@backend/examsApi'
+import { useI18n } from '../i18n'
 
 export default function ExamAdd() {
+  const { t, lang } = useI18n()
   const navigate = useNavigate()
   const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
@@ -26,7 +28,7 @@ export default function ExamAdd() {
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
     if (!count || count <= 0) {
-      notify('يرجى إدخال عدد صحيح من الأسئلة', { type: 'warning' })
+      notify(t('examAdd.errNumQuestions'), { type: 'warning' })
       return
     }
 
@@ -100,13 +102,13 @@ export default function ExamAdd() {
   const parseCopiedQuestions = () => {
     const text = questionsCopy.trim()
     if (!text) {
-      notify('يرجى إدخال الأسئلة بالتنسيق المطلوب', { type: 'warning' })
+      notify(t('examAdd.errNumQuestions') || 'Please enter questions in the correct format', { type: 'warning' })
       return
     }
 
     const questionTexts = text.split('@').filter(q => q.trim() !== '')
     if (questionTexts.length === 0) {
-      notify('لم يتم العثور على أسئلة', { type: 'warning' })
+      notify(t('examAdd.errNoQuestions'), { type: 'warning' })
       return
     }
 
@@ -153,13 +155,13 @@ export default function ExamAdd() {
   const saveExam = async () => {
     if (saving) return
     if (!examTitle.trim() || !duration || questions.length === 0) {
-      notify('يرجى ملء جميع البيانات المطلوبة', { type: 'warning' })
+      notify(t('examAdd.errFillDetails'), { type: 'warning' })
       return
     }
 
     const dbGrade = uiToDbGrade(examGrade)
     if (!dbGrade) {
-      notify('يرجى اختيار الصف الدراسي', { type: 'warning' })
+      notify(t('common.error') || 'Please select a grade', { type: 'warning' })
       return
     }
 
@@ -171,7 +173,7 @@ export default function ExamAdd() {
     })
 
     if (!isValid) {
-      notify('يرجى التأكد من ملء جميع الأسئلة والاختيارات وتحديد الإجابات الصحيحة', { type: 'warning' })
+      notify(t('examAdd.errEmptyQuestion').replace('{index}', '') || 'Please ensure all questions and choices are filled and correct answers are selected', { type: 'warning' })
       return
     }
 
@@ -218,64 +220,64 @@ export default function ExamAdd() {
 
       setTimeout(() => { navigate('/exams') }, 2000)
     } catch (err) {
-      notify(err.message || 'تعذر حفظ الامتحان', { type: 'warning' })
+      notify(err.message || t('examAdd.errSave'), { type: 'warning' })
       setSaving(false)
     }
   }
 
   return (
-    <div className="exam-add-page">
+    <div className="exam-add-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="exam-add-container">
-        <h1>إنشاء امتحان</h1>
+        <h1>{t('examAdd.title')}</h1>
 
         <div className="form-group">
-          <label htmlFor="examNumber">🔢 رقم الامتحان:</label>
+          <label htmlFor="examNumber">🔢 {t('examAdd.examNumberLabel')}:</label>
           <input 
             type="number" 
             id="examNumber"
             value={examNumber}
             onChange={(e) => setExamNumber(e.target.value)}
-            placeholder="مثلاً 5"
+            placeholder="5"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="examTitle">📝 عنوان الامتحان:</label>
+          <label htmlFor="examTitle">📝 {t('examAdd.examTitleLabel')}:</label>
           <input
             type="text"
             id="examTitle"
             value={examTitle}
             onChange={(e) => setExamTitle(e.target.value)}
-            placeholder="مثلاً: حساب تفاضلي متقدم"
+            placeholder="Advanced Calculus"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="examGrade">🎓 الصف الدراسي:</label>
+          <label htmlFor="examGrade">🎓 {t('profile.grade')}:</label>
           <select
             id="examGrade"
             value={examGrade}
             onChange={(e) => setExamGrade(e.target.value)}
           >
-            <option value="first">الصف الأول الإعدادي</option>
-            <option value="second">الصف الثاني الإعدادي</option>
-            <option value="third">الصف الثالث الإعدادي</option>
+            <option value="first">{t('grades.first')}</option>
+            <option value="second">{t('grades.second')}</option>
+            <option value="third">{t('grades.third')}</option>
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="duration">⏰ مدة الامتحان (بالدقائق):</label>
+          <label htmlFor="duration">⏰ {t('examAdd.durationLabel')}:</label>
           <input 
             type="number" 
             id="duration"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
-            placeholder="مثلاً 60"
+            placeholder="60"
           />
           
           <div className="exam-settings">
             <div>
-              <label htmlFor="maxAttempts">🔁 عدد المحاولات المسموحة:</label>
+              <label htmlFor="maxAttempts">🔁 {t('examAdd.maxAttemptsLabel')}:</label>
               <input 
                 type="number" 
                 id="maxAttempts"
@@ -285,7 +287,7 @@ export default function ExamAdd() {
               />
             </div>
             <div>
-              <label htmlFor="examDurationHours">⏳ مدة توفر الامتحان (بالساعات):</label>
+              <label htmlFor="examDurationHours">⏳ {t('examAdd.availableHoursLabel')}:</label>
               <input 
                 type="number" 
                 id="examDurationHours"
@@ -298,27 +300,27 @@ export default function ExamAdd() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="numQuestions">❓ عدد الأسئلة:</label>
+          <label htmlFor="numQuestions">❓ {t('examAdd.numQuestionsLabel')}:</label>
           <input 
             type="number" 
             id="numQuestions"
             value={numQuestions}
             onChange={(e) => setNumQuestions(e.target.value)}
-            placeholder="مثلاً 3"
+            placeholder="3"
           />
-          <button className="btn" onClick={generateQuestions}>✨ إنشاء الأسئلة</button>
+          <button className="btn" onClick={generateQuestions}>✨ {t('examAdd.generateQuestions')}</button>
         </div>
 
         {showCopySection && (
           <div className="form-group copy-questions">
-            <label htmlFor="questionsCopy">📋 نسخ الأسئلة:</label>
+            <label htmlFor="questionsCopy">📋 {t('examAdd.pasteFormatLabel')}:</label>
             <textarea 
               id="questionsCopy"
               value={questionsCopy}
               onChange={(e) => setQuestionsCopy(e.target.value)}
               placeholder="@what is the total of 3+2&#10;#2&#10;#3&#10;##5&#10;#4&#10;!2"
             />
-            <button className="btn" onClick={parseCopiedQuestions}>📥 استيراد الأسئلة</button>
+            <button className="btn" onClick={parseCopiedQuestions}>📥 {t('examAdd.processText')}</button>
           </div>
         )}
 
@@ -327,18 +329,18 @@ export default function ExamAdd() {
             <div key={q.id} className="question-block">
               <div className="question-controls">
                 <button className="btn-icon" onClick={() => addOption(q.id)}>
-                  <i className="fas fa-plus"></i> إضافة اختيار
+                  <i className="fas fa-plus"></i> {t('examAdd.addOption')}
                 </button>
                 <button className="btn-icon" onClick={() => removeOption(q.id)}>
-                  <i className="fas fa-minus"></i> حذف اختيار
+                  <i className="fas fa-minus"></i> {t('examAdd.removeOption')}
                 </button>
                 <button 
                   className={`btn-icon ${q.isMultiple ? 'active' : ''}`}
                   onClick={() => toggleMultipleAnswers(q.id)}
                 >
-                  <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
+                  <i className="fas fa-check-double"></i> {q.isMultiple ? (lang === 'ar' ? 'إجابة واحدة' : 'Single Answer') : t('examAdd.multipleAnswersLabel')}
                 </button>
-                <span>النقاط:</span>
+                <span>{t('examAdd.pointsLabel')}</span>
                 <input 
                   type="number" 
                   min="1"
@@ -348,14 +350,14 @@ export default function ExamAdd() {
                 />
               </div>
 
-              <label>❓ السؤال {i + 1}:</label>
+              <label>❓ {t('examAdd.questionLabel')} {i + 1}:</label>
               <textarea 
                 value={q.question}
                 onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
-                placeholder="اكتب السؤال هنا..."
+                placeholder="..."
               />
 
-              <label>📋 الاختيارات:</label>
+              <label>📋 {t('examAdd.optionsLabel')}:</label>
               <div className="options-wrapper">
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx} className="option-container">
@@ -363,14 +365,14 @@ export default function ExamAdd() {
                       type="text"
                       value={opt}
                       onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
-                      placeholder={`الخيار ${optIdx + 1}`}
+                      placeholder={`${t('examAdd.syntaxOption')} ${optIdx + 1}`}
                       className="option-input"
                     />
                   </div>
                 ))}
               </div>
 
-              <label>✅ الإجابة الصحيحة:</label>
+              <label>✅ {t('examAdd.syntaxCorrect')}:</label>
               <div className="answers-wrapper">
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx}>
@@ -407,29 +409,29 @@ export default function ExamAdd() {
 
         {questions.length > 0 && (
           <button className="btn btn-save" onClick={saveExam} disabled={saving}>
-            {saving ? '⏳ جاري الحفظ...' : '💾 حفظ ومعاينة الامتحان'}
+            {saving ? `⏳ ${t('common.loading')}...` : t('examAdd.saveExam')}
           </button>
         )}
 
         {showSuccess && (
           <div className="success-message">
-            🎉 تم حفظ الامتحان بنجاح! سيتم توجيهك إلى صفحة الامتحانات...
+            🎉 {t('examAdd.saveSuccess')}
           </div>
         )}
 
         {showPreview && previewData && (
           <div className="preview">
-            <h2>🧪 المعاينة:</h2>
-            <h3>📝 الامتحان رقم {previewData.number}</h3>
-            <p><strong>العنوان:</strong> {previewData.title}</p>
-            <p><strong>المدة:</strong> {previewData.duration} دقيقة</p>
-            <p><strong>عدد المحاولات:</strong> {previewData.maxAttempts}</p>
-            <p><strong>الفترة المتاحة:</strong> {previewData.examDurationHours} ساعة</p>
-            <p><strong>إجمالي النقاط:</strong> {previewData.totalPoints}</p>
+            <h2>🧪 {t('examAdd.previewModalTitle')}:</h2>
+            <h3>📝 {t('examAdd.title')} #{previewData.number}</h3>
+            <p><strong>{t('examAdd.examTitleLabel')}:</strong> {previewData.title}</p>
+            <p><strong>{t('examAdd.previewDuration')}:</strong> {previewData.duration}</p>
+            <p><strong>{t('examAdd.previewMaxAttempts')}:</strong> {previewData.maxAttempts}</p>
+            <p><strong>{t('examAdd.previewAvailable')}:</strong> {previewData.examDurationHours}</p>
+            <p><strong>{t('examAdd.pointsLabel')}:</strong> {previewData.totalPoints}</p>
             <hr />
             {previewData.questions.map((q, idx) => (
               <div key={idx} className="question-block preview-question">
-                <strong>س{idx + 1} ({q.points} نقطة): {q.question}</strong>
+                <strong>{t('common.question')} {idx + 1} ({q.points} {t('common.point')}): {q.question}</strong>
                 <br /><br />
                 {q.options.map((opt, i) => (
                   <div 
