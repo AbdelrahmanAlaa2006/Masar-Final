@@ -498,14 +498,20 @@ function shapeVideo(row) {
                   <YouTubePlayer
                     key={selectedPart.id}
                     videoId={selectedPart.youtubeId}
-                    onProgress={({ currentTime }) => {
+                    initialWatchedSeconds={
+                      progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
+                    }
+                    onProgress={({ watchedSeconds }) => {
                       // Students only — admins shouldn't pollute progress rows.
                       if (userRole === 'admin' || !currentUser?.id) return
+                      // We store ACTUAL watched time (not currentTime), so a
+                      // student who scrubs from 0:10 → 9:00 doesn't get 9 mins
+                      // credited. The 5s skip button does count (see player).
                       updatePartProgress({
                         student_id: currentUser.id,
                         video_id: currentVideo.id,
                         part_id: selectedPart.id,
-                        seconds: currentTime,
+                        seconds: watchedSeconds,
                       }).then((row) => {
                         if (!row) return
                         setProgressRows(prev => {

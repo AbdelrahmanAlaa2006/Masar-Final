@@ -67,6 +67,9 @@ export default function YouTubePlayer({
   onReady,
   onProgress,
   startMuted = false,
+  // Seed the watched-seconds counter so a returning student keeps their
+  // already-credited time. We never lower this — only raise.
+  initialWatchedSeconds = 0,
 }) {
   const hostRef = useRef(null)          // the <div> we mount the iframe on
   const wrapRef = useRef(null)          // the outer container (fullscreen target)
@@ -171,9 +174,24 @@ export default function YouTubePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId])
 
-  // Time + buffer polling loop (YT has no time-update event).
-  // Also throttles `onProgress` callbacks to ~once every 5s while playing,
-  // so the parent can persist watched-seconds without spamming the network.
+  // ── Real watch-time tracking ───────────────────────────────
+  // Goal: count seconds the student ACTUALLY watched. Skipping forward
+  // with the scrubber must NOT add fake watch time, but the explicit
+  // ±5s/±10s skip buttons SHOULD count (per the product spec).
+  //
+  // Approach on each tick:
+  //   - Measure delta_video = currentTime - lastVideoTime
+  //   - Measure delta_real  = (now - lastTickTime) / 1000
+  //   - expected = delta_real * playbackRate  (handles 1.25/1.5/2x)
+  //   - If |delta_video - expected| ≤ 1.0s → natural playback,
+  //     credit `expected` (caps at delta_video so we never over-credit).
+  //   - Otherwise it's a seek. If a skip-button just fired we still
+  //     credit its magnitude (consumed via `pendingSkipCreditRef`).
+  //     If not (= mouse-scrub), credit nothing.
+  const watchedRef        = useRef(initialWatchedSeconds || 0)
+  const lastTickRef       = useRef({ realMs: 0, videoSec: 0 })
+  const pendingSkipCreditRef = useRef(0) // seconds to credit on next jump
+
   const lastProgressRef = useRef({ t: 0, secs: 0 })
   useEffect(() => {
     function tick() {
@@ -182,10 +200,39 @@ export default function YouTubePlayer({
         try {
           const t = p.getCurrentTime() || 0
           const d = p.getDuration?.() || 0
+          const rate = (typeof p.getPlaybackRate === 'function')
+            ? (p.getPlaybackRate() || 1) : 1
           setCurrent(t)
           const frac = p.getVideoLoadedFraction?.() || 0
           setBuffered(d * frac)
-          // Throttled progress emission
+
+          // Watched-time accounting. Only do it while the player is
+          // actually PLAYING — pausing shouldn't accrue time.
+          const ytState = (typeof p.getPlayerState === 'function') ? p.getPlayerState() : -1
+          const isPlayingNow = ytState === 1 // YT.PlayerState.PLAYING
+          const nowMs = performance.now()
+          const last = lastTickRef.current
+          if (last.realMs && isPlayingNow) {
+            const dReal  = (nowMs - last.realMs) / 1000
+            const dVideo = t - last.videoSec
+            const expected = dReal * rate
+            // Natural playback: video advanced by roughly (rate × dt).
+            if (Math.abs(dVideo - expected) <= 1.0 && dVideo >= 0) {
+              watchedRef.current += Math.min(expected, Math.max(0, dVideo))
+            } else {
+              // It's a jump (skip). Credit only if it was triggered by
+              // one of our explicit skip buttons.
+              const credit = pendingSkipCreditRef.current
+              if (credit > 0) {
+                watchedRef.current += credit
+                pendingSkipCreditRef.current = 0
+              }
+              // Mouse-scrub jumps fall through with zero credit.
+            }
+          }
+          lastTickRef.current = { realMs: nowMs, videoSec: t }
+
+          // Throttled progress emission — every ~5s of wall clock.
           if (typeof onProgress === 'function') {
             const now = Date.now()
             if (
@@ -193,7 +240,13 @@ export default function YouTubePlayer({
               Math.abs(t - lastProgressRef.current.secs) >= 1
             ) {
               lastProgressRef.current = { t: now, secs: t }
-              try { onProgress({ currentTime: t, duration: d }) } catch {}
+              try {
+                onProgress({
+                  currentTime: t,
+                  duration: d,
+                  watchedSeconds: Math.floor(watchedRef.current),
+                })
+              } catch {}
             }
           }
         } catch {}
@@ -225,12 +278,17 @@ export default function YouTubePlayer({
 
   // Seek by a delta relative to where we are *right now* (not the last
   // polled `current`, which may be up to a frame stale). Used by the
-  // double-tap handler.
-  const seekBy = useCallback((delta) => {
+  // double-tap handler and the ±5s buttons.
+  //
+  // `credit` (seconds) tells the watched-time tracker how much to add
+  // for this jump — pass the magnitude of the skip for explicit user
+  // actions (button taps, double-tap), zero for silent seeks.
+  const seekBy = useCallback((delta, credit = 0) => {
     const p = playerRef.current; if (!p) return
     const now = (typeof p.getCurrentTime === 'function') ? p.getCurrentTime() : current
     const d = (typeof p.getDuration === 'function' && p.getDuration()) || duration
     const next = Math.max(0, Math.min(d || 0, now + delta))
+    if (credit > 0) pendingSkipCreditRef.current = credit
     p.seekTo(next, true)
     setCurrent(next)
   }, [current, duration])
@@ -316,8 +374,9 @@ export default function YouTubePlayer({
           const last = lastTapRef.current
           if (last.t && now - last.t < DOUBLE_TAP_MS && last.side === side) {
             // Double-tap: seek and flash, suppress play/pause.
+            // Credit the SEEK_STEP magnitude as watched (intentional UI action).
             const delta = side === 'left' ? -SEEK_STEP : SEEK_STEP
-            seekBy(delta)
+            seekBy(delta, SEEK_STEP)
             setSeekFlash({ side, key: now })
             lastTapRef.current = { t: 0, side: null }
             return
@@ -415,6 +474,20 @@ export default function YouTubePlayer({
           zIndex: 4,
         }}
       >
+        {/* Skip back 5s — counts as watched */}
+        <button
+          onClick={() => seekBy(-5, 5)}
+          aria-label="Back 5 seconds"
+          title="إرجاع 5 ثوانٍ"
+          style={{ ...iconBtn, position: 'relative' }}
+        >
+          <i className="fas fa-rotate-left"></i>
+          <span style={{
+            position: 'absolute', fontSize: 8, fontWeight: 800,
+            marginTop: 1,
+          }}>5</span>
+        </button>
+
         {/* Play / Pause */}
         <button
           onClick={togglePlay}
@@ -422,6 +495,20 @@ export default function YouTubePlayer({
           style={iconBtn}
         >
           <i className={`fas ${playing ? 'fa-pause' : 'fa-play'}`}></i>
+        </button>
+
+        {/* Skip forward 5s — counts as watched */}
+        <button
+          onClick={() => seekBy(5, 5)}
+          aria-label="Forward 5 seconds"
+          title="تقديم 5 ثوانٍ"
+          style={{ ...iconBtn, position: 'relative' }}
+        >
+          <i className="fas fa-rotate-right"></i>
+          <span style={{
+            position: 'absolute', fontSize: 8, fontWeight: 800,
+            marginTop: 1,
+          }}>5</span>
         </button>
 
         {/* Time */}
