@@ -1,155 +1,192 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ExamsGroupReport.css'
+import { listStudents } from '@backend/profilesApi'
+import { listExams } from '@backend/examsApi'
+import { supabase } from '@backend/supabase'
+import { useI18n } from '../i18n'
+
+const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
 export default function ExamsGroupReport() {
+  const { t, lang } = useI18n()
   const navigate = useNavigate()
+
+  const GRADE_LABEL = {
+    'first-prep':  t('grades.first'),
+    'second-prep': t('grades.second'),
+    'third-prep':  t('grades.third'),
+  }
+
+  const [students, setStudents] = useState([])
+  const [exams, setExams]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState(null)
+
   const [currentGrade, setCurrentGrade] = useState('')
-  const [currentGroup, setCurrentGroup] = useState('')
-  const [currentExam, setCurrentExam] = useState('')
+  const [currentExam, setCurrentExam]   = useState('') // exam id
   const [currentFilter, setCurrentFilter] = useState('all')
+
   const [allStudentsData, setAllStudentsData] = useState([])
   const [displayedStudents, setDisplayedStudents] = useState([])
+  const [reportLoading, setReportLoading] = useState(false)
 
-  const groupsByGrade = {
-    'الأول الإعدادي': ['مجموعة السبت 10ص', 'مجموعة الثلاثاء 3م', 'مجموعة الخميس 5م'],
-    'الثاني الإعدادي': ['مجموعة السبت 12م', 'مجموعة الأحد 2م', 'مجموعة الثلاثاء 5م'],
-    'الثالث الإعدادي': ['مجموعة السبت 4م', 'مجموعة الاثنين 6م', 'مجموعة الأربعاء 7م']
-  }
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [s, e] = await Promise.all([listStudents(), listExams()])
+        if (cancelled) return
+        setStudents(s)
+        setExams(e)
+      } catch (err) {
+        if (!cancelled) setLoadError(err.message || t('common.errorLoading') || 'تعذر تحميل البيانات')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
-  const studentsByGroup = {
-    'مجموعة السبت 10ص': [
-      { name: 'أحمد علي محمد', id: 'ST001' },
-      { name: 'سارة محمد أحمد', id: 'ST002' },
-      { name: 'محمود إبراهيم حسن', id: 'ST003' },
-      { name: 'فاطمة يوسف علي', id: 'ST004' }
-    ],
-    'مجموعة الثلاثاء 3م': [
-      { name: 'عمر خالد محمد', id: 'ST005' },
-      { name: 'نور الهدى أحمد', id: 'ST006' },
-      { name: 'يوسف عبدالله', id: 'ST007' }
-    ],
-    'مجموعة الخميس 5م': [
-      { name: 'ليلى حسام الدين', id: 'ST008' },
-      { name: 'كريم مصطفى', id: 'ST009' },
-      { name: 'دينا محمد علي', id: 'ST010' }
-    ],
-    'مجموعة السبت 12م': [
-      { name: 'ندى حسن محمد', id: 'ST011' },
-      { name: 'ياسر جمال أحمد', id: 'ST012' },
-      { name: 'رنا يوسف إبراهيم', id: 'ST013' },
-      { name: 'حسام محمد علي', id: 'ST014' }
-    ],
-    'مجموعة الأحد 2م': [
-      { name: 'مريم أحمد حسن', id: 'ST015' },
-      { name: 'عبدالرحمن محمد', id: 'ST016' },
-      { name: 'هبة سامح علي', id: 'ST017' }
-    ],
-    'مجموعة الثلاثاء 5م': [
-      { name: 'محمد أحمد سعد', id: 'ST018' },
-      { name: 'آية محمود حسن', id: 'ST019' },
-      { name: 'أسامة خالد محمد', id: 'ST020' }
-    ],
-    'مجموعة السبت 4م': [
-      { name: 'زينب علي أحمد', id: 'ST021' },
-      { name: 'أحمد محمد إبراهيم', id: 'ST022' },
-      { name: 'لمياء حسن علي', id: 'ST023' }
-    ],
-    'مجموعة الاثنين 6م': [
-      { name: 'كارم يوسف محمد', id: 'ST024' },
-      { name: 'نهى أحمد حسن', id: 'ST025' },
-      { name: 'عماد محمود علي', id: 'ST026' }
-    ],
-    'مجموعة الأربعاء 7م': [
-      { name: 'إسلام محمد أحمد', id: 'ST027' },
-      { name: 'روان علي حسن', id: 'ST028' },
-      { name: 'تامر خالد يوسف', id: 'ST029' }
-    ]
-  }
+  const availableGrades = useMemo(() => {
+    const set = new Set(students.map(s => s.grade).filter(Boolean))
+    return GRADE_ORDER.filter(g => set.has(g))
+  }, [students])
 
-  const exams = [
-    'امتحان الرياضيات - الوحدة الأولى',
-    'امتحان العلوم - الفصل الأول',
-    'امتحان الجبر المتقدم',
-    'امتحان الهندسة'
-  ]
+  const examsForGrade = useMemo(
+    () => exams.filter(e => e.grade === currentGrade),
+    [exams, currentGrade]
+  )
+  const studentsForGrade = useMemo(
+    () => students.filter(s => s.grade === currentGrade),
+    [students, currentGrade]
+  )
 
   const selectGrade = (grade) => {
     setCurrentGrade(grade)
-    setCurrentGroup('')
     setCurrentExam('')
     setAllStudentsData([])
     setDisplayedStudents([])
     setCurrentFilter('all')
   }
 
-  const selectGroup = (group) => {
-    setCurrentGroup(group)
-    setCurrentExam('')
-    setAllStudentsData([])
-    setDisplayedStudents([])
-    setCurrentFilter('all')
+  const handleExamChange = (examId) => {
+    setCurrentExam(examId)
+    if (examId) loadReport(examId)
+    else { setAllStudentsData([]); setDisplayedStudents([]) }
   }
 
-  const handleExamChange = (exam) => {
-    setCurrentExam(exam)
-    if (exam) loadReport(exam)
-  }
+  const loadReport = async (examId) => {
+    const exam = exams.find(ex => ex.id === examId)
+    if (!exam) return
+    const maxScore = exam.total_points || 0
+    const maxAttempts = exam.max_attempts || 1
+    const gradeStudents = studentsForGrade
+    if (gradeStudents.length === 0) {
+      setAllStudentsData([]); setDisplayedStudents([]); return
+    }
 
-  const loadReport = (exam) => {
-    const students = studentsByGroup[currentGroup] || []
-    const newData = students.map((student) => {
-      const score = Math.floor(Math.random() * 101)
-      const maxScore = 100
-      const date = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
-      const attempts = Math.floor(Math.random() * 3) + 1
-      const maxAttempts = 3
+    setReportLoading(true)
+    try {
+      const ids = gradeStudents.map(s => s.id)
+      const { data: attempts, error } = await supabase
+        .from('exam_attempts')
+        .select('student_id, score, max_score, submitted_at')
+        .eq('exam_id', examId)
+        .in('student_id', ids)
+        .not('submitted_at', 'is', null)
+      if (error) throw error
 
-      let rating = 'ممتاز'
-      if (score < 60) rating = 'يحتاج تحسين'
-      else if (score < 80) rating = 'جيد'
-
-      return {
-        name: student.name,
-        id: student.id,
-        group: currentGroup,
-        exam,
-        date: date.toLocaleDateString('ar-EG'),
-        score,
-        maxScore,
-        result: score >= 60 ? 'نجح' : 'لم ينجح',
-        rating,
-        attempts,
-        maxAttempts,
-        status: score >= 60 ? 'passed' : 'failed'
+      // group attempts by student — keep best score + count
+      const byStudent = {}
+      for (const a of (attempts || [])) {
+        const cur = byStudent[a.student_id] || { best: null, count: 0, latest: 0 }
+        cur.count += 1
+        const t = a.submitted_at ? new Date(a.submitted_at).getTime() : 0
+        if (t > cur.latest) cur.latest = t
+        if (!cur.best || (a.score || 0) > (cur.best.score || 0)) cur.best = a
+        byStudent[a.student_id] = cur
       }
-    })
 
-    setAllStudentsData(newData)
-    setDisplayedStudents(newData)
+      const rows = gradeStudents.map(stu => {
+        const entry = byStudent[stu.id]
+        const attemptsUsed = entry?.count || 0
+        const bestRaw = entry?.best?.score || 0
+        const bestMax = entry?.best?.max_score || maxScore || 100
+        const pct = bestMax > 0 ? Math.round((bestRaw / bestMax) * 100) : 0
+
+        let rating = lang === 'ar' ? 'ممتاز' : 'Excellent'
+        if (!entry)              rating = t('reports.resultNotTaken') || (lang === 'ar' ? 'لم يؤدِ' : 'Not Taken')
+        else if (pct < 60)       rating = lang === 'ar' ? 'يحتاج تحسين' : 'Needs Improvement'
+        else if (pct < 80)       rating = lang === 'ar' ? 'جيد' : 'Good'
+
+        const status = !entry ? 'not_taken' : (pct >= 60 ? 'passed' : 'failed')
+        const result = !entry ? (t('reports.resultNotTaken') || (lang === 'ar' ? 'لم يؤدِ' : 'Not Taken')) : (pct >= 60 ? (t('reports.resultPassed') || (lang === 'ar' ? 'نجح' : 'Passed')) : (t('reports.resultFailed') || (lang === 'ar' ? 'لم ينجح' : 'Failed')))
+        const date = entry?.latest
+          ? new Date(entry.latest).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')
+          : '—'
+
+        return {
+          name: stu.name,
+          id: stu.phone || stu.id.slice(0, 8),
+          group: GRADE_LABEL[stu.grade] || '',
+          exam: exam.title,
+          date,
+          score: pct,      // percentage, used by summary/filter
+          rawScore: bestRaw,
+          maxScore: bestMax,
+          result,
+          rating,
+          attempts: attemptsUsed,
+          maxAttempts,
+          status,
+        }
+      })
+
+      setAllStudentsData(rows)
+      setDisplayedStudents(rows)
+    } catch (e) {
+      setLoadError(e.message || (lang === 'ar' ? 'تعذر تحميل تقرير الامتحان' : 'Failed to load report'))
+    } finally {
+      setReportLoading(false)
+    }
   }
 
   const filterStudents = (filter) => {
     setCurrentFilter(filter)
     let filteredData = allStudentsData
     switch (filter) {
-      case 'passed': filteredData = allStudentsData.filter((s) => s.score >= 60); break
-      case 'failed': filteredData = allStudentsData.filter((s) => s.score < 60); break
-      case 'high': filteredData = allStudentsData.filter((s) => s.score >= 80); break
-      default: filteredData = allStudentsData
+      case 'passed': filteredData = allStudentsData.filter((s) => s.status === 'passed'); break
+      case 'failed': filteredData = allStudentsData.filter((s) => s.status === 'failed'); break
+      case 'high':   filteredData = allStudentsData.filter((s) => s.score >= 80 && s.status !== 'not_taken'); break
+      default:       filteredData = allStudentsData
     }
     setDisplayedStudents(filteredData)
   }
 
-  // Summary stats
-  const totalStudents = allStudentsData.length
-  const passedCount = allStudentsData.filter((s) => s.score >= 60).length
-  const failedCount = allStudentsData.filter((s) => s.score < 60).length
-  const excellentCount = allStudentsData.filter((s) => s.score >= 80).length
-  const avgScore = totalStudents > 0
-    ? Math.round(allStudentsData.reduce((s, x) => s + x.score, 0) / totalStudents)
+  // Summary stats (only over students who took the exam)
+  const tookExam = allStudentsData.filter(s => s.status !== 'not_taken')
+  const totalStudents  = allStudentsData.length
+  const passedCount    = allStudentsData.filter((s) => s.status === 'passed').length
+  const failedCount    = allStudentsData.filter((s) => s.status === 'failed').length
+  const excellentCount = allStudentsData.filter((s) => s.score >= 80 && s.status !== 'not_taken').length
+  const avgScore = tookExam.length > 0
+    ? Math.round(tookExam.reduce((s, x) => s + x.score, 0) / tookExam.length)
     : 0
-  const passRate = totalStudents > 0 ? Math.round((passedCount / totalStudents) * 100) : 0
+  const passRate = tookExam.length > 0 ? Math.round((passedCount / tookExam.length) * 100) : 0
+
+  if (loading) {
+    return (
+      <main className="egr-page">
+        <div className="egr-container">
+          <div className="egr-header" style={{textAlign:'center', padding:'40px'}}>
+            <i className="fas fa-spinner fa-spin" style={{fontSize:'2rem'}}></i>
+            <p>{t('common.loading')}...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="egr-page">
@@ -157,8 +194,8 @@ export default function ExamsGroupReport() {
 
         {/* Back */}
         <button className="egr-back-btn" onClick={() => navigate(-1)}>
-          <i className="fas fa-arrow-right"></i>
-          رجوع
+          <i className={`fas ${lang === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i>
+          {t('common.back')}
         </button>
 
         {/* Header */}
@@ -166,9 +203,15 @@ export default function ExamsGroupReport() {
           <div className="egr-header-icon">
             <i className="fas fa-chart-pie"></i>
           </div>
-          <h1>التقرير الجماعي للامتحانات</h1>
-          <p>تحليل نتائج الطلاب وأداء المجموعات الدراسية</p>
+          <h1>{t('groupExams.title') || (lang === 'ar' ? 'التقرير الجماعي للامتحانات' : 'Group Exams Report')}</h1>
+          <p>{lang === 'ar' ? 'تحليل نتائج الطلاب المسجلين وأداء كل صف' : 'Analysis of student results and grade performance'}</p>
         </div>
+
+        {loadError && (
+          <div className="egr-header" style={{background:'#fee2e2', color:'#991b1b', padding:'12px', borderRadius:12}}>
+            <p style={{margin:0}}>{loadError}</p>
+          </div>
+        )}
 
         {/* Stepper */}
         <div className="egr-stepper">
@@ -176,21 +219,14 @@ export default function ExamsGroupReport() {
             <div className="egr-step-num">
               {currentGrade ? <i className="fas fa-check"></i> : 1}
             </div>
-            <span>الصف</span>
+            <span>{t('profile.grade') || (lang === 'ar' ? 'الصف' : 'Grade')}</span>
           </div>
           <div className="egr-step-line"></div>
-          <div className={`egr-step ${currentGroup ? 'done' : currentGrade ? 'active' : ''}`}>
+          <div className={`egr-step ${currentExam ? 'done' : currentGrade ? 'active' : ''}`}>
             <div className="egr-step-num">
-              {currentGroup ? <i className="fas fa-check"></i> : 2}
+              {currentExam ? <i className="fas fa-check"></i> : 2}
             </div>
-            <span>المجموعة</span>
-          </div>
-          <div className="egr-step-line"></div>
-          <div className={`egr-step ${currentExam ? 'done' : currentGroup ? 'active' : ''}`}>
-            <div className="egr-step-num">
-              {currentExam ? <i className="fas fa-check"></i> : 3}
-            </div>
-            <span>الامتحان</span>
+            <span>{t('reports.videoStep') || (lang === 'ar' ? 'الامتحان' : 'Exam')}</span>
           </div>
         </div>
 
@@ -198,65 +234,63 @@ export default function ExamsGroupReport() {
         <div className="egr-section">
           <h2 className="egr-section-title">
             <i className="fas fa-school"></i>
-            اختر الصف الدراسي
+            {lang === 'ar' ? 'اختر الصف الدراسي' : 'Select Grade'}
           </h2>
-          <div className="egr-chips">
-            {Object.keys(groupsByGrade).map((grade) => (
-              <button
-                key={grade}
-                className={`egr-chip ${currentGrade === grade ? 'active' : ''}`}
-                onClick={() => selectGrade(grade)}
-              >
-                <i className="fas fa-graduation-cap"></i>
-                {grade}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Group */}
-        {currentGrade && (
-          <div className="egr-section">
-            <h2 className="egr-section-title">
-              <i className="fas fa-users"></i>
-              اختر المجموعة
-            </h2>
+          {availableGrades.length === 0 ? (
+            <p style={{textAlign:'center', color:'#6b7280'}}>{lang === 'ar' ? 'لا يوجد طلاب مسجلون بعد.' : 'No enrolled students yet.'}</p>
+          ) : (
             <div className="egr-chips">
-              {groupsByGrade[currentGrade].map((group) => (
+              {availableGrades.map((grade) => (
                 <button
-                  key={group}
-                  className={`egr-chip ${currentGroup === group ? 'active' : ''}`}
-                  onClick={() => selectGroup(group)}
+                  key={grade}
+                  className={`egr-chip ${currentGrade === grade ? 'active' : ''}`}
+                  onClick={() => selectGrade(grade)}
                 >
-                  <i className="fas fa-layer-group"></i>
-                  {group}
+                  <i className="fas fa-graduation-cap"></i>
+                  {GRADE_LABEL[grade]}
+                  <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                    {students.filter(s => s.grade === grade).length}
+                  </span>
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Exam */}
-        {currentGroup && (
+        {currentGrade && (
           <div className="egr-section">
             <h2 className="egr-section-title">
               <i className="fas fa-file-alt"></i>
-              اختر الامتحان
+              {lang === 'ar' ? 'اختر الامتحان' : 'Select Exam'}
             </h2>
-            <div className="egr-select-wrap">
-              <i className="fas fa-clipboard-list egr-select-icon"></i>
-              <select
-                className="egr-select"
-                value={currentExam}
-                onChange={(e) => handleExamChange(e.target.value)}
-              >
-                <option value="">-- اختر الامتحان --</option>
-                {exams.map((exam) => (
-                  <option key={exam} value={exam}>{exam}</option>
-                ))}
-              </select>
-              <i className="fas fa-chevron-down egr-select-arrow"></i>
-            </div>
+            {examsForGrade.length === 0 ? (
+              <p style={{textAlign:'center', color:'#6b7280'}}>{lang === 'ar' ? 'لا توجد امتحانات منشورة لهذا الصف.' : 'No exams published for this grade.'}</p>
+            ) : (
+              <div className="egr-select-wrap">
+                <i className="fas fa-clipboard-list egr-select-icon"></i>
+                <select
+                  className="egr-select"
+                  value={currentExam}
+                  onChange={(e) => handleExamChange(e.target.value)}
+                >
+                  <option value="">{t('groupExams.placeholder') || (lang === 'ar' ? '-- اختر الامتحان --' : '-- Select Exam --')}</option>
+                  {examsForGrade.map((exam) => (
+                    <option key={exam.id} value={exam.id}>
+                      {exam.number ? `${exam.number} — ` : ''}{exam.title}
+                    </option>
+                  ))}
+                </select>
+                <i className="fas fa-chevron-down egr-select-arrow"></i>
+              </div>
+            )}
+          </div>
+        )}
+
+        {reportLoading && (
+          <div style={{textAlign:'center', padding:'20px'}}>
+            <i className="fas fa-spinner fa-spin"></i>
+            <span style={{marginInlineStart:8}}>{t('common.computing') || (lang === 'ar' ? 'جاري حساب التقرير...' : 'Computing report...')}</span>
           </div>
         )}
 
@@ -266,32 +300,32 @@ export default function ExamsGroupReport() {
             <div className="egr-sum-card">
               <i className="fas fa-users egr-sum-icon" style={{color:'var(--primary)'}}></i>
               <span className="egr-sum-val" style={{color:'var(--primary)'}}>{totalStudents}</span>
-              <span className="egr-sum-lbl">إجمالي الطلاب</span>
+              <span className="egr-sum-lbl">{t('groupExams.totalStudents') || (lang === 'ar' ? 'إجمالي الطلاب' : 'Total Students')}</span>
             </div>
             <div className="egr-sum-card">
               <i className="fas fa-check-circle egr-sum-icon" style={{color:'#48bb78'}}></i>
               <span className="egr-sum-val" style={{color:'#48bb78'}}>{passedCount}</span>
-              <span className="egr-sum-lbl">ناجحون</span>
+              <span className="egr-sum-lbl">{lang === 'ar' ? 'ناجحون' : 'Passed'}</span>
             </div>
             <div className="egr-sum-card">
               <i className="fas fa-times-circle egr-sum-icon" style={{color:'#ef4444'}}></i>
               <span className="egr-sum-val" style={{color:'#ef4444'}}>{failedCount}</span>
-              <span className="egr-sum-lbl">راسبون</span>
+              <span className="egr-sum-lbl">{lang === 'ar' ? 'راسبون' : 'Failed'}</span>
             </div>
             <div className="egr-sum-card">
               <i className="fas fa-star egr-sum-icon" style={{color:'#f59e0b'}}></i>
               <span className="egr-sum-val" style={{color:'#f59e0b'}}>{excellentCount}</span>
-              <span className="egr-sum-lbl">ممتازون</span>
+              <span className="egr-sum-lbl">{lang === 'ar' ? 'ممتازون' : 'Excellent'}</span>
             </div>
             <div className="egr-sum-card">
               <i className="fas fa-percentage egr-sum-icon" style={{color:'#ed8936'}}></i>
               <span className="egr-sum-val" style={{color:'#ed8936'}}>{avgScore}%</span>
-              <span className="egr-sum-lbl">متوسط الدرجات</span>
+              <span className="egr-sum-lbl">{t('groupExams.avgScore') || (lang === 'ar' ? 'متوسط الدرجات' : 'Avg Score')}</span>
             </div>
             <div className="egr-sum-card">
               <i className="fas fa-trophy egr-sum-icon" style={{color:'var(--secondary)'}}></i>
               <span className="egr-sum-val" style={{color:'var(--secondary)'}}>{passRate}%</span>
-              <span className="egr-sum-lbl">نسبة النجاح</span>
+              <span className="egr-sum-lbl">{t('groupExams.successRate') || (lang === 'ar' ? 'نسبة النجاح' : 'Pass Rate')}</span>
             </div>
           </div>
         )}
@@ -301,14 +335,14 @@ export default function ExamsGroupReport() {
           <div className="egr-section">
             <h2 className="egr-section-title">
               <i className="fas fa-filter"></i>
-              تصفية النتائج
+              {lang === 'ar' ? 'تصفية النتائج' : 'Filter Results'}
             </h2>
             <div className="egr-chips">
               {[
-                { key: 'all', label: 'الجميع', icon: 'fa-th-list' },
-                { key: 'passed', label: 'ناجحون (≥60%)', icon: 'fa-check' },
-                { key: 'failed', label: 'راسبون (<60%)', icon: 'fa-times' },
-                { key: 'high', label: 'ممتازون (≥80%)', icon: 'fa-star' },
+                { key: 'all', label: t('groupExams.filterAll') || (lang === 'ar' ? 'الجميع' : 'All'), icon: 'fa-th-list' },
+                { key: 'passed', label: t('groupExams.filterPassed') || (lang === 'ar' ? 'ناجحون (≥60%)' : 'Passed (≥60%)'), icon: 'fa-check' },
+                { key: 'failed', label: t('groupExams.filterFailed') || (lang === 'ar' ? 'راسبون (<60%)' : 'Failed (<60%)'), icon: 'fa-times' },
+                { key: 'high', label: t('groupExams.filterHigh') || (lang === 'ar' ? 'ممتازون (≥80%)' : 'Excellent (≥80%)'), icon: 'fa-star' },
               ].map(({ key, label, icon }) => (
                 <button
                   key={key}
@@ -329,12 +363,12 @@ export default function ExamsGroupReport() {
             <div className="egr-card-header">
               <h2 className="egr-card-title">
                 <i className="fas fa-clipboard-list"></i>
-                تقرير النتائج التفصيلي
+                {lang === 'ar' ? 'تقرير النتائج التفصيلي' : 'Detailed Results Report'}
                 <span className="egr-count-badge">{displayedStudents.length}</span>
               </h2>
               <button onClick={() => window.print()} className="egr-print-btn">
                 <i className="fas fa-print"></i>
-                طباعة التقرير
+                {t('reports.printReport') || (lang === 'ar' ? 'طباعة التقرير' : 'Print Report')}
               </button>
             </div>
 
@@ -343,19 +377,19 @@ export default function ExamsGroupReport() {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>اسم الطالب</th>
-                    <th>رقم الطالب</th>
-                    <th>المجموعة</th>
-                    <th>التاريخ</th>
-                    <th>النتيجة</th>
-                    <th>التقييم</th>
-                    <th>المحاولات</th>
-                    <th>الدرجة</th>
+                    <th>{t('reports.studentNameCol') || (lang === 'ar' ? 'اسم الطالب' : 'Student Name')}</th>
+                    <th>{t('reports.studentIdCol') || (lang === 'ar' ? 'رقم الطالب' : 'Student ID')}</th>
+                    <th>{t('profile.grade') || (lang === 'ar' ? 'الصف' : 'Grade')}</th>
+                    <th>{lang === 'ar' ? 'آخر تسليم' : 'Last Submission'}</th>
+                    <th>{lang === 'ar' ? 'النتيجة' : 'Result'}</th>
+                    <th>{lang === 'ar' ? 'التقييم' : 'Rating'}</th>
+                    <th>{t('groupExams.attemptsCol') || (lang === 'ar' ? 'المحاولات' : 'Attempts')}</th>
+                    <th>{t('groupExams.scoreCol') || (lang === 'ar' ? 'الدرجة' : 'Score')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedStudents.map((student, index) => (
-                    <tr key={student.id} className="egr-tr">
+                    <tr key={student.id + index} className="egr-tr">
                       <td className="egr-td-num">{index + 1}</td>
                       <td className="egr-td-name">
                         <div className="egr-name-cell">
@@ -369,13 +403,20 @@ export default function ExamsGroupReport() {
                       <td>{student.group}</td>
                       <td>{student.date}</td>
                       <td>
-                        <span className={`egr-badge ${student.status === 'passed' ? 'egr-badge-passed' : 'egr-badge-failed'}`}>
-                          <i className={`fas ${student.status === 'passed' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                        <span className={`egr-badge ${
+                          student.status === 'passed' ? 'egr-badge-passed' :
+                          student.status === 'failed' ? 'egr-badge-failed' : 'egr-badge-failed'
+                        }`}>
+                          <i className={`fas ${
+                            student.status === 'passed' ? 'fa-check-circle' :
+                            student.status === 'failed' ? 'fa-times-circle' : 'fa-minus-circle'
+                          }`}></i>
                           {student.result}
                         </span>
                       </td>
                       <td>
                         <span className={`egr-rating ${
+                          student.status === 'not_taken' ? 'egr-rating-poor' :
                           student.score >= 80 ? 'egr-rating-excellent' :
                           student.score >= 60 ? 'egr-rating-good' : 'egr-rating-poor'
                         }`}>
@@ -394,7 +435,9 @@ export default function ExamsGroupReport() {
                               style={{ width: `${student.score}%` }}
                             ></div>
                           </div>
-                          <span className="egr-pct-text">{student.score}/{student.maxScore}</span>
+                          <span className="egr-pct-text">
+                            {student.status === 'not_taken' ? '—' : `${student.rawScore}/${student.maxScore}`}
+                          </span>
                         </div>
                       </td>
                     </tr>

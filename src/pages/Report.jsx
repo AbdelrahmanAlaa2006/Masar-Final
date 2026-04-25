@@ -1,63 +1,24 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { listStudents } from '@backend/profilesApi'
+import { useI18n } from '../i18n'
 import './Report.css'
 
-/* Mock student database — same structure used in group reports.
-   In production, replace with a fetch from Supabase. */
-const studentsByGroup = {
-  'مجموعة السبت 10ص': [
-    { name: 'أحمد علي محمد', id: 'ST001' },
-    { name: 'سارة محمد أحمد', id: 'ST002' },
-    { name: 'محمد أحمد', id: 'ST003' },
-    { name: 'فاطمة حسن', id: 'ST004' },
-  ],
-  'مجموعة الثلاثاء 3م': [
-    { name: 'محمود عبد الله', id: 'ST005' },
-    { name: 'منى حسين', id: 'ST006' },
-    { name: 'يوسف إبراهيم', id: 'ST007' },
-  ],
-  'مجموعة الخميس 5م': [
-    { name: 'محمد حسين', id: 'ST008' },
-    { name: 'نور الدين عمر', id: 'ST009' },
-    { name: 'هدى مصطفى', id: 'ST010' },
-  ],
-  'مجموعة الأحد 11ص': [
-    { name: 'كريم سامي', id: 'ST011' },
-    { name: 'ليلى أشرف', id: 'ST012' },
-    { name: 'عمر خالد', id: 'ST013' },
-  ],
-  'مجموعة الإثنين 4م': [
-    { name: 'مريم طارق', id: 'ST014' },
-    { name: 'حسن وليد', id: 'ST015' },
-  ],
-  'مجموعة الأربعاء 6م': [
-    { name: 'دينا فؤاد', id: 'ST016' },
-    { name: 'خالد رضا', id: 'ST017' },
-    { name: 'إيمان سعيد', id: 'ST018' },
-  ],
-}
-
-const groupsByGrade = {
-  'الأول الإعدادي': ['مجموعة السبت 10ص', 'مجموعة الثلاثاء 3م', 'مجموعة الخميس 5م'],
-  'الثاني الإعدادي': ['مجموعة الأحد 11ص', 'مجموعة الإثنين 4م'],
-  'الثالث الإعدادي': ['مجموعة الأربعاء 6م'],
-}
-
-/* Flatten into one searchable list: { name, id, group, prep } */
-function buildAllStudents() {
-  const rows = []
-  Object.entries(groupsByGrade).forEach(([prep, groups]) => {
-    groups.forEach((group) => {
-      ;(studentsByGroup[group] || []).forEach((s) => {
-        rows.push({ ...s, group, prep })
-      })
-    })
-  })
-  return rows
-}
-
+/* Map DB grade enum → Arabic label shown in the UI */
 export default function Report() {
   const navigate = useNavigate()
+  const { t, lang } = useI18n()
+  const GRADE_LABEL = {
+    'first-prep':  t('grades.first-prep'),
+    'second-prep': t('grades.second-prep'),
+    'third-prep':  t('grades.third-prep'),
+  }
+  const [currentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('masar-user')) || null } catch { return null }
+  })
+  const isStudent = currentUser?.role !== 'admin'
+  const studentGradeLabel = GRADE_LABEL[currentUser?.grade] || ''
   const [studentInput, setStudentInput] = useState('')
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -67,7 +28,39 @@ export default function Report() {
   const [pickerQuery, setPickerQuery] = useState('')
   const boxRef = useRef(null)
 
-  const allStudents = useMemo(() => buildAllStudents(), [])
+  /* Real students from Supabase (admin only — RLS lets admins read all profiles).
+     We shape them as { name, id, prep, group, phone, avatar_url } to stay
+     compatible with the existing UI that renders prep/group meta. There is
+     no "group" concept in the MVP schema, so we leave it blank. */
+  const [allStudents, setAllStudents] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError] = useState('')
+
+  useEffect(() => {
+    if (isStudent) return           // students don't need the roster
+    let cancelled = false
+    ;(async () => {
+      try {
+        setStudentsLoading(true)
+        setStudentsError('')
+        const rows = await listStudents()
+        if (cancelled) return
+        setAllStudents(rows.map((r) => ({
+          id:         r.id,
+          name:       r.name || '—',
+          phone:      r.phone || '',
+          prep:       GRADE_LABEL[r.grade] || '—',
+          group:      '',           // no groups in the current schema
+          avatar_url: r.avatar_url,
+        })))
+      } catch (e) {
+        if (!cancelled) setStudentsError(e.message || t('reports.loadingStudents'))
+      } finally {
+        if (!cancelled) setStudentsLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isStudent])
 
   /* close on outside click */
   useEffect(() => {
@@ -132,13 +125,89 @@ export default function Report() {
 
   const navigateToReport = (type, student) => {
     const params = new URLSearchParams({
-      student: student.name,
-      id: student.id,
-      group: student.group,
-      prep: student.prep,
+      student: student.name || '',
+      id: student.id || '',
+      group: student.group || '',
+      prep: student.prep || '',
     }).toString()
     if (type === 'videos') navigate(`/videos-report?${params}`)
     else if (type === 'exams') navigate(`/exams-report?${params}`)
+  }
+
+  /* Student viewing their own report: go in with no URL params.
+     The downstream pages read the logged-in profile from localStorage
+     and Supabase RLS scopes the data to auth.uid() automatically. */
+  const goToMyReport = (type) => {
+    if (type === 'videos') navigate('/videos-report')
+    else if (type === 'exams') navigate('/exams-report')
+  }
+
+  const initials = (name) =>
+    (name || '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+
+  if (isStudent) {
+    return (
+      <main className="report-page">
+        <div className="report-container">
+          <div className="report-header">
+            <div className="report-header-icon"><i className="fas fa-chart-bar"></i></div>
+            <h1>{t('reports.pageTitle')}</h1>
+            <p>{t('reports.videosReportDesc')}</p>
+          </div>
+
+          <div className="report-selected-chip" style={{ marginBottom: 24 }}>
+            <div className="report-selected-avatar">
+              {currentUser?.avatar_url
+                ? <img src={currentUser.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                : initials(currentUser?.name || t('common.student'))}
+            </div>
+            <div className="report-selected-info">
+              <div className="report-selected-name">
+                <i className="fas fa-circle-check"></i>
+                {currentUser?.name || t('common.student')}
+              </div>
+              <div className="report-selected-meta">
+                {studentGradeLabel && (
+                  <span><i className="fas fa-graduation-cap"></i> {studentGradeLabel}</span>
+                )}
+                {currentUser?.phone && (
+                  <span><i className="fas fa-phone"></i> {currentUser.phone}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="report-cards-grid">
+            <div className="report-card" onClick={() => goToMyReport('videos')}>
+              <div className="report-card-icon report-card-icon--blue">
+                <i className="fas fa-play-circle"></i>
+              </div>
+              <div className="report-card-body">
+                <h3>{t('reports.videosReport')}</h3>
+                <p>{t('reports.videosReportDesc')}</p>
+              </div>
+              <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
+            </div>
+
+            <div className="report-card" onClick={() => goToMyReport('exams')}>
+              <div className="report-card-icon report-card-icon--purple">
+                <i className="fas fa-file-alt"></i>
+              </div>
+              <div className="report-card-body">
+                <h3>{t('reports.examsReport')}</h3>
+                <p>{t('reports.examsReportDesc')}</p>
+              </div>
+              <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   const goTo = (type) => {
@@ -179,13 +248,6 @@ export default function Report() {
     else if (type === 'exams') navigate('/exams-group-report')
   }
 
-  const initials = (name) =>
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0])
-      .join('')
 
   return (
     <main className="report-page">
@@ -195,9 +257,20 @@ export default function Report() {
           <div className="report-header-icon">
             <i className="fas fa-chart-bar"></i>
           </div>
-          <h1>تقارير الطلاب</h1>
-          <p>ابحث عن طالب واستعرض تقاريره الدراسية بالتفصيل</p>
+          <h1>{t('reports.adminTitle')}</h1>
+          <p>{t('reports.adminSubtitle')}</p>
         </div>
+
+        {studentsLoading && (
+          <div style={{ textAlign: 'center', padding: 12, color: '#718096' }}>
+            <i className="fas fa-spinner fa-spin"></i> {t('reports.loadingStudents')}
+          </div>
+        )}
+        {studentsError && (
+          <div style={{ textAlign: 'center', padding: 12, color: '#c53030' }}>
+            <i className="fas fa-exclamation-triangle"></i> {studentsError}
+          </div>
+        )}
 
         <div className="report-search-box" ref={boxRef}>
           <div className="report-search-row">
@@ -205,7 +278,7 @@ export default function Report() {
               <i className="fas fa-search report-search-icon"></i>
               <input
                 type="text"
-                placeholder="ابحث بالاسم، رقم الطالب، المجموعة، أو المرحلة..."
+                placeholder={t('reports.searchStudents')}
                 value={studentInput}
                 onChange={(e) => onChange(e.target.value)}
                 onFocus={() => setShowSuggestions(true)}
@@ -216,7 +289,7 @@ export default function Report() {
                   type="button"
                   className="report-clear-btn"
                   onClick={clearSelection}
-                  aria-label="مسح"
+                  aria-label={t('common.clear')}
                 >
                   <i className="fas fa-times"></i>
                 </button>
@@ -253,8 +326,8 @@ export default function Report() {
                 <i className="fas fa-list"></i>
                 <span>
                   {filtered.length > 0
-                    ? `${filtered.length} ${filtered.length === 1 ? 'نتيجة' : 'نتائج'}`
-                    : 'لا توجد نتائج'}
+                    ? `${filtered.length} ${t('common.student')}`
+                    : t('reports.noStudentsFound')}
                 </span>
               </div>
               {filtered.length > 0 ? (
@@ -288,7 +361,7 @@ export default function Report() {
               ) : (
                 <div className="report-suggestions-empty">
                   <i className="fas fa-user-slash"></i>
-                  <p>لم يتم العثور على طالب يطابق البحث</p>
+                  <p>{t('reports.noStudentsFound')}</p>
                 </div>
               )}
             </div>
@@ -297,7 +370,7 @@ export default function Report() {
 
         <h2 className="report-section-label">
           <i className="fas fa-user-graduate"></i>
-          تقارير فردية
+          {t('reports.studentSearch')}
         </h2>
 
         <div className="report-cards-grid">
@@ -306,10 +379,10 @@ export default function Report() {
               <i className="fas fa-play-circle"></i>
             </div>
             <div className="report-card-body">
-              <h3>تقرير الفيديوهات</h3>
-              <p>تتبع حالة مشاهدة الفيديوهات التعليمية ومدى تقدم الطالب فيها</p>
+              <h3>{t('reports.videosReport')}</h3>
+              <p>{t('reports.videosReportDesc')}</p>
             </div>
-            <i className="fas fa-chevron-left report-card-arrow"></i>
+            <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
           </div>
 
           <div className="report-card" onClick={() => goTo('exams')}>
@@ -317,16 +390,16 @@ export default function Report() {
               <i className="fas fa-file-alt"></i>
             </div>
             <div className="report-card-body">
-              <h3>تقرير الامتحانات</h3>
-              <p>مراجعة نتائج الامتحانات وتحليل أداء الطالب في كل اختبار</p>
+              <h3>{t('reports.examsReport')}</h3>
+              <p>{t('reports.examsReportDesc')}</p>
             </div>
-            <i className="fas fa-chevron-left report-card-arrow"></i>
+            <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
           </div>
         </div>
 
         <h2 className="report-section-label">
           <i className="fas fa-users"></i>
-          تقارير جماعية
+          {t('reports.examsGroupReport')}
         </h2>
 
         <div className="report-cards-grid">
@@ -335,10 +408,10 @@ export default function Report() {
               <i className="fas fa-chart-line"></i>
             </div>
             <div className="report-card-body">
-              <h3>تقرير جماعي للفيديوهات</h3>
-              <p>إحصائيات المشاهدة وتقرير الأداء العام لجميع الطلاب</p>
+              <h3>{t('reports.videosGroupReport')}</h3>
+              <p>{t('reports.videosGroupDesc')}</p>
             </div>
-            <i className="fas fa-chevron-left report-card-arrow"></i>
+            <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
           </div>
 
           <div className="report-card" onClick={() => goToGroupReport('exams')}>
@@ -346,17 +419,17 @@ export default function Report() {
               <i className="fas fa-chart-pie"></i>
             </div>
             <div className="report-card-body">
-              <h3>تقرير جماعي للامتحانات</h3>
-              <p>نتائج وتحليل أداء جميع الطلاب في الامتحانات</p>
+              <h3>{t('reports.examsGroupReport')}</h3>
+              <p>{t('reports.examsGroupDesc')}</p>
             </div>
-            <i className="fas fa-chevron-left report-card-arrow"></i>
+            <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'} report-card-arrow`}></i>
           </div>
         </div>
 
       </div>
 
       {/* ── Student Picker Modal (replaces browser alert) ── */}
-      {pickerOpen && (
+      {pickerOpen && createPortal(
         <div
           className="rp-modal-overlay"
           onClick={() => setPickerOpen(false)}
@@ -369,9 +442,9 @@ export default function Report() {
                 <i className="fas fa-user-graduate"></i>
               </div>
               <div className="rp-modal-title">
-                <h3>اختر الطالب</h3>
+                <h3>{t('reports.selectStudent')}</h3>
                 <p>
-                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : 'تقرير الامتحانات'} يرجى اختيار طالب من القائمة
+                  {pickerType === 'videos' ? t('reports.videosReport') : t('reports.examsReport')}
                 </p>
               </div>
               <button
@@ -388,7 +461,7 @@ export default function Report() {
               <input
                 type="text"
                 autoFocus
-                placeholder="ابحث بالاسم أو رقم الطالب..."
+                placeholder={t('reports.searchStudents')}
                 value={pickerQuery}
                 onChange={(e) => setPickerQuery(e.target.value)}
               />
@@ -398,7 +471,7 @@ export default function Report() {
               <i className="fas fa-list-ul"></i>
               <span>
                 {pickerResults.length}{' '}
-                {pickerResults.length === 1 ? 'طالب' : 'طالب'}
+                {pickerResults.length === 1 ? t('common.student') : t('common.student')}
               </span>
             </div>
 
@@ -425,12 +498,13 @@ export default function Report() {
               {pickerResults.length === 0 && (
                 <li className="rp-modal-empty">
                   <i className="fas fa-user-slash"></i>
-                  <p>لم يتم العثور على نتائج</p>
+                  <p>{t('reports.noStudentsFound')}</p>
                 </li>
               )}
             </ul>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </main>
   )

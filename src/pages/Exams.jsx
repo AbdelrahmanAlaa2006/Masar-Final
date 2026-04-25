@@ -1,226 +1,180 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
+import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
 export default function Exams() {
   const navigate = useNavigate()
+  const { t, lang } = useI18n()
+
+  const PREP_META = {
+    first:  { ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },
+    second: { ar: t('grades.second'), en: 'Second Prep', accent: 'blue',   desc: lang === 'ar' ? 'تعميق المفاهيم وبناء المهارات' : 'Deepening concepts and skill building' },
+    third:  { ar: t('grades.third'), en: 'Third Prep',  accent: 'orange', desc: lang === 'ar' ? 'الاستعداد لاختبارات الشهادة' : 'Preparing for certificate exams' },
+  }
   const [currentLevel, setCurrentLevel] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [userRole, setUserRole] = useState(null)
+  const [userId, setUserId] = useState(null)
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
+  const [overridesMap, setOverridesMap] = useState(new Map()) // examId -> {allowed, attempts}
 
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('masar-user'))
-      setUserRole(user?.role || null)
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      setUserRole(u?.role || null)
+      setUserId(u?.id || null)
+      // students auto-land on their own grade
+      if (u?.role !== 'admin' && u?.grade) {
+        setCurrentLevel(dbToUiGrade(u.grade))
+      }
     } catch {
       setUserRole(null)
     }
   }, [])
-  const [examData, setExamData] = useState({
-    first: [
-      {
-        id: 'exam1_first',
-        title: "رياضيات | الوحدة الأولى",
-        lecture: "الأعداد الطبيعية والصحيحة",
-        icon: "📘",
-        duration: 60,
-        availableHours: 72,
-        maxAttempts: 2,
-        questions: 15,
-        grade: 30,
-        createdAt: "2023-05-15T10:00:00"
-      },
-      {
-        id: 'exam2_first',
-        title: "علوم | الفصل الأول",
-        lecture: "المادة وخواصها",
-        icon: "🔬",
-        duration: 45,
-        availableHours: 48,
-        maxAttempts: 1,
-        questions: 10,
-        grade: 20,
-        createdAt: "2023-05-20T14:30:00"
-      }
-    ],
-    second: [
-      {
-        id: 'exam1_second',
-        title: "جبر | المعادلات",
-        lecture: "المعادلات والمتباينات",
-        icon: "📐",
-        duration: 90,
-        availableHours: 96,
-        maxAttempts: 3,
-        questions: 20,
-        grade: 40,
-        createdAt: "2023-05-10T09:15:00"
-      },
-      {
-        id: 'exam2_second',
-        title: "هندسة | الدائرة والمثلث",
-        lecture: "خصائص الأشكال الهندسية",
-        icon: "📏",
-        duration: 75,
-        availableHours: 72,
-        maxAttempts: 2,
-        questions: 18,
-        grade: 36,
-        createdAt: "2023-05-18T11:45:00"
-      },
-      {
-        id: 'exam3_second',
-        title: "علوم | التفاعلات الكيميائية",
-        lecture: "أنواع التفاعلات ومعادلاتها",
-        icon: "🧪",
-        duration: 60,
-        availableHours: 48,
-        maxAttempts: 1,
-        questions: 15,
-        grade: 30,
-        createdAt: "2023-05-22T16:20:00"
-      }
-    ],
-    third: [
-      {
-        id: 'exam1_third',
-        title: "جبر | الإحصاء",
-        lecture: "الإحصاء والاحتمالات",
-        icon: "📊",
-        duration: 120,
-        availableHours: 120,
-        maxAttempts: 2,
-        questions: 25,
-        grade: 50,
-        createdAt: "2023-05-05T08:00:00"
-      },
-      {
-        id: 'exam2_third',
-        title: "هندسة | الإحداثيات",
-        lecture: "الرسم البياني والإحداثيات",
-        icon: "📈",
-        duration: 90,
-        availableHours: 96,
-        maxAttempts: 2,
-        questions: 20,
-        grade: 40,
-        createdAt: "2023-05-12T13:30:00"
-      },
-      {
-        id: 'exam3_third',
-        title: "فيزياء | الكهرباء",
-        lecture: "الكهرباء والمغناطيسية",
-        icon: "⚡",
-        duration: 75,
-        availableHours: 72,
-        maxAttempts: 1,
-        questions: 18,
-        grade: 36,
-        createdAt: "2023-05-17T10:15:00"
-      },
-      {
-        id: 'exam4_third',
-        title: "كيمياء | التركيب الذري",
-        lecture: "الذرة والجزيء والروابط",
-        icon: "🧬",
-        duration: 60,
-        availableHours: 48,
-        maxAttempts: 1,
-        questions: 15,
-        grade: 30,
-        createdAt: "2023-05-25T15:45:00"
-      }
-    ]
-  })
 
+  const refresh = async () => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const data = await listExams()
+      setRows(data)
+    } catch (err) {
+      setLoadError(err.message || t('exams.loading'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { refresh() }, [])
+
+  // Pull effective overrides (admin scope 'prep' + student scope 'student')
+  // for this student once we know their id+grade.
   useEffect(() => {
-    // Ensure we have a user ID
-    if (!localStorage.getItem('currentUserId')) {
-      localStorage.setItem('currentUserId', 'user_' + Math.random().toString(36).substr(2, 9))
+    if (!userId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('masar-user')) || {}
+        const grade = u.grade
+        if (!grade) return
+        const rows = await listEffectiveOverrides({
+          studentId: userId, grade, itemType: 'exam',
+        })
+        if (!cancelled) setOverridesMap(reduceEffective(rows))
+      } catch { /* ignore — defaults apply */ }
+    })()
+    return () => { cancelled = true }
+  }, [userId])
+
+  // Fetch submitted-attempt counts for the currently displayed exams.
+  // If an admin override exists for this exam, we only count attempts
+  // submitted *since* the override was last saved — so bumping/re-saving
+  // the bonus acts as a fresh "N tries from now" grant.
+  useEffect(() => {
+    if (!userId || rows.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const entries = await Promise.all(
+        rows.map(async (e) => {
+          try {
+            const o = overridesMap.get(e.id)
+            const since = o?.updatedAt || null
+            const n = await countSubmittedAttempts(e.id, userId, since)
+            return [e.id, n]
+          } catch {
+            return [e.id, 0]
+          }
+        })
+      )
+      if (!cancelled) setAttemptsMap(Object.fromEntries(entries))
     }
-    loadRemainingAttempts()
-  }, [])
+    run()
+    return () => { cancelled = true }
+  }, [rows, userId, overridesMap])
 
-  const getCurrentUserId = () => {
-    return localStorage.getItem('currentUserId') || 'user_' + Math.random().toString(36).substr(2, 9)
-  }
-
-  const loadRemainingAttempts = () => {
-    const userId = getCurrentUserId()
-    Object.keys(examData).forEach(level => {
-      examData[level].forEach(exam => {
-        const attemptsKey = `attempts_${userId}_${exam.id}`
-        if (localStorage.getItem(attemptsKey) === null) {
-          localStorage.setItem(attemptsKey, exam.maxAttempts)
-        }
-      })
-    })
-  }
-
-  const getRemainingAttempts = (examId) => {
-    const userId = getCurrentUserId()
-    const attemptsKey = `attempts_${userId}_${examId}`
-    const savedAttempts = localStorage.getItem(attemptsKey)
-    return savedAttempts !== null ? parseInt(savedAttempts) : 0
-  }
-
-  const decreaseRemainingAttempts = (examId) => {
-    const userId = getCurrentUserId()
-    const attemptsKey = `attempts_${userId}_${examId}`
-    const currentAttempts = getRemainingAttempts(examId)
-    if (currentAttempts > 0) {
-      localStorage.setItem(attemptsKey, currentAttempts - 1)
+  const examsByLevel = useMemo(() => {
+    const out = { first: [], second: [], third: [] }
+    for (const r of rows) {
+      const ui = dbToUiGrade(r.grade)
+      if (ui && out[ui]) out[ui].push(r)
     }
-  }
+    return out
+  }, [rows])
 
-  const showLevels = () => {
-    setCurrentLevel(null)
+  // Effective max attempts = exam default + admin-granted extra attempts.
+  // The override's `attempts` field is a bonus granted on top of the default,
+  // so bumping it by +N always gives the student N more tries — even if they
+  // already exhausted their previous allowance.
+  const effectiveMaxAttempts = (exam) => {
+    const o = overridesMap.get(exam.id)
+    const base = exam.max_attempts || 1
+    const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
+    return base + extra
   }
-
-  const showExams = (level) => {
-    setCurrentLevel(level)
+  const isAllowed = (exam) => {
+    const o = overridesMap.get(exam.id)
+    return o ? o.allowed !== false : true
   }
+  const remainingFor = (exam) =>
+    Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
-  const startExam = (examId) => {
-    const remainingAttempts = getRemainingAttempts(examId)
-    
-    if (remainingAttempts <= 0) {
+  const startExam = (exam) => {
+    if (userRole !== 'admin' && !isAllowed(exam)) {
+      setAlertModal(t('exams.noExams'), t('exams.noExams'))
+      return
+    }
+    if (userRole !== 'admin' && remainingFor(exam) <= 0) {
       setShowModal(true)
       return
     }
-    
-    decreaseRemainingAttempts(examId)
-    navigate('/exam-taking')
+    navigate(`/exam-taking?id=${exam.id}`)
   }
+
+  const [blockAlert, setBlockAlert] = useState(null)
+  const setAlertModal = (title, message) => setBlockAlert({ title, message })
 
   const addExam = (level) => {
     localStorage.setItem('selectedGrade', level)
     navigate('/exam-add')
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+
+  const requestDelete = (exam) => setConfirmDelete({ id: exam.id, title: exam.title })
+
+  const performDelete = async () => {
+    const target = confirmDelete
+    if (!target) return
+    try {
+      await deleteExam(target.id)
+      setRows(prev => prev.filter(e => e.id !== target.id))
+      setConfirmDelete(null)
+    } catch (err) {
+      setConfirmDelete(null)
+      setAlertModal(t('common.error'), err.message || t('common.error'))
+    }
+  }
+
   const levelTitles = {
-    first: 'امتحانات الصف الأول الإعدادي',
-    second: 'امتحانات الصف الثاني الإعدادي',
-    third: 'امتحانات الصف الثالث الإعدادي'
+    first: `${t('exams.pageTitle')} - ${t('grades.firstShort')}`,
+    second: `${t('exams.pageTitle')} - ${t('grades.secondShort')}`,
+    third: `${t('exams.pageTitle')} - ${t('grades.thirdShort')}`,
   }
 
-  const levelEmojis = {
-    first: '1️⃣',
-    second: '2️⃣',
-    third: '3️⃣'
-  }
-
-  const PREP_META = {
-    first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  icon: 'fa-seedling',         accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-    second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-    third:  { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  icon: 'fa-trophy',           accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-  }
+  const levelEmojis = { first: '1️⃣', second: '2️⃣', third: '3️⃣' }
 
   const renderLevelCard = (level) => {
     const m = PREP_META[level]
     return (
-      <button key={level} className={`prep-card prep-${m.accent}`} onClick={() => showExams(level)}>
+      <button key={level} className={`prep-card prep-${m.accent}`} onClick={() => setCurrentLevel(level)}>
         <div className="prep-cover">
           <div className="prep-cover-deco" />
           <PrepIllustration kind={level} stage={m.en} />
@@ -229,102 +183,92 @@ export default function Exams() {
           <h3>{m.ar}</h3>
           <p>{m.desc}</p>
           <div className="prep-foot">
-            <span className="prep-count"><i className="fas fa-file-alt"></i> {examData[level].length} امتحان</span>
-            <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
+            <span className="prep-count"><i className="fas fa-file-alt"></i> {examsByLevel[level].length} {t('exams.pageTitle')}</span>
+            <span className="prep-cta">{t('common.view')} <i className={`fas ${lang === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right'}`}></i></span>
           </div>
         </div>
       </button>
     )
   }
 
-  const deleteExam = (level, examId) => {
-    setExamData(prev => ({
-      ...prev,
-      [level]: prev[level].filter(e => e.id !== examId)
-    }))
-  }
-
-  const renderExamItem = (exam, index, level) => {
-    const remainingAttempts = getRemainingAttempts(exam.id)
-    const createdAt = new Date(exam.createdAt)
-    const availableUntil = new Date(createdAt.getTime() + (exam.availableHours * 60 * 60 * 1000))
+  const renderExamItem = (exam, index) => {
+    const remaining = remainingFor(exam)
+    const createdAt = new Date(exam.created_at)
+    // Per-audience availability override wins over the exam's own default.
+    // `overridesMap` is keyed by exam.id and may carry `availableHours`.
+    const o = overridesMap.get(exam.id)
+    const effectiveHours = o?.availableHours ?? exam.available_hours
+    const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
     const isAvailable = new Date() < availableUntil
     const formattedDate = availableUntil.toLocaleDateString('ar-EG', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     })
+    const qCount = Array.isArray(exam.questions) ? exam.questions.length : 0
 
     return (
-      <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam.id)}>
-
-        {/* Status Bar */}
+      <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>
         <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
           <span className="ec-status-dot" />
-          <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+          <span>{isAvailable ? t('videos.available') : t('videos.unavailable')}</span>
           {userRole === 'admin' && (
-            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); deleteExam(level, exam.id) }}>
-              🗑 حذف
+            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestDelete(exam) }}>
+              🗑 {t('common.delete')}
             </button>
           )}
         </div>
 
-        {/* Header */}
         <div className="ec-header">
           <div className="ec-badge">{index + 1}</div>
           <div className="ec-titles">
             <div className="ec-title">{exam.title}</div>
-            <div className="ec-lecture">{exam.icon} {exam.lecture}</div>
+            <div className="ec-lecture">📝 {exam.number ? `رقم ${exam.number}` : ''}</div>
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="ec-stats">
           <div className="ec-stat">
             <span className="ec-stat-icon">⏱️</span>
-            <span className="ec-stat-label">مدة الامتحان</span>
-            <span className="ec-stat-value">{exam.duration} دقيقة</span>
+            <span className="ec-stat-label">{t('exams.duration')}</span>
+            <span className="ec-stat-value">{exam.duration_minutes} {t('common.minutes')}</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🕒</span>
-            <span className="ec-stat-label">المدة المتاحة</span>
-            <span className="ec-stat-value">{exam.availableHours} ساعة</span>
+            <span className="ec-stat-label">{t('exams.availableHours').replace('{n}', '')}</span>
+            <span className="ec-stat-value">{effectiveHours} {t('common.hours')}</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">❓</span>
-            <span className="ec-stat-label">عدد الأسئلة</span>
-            <span className="ec-stat-value">{exam.questions} سؤال</span>
+            <span className="ec-stat-label">{t('exams.questions')}</span>
+            <span className="ec-stat-value">{qCount} {t('common.question')}</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🏆</span>
-            <span className="ec-stat-label">درجة الامتحان</span>
-            <span className="ec-stat-value">{exam.grade} درجة</span>
+            <span className="ec-stat-label">{t('exams.totalPoints')}</span>
+            <span className="ec-stat-value">{exam.total_points} {t('common.point')}</span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">🔁</span>
-            <span className="ec-stat-label">عدد المحاولات</span>
-            <span className="ec-stat-value">{remainingAttempts}/{exam.maxAttempts}</span>
+            <span className="ec-stat-label">{t('exams.attempts')}</span>
+            <span className="ec-stat-value">{remaining}/{effectiveMaxAttempts(exam)}</span>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="ec-footer">
           <span>⏳</span>
           <span>متاح حتى {formattedDate}</span>
         </div>
-
       </div>
     )
   }
 
   const renderExamSection = (level) => (
     <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
-      <button className="back-button" onClick={() => showLevels()}>
-        ← العودة للمستويات
-      </button>
+      {userRole === 'admin' && (
+        <button className="back-button" onClick={() => setCurrentLevel(null)}>
+          ← {t('common.back')}
+        </button>
+      )}
       <div className="section-header">
         <div className="section-title">
           <span>{levelEmojis[level]}</span>
@@ -332,26 +276,40 @@ export default function Exams() {
         </div>
         {userRole === 'admin' && (
           <button className="add-exam" onClick={() => addExam(level)}>
-            ➕ إضافة امتحان جديد
+            ➕ {t('exams.addExam')}
           </button>
         )}
       </div>
-      <div className="exam-list">
-        {examData[level].map((exam, idx) => renderExamItem(exam, idx, level))}
-      </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <i className="fas fa-spinner fa-spin"></i> {t('exams.loading')}
+        </div>
+      ) : loadError ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#e53e3e' }}>
+          {loadError}
+        </div>
+      ) : examsByLevel[level].length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#a0aec0' }}>
+          {t('exams.noExams')}
+        </div>
+      ) : (
+        <div className="exam-list">
+          {examsByLevel[level].map((exam, idx) => renderExamItem(exam, idx))}
+        </div>
+      )}
     </div>
   )
 
   return (
     <div className="exams-container">
-      {/* Header (only on selection screen) */}
-      {!currentLevel && (
+      {/* Grade picker (admins only — students auto-land) */}
+      {!currentLevel && userRole === 'admin' && (
         <div className="exm-prep-wrap">
           <div className="exm-prep-head">
             <div className="exm-prep-icon"><i className="fas fa-file-alt"></i></div>
             <div>
-              <h1>الامتحانات</h1>
-              <p>اختر المرحلة الدراسية لاستعراض الامتحانات المتاحة</p>
+              <h1>{t('exams.pageTitle')}</h1>
+              <p>{t('exams.pickGrade')}</p>
             </div>
           </div>
           <div className="prep-grid">
@@ -362,29 +320,44 @@ export default function Exams() {
         </div>
       )}
 
-      {/* Breadcrumb (only on inner views) */}
-      {currentLevel && (
+      {currentLevel && userRole === 'admin' && (
         <div className="breadcrumb" id="breadcrumb">
-          <span className="breadcrumb-item active" onClick={() => showLevels()}>الامتحانات</span>
+          <span className="breadcrumb-item active" onClick={() => setCurrentLevel(null)}>{t('exams.pageTitle')}</span>
           <span>›</span>
           <span className="breadcrumb-item active">{levelTitles[currentLevel]}</span>
         </div>
       )}
 
-      {/* Exam Sections */}
-      {renderExamSection('first')}
-      {renderExamSection('second')}
-      {renderExamSection('third')}
+      {currentLevel && renderExamSection(currentLevel)}
 
-      {/* Modal */}
       {showModal && (
         <div className="modal active">
           <div className="modal-content">
-            <h3 className="modal-title">انتهت المحاولات</h3>
-            <p className="modal-message">لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.</p>
-            <button className="modal-button" onClick={() => setShowModal(false)}>حسناً</button>
+            <h3 className="modal-title">{t('exams.attempts')}</h3>
+            <p className="modal-message">{t('exams.noExams')}</p>
+            <button className="modal-button" onClick={() => setShowModal(false)}>{t('common.confirm')}</button>
           </div>
         </div>
+      )}
+
+      {blockAlert && (
+        <div className="modal active">
+          <div className="modal-content">
+            <h3 className="modal-title">{blockAlert.title}</h3>
+            <p className="modal-message">{blockAlert.message}</p>
+            <button className="modal-button" onClick={() => setBlockAlert(null)}>{t('common.confirm')}</button>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDeleteDialog
+          title={t('exams.confirmDeleteTitle')}
+          itemLabel={confirmDelete.title}
+          message={t('exams.deleteWarning')}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={performDelete}
+        />
       )}
     </div>
   )

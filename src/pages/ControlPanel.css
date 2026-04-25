@@ -125,6 +125,7 @@
 }
 .cp-accent-blue .cp-section-icon { background: linear-gradient(135deg, #4facfe, #00a3ff); }
 .cp-accent-orange .cp-section-icon { background: linear-gradient(135deg, #f6ad55, #dd6b20); }
+.cp-accent-purple .cp-section-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
 
 .cp-section-body { flex: 1; min-width: 0; }
 .cp-section-body h3 {
@@ -361,6 +362,25 @@
 .cp-dot { color: var(--border-light, #cbd5e0); }
 .cp-target-arrow { color: var(--text-muted, #718096); font-size: 0.8rem; transition: color 0.15s, transform 0.15s; }
 .cp-target:hover .cp-target-arrow { color: var(--primary); transform: translateX(-3px); }
+
+/* Active state for grade/audience picker cards — a colored ring +
+   subtle tint that works on both light and dark backgrounds because
+   it layers rgba tints over the existing --card-bg. */
+.cp-target.is-active {
+  border-color: var(--primary, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.35), 0 4px 16px rgba(99,102,241,0.18);
+  background:
+    linear-gradient(135deg, rgba(99,102,241,0.10), rgba(168,85,247,0.08)),
+    var(--card-bg, #fff);
+}
+.cp-target.is-active .cp-target-name { color: var(--text-color); }
+
+/* "مختارة" pill for the active card — high-contrast against both themes. */
+.cp-id-pill.cp-id-pill-active {
+  background: var(--primary, #6366f1);
+  color: #fff;
+  border-color: transparent;
+}
 
 .cp-avatar {
   width: 42px;

@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './ExamAdd.css'
+import { notify } from '../utils/notify'
+import { createExam, uiToDbGrade } from '@backend/examsApi'
+import { useI18n } from '../i18n'
 
 export default function ExamAdd() {
+  const { t, lang } = useI18n()
+  const navigate = useNavigate()
   const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
+  const [examGrade, setExamGrade] = useState(
+    localStorage.getItem('selectedGrade') || 'first'
+  )
   const [duration, setDuration] = useState('')
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [examDurationHours, setExamDurationHours] = useState(72)
@@ -11,20 +20,15 @@ export default function ExamAdd() {
   const [questions, setQuestions] = useState([])
   const [questionsCopy, setQuestionsCopy] = useState('')
   const [showCopySection, setShowCopySection] = useState(false)
-  const [showRestoreSection, setShowRestoreSection] = useState(false)
-  const [savedExams, setSavedExams] = useState([])
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
-
-  useEffect(() => {
-    loadSavedExams()
-  }, [])
+  const [saving, setSaving] = useState(false)
 
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
     if (!count || count <= 0) {
-      alert('يرجى إدخال عدد صحيح من الأسئلة')
+      notify(t('examAdd.errNumQuestions'), { type: 'warning' })
       return
     }
 
@@ -39,7 +43,6 @@ export default function ExamAdd() {
 
     setQuestions(newQuestions)
     setShowCopySection(true)
-    setShowRestoreSection(true)
   }
 
   const updateQuestion = (id, field, value) => {
@@ -99,13 +102,13 @@ export default function ExamAdd() {
   const parseCopiedQuestions = () => {
     const text = questionsCopy.trim()
     if (!text) {
-      alert('يرجى إدخال الأسئلة بالتنسيق المطلوب')
+      notify(t('examAdd.errNumQuestions') || 'Please enter questions in the correct format', { type: 'warning' })
       return
     }
 
     const questionTexts = text.split('@').filter(q => q.trim() !== '')
     if (questionTexts.length === 0) {
-      alert('لم يتم العثور على أسئلة')
+      notify(t('examAdd.errNoQuestions'), { type: 'warning' })
       return
     }
 
@@ -149,39 +152,16 @@ export default function ExamAdd() {
     setQuestions(parsedQuestions)
   }
 
-  const loadSavedExams = () => {
-    const exams = JSON.parse(localStorage.getItem('exams')) || []
-    setSavedExams(exams)
-  }
+  const saveExam = async () => {
+    if (saving) return
+    if (!examTitle.trim() || !duration || questions.length === 0) {
+      notify(t('examAdd.errFillDetails'), { type: 'warning' })
+      return
+    }
 
-  const restoreExam = (index) => {
-    if (index === '') return
-    
-    const exam = savedExams[parseInt(index)]
-    if (!exam) return
-
-    setExamNumber(exam.number.toString())
-    setExamTitle(exam.title)
-    setDuration(exam.duration.toString())
-    setMaxAttempts(exam.maxAttempts || 1)
-    setExamDurationHours(exam.examDurationHours || 72)
-
-    const restoredQuestions = exam.questions.map((q, i) => ({
-      id: i,
-      question: q.question,
-      options: q.options,
-      answers: q.answers,
-      points: q.points || 1,
-      isMultiple: q.isMultiple || false
-    }))
-
-    setQuestions(restoredQuestions)
-    setNumQuestions(restoredQuestions.length.toString())
-  }
-
-  const saveExam = () => {
-    if (!examNumber.trim() || !examTitle.trim() || !duration || questions.length === 0) {
-      alert('يرجى ملء جميع البيانات المطلوبة')
+    const dbGrade = uiToDbGrade(examGrade)
+    if (!dbGrade) {
+      notify(t('common.error') || 'Please select a grade', { type: 'warning' })
       return
     }
 
@@ -193,80 +173,111 @@ export default function ExamAdd() {
     })
 
     if (!isValid) {
-      alert('يرجى التأكد من ملء جميع الأسئلة والاختيارات وتحديد الإجابات الصحيحة')
+      notify(t('examAdd.errEmptyQuestion').replace('{index}', '') || 'Please ensure all questions and choices are filled and correct answers are selected', { type: 'warning' })
       return
     }
 
-    const exam = {
-      number: examNumber,
-      title: examTitle,
-      duration: parseInt(duration),
-      maxAttempts: parseInt(maxAttempts),
-      examDurationHours: parseInt(examDurationHours),
-      questions: questions.map(q => ({
-        question: q.question,
-        options: q.options,
-        answers: q.answers,
-        points: q.points,
-        isMultiple: q.isMultiple
-      })),
-      totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
-      createdAt: new Date().toISOString()
+    const cleanQuestions = questions.map(q => ({
+      question: q.question,
+      options: q.options,
+      answers: q.answers,
+      points: q.points,
+      isMultiple: q.isMultiple,
+    }))
+    const total_points = cleanQuestions.reduce((sum, q) => sum + (q.points || 1), 0)
+
+    let createdBy = null
+    try {
+      const u = JSON.parse(localStorage.getItem('masar-user'))
+      createdBy = u?.id || null
+    } catch { /* ignore */ }
+
+    setSaving(true)
+    try {
+      await createExam({
+        number: examNumber.trim() || null,
+        title: examTitle.trim(),
+        grade: dbGrade,
+        duration_minutes: parseInt(duration),
+        max_attempts: parseInt(maxAttempts),
+        available_hours: parseInt(examDurationHours),
+        questions: cleanQuestions,
+        total_points,
+        created_by: createdBy,
+      })
+
+      setPreviewData({
+        number: examNumber,
+        title: examTitle,
+        duration: parseInt(duration),
+        maxAttempts: parseInt(maxAttempts),
+        examDurationHours: parseInt(examDurationHours),
+        questions: cleanQuestions,
+        totalPoints: total_points,
+      })
+      setShowPreview(true)
+      setShowSuccess(true)
+
+      setTimeout(() => { navigate('/exams') }, 2000)
+    } catch (err) {
+      notify(err.message || t('examAdd.errSave'), { type: 'warning' })
+      setSaving(false)
     }
-
-    const exams = JSON.parse(localStorage.getItem('exams')) || []
-    exams.push(exam)
-    localStorage.setItem('exams', JSON.stringify(exams))
-
-    setPreviewData(exam)
-    setShowPreview(true)
-    setShowSuccess(true)
-
-    setTimeout(() => {
-      window.location.href = '/exams'
-    }, 3000)
   }
 
   return (
-    <div className="exam-add-page">
+    <div className="exam-add-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="exam-add-container">
-        <h1>🛠 إنشاء امتحان</h1>
+        <h1>{t('examAdd.title')}</h1>
 
         <div className="form-group">
-          <label htmlFor="examNumber">🔢 رقم الامتحان:</label>
+          <label htmlFor="examNumber">🔢 {t('examAdd.examNumberLabel')}:</label>
           <input 
             type="number" 
             id="examNumber"
             value={examNumber}
             onChange={(e) => setExamNumber(e.target.value)}
-            placeholder="مثلاً 5"
+            placeholder="5"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="examTitle">📝 عنوان الامتحان:</label>
-          <input 
-            type="text" 
+          <label htmlFor="examTitle">📝 {t('examAdd.examTitleLabel')}:</label>
+          <input
+            type="text"
             id="examTitle"
             value={examTitle}
             onChange={(e) => setExamTitle(e.target.value)}
-            placeholder="مثلاً: حساب تفاضلي متقدم"
+            placeholder="Advanced Calculus"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="duration">⏰ مدة الامتحان (بالدقائق):</label>
+          <label htmlFor="examGrade">🎓 {t('profile.grade')}:</label>
+          <select
+            id="examGrade"
+            value={examGrade}
+            onChange={(e) => setExamGrade(e.target.value)}
+          >
+            <option value="first">{t('grades.first')}</option>
+            <option value="second">{t('grades.second')}</option>
+            <option value="third">{t('grades.third')}</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="duration">⏰ {t('examAdd.durationLabel')}:</label>
           <input 
             type="number" 
             id="duration"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
-            placeholder="مثلاً 60"
+            placeholder="60"
           />
           
           <div className="exam-settings">
             <div>
-              <label htmlFor="maxAttempts">🔁 عدد المحاولات المسموحة:</label>
+              <label htmlFor="maxAttempts">🔁 {t('examAdd.maxAttemptsLabel')}:</label>
               <input 
                 type="number" 
                 id="maxAttempts"
@@ -276,7 +287,7 @@ export default function ExamAdd() {
               />
             </div>
             <div>
-              <label htmlFor="examDurationHours">⏳ مدة توفر الامتحان (بالساعات):</label>
+              <label htmlFor="examDurationHours">⏳ {t('examAdd.availableHoursLabel')}:</label>
               <input 
                 type="number" 
                 id="examDurationHours"
@@ -289,45 +300,27 @@ export default function ExamAdd() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="numQuestions">❓ عدد الأسئلة:</label>
+          <label htmlFor="numQuestions">❓ {t('examAdd.numQuestionsLabel')}:</label>
           <input 
             type="number" 
             id="numQuestions"
             value={numQuestions}
             onChange={(e) => setNumQuestions(e.target.value)}
-            placeholder="مثلاً 3"
+            placeholder="3"
           />
-          <button className="btn" onClick={generateQuestions}>✨ إنشاء الأسئلة</button>
-
-          {showRestoreSection && (
-            <div className="restore-exam">
-              <label htmlFor="savedExams">💾 استرداد امتحان محفوظ:</label>
-              <select 
-                id="savedExams"
-                onChange={(e) => restoreExam(e.target.value)}
-                defaultValue=""
-              >
-                <option value="">-- اختر امتحان محفوظ --</option>
-                {savedExams.map((exam, idx) => (
-                  <option key={idx} value={idx}>
-                    {exam.title} (رقم {exam.number})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <button className="btn" onClick={generateQuestions}>✨ {t('examAdd.generateQuestions')}</button>
         </div>
 
         {showCopySection && (
           <div className="form-group copy-questions">
-            <label htmlFor="questionsCopy">📋 نسخ الأسئلة:</label>
+            <label htmlFor="questionsCopy">📋 {t('examAdd.pasteFormatLabel')}:</label>
             <textarea 
               id="questionsCopy"
               value={questionsCopy}
               onChange={(e) => setQuestionsCopy(e.target.value)}
               placeholder="@what is the total of 3+2&#10;#2&#10;#3&#10;##5&#10;#4&#10;!2"
             />
-            <button className="btn" onClick={parseCopiedQuestions}>📥 استيراد الأسئلة</button>
+            <button className="btn" onClick={parseCopiedQuestions}>📥 {t('examAdd.processText')}</button>
           </div>
         )}
 
@@ -336,18 +329,18 @@ export default function ExamAdd() {
             <div key={q.id} className="question-block">
               <div className="question-controls">
                 <button className="btn-icon" onClick={() => addOption(q.id)}>
-                  <i className="fas fa-plus"></i> إضافة اختيار
+                  <i className="fas fa-plus"></i> {t('examAdd.addOption')}
                 </button>
                 <button className="btn-icon" onClick={() => removeOption(q.id)}>
-                  <i className="fas fa-minus"></i> حذف اختيار
+                  <i className="fas fa-minus"></i> {t('examAdd.removeOption')}
                 </button>
                 <button 
                   className={`btn-icon ${q.isMultiple ? 'active' : ''}`}
                   onClick={() => toggleMultipleAnswers(q.id)}
                 >
-                  <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
+                  <i className="fas fa-check-double"></i> {q.isMultiple ? (lang === 'ar' ? 'إجابة واحدة' : 'Single Answer') : t('examAdd.multipleAnswersLabel')}
                 </button>
-                <span>النقاط:</span>
+                <span>{t('examAdd.pointsLabel')}</span>
                 <input 
                   type="number" 
                   min="1"
@@ -357,14 +350,14 @@ export default function ExamAdd() {
                 />
               </div>
 
-              <label>❓ السؤال {i + 1}:</label>
+              <label>❓ {t('examAdd.questionLabel')} {i + 1}:</label>
               <textarea 
                 value={q.question}
                 onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
-                placeholder="اكتب السؤال هنا..."
+                placeholder="..."
               />
 
-              <label>📋 الاختيارات:</label>
+              <label>📋 {t('examAdd.optionsLabel')}:</label>
               <div className="options-wrapper">
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx} className="option-container">
@@ -372,14 +365,14 @@ export default function ExamAdd() {
                       type="text"
                       value={opt}
                       onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
-                      placeholder={`الخيار ${optIdx + 1}`}
+                      placeholder={`${t('examAdd.syntaxOption')} ${optIdx + 1}`}
                       className="option-input"
                     />
                   </div>
                 ))}
               </div>
 
-              <label>✅ الإجابة الصحيحة:</label>
+              <label>✅ {t('examAdd.syntaxCorrect')}:</label>
               <div className="answers-wrapper">
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx}>
@@ -415,28 +408,30 @@ export default function ExamAdd() {
         </div>
 
         {questions.length > 0 && (
-          <button className="btn btn-save" onClick={saveExam}>💾 حفظ ومعاينة الامتحان</button>
+          <button className="btn btn-save" onClick={saveExam} disabled={saving}>
+            {saving ? `⏳ ${t('common.loading')}...` : t('examAdd.saveExam')}
+          </button>
         )}
 
         {showSuccess && (
           <div className="success-message">
-            🎉 تم حفظ الامتحان بنجاح! سيتم توجيهك إلى صفحة الامتحانات...
+            🎉 {t('examAdd.saveSuccess')}
           </div>
         )}
 
         {showPreview && previewData && (
           <div className="preview">
-            <h2>🧪 المعاينة:</h2>
-            <h3>📝 الامتحان رقم {previewData.number}</h3>
-            <p><strong>العنوان:</strong> {previewData.title}</p>
-            <p><strong>المدة:</strong> {previewData.duration} دقيقة</p>
-            <p><strong>عدد المحاولات:</strong> {previewData.maxAttempts}</p>
-            <p><strong>الفترة المتاحة:</strong> {previewData.examDurationHours} ساعة</p>
-            <p><strong>إجمالي النقاط:</strong> {previewData.totalPoints}</p>
+            <h2>🧪 {t('examAdd.previewModalTitle')}:</h2>
+            <h3>📝 {t('examAdd.title')} #{previewData.number}</h3>
+            <p><strong>{t('examAdd.examTitleLabel')}:</strong> {previewData.title}</p>
+            <p><strong>{t('examAdd.previewDuration')}:</strong> {previewData.duration}</p>
+            <p><strong>{t('examAdd.previewMaxAttempts')}:</strong> {previewData.maxAttempts}</p>
+            <p><strong>{t('examAdd.previewAvailable')}:</strong> {previewData.examDurationHours}</p>
+            <p><strong>{t('examAdd.pointsLabel')}:</strong> {previewData.totalPoints}</p>
             <hr />
             {previewData.questions.map((q, idx) => (
               <div key={idx} className="question-block preview-question">
-                <strong>س{idx + 1} ({q.points} نقطة): {q.question}</strong>
+                <strong>{t('common.question')} {idx + 1} ({q.points} {t('common.point')}): {q.question}</strong>
                 <br /><br />
                 {q.options.map((opt, i) => (
                   <div 

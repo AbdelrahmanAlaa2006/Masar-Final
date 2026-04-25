@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { authAPI } from '../services/api'
+import { authAPI } from '@backend/authApi'
+import Notifications from './Notifications'
+import { useI18n } from '../i18n'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'
 
@@ -9,52 +11,53 @@ import './Header.css'
    - Brand on the start (RTL: right) with mark + wordmark
    - Primary nav in the middle, label + icon, restrained active
      state (soft tinted pill, not a rainbow)
-   - Theme toggle and a polished logout on the end
+   - Theme + language toggles and a polished logout on the end
    - Mobile drawer for narrow viewports
    ────────────────────────────────────────────────────────────── */
 
-const NAV_ITEMS_BASE = [
-  { to: '/',         label: 'الرئيسية',   icon: 'fa-house' },
-  { to: '/videos',   label: 'الفيديوهات', icon: 'fa-circle-play' },
-  { to: '/exams',    label: 'الامتحانات', icon: 'fa-file-pen' },
-  { to: '/lectures', label: 'المحاضرات',  icon: 'fa-book-open' },
+const NAV_KEYS_BASE = [
+  { to: '/',         key: 'header.home',     icon: 'fa-house' },
+  { to: '/videos',   key: 'header.videos',   icon: 'fa-circle-play' },
+  { to: '/exams',    key: 'header.exams',    icon: 'fa-file-pen' },
+  { to: '/lectures', key: 'header.lectures', icon: 'fa-book-open' },
+  { to: '/report',   key: 'header.reports',  icon: 'fa-chart-line' },
 ]
-const ADMIN_ITEMS = [
-  { to: '/report',        label: 'التقارير',   icon: 'fa-chart-line' },
-  { to: '/control-panel', label: 'لوحة التحكم', icon: 'fa-sliders' },
+const ADMIN_KEYS = [
+  { to: '/control-panel', key: 'header.controlPanel', icon: 'fa-sliders' },
 ]
 
 export default function Header() {
+  const { t, lang, setLang } = useI18n()
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [userRole, setUserRole] = useState(null)
   const [userName, setUserName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
+  const isRtl = lang === 'ar'
 
-  // Read user
   useEffect(() => {
     try {
       const u = JSON.parse(localStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
       setUserName(u?.name || '')
+      setAvatarUrl(u?.avatar_url || null)
     } catch {
       setUserRole(null)
       setUserName('')
+      setAvatarUrl(null)
     }
   }, [location.pathname])
 
-  // Close drawer on nav
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
-  // Theme toggle effect
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
     localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
-  // Subtle elevation when scrolled
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
     onScroll()
@@ -62,7 +65,6 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Lock body scroll while mobile drawer is open
   useEffect(() => {
     if (drawerOpen) {
       const prev = document.body.style.overflow
@@ -71,7 +73,6 @@ export default function Header() {
     }
   }, [drawerOpen])
 
-  // Esc closes drawer
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setDrawerOpen(false) }
     if (drawerOpen) document.addEventListener('keydown', onKey)
@@ -85,32 +86,58 @@ export default function Header() {
 
   const handleLogout = () => {
     authAPI.logout()
-    navigate('/login')
+    const overlay = document.createElement('div')
+    overlay.className = 'auth-overlay'
+    const successMsg = t('header.logoutSuccess')
+    const byeMsg = t('header.logoutBye')
+    overlay.innerHTML = `
+      <div class="auth-toast" role="status" aria-live="polite">
+        <div class="auth-toast-check">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
+            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
+          </svg>
+        </div>
+        <div class="auth-toast-text">${successMsg}</div>
+        <div class="auth-toast-sub">${byeMsg}</div>
+        <div class="auth-toast-bar"><span></span></div>
+      </div>
+    `
+    document.body.appendChild(overlay)
+    requestAnimationFrame(() => overlay.classList.add('open'))
+    setTimeout(() => {
+      overlay.classList.remove('open')
+      overlay.classList.add('closing')
+      setTimeout(() => {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+        navigate('/login')
+      }, 320)
+    }, 1600)
   }
 
   const items = userRole === 'admin'
-    ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
-    : NAV_ITEMS_BASE
+    ? [...NAV_KEYS_BASE, ...ADMIN_KEYS]
+    : NAV_KEYS_BASE
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
+  const backIcon = isRtl ? 'fa-arrow-right' : 'fa-arrow-left'
+  const drawerArrow = isRtl ? 'fa-chevron-left' : 'fa-chevron-right'
 
   return (
     <>
-      <header className={`mh ${scrolled ? 'mh--scrolled' : ''}`} dir="rtl">
+      <header className={`mh ${scrolled ? 'mh--scrolled' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
         <div className="mh__inner">
-          {/* ─── Brand ─── */}
-          <Link to="/" className="mh__brand" aria-label="مسار - الصفحة الرئيسية">
+          <Link to="/" className="mh__brand" aria-label={t('header.brandName')}>
             <span className="mh__mark">
               <img src={masarLogo} alt="" className="mh__mark-img" />
             </span>
             <span className="mh__wordmark">
-              <span className="mh__brand-name">مسار</span>
-              <span className="mh__brand-tag">منصة تعليمية</span>
+              <span className="mh__brand-name">{t('header.brandName')}</span>
+              <span className="mh__brand-tag">{t('header.brandTag')}</span>
             </span>
           </Link>
 
-          {/* ─── Primary nav (desktop) ─── */}
-          <nav className="mh__nav" aria-label="القائمة الرئيسية">
+          <nav className="mh__nav" aria-label={t('header.menu')}>
             {items.map((item) => (
               <Link
                 key={item.to}
@@ -118,29 +145,45 @@ export default function Header() {
                 className={`mh__link ${isActive(item.to) ? 'is-active' : ''}`}
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
-                <span>{item.label}</span>
+                <span>{t(item.key)}</span>
               </Link>
             ))}
           </nav>
 
-          {/* ─── Actions ─── */}
           <div className="mh__actions">
+            {location.pathname !== '/' && location.pathname !== '/home' && (
+              <button
+                type="button"
+                className="mh__icon-btn mh__back"
+                onClick={() => navigate(-1)}
+                aria-label={t('header.backNav')}
+                title={t('header.backNav')}
+              >
+                <i className={`fas ${backIcon}`}></i>
+              </button>
+            )}
+            <Notifications />
+            {/* Bilingual toggle removed from dashboard by user request */}
             <button
               type="button"
               className="mh__icon-btn"
               onClick={() => setIsDark((v) => !v)}
-              aria-label={isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'}
-              title={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
+              aria-label={isDark ? t('header.lightMode') : t('header.darkMode')}
+              title={isDark ? t('header.lightMode') : t('header.darkMode')}
             >
-              <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
+              <span>{isDark ? '☀️' : '🌙'}</span>
             </button>
 
             {userName && (
-              <div className="mh__user" title={userName}>
-                <span className="mh__avatar">{initial}</span>
+              <div className="mh__user" title={userName} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
+                <span className="mh__avatar">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="mh__avatar-img" />
+                  ) : initial}
+                </span>
                 <span className="mh__user-meta">
-                  <span className="mh__user-hi">مرحبًا</span>
-                  <span className="mh__user-name">{userName}</span>
+                  <span className="mh__user-hi">{t('header.welcome')}</span>
+                  <span className="mh__user-name" dir="ltr">{userName}</span>
                 </span>
               </div>
             )}
@@ -149,17 +192,17 @@ export default function Header() {
               type="button"
               className="mh__logout"
               onClick={handleLogout}
-              aria-label="تسجيل الخروج"
+              aria-label={t('header.logoutFull')}
             >
               <i className="fas fa-arrow-right-from-bracket"></i>
-              <span>خروج</span>
+              <span>{t('header.logout')}</span>
             </button>
 
             <button
               type="button"
               className={`mh__burger ${drawerOpen ? 'is-open' : ''}`}
               onClick={() => setDrawerOpen((v) => !v)}
-              aria-label="القائمة"
+              aria-label={t('header.menu')}
               aria-expanded={drawerOpen}
             >
               <span></span><span></span><span></span>
@@ -168,41 +211,44 @@ export default function Header() {
         </div>
       </header>
 
-      {/* ─── Mobile drawer ─── */}
       <div
         className={`mh-drawer ${drawerOpen ? 'is-open' : ''}`}
         onClick={() => setDrawerOpen(false)}
       >
         <aside
           className="mh-drawer__panel"
-          dir="rtl"
+          dir={isRtl ? 'rtl' : 'ltr'}
           onClick={(e) => e.stopPropagation()}
         >
           <header className="mh-drawer__head">
             <div className="mh__brand">
-              <span className="mh__mark"><span className="mh__mark-letter">م</span></span>
+              <span className="mh__mark"><span className="mh__mark-letter">{isRtl ? 'م' : 'M'}</span></span>
               <span className="mh__wordmark">
-                <span className="mh__brand-name">مسار</span>
-                <span className="mh__brand-tag">منصة تعليمية</span>
+                <span className="mh__brand-name">{t('header.brandName')}</span>
+                <span className="mh__brand-tag">{t('header.brandTag')}</span>
               </span>
             </div>
             <button
               type="button"
               className="mh__icon-btn"
               onClick={() => setDrawerOpen(false)}
-              aria-label="إغلاق"
+              aria-label={t('common.close')}
             >
               <i className="fas fa-xmark"></i>
             </button>
           </header>
 
           {userName && (
-            <div className="mh-drawer__user">
-              <span className="mh__avatar mh__avatar--lg">{initial}</span>
+            <div className="mh-drawer__user" onClick={() => { setDrawerOpen(false); navigate('/profile') }} style={{ cursor: 'pointer' }}>
+              <span className="mh__avatar mh__avatar--lg">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="mh__avatar-img" />
+                ) : initial}
+              </span>
               <div>
                 <div className="mh-drawer__user-name">{userName}</div>
                 <div className="mh-drawer__user-role">
-                  {userRole === 'admin' ? 'مشرف' : 'طالب'}
+                  {userRole === 'admin' ? t('common.admin') : t('common.student')}
                 </div>
               </div>
             </div>
@@ -216,8 +262,8 @@ export default function Header() {
                 className={`mh-drawer__link ${isActive(item.to) ? 'is-active' : ''}`}
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
-                <span>{item.label}</span>
-                <i className="fas fa-chevron-left mh-drawer__link-arrow"></i>
+                <span>{t(item.key)}</span>
+                <i className={`fas ${drawerArrow} mh-drawer__link-arrow`}></i>
               </Link>
             ))}
           </nav>
@@ -225,7 +271,7 @@ export default function Header() {
           <footer className="mh-drawer__foot">
             <button className="mh__logout mh__logout--full" onClick={handleLogout}>
               <i className="fas fa-arrow-right-from-bracket"></i>
-              <span>تسجيل الخروج</span>
+              <span>{t('header.logoutFull')}</span>
             </button>
           </footer>
         </aside>

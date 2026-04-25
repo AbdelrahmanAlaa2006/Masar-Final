@@ -7,7 +7,6 @@
   animation: fadeIn 0.3s ease-in-out;
   position: relative;
   z-index: 0;
-  padding-top: 90px;
 }
 
 .login-page .page-container {
@@ -39,3 +38,117 @@
     transform: translateY(0);
   }
 }
+
+/* Shared auth toast (login / logout) */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 14, 28, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: background 0.3s ease, backdrop-filter 0.3s ease;
+  pointer-events: none;
+}
+.auth-overlay.open {
+  background: rgba(12, 14, 28, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.auth-toast {
+  direction: rtl;
+  min-width: 300px;
+  max-width: 90vw;
+  padding: 24px 32px 18px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(245,245,255,0.92));
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  box-shadow: 0 20px 60px rgba(76, 29, 149, 0.28), 0 4px 16px rgba(0,0,0,0.12);
+  text-align: center;
+  font-family: 'Cairo', sans-serif;
+  transform: translateY(16px) scale(0.92);
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(.2,.9,.25,1.15), opacity 0.35s ease;
+}
+body.dark .auth-toast {
+  background: linear-gradient(145deg, rgba(30,32,48,0.96), rgba(24,26,40,0.92));
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(124, 58, 237, 0.25);
+}
+.auth-overlay.open .auth-toast { transform: translateY(0) scale(1); opacity: 1; }
+.auth-overlay.closing .auth-toast { transform: translateY(-8px) scale(0.96); opacity: 0; }
+.auth-toast-check {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+}
+.auth-toast-check.success {
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+}
+.auth-toast-check svg { width: 36px; height: 36px; }
+.notify-icon i { color: #fff; font-size: 1.7rem; }
+.notify--warning .notify-icon { background: linear-gradient(135deg, #f59e0b, #f97316); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35); }
+.notify--error .notify-icon { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35); }
+.notify--info .notify-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35); }
+.notify--success .notify-icon { background: linear-gradient(135deg, #10b981, #06b6d4); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35); }
+.auth-toast-check-circle {
+  stroke: rgba(255,255,255,0.45);
+  stroke-width: 2.5;
+  stroke-dasharray: 145;
+  stroke-dashoffset: 145;
+  animation: authCircle 0.5s ease forwards;
+}
+.auth-toast-check-path {
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: authCheck 0.4s 0.35s ease forwards;
+}
+@keyframes authCircle { to { stroke-dashoffset: 0; } }
+@keyframes authCheck  { to { stroke-dashoffset: 0; } }
+.auth-toast-text {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  letter-spacing: 0.3px;
+}
+body.dark .auth-toast-text { color: #f1f5ff; }
+.auth-toast-sub {
+  margin-top: 4px;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+body.dark .auth-toast-sub { color: #94a3b8; }
+.auth-toast-bar {
+  margin-top: 14px;
+  height: 3px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  overflow: hidden;
+}
+.auth-toast-bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #7c3aed, #06b6d4);
+  transform-origin: right center;
+  animation: authBar 1.6s linear forwards;
+}
+.auth-toast-check.success ~ .auth-toast-bar span {
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+}
+@keyframes authBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
