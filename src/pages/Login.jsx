@@ -167,9 +167,51 @@ export default function Login() {
     document.documentElement.dir = 'ltr'
   }
 
+  // Brute-force prevention: track failed attempts in localStorage with a
+  // sliding 60s window. After 5 failures the form locks for 60s with a
+  // visible cooldown. Real protection still lives at the server (Supabase
+  // auth has its own rate limits) — this just prevents accidentally
+  // hammering the endpoint and gives a clear "you're locked" UX.
+  const ATTEMPT_KEY = 'masar-login-attempts'
+  const MAX_FAILS = 5
+  const WINDOW_MS = 60_000
+  const LOCK_MS   = 60_000
+
+  const getCooldownRemaining = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ATTEMPT_KEY) || '{}')
+      const lockedUntil = raw.lockedUntil || 0
+      return Math.max(0, lockedUntil - Date.now())
+    } catch { return 0 }
+  }
+
+  const recordFailure = () => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ATTEMPT_KEY) || '{}')
+      const now = Date.now()
+      const fails = (raw.fails || []).filter((t) => now - t < WINDOW_MS)
+      fails.push(now)
+      const next = { fails }
+      if (fails.length >= MAX_FAILS) next.lockedUntil = now + LOCK_MS
+      localStorage.setItem(ATTEMPT_KEY, JSON.stringify(next))
+    } catch {}
+  }
+
+  const clearFailures = () => {
+    try { localStorage.removeItem(ATTEMPT_KEY) } catch {}
+  }
+
   const handleLogin = async e => {
     e.preventDefault()
     setError('')
+
+    const cooldown = getCooldownRemaining()
+    if (cooldown > 0) {
+      setError(lang === 'ar'
+        ? `محاولات كثيرة. حاول مجدداً بعد ${Math.ceil(cooldown / 1000)} ثانية`
+        : `Too many attempts. Try again in ${Math.ceil(cooldown / 1000)}s`)
+      return
+    }
 
     if (phone.trim().length < 8) {
       setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number')
@@ -196,6 +238,7 @@ export default function Login() {
       // Store token and user data
       tokenAPI.setToken(response.token)
       localStorage.setItem('masar-user', JSON.stringify(response.user))
+      clearFailures() // successful login resets the attempt counter
 
       console.log('Token stored:', response.token)
       console.log('User stored:', response.user)
@@ -208,7 +251,15 @@ export default function Login() {
       }, 1500)
     } catch (err) {
       console.error('Login error:', err)
-      setError(err.message || (lang === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed'))
+      recordFailure() // count this failure toward the brute-force lockout
+      const cd = getCooldownRemaining()
+      if (cd > 0) {
+        setError(lang === 'ar'
+          ? `محاولات كثيرة. حاول مجدداً بعد ${Math.ceil(cd / 1000)} ثانية`
+          : `Too many attempts. Try again in ${Math.ceil(cd / 1000)}s`)
+      } else {
+        setError(err.message || (lang === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed'))
+      }
       setLoading(false)
     }
   }

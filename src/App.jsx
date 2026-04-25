@@ -22,6 +22,7 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { tokenAPI } from '@backend/authApi'
 import { LanguageProvider } from './i18n'
+import { isExamLocked, onExamLockChange } from './utils/examLock'
 import './App.css'
 
 function App() {
@@ -54,17 +55,16 @@ function AppContent() {
     setIsLoading(false)
   }, [location])
 
-  /* Anti-cheating: prevent students from selecting/copying anything in
-     the app. Admins keep normal browser behavior so they can manage
-     content (copy IDs, edit text, etc.). The CSS class toggles
-     user-select and we additionally block the contextmenu + copy
-     events at the document level. */
+  /* Anti-cheating + anti-tampering: students can't select/copy text,
+     right-click, view source, or open DevTools via shortcuts. Admins
+     keep normal browser behavior so they can manage content. */
   useEffect(() => {
     const isAdmin = user?.role === 'admin'
     document.body.classList.toggle('no-select', !isAdmin)
     if (isAdmin) return  // admins: no event blockers
-    // Allow selection inside form fields so students can type answers
-    // and edit their profile normally.
+
+    // Form fields stay normal so students can type answers, edit their
+    // profile, and paste into "writing sections" as requested.
     const isEditable = (el) => {
       if (!el) return false
       const tag = el.tagName
@@ -75,19 +75,73 @@ function AppContent() {
       e.preventDefault()
       return false
     }
+    // Devtools / view-source / save / print shortcuts. Note: this is a
+    // deterrent, not real security — anyone who really wants to inspect
+    // can disable JS or use the browser menu. The real protections are
+    // RLS on the server.
+    const blockKeys = (e) => {
+      const k = (e.key || '').toLowerCase()
+      // F12
+      if (e.key === 'F12') return e.preventDefault()
+      // Ctrl/Cmd + Shift + I/J/C  (devtools, console, inspect)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) {
+        return e.preventDefault()
+      }
+      // Ctrl/Cmd + U (view source), Ctrl/Cmd + S (save), Ctrl/Cmd + P (print)
+      if ((e.ctrlKey || e.metaKey) && (k === 'u' || k === 's' || k === 'p')) {
+        return e.preventDefault()
+      }
+    }
+
     document.addEventListener('contextmenu', block)
     document.addEventListener('copy', block)
     document.addEventListener('cut', block)
     document.addEventListener('selectstart', block)
     document.addEventListener('dragstart', block)
+    document.addEventListener('keydown', blockKeys, true)
     return () => {
       document.removeEventListener('contextmenu', block)
       document.removeEventListener('copy', block)
       document.removeEventListener('cut', block)
       document.removeEventListener('selectstart', block)
       document.removeEventListener('dragstart', block)
+      document.removeEventListener('keydown', blockKeys, true)
     }
   }, [user])
+
+  /* Exam lock: when ExamTaking calls startExamLock(), hide the
+     header/footer chrome and warn the student before they leave the
+     tab. Live navigation inside the SPA is also blocked from the
+     header (links are removed). */
+  const [examLocked, setExamLocked] = useState(() => isExamLocked())
+  useEffect(() => {
+    const off = onExamLockChange(setExamLocked)
+    return off
+  }, [])
+
+  useEffect(() => {
+    if (!examLocked) return
+    document.body.classList.add('exam-locked')
+    // Tab-close warning. Browsers ignore the custom message but show
+    // the native confirm — that's enough to make accidental closes
+    // recoverable.
+    const onBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+      return ''
+    }
+    // Browser back button: push a guard state and re-push on every
+    // popstate, so back becomes a no-op until the lock clears.
+    const guardBack = () => window.history.pushState(null, '', window.location.href)
+    guardBack()
+    window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('popstate', guardBack)
+    return () => {
+      document.body.classList.remove('exam-locked')
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener('popstate', guardBack)
+    }
+  }, [examLocked])
 
   if (isLoading) {
     return <div className="app"><div className="page-container">Loading...</div></div>
@@ -106,8 +160,8 @@ function AppContent() {
   }
 
   return (
-    <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
-      {!isLoginPage && <Header />}
+    <div className={`app ${isLoginPage ? 'login-page' : ''} ${examLocked ? 'exam-locked' : ''}`}>
+      {!isLoginPage && !examLocked && <Header />}
 
       <div className="page-container">
         <Routes>
@@ -139,7 +193,7 @@ function AppContent() {
         </Routes>
       </div>
 
-      {!isLoginPage && <Footer />}
+      {!isLoginPage && !examLocked && <Footer />}
     </div>
   )
 }
