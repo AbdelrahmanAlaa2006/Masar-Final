@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n'
+import { listVideos } from '@backend/videosApi'
+import { listExams } from '@backend/examsApi'
+import { listLectures } from '@backend/lecturesApi'
+import { listStudents } from '@backend/profilesApi'
 import './HomeDashboard.css'
 
 const safeParse = (key, fallback) => {
@@ -23,18 +27,75 @@ export default function HomeDashboard({ role }) {
   return role === 'admin' ? <AdminDashboard /> : <StudentDashboard />
 }
 
+/* ─────────── Live content stats ───────────
+   For admins this loads everything (no grade filter). For students,
+   Supabase RLS already restricts each list() to their own grade — so
+   the same calls just naturally return their grade's content.
+
+   Returns:
+     stats   — { students, lectures, videos, exams }
+     recent  — newest 5 items across lectures/videos/exams (by created_at)
+     loading — true while the initial fetch is in flight
+*/
+function useContentStats({ role }) {
+  const [stats,  setStats]  = useState({ students: 0, lectures: 0, videos: 0, exams: 0 })
+  const [recent, setRecent] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Students aren't allowed to read other profiles, so skip that
+        // call for them — counter stays at 0 (the panel hides it below).
+        const tasks = [
+          listLectures().catch(() => []),
+          listVideos().catch(() => []),
+          listExams().catch(() => []),
+          role === 'admin' ? listStudents().catch(() => []) : Promise.resolve([]),
+        ]
+        const [lectures, videos, exams, students] = await Promise.all(tasks)
+        if (cancelled) return
+
+        setStats({
+          students: students.length,
+          lectures: lectures.length,
+          videos:   videos.length,
+          exams:    exams.length,
+        })
+
+        // Combine recent items so the "Recent additions" panel mixes types.
+        const combined = [
+          ...lectures.map(r => ({ type: 'lectures', title: r.title, at: r.created_at })),
+          ...videos.map(r =>   ({ type: 'videos',   title: r.title, at: r.created_at })),
+          ...exams.map(r =>    ({ type: 'exams',    title: r.title, at: r.created_at })),
+        ]
+        combined.sort((a, b) => new Date(b.at) - new Date(a.at))
+        setRecent(combined.slice(0, 5))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [role])
+
+  return { stats, recent, loading }
+}
+
 /* ─────────── Student ─────────── */
 
 function StudentDashboard() {
   const navigate = useNavigate()
   const { t, lang } = useI18n()
-  const [recent, setRecent] = useState(() => safeParse('masar-recent', []))
+  const [recentNav, setRecentNav] = useState(() => safeParse('masar-recent', []))
   const [progress] = useState(() => safeParse('masar-progress', {
     lectures: { done: 0, total: 0 },
     videos:   { done: 0, total: 0 },
     exams:    { done: 0, total: 0 },
   }))
   const [upcoming] = useState(() => safeParse('masar-upcoming-exam', null))
+  // Live content for THIS student's grade (RLS does the filtering).
+  const { stats, recent, loading } = useContentStats({ role: 'student' })
 
   const routeLabels = {
     lectures: t('dashboard.lecturesLabel'),
@@ -43,20 +104,47 @@ function StudentDashboard() {
     report: t('reports.pageTitle'),
   }
 
-  // Sync across tabs
+  // Sync across tabs (per-tab navigation history, not content stats)
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === 'masar-recent') setRecent(safeParse('masar-recent', []))
+      if (e.key === 'masar-recent') setRecentNav(safeParse('masar-recent', []))
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  const lastItem = recent[0]
+  const lastItem = recentNav[0]
   const countdown = useCountdown(upcoming?.at)
 
   return (
     <section className="hdash hdash-student">
+      {/* Live grade-scoped overview — RLS shows only this student's grade. */}
+      <WidgetCard icon="fa-gauge-high" title={t('dashboard.overview')} accent="violet">
+        <div className="hdash-stats">
+          <StatCell icon="fa-book"     label={t('dashboard.lectures')} value={stats.lectures} />
+          <StatCell icon="fa-video"    label={t('dashboard.videos')}   value={stats.videos} />
+          <StatCell icon="fa-file-alt" label={t('dashboard.exams')}    value={stats.exams} />
+        </div>
+      </WidgetCard>
+
+      <WidgetCard icon="fa-clock" title={t('dashboard.recentAdds')} accent="cyan">
+        {loading ? (
+          <EmptyHint icon="fa-spinner" text={t('common.loading') || '...'} />
+        ) : recent.length ? (
+          <ul className="hdash-recent-list">
+            {recent.map((r, i) => (
+              <li key={i} onClick={() => navigate(ROUTE_META[r.type]?.route || '/')} style={{ cursor: 'pointer' }}>
+                <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
+                <span className="hdash-recent-title">{r.title}</span>
+                <span className="hdash-recent-time">{relTime(r.at, t)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyHint icon="fa-inbox" text={t('dashboard.noRecentContent')} />
+        )}
+      </WidgetCard>
+
       <WidgetCard
         icon="fa-clock-rotate-left"
         title={t('dashboard.continueTitle')}
@@ -146,35 +234,29 @@ function CountCell({ value, label }) {
 /* ─────────── Admin ─────────── */
 
 function AdminDashboard() {
+  const navigate = useNavigate()
   const { t } = useI18n()
-  const stats = useMemo(() => safeParse('masar-content-counts', {
-    students: 0, lectures: 0, videos: 0, exams: 0,
-  }), [])
-  const recent = safeParse('masar-content-recent', [])
-
-  const routeLabels = {
-    lectures: t('dashboard.lectures'),
-    exams: t('dashboard.exams'),
-    videos: t('dashboard.videos'),
-    report: t('reports.pageTitle'),
-  }
+  // Pulled live from Supabase — totals across all grades.
+  const { stats, recent, loading } = useContentStats({ role: 'admin' })
 
   return (
     <section className="hdash hdash-admin">
       <WidgetCard icon="fa-gauge-high" title={t('dashboard.overview')} accent="violet">
         <div className="hdash-stats">
-          <StatCell icon="fa-user-graduate" label={t('dashboard.students')}     value={stats.students} />
+          <StatCell icon="fa-user-graduate" label={t('dashboard.students')} value={stats.students} />
           <StatCell icon="fa-book"          label={t('dashboard.lectures')} value={stats.lectures} />
-          <StatCell icon="fa-video"         label={t('dashboard.videos')} value={stats.videos} />
-          <StatCell icon="fa-file-alt"      label={t('dashboard.exams')} value={stats.exams} />
+          <StatCell icon="fa-video"         label={t('dashboard.videos')}   value={stats.videos} />
+          <StatCell icon="fa-file-alt"      label={t('dashboard.exams')}    value={stats.exams} />
         </div>
       </WidgetCard>
 
       <WidgetCard icon="fa-clock" title={t('dashboard.recentAdds')} accent="cyan">
-        {recent.length ? (
+        {loading ? (
+          <EmptyHint icon="fa-spinner" text={t('common.loading') || '...'} />
+        ) : recent.length ? (
           <ul className="hdash-recent-list">
-            {recent.slice(0, 5).map((r, i) => (
-              <li key={i}>
+            {recent.map((r, i) => (
+              <li key={i} onClick={() => navigate(ROUTE_META[r.type]?.route || '/')} style={{ cursor: 'pointer' }}>
                 <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
                 <span className="hdash-recent-title">{r.title}</span>
                 <span className="hdash-recent-time">{relTime(r.at, t)}</span>
