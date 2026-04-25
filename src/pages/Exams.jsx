@@ -10,6 +10,8 @@ import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 export default function Exams() {
   const navigate = useNavigate()
   const { t, lang } = useI18n()
+  // Record this visit for the home "Continue" widget.
+  useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
 
   const PREP_META = {
     first:  { ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },

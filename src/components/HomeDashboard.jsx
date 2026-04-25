@@ -41,21 +41,38 @@ function useContentStats({ role }) {
   const [stats,  setStats]  = useState({ students: 0, lectures: 0, videos: 0, exams: 0 })
   const [recent, setRecent] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(null)
+  // Manual refresh — bumping this triggers a re-fetch.
+  const [tick, setTick] = useState(0)
+  const refresh = () => setTick(t => t + 1)
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setError(null)
     ;(async () => {
       try {
-        // Students aren't allowed to read other profiles, so skip that
-        // call for them — counter stays at 0 (the panel hides it below).
-        const tasks = [
-          listLectures().catch(() => []),
-          listVideos().catch(() => []),
-          listExams().catch(() => []),
-          role === 'admin' ? listStudents().catch(() => []) : Promise.resolve([]),
-        ]
-        const [lectures, videos, exams, students] = await Promise.all(tasks)
+        // Run all four in parallel. Each call is wrapped so a single
+        // failing endpoint (RLS, network) doesn't blank the whole panel —
+        // it just shows zero for that resource and we surface the error
+        // text below the cards.
+        const wrap = (p, label) => p.then(
+          (v) => ({ ok: true, v }),
+          (e) => ({ ok: false, label, e })
+        )
+        const [L, V, E, S] = await Promise.all([
+          wrap(listLectures(), 'lectures'),
+          wrap(listVideos(),   'videos'),
+          wrap(listExams(),    'exams'),
+          // Students aren't allowed to read other profiles → skip that.
+          role === 'admin' ? wrap(listStudents(), 'students') : Promise.resolve({ ok: true, v: [] }),
+        ])
         if (cancelled) return
+
+        const lectures = L.ok ? L.v : []
+        const videos   = V.ok ? V.v : []
+        const exams    = E.ok ? E.v : []
+        const students = S.ok ? S.v : []
 
         setStats({
           students: students.length,
@@ -64,22 +81,53 @@ function useContentStats({ role }) {
           exams:    exams.length,
         })
 
-        // Combine recent items so the "Recent additions" panel mixes types.
+        // Carry richer per-item details into the recent panel: the type
+        // (so we can render the right icon/label), grade (so we can show
+        // a pill), and one extra piece of context per resource.
         const combined = [
-          ...lectures.map(r => ({ type: 'lectures', title: r.title, at: r.created_at })),
-          ...videos.map(r =>   ({ type: 'videos',   title: r.title, at: r.created_at })),
-          ...exams.map(r =>    ({ type: 'exams',    title: r.title, at: r.created_at })),
+          ...lectures.map(r => ({
+            type: 'lectures', title: r.title, at: r.created_at,
+            grade: r.grade, extra: r.subject || r.teacher || null,
+          })),
+          ...videos.map(r => ({
+            type: 'videos', title: r.title, at: r.created_at,
+            grade: r.grade,
+            extra: r.video_parts ? `${r.video_parts.length} جزء` : null,
+          })),
+          ...exams.map(r => ({
+            type: 'exams', title: r.title, at: r.created_at,
+            grade: r.grade,
+            extra: r.duration_minutes ? `${r.duration_minutes} د` : null,
+          })),
         ]
         combined.sort((a, b) => new Date(b.at) - new Date(a.at))
         setRecent(combined.slice(0, 5))
+
+        const fails = [L, V, E, S].filter((r) => !r.ok)
+        if (fails.length) {
+          setError(fails.map((f) => `${f.label}: ${f.e?.message || 'failed'}`).join(' • '))
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
     })()
     return () => { cancelled = true }
-  }, [role])
+  }, [role, tick])
 
-  return { stats, recent, loading }
+  return { stats, recent, loading, error, refresh }
+}
+
+// Arabic short labels for grade enums + content types — used by the
+// recent-additions panel.
+const GRADE_SHORT = {
+  'first-prep':  'أولى إعدادي',
+  'second-prep': 'تانية إعدادي',
+  'third-prep':  'تالتة إعدادي',
+}
+const TYPE_LABEL = {
+  lectures: 'محاضرة',
+  videos:   'فيديو',
+  exams:    'امتحان',
 }
 
 /* ─────────── Student ─────────── */
@@ -95,7 +143,7 @@ function StudentDashboard() {
   }))
   const [upcoming] = useState(() => safeParse('masar-upcoming-exam', null))
   // Live content for THIS student's grade (RLS does the filtering).
-  const { stats, recent, loading } = useContentStats({ role: 'student' })
+  const { stats, recent, loading, error, refresh } = useContentStats({ role: 'student' })
 
   const routeLabels = {
     lectures: t('dashboard.lecturesLabel'),
@@ -104,13 +152,18 @@ function StudentDashboard() {
     report: t('reports.pageTitle'),
   }
 
-  // Sync across tabs (per-tab navigation history, not content stats)
+  // Refresh navigation history when the user visits another section in
+  // the same tab (the trackVisit helper fires `masar-recent-change`),
+  // and across tabs via the standard `storage` event.
   useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === 'masar-recent') setRecentNav(safeParse('masar-recent', []))
-    }
+    const reload = () => setRecentNav(safeParse('masar-recent', []))
+    const onStorage = (e) => { if (e.key === 'masar-recent') reload() }
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener('masar-recent-change', reload)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('masar-recent-change', reload)
+    }
   }, [])
 
   const lastItem = recentNav[0]
@@ -127,23 +180,14 @@ function StudentDashboard() {
         </div>
       </WidgetCard>
 
-      <WidgetCard icon="fa-clock" title={t('dashboard.recentAdds')} accent="cyan">
-        {loading ? (
-          <EmptyHint icon="fa-spinner" text={t('common.loading') || '...'} />
-        ) : recent.length ? (
-          <ul className="hdash-recent-list">
-            {recent.map((r, i) => (
-              <li key={i} onClick={() => navigate(ROUTE_META[r.type]?.route || '/')} style={{ cursor: 'pointer' }}>
-                <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
-                <span className="hdash-recent-title">{r.title}</span>
-                <span className="hdash-recent-time">{relTime(r.at, t)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyHint icon="fa-inbox" text={t('dashboard.noRecentContent')} />
-        )}
-      </WidgetCard>
+      <RecentAddsCard
+        loading={loading}
+        recent={recent}
+        error={error}
+        onRefresh={refresh}
+        navigate={navigate}
+        t={t}
+      />
 
       <WidgetCard
         icon="fa-clock-rotate-left"
@@ -237,7 +281,7 @@ function AdminDashboard() {
   const navigate = useNavigate()
   const { t } = useI18n()
   // Pulled live from Supabase — totals across all grades.
-  const { stats, recent, loading } = useContentStats({ role: 'admin' })
+  const { stats, recent, loading, error, refresh } = useContentStats({ role: 'admin' })
 
   return (
     <section className="hdash hdash-admin">
@@ -248,25 +292,26 @@ function AdminDashboard() {
           <StatCell icon="fa-video"         label={t('dashboard.videos')}   value={stats.videos} />
           <StatCell icon="fa-file-alt"      label={t('dashboard.exams')}    value={stats.exams} />
         </div>
-      </WidgetCard>
-
-      <WidgetCard icon="fa-clock" title={t('dashboard.recentAdds')} accent="cyan">
-        {loading ? (
-          <EmptyHint icon="fa-spinner" text={t('common.loading') || '...'} />
-        ) : recent.length ? (
-          <ul className="hdash-recent-list">
-            {recent.map((r, i) => (
-              <li key={i} onClick={() => navigate(ROUTE_META[r.type]?.route || '/')} style={{ cursor: 'pointer' }}>
-                <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
-                <span className="hdash-recent-title">{r.title}</span>
-                <span className="hdash-recent-time">{relTime(r.at, t)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyHint icon="fa-inbox" text={t('dashboard.noRecentContent')} />
+        {error && (
+          <div style={{
+            marginTop: 10, padding: '8px 10px', borderRadius: 8,
+            background: 'rgba(239,68,68,0.1)', color: '#dc2626',
+            fontSize: 12, fontWeight: 600,
+          }}>
+            <i className="fas fa-triangle-exclamation" style={{ marginInlineEnd: 6 }}></i>
+            تعذر تحميل بعض البيانات: {error}
+          </div>
         )}
       </WidgetCard>
+
+      <RecentAddsCard
+        loading={loading}
+        recent={recent}
+        error={error}
+        onRefresh={refresh}
+        navigate={navigate}
+        t={t}
+      />
 
       <WidgetCard icon="fa-bolt" title={t('dashboard.quickActions')} accent="amber">
         <div className="hdash-quick">
@@ -314,6 +359,75 @@ function EmptyHint({ icon, text }) {
     </div>
   )
 }
+
+/* Recent additions panel — shared between admin and student. Each row
+   shows: type icon, title, type+grade pills, an optional extra detail
+   (subject / parts count / duration), and the relative time. The whole
+   row navigates to the section. A small refresh button on the header
+   lets the user re-pull without reloading the page. */
+function RecentAddsCard({ loading, recent, onRefresh, navigate, t }) {
+  return (
+    <div className="hdash-card hdash-accent-cyan">
+      <div className="hdash-card-head" style={{ justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="hdash-card-icon"><i className="fas fa-clock"></i></div>
+          <h3>{t('dashboard.recentAdds')}</h3>
+        </div>
+        <button
+          onClick={onRefresh}
+          title="تحديث"
+          aria-label="Refresh"
+          style={{
+            border: 'none', background: 'transparent', color: 'inherit',
+            cursor: 'pointer', padding: 6, borderRadius: 6, opacity: 0.7,
+          }}
+        >
+          <i className={`fas fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i>
+        </button>
+      </div>
+      <div className="hdash-card-body">
+        {loading ? (
+          <EmptyHint icon="fa-spinner" text={t('common.loading') || '...'} />
+        ) : recent.length ? (
+          <ul className="hdash-recent-list">
+            {recent.map((r, i) => (
+              <li
+                key={i}
+                onClick={() => navigate(ROUTE_META[r.type]?.route || '/')}
+                style={{ cursor: 'pointer', alignItems: 'flex-start' }}
+              >
+                <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span className="hdash-recent-title" style={{ fontWeight: 700 }}>{r.title}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
+                    <span style={pillStyle('#7c3aed')}>{TYPE_LABEL[r.type]}</span>
+                    {r.grade && (
+                      <span style={pillStyle('#06b6d4')}>{GRADE_SHORT[r.grade] || r.grade}</span>
+                    )}
+                    {r.extra && (
+                      <span style={pillStyle('#64748b')}>{r.extra}</span>
+                    )}
+                  </div>
+                </div>
+                <span className="hdash-recent-time" style={{ flexShrink: 0 }}>{relTime(r.at, t)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyHint icon="fa-inbox" text={t('dashboard.noRecentContent')} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+const pillStyle = (color) => ({
+  display: 'inline-flex', alignItems: 'center',
+  padding: '2px 8px', borderRadius: 999,
+  background: `${color}1a`, color, fontWeight: 700,
+  border: `1px solid ${color}40`,
+  whiteSpace: 'nowrap',
+})
 
 function relTime(iso, t) {
   if (!iso) return ''

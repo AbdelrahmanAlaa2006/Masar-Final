@@ -18,6 +18,8 @@ import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 export default function Videos() {
   const navigate = useNavigate()
   const { t, lang } = useI18n()
+  // Record this visit for the home "Continue" widget.
+  useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
 
   const GRADES = [
     { id: 'first-prep',  ar: t('grades.first'), en: 'First Prep',  accent: 'green',  desc: lang === 'ar' ? 'بداية المرحلة الإعدادية والتأسيس' : 'Start of prep stage and foundation' },
