@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
-import { startExamLock, stopExamLock } from '../utils/examLock'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
@@ -24,9 +23,20 @@ export default function ExamTaking() {
   const [submitting, setSubmitting] = useState(false)
   const [finalScore, setFinalScore] = useState(null)
   const submittedRef = useRef(false)
+  // Guard against StrictMode's mount→unmount→mount cycle (dev-only) so
+  // we don't create two attempt rows for the same load. In production
+  // this just no-ops on the second pass.
+  const startedRef = useRef(false)
 
   // ── Load the exam + start an attempt ──────────────────────────
   useEffect(() => {
+    // Run-once guard: in React StrictMode (dev), this effect mounts
+    // twice. Without this guard we'd insert two attempt rows and the
+    // exam-lock would flicker on/off, causing the visible "refreshing"
+    // behaviour students were seeing.
+    if (startedRef.current) return
+    startedRef.current = true
+
     let cancelled = false
     const run = async () => {
       if (!examId) { setLoadError(t('examTaking.noExamSpecified')); return }
@@ -46,14 +56,11 @@ export default function ExamTaking() {
           student_id: sid,
           max_score: e.total_points,
         })
-        if (!cancelled) {
-          setAttemptId(att.id)
-          // Lock the rest of the app: hides nav, blocks back button,
-          // warns on tab close until the student submits.
-          startExamLock({ attemptId: att.id })
-        }
+        if (!cancelled) setAttemptId(att.id)
       } catch (err) {
         if (!cancelled) setLoadError(err.message || t('examTaking.loadFailed'))
+        // Allow a real retry if the load itself failed.
+        startedRef.current = false
       }
     }
     run()
@@ -144,15 +151,8 @@ export default function ExamTaking() {
     setFinalScore(score)
     setExamFinished(true)
     setSubmitting(false)
-    // Release the lock — student can navigate again.
-    stopExamLock()
     createConfetti()
   }
-
-  // Safety net: if the component unmounts for any reason without
-  // submitting (refresh, route change, error boundary), still drop the
-  // lock so the user isn't trapped.
-  useEffect(() => () => { stopExamLock() }, [])
 
   const createConfetti = () => {
     const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#48bb78']

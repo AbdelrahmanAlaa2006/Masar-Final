@@ -22,7 +22,6 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { tokenAPI } from '@backend/authApi'
 import { LanguageProvider } from './i18n'
-import { isExamLocked, onExamLockChange } from './utils/examLock'
 import './App.css'
 
 function App() {
@@ -33,6 +32,21 @@ function App() {
       </Router>
     </LanguageProvider>
   )
+}
+
+/* Hoisted out of AppContent so the component reference is stable across
+   re-renders. Defining them inside the parent meant every state change
+   in AppContent (e.g. examLocked toggling) gave React a brand-new
+   component type, which forced every routed child (ExamTaking,
+   Lectures, ...) to unmount and remount — that looked like the page
+   was "refreshing" mid-exam. */
+function ProtectedRoute({ isLoggedIn, children }) {
+  return isLoggedIn ? children : <Navigate to="/login" replace />
+}
+function AdminRoute({ isLoggedIn, role, children }) {
+  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (role !== 'admin') return <Navigate to="/" replace />
+  return children
 }
 
 function AppContent() {
@@ -109,91 +123,50 @@ function AppContent() {
     }
   }, [user])
 
-  /* Exam lock: when ExamTaking calls startExamLock(), hide the
-     header/footer chrome and warn the student before they leave the
-     tab. Live navigation inside the SPA is also blocked from the
-     header (links are removed). */
-  const [examLocked, setExamLocked] = useState(() => isExamLocked())
-  useEffect(() => {
-    const off = onExamLockChange(setExamLocked)
-    return off
-  }, [])
-
-  useEffect(() => {
-    if (!examLocked) return
-    document.body.classList.add('exam-locked')
-    // Tab-close warning. Browsers ignore the custom message but show
-    // the native confirm — that's enough to make accidental closes
-    // recoverable.
-    const onBeforeUnload = (e) => {
-      e.preventDefault()
-      e.returnValue = ''
-      return ''
-    }
-    // Browser back button: push a guard state and re-push on every
-    // popstate, so back becomes a no-op until the lock clears.
-    const guardBack = () => window.history.pushState(null, '', window.location.href)
-    guardBack()
-    window.addEventListener('beforeunload', onBeforeUnload)
-    window.addEventListener('popstate', guardBack)
-    return () => {
-      document.body.classList.remove('exam-locked')
-      window.removeEventListener('beforeunload', onBeforeUnload)
-      window.removeEventListener('popstate', guardBack)
-    }
-  }, [examLocked])
-
   if (isLoading) {
     return <div className="app"><div className="page-container">Loading...</div></div>
   }
 
-  // Requires login
-  const ProtectedRoute = ({ children }) => {
-    return isLoggedIn ? children : <Navigate to="/login" replace />
-  }
-
-  // Requires admin role
-  const AdminRoute = ({ children }) => {
-    if (!isLoggedIn) return <Navigate to="/login" replace />
-    if (user?.role !== 'admin') return <Navigate to="/" replace />
-    return children
-  }
+  // Use the hoisted ProtectedRoute / AdminRoute below directly — passing
+  // auth as props keeps the component reference stable so ExamTaking
+  // and friends aren't unmounted whenever AppContent re-renders.
+  const role = user?.role
 
   return (
-    <div className={`app ${isLoginPage ? 'login-page' : ''} ${examLocked ? 'exam-locked' : ''}`}>
-      {!isLoginPage && !examLocked && <Header />}
+    <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
+      {!isLoginPage && <Header />}
 
       <div className="page-container">
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/lectures" element={<ProtectedRoute><Lectures /></ProtectedRoute>} />
-          <Route path="/exams" element={<ProtectedRoute><Exams /></ProtectedRoute>} />
-          <Route path="/exam-taking" element={<ProtectedRoute><ExamTaking /></ProtectedRoute>} />
-          <Route path="/videos" element={<ProtectedRoute><Videos /></ProtectedRoute>} />
+          <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
+          <Route path="/lectures" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Lectures /></ProtectedRoute>} />
+          <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
+          <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
+          <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
 
           {/* Student + Admin: solo reports */}
-          <Route path="/videos-report" element={<ProtectedRoute><VideosReport /></ProtectedRoute>} />
-          <Route path="/exams-report" element={<ProtectedRoute><ExamsReport /></ProtectedRoute>} />
+          <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />
+          <Route path="/exams-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamsReport /></ProtectedRoute>} />
 
           {/* Admin only */}
-          <Route path="/video-add" element={<AdminRoute><VideoAdd /></AdminRoute>} />
-          <Route path="/exam-add" element={<AdminRoute><ExamAdd /></AdminRoute>} />
-          <Route path="/report" element={<ProtectedRoute><Report /></ProtectedRoute>} />
-          <Route path="/videos-group-report" element={<AdminRoute><VideosGroupReport /></AdminRoute>} />
-          <Route path="/exams-group-report" element={<AdminRoute><ExamsGroupReport /></AdminRoute>} />
-          <Route path="/control-panel" element={<AdminRoute><ControlPanel /></AdminRoute>} />
+          <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideoAdd /></AdminRoute>} />
+          <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamAdd /></AdminRoute>} />
+          <Route path="/report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Report /></ProtectedRoute>} />
+          <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideosGroupReport /></AdminRoute>} />
+          <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamsGroupReport /></AdminRoute>} />
+          <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
           {/* Public-ish info pages — still gated by auth so non-students can't browse */}
-          <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-          <Route path="/terms" element={<ProtectedRoute><Terms /></ProtectedRoute>} />
-          <Route path="/privacy" element={<ProtectedRoute><Privacy /></ProtectedRoute>} />
+          <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
+          <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
+          <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
         </Routes>
       </div>
 
-      {!isLoginPage && !examLocked && <Footer />}
+      {!isLoginPage && <Footer />}
     </div>
   )
 }
