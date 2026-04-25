@@ -10,7 +10,7 @@ export async function listVideos() {
     .select(`
       id, title, description, grade,
       active_hours, expiry_at, quizzes, created_at,
-      video_parts ( id, part_index, title, youtube_id, youtube_url )
+      video_parts ( id, part_index, title, youtube_id, youtube_url, view_limit )
     `)
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -74,6 +74,10 @@ export async function createVideo(input) {
       part_index: i,
       title: p.title,
       youtube_id: p.youtube_id || extractYouTubeId(p.youtube_url || ''),
+      // null = unlimited views; otherwise the per-part default cap.
+      view_limit: p.view_limit == null || p.view_limit === ''
+        ? null
+        : Math.max(1, Math.min(99, parseInt(p.view_limit, 10) || 1)),
     }))
     const { error: partsErr } = await supabase.from('video_parts').insert(rows)
     if (partsErr) {

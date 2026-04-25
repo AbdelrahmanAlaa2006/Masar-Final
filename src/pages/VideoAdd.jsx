@@ -66,6 +66,7 @@ export default function VideoAdd() {
       id: i,
       title: '',
       videoId: '',
+      viewLimit: 3, // default: each student gets 3 views per part
     }))
 
     setVideoParts(newParts)
@@ -103,6 +104,7 @@ export default function VideoAdd() {
       id: i,
       title: p.title,
       videoId: p.videoId || extractYouTubeId(p.videoUrl || ''),
+      viewLimit: p.viewLimit ?? 3,
     }))
 
     setVideoParts(restoredParts)
@@ -200,6 +202,7 @@ export default function VideoAdd() {
         parts: videoParts.map(p => ({
           title: p.title.trim(),
           youtube_id: p.videoId.trim(),
+          view_limit: p.viewLimit,
         })),
       })
       setShowSuccess(true)
@@ -375,6 +378,23 @@ export default function VideoAdd() {
                           {t('videoAdd.youtubeIdError')}
                         </small>
                       )}
+                    </div>
+
+                    <div className="form-group">
+                      <label>عدد المحاولات لكل طالب</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={part.viewLimit ?? 3}
+                        onChange={(e) => {
+                          const n = Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1))
+                          updatePart(part.id, 'viewLimit', n)
+                        }}
+                      />
+                      <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                        كل طالب يستطيع مشاهدة هذا الجزء بهذا العدد من المرات.
+                      </small>
                     </div>
                   </div>
                 ))}
