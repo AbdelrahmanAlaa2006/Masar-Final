@@ -4,7 +4,11 @@
       "Bash(npm run *)",
       "Bash(npx vite *)",
       "Bash(node -e \"const fs=require\\('fs'\\);const p='src/pages/ControlPanel.jsx';let s=fs.readFileSync\\(p,'utf8'\\);s=s.split\\(\\\\\"section !== 'home' && section !== 'reveal'\\\\\"\\).join\\(\\\\\"\\(section === 'videos' || section === 'exams'\\)\\\\\"\\);fs.writeFileSync\\(p,s\\)\")",
-      "Bash(npx --no-install vite build)"
+      "Bash(npx --no-install vite build)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

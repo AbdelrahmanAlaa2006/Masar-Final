@@ -33,6 +33,7 @@ function shapeVideo(row) {
     title: p.title,
     youtubeId: p.youtube_id || '',
     part_index: p.part_index,
+    viewLimit: p.view_limit ?? null, // null = unlimited
   }))
   return {
     id: row.id,
@@ -107,22 +108,27 @@ function shapeVideo(row) {
 
   useEffect(() => { refreshVideos() }, [])
 
-  // Load admin-set overrides for this student (prep + student scope merged).
+  // Load admin-set overrides. For students we filter by their own id+grade
+  // (RLS would do it anyway). For admins we load by the grade they're
+  // currently browsing so the green/red dot reflects what students see.
   useEffect(() => {
-    if (!currentUser?.id || !currentUser?.grade || currentUser.role === 'admin') return
+    if (!currentUser?.id) return
+    const isAdmin = currentUser.role === 'admin'
+    const grade = isAdmin ? currentGrade : currentUser.grade
+    if (!grade) { setVideoOverrides(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
         const rows = await listEffectiveOverrides({
-          studentId: currentUser.id,
-          grade: currentUser.grade,
+          studentId: isAdmin ? '00000000-0000-0000-0000-000000000000' : currentUser.id,
+          grade,
           itemType: 'video',
         })
         if (!cancelled) setVideoOverrides(reduceEffective(rows))
       } catch { /* defaults apply */ }
     })()
     return () => { cancelled = true }
-  }, [currentUser])
+  }, [currentUser, currentGrade])
 
   // ── Group by grade for the grid ──────────────────────────────
   const videosByGrade = useMemo(() => {
@@ -174,12 +180,34 @@ function shapeVideo(row) {
     return null
   }
 
-  // View-limit enforcement was removed — students can rewatch freely.
-  // We still keep the override's `allowed` flag so an admin can stop showing
-  // a video without deleting it (via Control Panel → إدارة الفيديوهات).
   const isVideoAllowed = (video) => {
     const o = videoOverrides.get(video?.id)
     return o ? o.allowed !== false : true
+  }
+
+  // ── Per-part view-limit helpers ──────────────────────────────
+  // Effective trial cap for a part = its own view_limit (default from
+  // VideoAdd) PLUS any bonus attempts the admin granted via the override.
+  // null on view_limit means "unlimited" — the override can't take that away.
+  const partViewCap = (video, part) => {
+    if (part.viewLimit == null) return Infinity
+    const bonus = videoOverrides.get(video?.id)?.attempts || 0
+    return part.viewLimit + bonus
+  }
+
+  // How many times this student has actually opened this part (rows in
+  // video_progress.views_used). Returns 0 when nothing's been logged yet.
+  const partViewsUsed = (part) => {
+    const row = progressRows.find(r => r.part_id === part.id)
+    return row?.views_used || 0
+  }
+
+  // Remaining trials for the trial-counter UI on the sidebar (Task 4).
+  // Infinity stays Infinity so the UI can show "غير محدود".
+  const partTrialsLeft = (video, part) => {
+    const cap = partViewCap(video, part)
+    if (cap === Infinity) return Infinity
+    return Math.max(0, cap - partViewsUsed(part))
   }
 
   // Effective expiry for the current student. If the admin has set a
@@ -250,6 +278,18 @@ function shapeVideo(row) {
     const expiryDate = effectiveExpiryFor(currentVideo)
     if (expiryDate && now > expiryDate) {
       return showAlertModal(t('common.error'), t('videos.unavailable'))
+    }
+
+    // Trial-cap gate (per-part view limit). Admins are exempt — they need
+    // to be able to preview content without burning trials.
+    if (userRole !== 'admin') {
+      const left = partTrialsLeft(currentVideo, part)
+      if (left <= 0) {
+        return showAlertModal(
+          'انتهت محاولاتك',
+          `لقد استخدمت كل محاولات مشاهدة هذا الجزء (${partViewCap(currentVideo, part)}). تواصل مع المعلم للحصول على محاولات إضافية.`
+        )
+      }
     }
 
     // Quiz gate
@@ -377,7 +417,10 @@ function shapeVideo(row) {
             <div className="videos-grid" id="videosGrid">
               {(videosByGrade[currentGrade] || []).map((video, index) => {
                 const expiry = effectiveExpiryFor(video)
-                const isAvailable = !expiry || new Date() < expiry
+                const notExpired = !expiry || new Date() < expiry
+                // Card status reflects BOTH the toggle (allowed flag) and the
+                // expiry window. If either says "no", the dot turns red.
+                const isAvailable = notExpired && isVideoAllowed(video)
                 const hours = effectiveHoursFor(video)
                 const formattedExpiry = expiry ? expiry.toLocaleDateString('ar-EG', {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -490,21 +533,53 @@ function shapeVideo(row) {
                 <div id="partsList" data-quiz-tick={quizTick}>
                   {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
-                    const locked = !!blocking && userRole !== 'admin'
+                    const left = partTrialsLeft(currentVideo, part)
+                    const cap  = partViewCap(currentVideo, part)
+                    const outOfTrials = userRole !== 'admin' && left <= 0
+                    const locked = (!!blocking && userRole !== 'admin') || outOfTrials
                     const isActive = selectedPart?.id === part.id
+                    const showTrials = userRole !== 'admin' && cap !== Infinity
+                    // Tint the trial pill: green when 2+ left, orange at 1, red at 0
+                    const trialColor = left <= 0 ? '#e53e3e' : left === 1 ? '#ed8936' : '#38a169'
                     return (
                       <div
                         key={part.id}
                         className={`part-item ${locked ? 'part-item-locked' : ''} ${isActive ? 'part-item-active' : ''}`}
                         onClick={() => playVideoPart(part)}
                       >
-                        <div className="title-card" style={{ color: 'var(--text-primary)' }}>
-                          {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
-                          {t('videos.partLabel')} {index + 1}: {part.title}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="title-card" style={{ color: 'var(--text-primary)', flex: 1 }}>
+                            {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
+                            {t('videos.partLabel')} {index + 1}: {part.title}
+                          </div>
+                          {showTrials && (
+                            <span
+                              title="المحاولات المتبقية"
+                              style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 999,
+                                background: `${trialColor}1a`,
+                                color: trialColor,
+                                border: `1px solid ${trialColor}55`,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <i className="fas fa-eye" style={{ marginInlineEnd: 4 }}></i>
+                              {left} / {cap}
+                            </span>
+                          )}
                         </div>
-                        {locked && (
+                        {blocking && userRole !== 'admin' && (
                           <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
                             <i className="fas fa-graduation-cap"></i> {t('videos.quizRequired')}: {blocking.title}
+                          </div>
+                        )}
+                        {outOfTrials && (
+                          <div style={{ fontSize: '0.8rem', color: '#e53e3e', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-circle-xmark"></i> انتهت محاولاتك لهذا الجزء
                           </div>
                         )}
                       </div>
