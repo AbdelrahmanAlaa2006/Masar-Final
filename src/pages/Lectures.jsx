@@ -52,6 +52,9 @@ function rowToCard(row, lang) {
 
 export default function Lectures() {
   const { t, lang } = useI18n()
+  // Record this visit so the home dashboard's "Continue" widget knows
+  // where the student last was.
+  useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('lectures')) }, [])
   const PREPS = [
     {
       id: 'first',
