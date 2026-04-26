@@ -129,7 +129,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('masar-user'))
+      const user = JSON.parse(sessionStorage.getItem('masar-user'))
       if (user && user.name) {
         setUsername(user.name)
       }

@@ -31,7 +31,7 @@ export default function ExamsReport() {
   // Students never see the detailed table view — force cards.
   const initialViewMode = (() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       return u?.role === 'admin' ? 'table' : 'cards'
     } catch { return 'cards' }
   })()
@@ -46,7 +46,7 @@ export default function ExamsReport() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       setIsAdmin(u?.role === 'admin')
     } catch { setIsAdmin(false) }
   }, [])
@@ -57,7 +57,7 @@ export default function ExamsReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(localStorage.getItem('masar-user')) || null
+        const u = JSON.parse(sessionStorage.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
         const targetId = paramId || u?.id
         if (!targetId) return
@@ -182,7 +182,7 @@ export default function ExamsReport() {
       setStudentId(idParam || '')
     } else {
       try {
-        const stored = localStorage.getItem('masar-user')
+        const stored = sessionStorage.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           if (u?.name)  setStudentName(u.name)

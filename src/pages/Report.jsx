@@ -14,7 +14,7 @@ const GRADE_LABEL = {
 export default function Report() {
   const navigate = useNavigate()
   const [currentUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('masar-user')) || null } catch { return null }
+    try { return JSON.parse(sessionStorage.getItem('masar-user')) || null } catch { return null }
   })
   const isStudent = currentUser?.role !== 'admin'
   const studentGradeLabel = GRADE_LABEL[currentUser?.grade] || ''

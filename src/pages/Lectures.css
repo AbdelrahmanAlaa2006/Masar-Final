@@ -799,3 +799,85 @@ body.dark .lec-card-title-pill { color: #1a202c; }
   .lec-search-wrap { width: 100%; }
   .lec-card-actions { flex-wrap: wrap; }
 }
+
+/* ── Inline PDF viewer ─────────────────────────────────────────
+   Full-screen overlay with an <iframe>. The browser's built-in
+   PDF renderer handles the document, so no extra library is
+   needed. Close on backdrop click or the × button. */
+.lec-pdf-overlay {
+  position: fixed; inset: 0;
+  background: rgba(8, 12, 24, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: lecPdfFade 0.18s ease-out;
+}
+@keyframes lecPdfFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.lec-pdf-window {
+  width: min(1100px, 100%);
+  height: min(92vh, 1000px);
+  background: #0f172a;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.lec-pdf-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+.lec-pdf-title {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  min-width: 0;
+}
+.lec-pdf-title i { color: #ef4444; }
+.lec-pdf-title span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lec-pdf-close {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e0;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.lec-pdf-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.lec-pdf-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #1e293b;
+}
+body:not(.dark) .lec-pdf-window {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .lec-pdf-head {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+}
+body:not(.dark) .lec-pdf-close {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+body:not(.dark) .lec-pdf-frame { background: #f1f5f9; }

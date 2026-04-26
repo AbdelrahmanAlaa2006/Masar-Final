@@ -31,18 +31,32 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [userRole, setUserRole] = useState(null)
   const [userName, setUserName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Read user
+  // Read user. We re-read on route change AND on a custom 'masar-user-updated'
+  // event so Profile.jsx's avatar upload reflects in the navbar without a
+  // full page reload.
   useEffect(() => {
-    try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
-      setUserRole(u?.role || null)
-      setUserName(u?.name || '')
-    } catch {
-      setUserRole(null)
-      setUserName('')
+    const read = () => {
+      try {
+        const u = JSON.parse(sessionStorage.getItem('masar-user'))
+        setUserRole(u?.role || null)
+        setUserName(u?.name || '')
+        setAvatarUrl(u?.avatar_url || null)
+      } catch {
+        setUserRole(null)
+        setUserName('')
+        setAvatarUrl(null)
+      }
+    }
+    read()
+    window.addEventListener('masar-user-updated', read)
+    window.addEventListener('storage', read)
+    return () => {
+      window.removeEventListener('masar-user-updated', read)
+      window.removeEventListener('storage', read)
     }
   }, [location.pathname])
 
@@ -174,7 +188,11 @@ export default function Header() {
 
             {userName && (
               <div className="mh__user" title={userName} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-                <span className="mh__avatar">{initial}</span>
+                <span className={`mh__avatar ${avatarUrl ? 'mh__avatar--img' : ''}`}>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="" className="mh__avatar-img" />
+                    : initial}
+                </span>
                 <span className="mh__user-meta">
                   <span className="mh__user-hi">مرحبًا</span>
                   <span className="mh__user-name">{userName}</span>
@@ -235,7 +253,11 @@ export default function Header() {
 
           {userName && (
             <div className="mh-drawer__user" onClick={() => { setDrawerOpen(false); navigate('/profile') }} style={{ cursor: 'pointer' }}>
-              <span className="mh__avatar mh__avatar--lg">{initial}</span>
+              <span className={`mh__avatar mh__avatar--lg ${avatarUrl ? 'mh__avatar--img' : ''}`}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="" className="mh__avatar-img" />
+                  : initial}
+              </span>
               <div>
                 <div className="mh-drawer__user-name">{userName}</div>
                 <div className="mh-drawer__user-role">

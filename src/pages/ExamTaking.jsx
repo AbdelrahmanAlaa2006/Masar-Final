@@ -17,9 +17,14 @@ export default function ExamTaking() {
   // answers: { [qIdx]: Set<optIdx> } — works for both single and multi
   const [answers, setAnswers] = useState({})
   const [timeLeft, setTimeLeft] = useState(0)
+  // Storage key for resuming after a refresh. Scoped to exam + browser
+  // session — same exam in different tabs share state, which is fine
+  // since the server attempt row is the source of truth on submit.
+  const storageKey = examId ? `masar-exam-progress:${examId}` : null
   const [examFinished, setExamFinished] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [finalScore, setFinalScore] = useState(null)
+  const [unansweredAlert, setUnansweredAlert] = useState(null)
   const submittedRef = useRef(false)
   // Guard against StrictMode's mount→unmount→mount cycle (dev-only) so
   // we don't create two attempt rows for the same load. In production
@@ -35,37 +40,82 @@ export default function ExamTaking() {
     if (startedRef.current) return
     startedRef.current = true
 
-    let cancelled = false
     const run = async () => {
       if (!examId) { setLoadError('لم يتم تحديد الامتحان'); return }
       try {
-        const u = JSON.parse(localStorage.getItem('masar-user'))
+        const u = JSON.parse(sessionStorage.getItem('masar-user'))
         const sid = u?.id
         if (!sid) { setLoadError('يجب تسجيل الدخول'); return }
         setUserId(sid)
 
         const e = await getExam(examId)
-        if (cancelled) return
         setExam(e)
-        setTimeLeft((e.duration_minutes || 10) * 60)
+        // Restore prior in-flight progress (answers, current question,
+        // remaining time) so a refresh mid-exam doesn't reset everything.
+        let resumedTime = null
+        if (storageKey) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(storageKey))
+            if (saved && saved.answers) {
+              const restored = {}
+              for (const [k, v] of Object.entries(saved.answers)) {
+                restored[k] = new Set(v)
+              }
+              setAnswers(restored)
+            }
+            if (saved && Number.isInteger(saved.currentQuestion)) {
+              setCurrentQuestion(saved.currentQuestion)
+            }
+            if (saved && Number.isFinite(saved.deadline)) {
+              const remaining = Math.max(0, Math.floor((saved.deadline - Date.now()) / 1000))
+              resumedTime = remaining
+            }
+          } catch {}
+        }
+        setTimeLeft(resumedTime != null ? resumedTime : (e.duration_minutes || 10) * 60)
 
-        const att = await startAttempt({
-          exam_id: e.id,
-          student_id: sid,
-          max_score: e.total_points,
-        })
-        if (!cancelled) setAttemptId(att.id)
+        try {
+          const att = await startAttempt({
+            exam_id: e.id,
+            student_id: sid,
+            max_score: e.total_points,
+          })
+          setAttemptId(att.id)
+        } catch (attErr) {
+          // Non-fatal for admins / preview: log it but let the exam render
+          // so the user can review questions even if the attempt row could
+          // not be created (e.g. RLS blocked the insert).
+          console.error('startAttempt failed', attErr)
+        }
       } catch (err) {
-        if (!cancelled) setLoadError(err.message || 'تعذر تحميل الامتحان')
-        // Allow a real retry if the load itself failed.
+        console.error('ExamTaking load failed', err)
+        setLoadError(err.message || 'تعذر تحميل الامتحان')
         startedRef.current = false
       }
     }
     run()
-    return () => { cancelled = true }
   }, [examId])
 
   const questions = exam?.questions || []
+
+  // ── Persist progress on every change so a refresh resumes mid-exam.
+  // We store the absolute deadline (not the remaining seconds) so the
+  // clock keeps ticking even while the page is closed. Cleared on submit.
+  useEffect(() => {
+    if (!storageKey || !exam || examFinished) return
+    try {
+      const serialAnswers = {}
+      for (const [k, v] of Object.entries(answers)) {
+        serialAnswers[k] = Array.from(v || [])
+      }
+      const deadline = Date.now() + timeLeft * 1000
+      localStorage.setItem(storageKey, JSON.stringify({
+        answers: serialAnswers,
+        currentQuestion,
+        deadline,
+      }))
+    } catch {}
+  }, [answers, currentQuestion, timeLeft, storageKey, exam, examFinished])
 
   // ── Timer ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -126,8 +176,19 @@ export default function ExamTaking() {
     return earned
   }
 
-  const handleFinishExam = async () => {
+  const unansweredIndices = useMemo(
+    () => questions.map((_, i) => i).filter(i => !answers[i] || answers[i].size === 0),
+    [questions, answers]
+  )
+
+  const handleFinishExam = async (auto = false) => {
     if (submittedRef.current || submitting) return
+    // Manual submit requires answering every question. Auto-submit on
+    // timeout still goes through with whatever the student has.
+    if (!auto && unansweredIndices.length > 0) {
+      setUnansweredAlert(unansweredIndices)
+      return
+    }
     submittedRef.current = true
     setSubmitting(true)
     const score = computeScore()
@@ -149,19 +210,8 @@ export default function ExamTaking() {
     setFinalScore(score)
     setExamFinished(true)
     setSubmitting(false)
-    createConfetti()
-  }
-
-  const createConfetti = () => {
-    const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#48bb78']
-    for (let i = 0; i < 50; i++) {
-      const el = document.createElement('div')
-      el.style.cssText = `position:fixed;width:8px;height:8px;border-radius:50%;
-        background:${colors[Math.floor(Math.random() * colors.length)]};
-        left:${Math.random() * 100}vw;top:-10px;z-index:9999;
-        animation:confettiFall ${Math.random() * 3 + 2}s ease-out forwards`
-      document.body.appendChild(el)
-      setTimeout(() => el.remove(), 5000)
+    if (storageKey) {
+      try { localStorage.removeItem(storageKey) } catch {}
     }
   }
 
@@ -214,6 +264,39 @@ export default function ExamTaking() {
           </button>
         </div>
       )}
+      <div className={`et-layout ${examFinished ? 'is-finished' : ''}`}>
+      {!examFinished && (
+        <aside className="et-sidepanel" aria-label="قائمة الأسئلة">
+          <div className="et-sidepanel-head">
+            <h3>الأسئلة</h3>
+            <span className="et-sidepanel-count">
+              {answeredCount} / {questions.length}
+            </span>
+          </div>
+          <div className="et-sidepanel-grid">
+            {questions.map((_, idx) => {
+              const answered = answers[idx] && answers[idx].size > 0
+              const active = idx === currentQuestion
+              return (
+                <button
+                  key={idx}
+                  className={`et-side-num ${answered ? 'is-answered' : 'is-pending'} ${active ? 'is-active' : ''}`}
+                  onClick={() => setCurrentQuestion(idx)}
+                  aria-label={`السؤال ${idx + 1}${answered ? ' - تمت الإجابة' : ' - لم يُجَب بعد'}`}
+                  title={answered ? 'تمت الإجابة' : 'لم يُجَب بعد'}
+                >
+                  {idx + 1}
+                  {answered && <i className="fas fa-check et-side-num-tick" aria-hidden="true"></i>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="et-sidepanel-legend">
+            <span><span className="et-legend-swatch is-answered"></span> أجبت</span>
+            <span><span className="et-legend-swatch is-pending"></span> متبقي</span>
+          </div>
+        </aside>
+      )}
       <div className="et-card">
         {!examFinished ? (
           <>
@@ -260,21 +343,6 @@ export default function ExamTaking() {
               ))}
             </div>
 
-            <div className="et-navigator">
-              {questions.map((_, idx) => (
-                <button
-                  key={idx}
-                  className={`et-nav-dot
-                    ${(answers[idx] && answers[idx].size > 0) ? 'et-dot-answered' : ''}
-                    ${idx === currentQuestion ? 'et-dot-active' : ''}
-                  `}
-                  onClick={() => setCurrentQuestion(idx)}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-            </div>
-
             <div className="et-footer">
               <button
                 className="et-btn et-btn-prev"
@@ -288,6 +356,7 @@ export default function ExamTaking() {
                   className="et-btn et-btn-finish"
                   onClick={() => handleFinishExam(false)}
                   disabled={submitting}
+                  title={unansweredIndices.length > 0 ? `متبقي ${unansweredIndices.length} سؤال` : ''}
                 >
                   {submitting ? '⏳ جاري الإرسال...' : 'إنهاء الامتحان ✓'}
                 </button>
@@ -345,6 +414,36 @@ export default function ExamTaking() {
           </div>
         )}
       </div>
+      </div>
+
+      {unansweredAlert && (
+        <div className="et-modal-backdrop" onClick={() => setUnansweredAlert(null)}>
+          <div className="et-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="et-modal-icon">⚠️</div>
+            <h3 className="et-modal-title">يجب الإجابة على جميع الأسئلة</h3>
+            <p className="et-modal-sub">
+              لم تُجب بعد على {unansweredAlert.length} سؤال. يجب إكمال جميع الأسئلة قبل إنهاء الامتحان.
+            </p>
+            <div className="et-modal-list">
+              {unansweredAlert.map((idx) => (
+                <button
+                  key={idx}
+                  className="et-modal-chip"
+                  onClick={() => {
+                    setCurrentQuestion(idx)
+                    setUnansweredAlert(null)
+                  }}
+                >
+                  السؤال {idx + 1}
+                </button>
+              ))}
+            </div>
+            <button className="et-btn et-btn-prev" onClick={() => setUnansweredAlert(null)}>
+              العودة للإجابة
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { listExams, setExamRevealGrades, updateExamAvailability } from '@backend/examsApi'
 import { listVideos, updateVideoAvailability } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
+import { syncStudentsCsv } from '@backend/studentsSyncApi'
 import {
   listOverridesForTarget,
   upsertOverride,
@@ -35,7 +36,7 @@ const fmtDate = (iso) => {
    ────────────────────────────────────────────────────────────── */
 export default function ControlPanel() {
   /* navigation */
-  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams'
+  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams' | 'students'
   // Which sub-panel is active inside a section. Videos has: attempts, availability.
   // Exams adds: reveal. Only meaningful when section !== 'home'.
   const [subtab, setSubtab] = useState('attempts') // 'attempts' | 'availability' | 'reveal'
@@ -365,8 +366,17 @@ export default function ControlPanel() {
               desc="المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات"
               onClick={() => enterSection('exams')}
             />
+            <SectionCard
+              icon="fa-users"
+              accent="green"
+              title="مزامنة الطلاب"
+              desc="رفع ملف CSV لإضافة/تحديث الطلاب وحذف من تم استبعاده"
+              onClick={() => enterSection('students')}
+            />
           </div>
         )}
+
+        {section === 'students' && <StudentsSyncPanel />}
 
         {/* SUB-TAB BAR — videos: attempts/availability. exams: + reveal. */}
         {(section === 'videos' || section === 'exams') && (
@@ -1014,7 +1024,7 @@ function RevealPanel({ onBack, flash }) {
     const title = `تم إعلان نتيجة: ${exam.title}`
     const message = `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.`
     try {
-      const me = JSON.parse(localStorage.getItem('masar-user') || 'null')
+      const me = JSON.parse(sessionStorage.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
       if (audience === 'all') {
         await createNotification({ title, message, level: 'success', scope: 'all',
@@ -1777,5 +1787,336 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
         )}
       </div>
     </li>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   StudentsSyncPanel — admin uploads a CSV of students and the
+   sync-students Edge Function mirrors it into auth + profiles.
+   Dry-run by default; the admin must explicitly confirm to apply
+   destructive deletes.
+   ────────────────────────────────────────────────────────────── */
+function StudentsSyncPanel() {
+  const [csvText, setCsvText] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [report, setReport] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [confirmApply, setConfirmApply] = useState(false)
+
+  const readFile = (file) => {
+    if (!file) return
+    setFileName(file.name)
+    setError(null)
+    setReport(null)
+    const reader = new FileReader()
+    reader.onload = () => setCsvText(String(reader.result || ''))
+    reader.onerror = () => setError('تعذر قراءة الملف')
+    reader.readAsText(file, 'utf-8')
+  }
+
+  const onFile = (e) => readFile(e.target.files?.[0])
+  const onDrop = (e) => {
+    e.preventDefault(); setDragOver(false)
+    readFile(e.dataTransfer.files?.[0])
+  }
+
+  const clearFile = () => {
+    setCsvText(''); setFileName(''); setReport(null); setError(null)
+  }
+
+  const run = async (apply) => {
+    if (!csvText.trim()) { setError('اختر ملف الطلاب أولاً'); return }
+    setBusy(true); setError(null)
+    try {
+      const data = await syncStudentsCsv(csvText, { apply })
+      setReport(data)
+    } catch (err) {
+      setError(err.message || 'فشل الاتصال بالخادم')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Step 1: pick file. Step 2: preview shown after first run. Step 3: confirm dialog.
+  const orphans = report?.orphans || []
+  const willAdd = report?.ok || 0
+
+  return (
+    <section className="cp-panel sync-panel">
+      <div className="cp-panel-head">
+        <div>
+          <h2><i className="fas fa-users"></i> مزامنة الطلاب</h2>
+          <p className="cp-panel-sub">
+            اختر ملف الطلاب (Excel أو CSV). سنريك أولاً ما الذي سيتغيّر،
+            ثم تضغط على «تطبيق» لحفظ التعديلات.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Step 1: file picker / drop zone ─────────────────────── */}
+      {!fileName && (
+        <label
+          className={`sync-drop ${dragOver ? 'is-over' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
+          <div className="sync-drop-icon"><i className="fas fa-file-csv"></i></div>
+          <div className="sync-drop-title">اسحب ملف الطلاب هنا</div>
+          <div className="sync-drop-sub">أو اضغط لاختيار ملف من جهازك</div>
+          <input type="file" accept=".csv,text/csv" onChange={onFile} hidden />
+        </label>
+      )}
+
+      {/* ── File chip ──────────────────────────────────────────── */}
+      {fileName && (
+        <div className="sync-file-chip">
+          <i className="fas fa-file-csv sync-file-chip-icon"></i>
+          <div className="sync-file-chip-meta">
+            <div className="sync-file-chip-name">{fileName}</div>
+            <div className="sync-file-chip-sub">جاهز للمعاينة</div>
+          </div>
+          <button className="sync-file-chip-x" onClick={clearFile} title="إزالة الملف">
+            <i className="fas fa-xmark"></i>
+          </button>
+        </div>
+      )}
+
+      {/* ── Action: preview ────────────────────────────────────── */}
+      {fileName && !report && (
+        <div className="sync-actions">
+          <button
+            className="sync-btn sync-btn-primary"
+            onClick={() => run(false)}
+            disabled={busy}
+          >
+            {busy
+              ? <><i className="fas fa-spinner fa-spin"></i> جارٍ التحقق...</>
+              : <><i className="fas fa-magnifying-glass"></i> معاينة التغييرات</>}
+          </button>
+        </div>
+      )}
+
+      {/* ── Error ──────────────────────────────────────────────── */}
+      {error && (
+        <div className="sync-alert sync-alert-error">
+          <i className="fas fa-circle-exclamation"></i>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* ── Report (preview or applied) ────────────────────────── */}
+      {report && (
+        <div className="sync-report">
+          {/* Big stat cards */}
+          <div className="sync-stats">
+            <div className="sync-stat sync-stat-add">
+              <div className="sync-stat-num">{willAdd}</div>
+              <div className="sync-stat-lbl">
+                {report.apply ? 'طالب تم تحديثه' : 'طالب سيُحفظ'}
+              </div>
+              <i className="fas fa-user-plus sync-stat-icon"></i>
+            </div>
+            <div className="sync-stat sync-stat-del">
+              <div className="sync-stat-num">
+                {report.apply ? report.deleted : orphans.length}
+              </div>
+              <div className="sync-stat-lbl">
+                {report.apply ? 'طالب تم حذفه' : 'طالب سيُحذف'}
+              </div>
+              <i className="fas fa-user-minus sync-stat-icon"></i>
+            </div>
+            {(report.failed > 0 || report.skipped > 0) && (
+              <div className="sync-stat sync-stat-warn">
+                <div className="sync-stat-num">{report.failed + report.skipped}</div>
+                <div className="sync-stat-lbl">سطور لم تُنفّذ</div>
+                <i className="fas fa-triangle-exclamation sync-stat-icon"></i>
+              </div>
+            )}
+          </div>
+
+          {/* Orphans list — shown only on preview */}
+          {!report.apply && orphans.length > 0 && (
+            <div className="sync-section">
+              <h4 className="sync-section-title">
+                <i className="fas fa-trash-can"></i>
+                سيتم حذف هؤلاء الطلاب نهائيًا
+              </h4>
+              <ul className="sync-orphan-list">
+                {orphans.map(o => (
+                  <li key={o.id} className="sync-orphan-item">
+                    <span className="sync-orphan-avatar">
+                      {(o.name || '?').trim().charAt(0)}
+                    </span>
+                    <div className="sync-orphan-meta">
+                      <div className="sync-orphan-name">{o.name}</div>
+                      <div className="sync-orphan-phone" dir="ltr">{o.phone}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {report.apply && (
+            <div className="sync-alert sync-alert-success">
+              <i className="fas fa-circle-check"></i>
+              <span>تمت المزامنة بنجاح. قاعدة البيانات الآن مطابقة للملف.</span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {!report.apply && (
+            <div className="sync-actions">
+              <button
+                className="sync-btn sync-btn-success"
+                onClick={() => setConfirmApply(true)}
+                disabled={busy}
+              >
+                {busy
+                  ? <><i className="fas fa-spinner fa-spin"></i> جارٍ التنفيذ...</>
+                  : <><i className="fas fa-check"></i> تطبيق التغييرات</>}
+              </button>
+              <button
+                className="sync-btn sync-btn-ghost"
+                onClick={() => run(false)}
+                disabled={busy}
+                title="إعادة المعاينة"
+              >
+                <i className="fas fa-rotate"></i> إعادة الفحص
+              </button>
+            </div>
+          )}
+          {report.apply && (
+            <div className="sync-actions">
+              <button className="sync-btn sync-btn-ghost" onClick={clearFile}>
+                <i className="fas fa-arrow-rotate-left"></i> رفع ملف آخر
+              </button>
+            </div>
+          )}
+          {/* Tech log — formatted as a beautiful table */}
+          {report.logs && report.logs.length > 0 && (
+            <details className="sync-tech">
+              <summary>تفاصيل تقنية ({report.logs.length} سجل)</summary>
+              <div className="sync-tech-table-wrapper">
+                <table className="sync-tech-table">
+                  <thead>
+                    <tr>
+                      <th>الإجراء</th>
+                      <th>الطالب</th>
+                      <th>الجوال</th>
+                      <th>المرحلة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.logs.map((logStr, i) => {
+                      let action = 'معلومة';
+                      let type = 'info';
+                      let student = '—';
+                      let phone = '—';
+                      let grade = '—';
+                      const cleanLog = logStr.trim();
+                      let isUpsert = cleanLog.startsWith('would upsert:') || cleanLog.startsWith('ok:');
+                      let isDelete = cleanLog.startsWith('would delete:') || cleanLog.startsWith('deleted:');
+
+                      if (isUpsert) {
+                        type = 'upsert';
+                        action = cleanLog.startsWith('would') ? 'تجهيز للحفظ' : 'تم الحفظ';
+                        
+                        const prefixMatch = cleanLog.match(/^(?:would upsert|ok):\s*(.+)$/i);
+                        if (prefixMatch) {
+                          const rest = prefixMatch[1]; // "Name (phone) → grade"
+                          const parts = rest.split('→'); // Handle Backend Arrow
+                          const leftPart = parts[0].trim();
+                          const rightPart = parts[1] ? parts[1].trim() : '';
+                          
+                          const studentMatch = leftPart.match(/(.+?)\s*\(([^)]+)\)$/);
+                          if (studentMatch) {
+                            student = studentMatch[1].trim();
+                            phone = studentMatch[2].trim();
+                          } else {
+                            student = leftPart;
+                          }
+                          
+                          if (rightPart) {
+                            grade = GRADE_LABEL[rightPart] || rightPart;
+                          }
+                        } else {
+                          student = cleanLog;
+                        }
+                      } else if (isDelete) {
+                        type = 'delete';
+                        action = cleanLog.startsWith('would') ? 'تجهيز للحذف' : 'تم الحذف';
+                        
+                        const prefixMatch = cleanLog.match(/^(?:would delete|deleted):\s*(.+)$/i);
+                        if (prefixMatch) {
+                          const rest = prefixMatch[1];
+                          const studentMatch = rest.match(/(.+?)\s*\(([^)]+)\)$/);
+                          if (studentMatch) {
+                            student = studentMatch[1].trim();
+                            phone = studentMatch[2].trim();
+                          } else {
+                            student = rest;
+                          }
+                        } else {
+                          student = cleanLog;
+                        }
+                      } else {
+                        if (cleanLog.startsWith('skip:') || cleanLog.includes('fail')) {
+                           type = 'delete'; // mark errors red
+                           action = 'خطأ';
+                        }
+                        student = cleanLog;
+                      }
+
+                      return (
+                        <tr key={i} className={`sync-tr-${type}`}>
+                          <td>
+                            <span className={`sync-badge sync-badge-${type}`}>
+                              {action}
+                            </span>
+                          </td>
+                          <td style={{ fontWeight: 600 }}>{student}</td>
+                          <td dir="ltr" style={{ textAlign: 'right', fontFamily: 'monospace' }}>{phone}</td>
+                          <td style={{ color: 'var(--text-muted)' }}>{grade}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+
+      {/* ── Confirm dialog for apply ───────────────────────────── */}
+      {confirmApply && (
+        <div className="sync-confirm-backdrop" onClick={() => setConfirmApply(false)}>
+          <div className="sync-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="sync-confirm-icon"><i className="fas fa-triangle-exclamation"></i></div>
+            <h3>تأكيد تطبيق التغييرات</h3>
+            <p>
+              سيتم حفظ <strong>{willAdd}</strong> طالبًا
+              {orphans.length > 0 && <> وحذف <strong>{orphans.length}</strong> طالبًا غير موجود بالملف</>}.
+              لا يمكن التراجع بعد التنفيذ.
+            </p>
+            <div className="sync-confirm-actions">
+              <button className="sync-btn sync-btn-ghost" onClick={() => setConfirmApply(false)}>
+                إلغاء
+              </button>
+              <button
+                className="sync-btn sync-btn-success"
+                onClick={() => { setConfirmApply(false); run(true) }}
+              >
+                <i className="fas fa-check"></i> نعم، نفّذ المزامنة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

@@ -43,7 +43,7 @@ export default function Notifications() {
   // Load user once
   useEffect(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
       setUserId(u?.id || null)
     } catch {

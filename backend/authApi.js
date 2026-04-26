@@ -69,12 +69,20 @@ export const authAPI = {
   },
 }
 
+/* Session-only storage so closing the browser/tab requires a fresh
+   login next visit. We also clean up any old localStorage keys from
+   previous builds where tokens were persisted across sessions. */
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('masar-token')
+  localStorage.removeItem('masar-user')
+}
+
 export const tokenAPI = {
-  setToken: (token) => localStorage.setItem('masar-token', token),
-  getToken: () => localStorage.getItem('masar-token'),
+  setToken: (token) => sessionStorage.setItem('masar-token', token),
+  getToken: () => sessionStorage.getItem('masar-token'),
   removeToken: () => {
-    localStorage.removeItem('masar-token')
-    localStorage.removeItem('masar-user')
+    sessionStorage.removeItem('masar-token')
+    sessionStorage.removeItem('masar-user')
   },
-  isLoggedIn: () => !!localStorage.getItem('masar-token'),
+  isLoggedIn: () => !!sessionStorage.getItem('masar-token'),
 }

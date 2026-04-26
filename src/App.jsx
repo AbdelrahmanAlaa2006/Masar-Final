@@ -49,13 +49,21 @@ function AdminRoute({ isLoggedIn, role, children }) {
 function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
+  const isExamTaking = location.pathname === '/exam-taking'
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Apply the saved theme app-wide so it survives routes that don't
+   //render the Header (e.g. /exam-taking, where the toggle is hidden).
+  useEffect(() => {
+    const isDark = localStorage.getItem('theme') === 'dark'
+    document.body.classList.toggle('dark', isDark)
+  }, [location])
+
   useEffect(() => {
     const token = tokenAPI.getToken()
-    const stored = localStorage.getItem('masar-user')
+    const stored = sessionStorage.getItem('masar-user')
     if (token && stored) {
       setIsLoggedIn(true)
       setUser(JSON.parse(stored))
@@ -131,7 +139,7 @@ function AppContent() {
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
-      {!isLoginPage && <Header />}
+      {!isLoginPage && !isExamTaking && <Header />}
 
       <div className="page-container">
         <Routes>
@@ -163,7 +171,7 @@ function AppContent() {
         </Routes>
       </div>
 
-      {!isLoginPage && <Footer />}
+      {!isLoginPage && !isExamTaking && <Footer />}
     </div>
   )
 }

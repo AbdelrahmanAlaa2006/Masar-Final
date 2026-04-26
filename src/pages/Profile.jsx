@@ -14,7 +14,7 @@ export default function Profile() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       if (!u) { navigate('/login'); return }
       setUser(u)
       if (u.avatar_url) setAvatarUrl(u.avatar_url)
@@ -77,7 +77,8 @@ export default function Profile() {
 
       // Update local storage
       const updated = { ...user, avatar_url: urlWithCacheBust }
-      localStorage.setItem('masar-user', JSON.stringify(updated))
+      sessionStorage.setItem('masar-user', JSON.stringify(updated))
+      window.dispatchEvent(new Event('masar-user-updated'))
       setUser(updated)
       setSuccessMsg('تم تحديث الصورة بنجاح')
       setTimeout(() => setSuccessMsg(''), 3000)
@@ -105,7 +106,8 @@ export default function Profile() {
 
       setAvatarUrl(null)
       const updated = { ...user, avatar_url: null }
-      localStorage.setItem('masar-user', JSON.stringify(updated))
+      sessionStorage.setItem('masar-user', JSON.stringify(updated))
+      window.dispatchEvent(new Event('masar-user-updated'))
       setUser(updated)
       setSuccessMsg('تم حذف الصورة')
       setTimeout(() => setSuccessMsg(''), 3000)

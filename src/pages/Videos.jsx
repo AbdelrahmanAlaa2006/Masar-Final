@@ -77,7 +77,7 @@ function shapeVideo(row) {
   // ── Load current user ────────────────────────────────────────
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('masar-user'))
+      const user = JSON.parse(sessionStorage.getItem('masar-user'))
       if (user) {
         setCurrentUser(user)
         setUserRole(user.role || null)

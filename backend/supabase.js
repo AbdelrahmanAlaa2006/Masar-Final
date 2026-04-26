@@ -9,4 +9,15 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   )
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+/* Session lives in sessionStorage instead of the default localStorage,
+   so closing the browser/tab logs the user out — they must sign in
+   again next visit. Refreshing the page mid-session still keeps them
+   in (sessionStorage survives reloads, just not new browsing
+   sessions). */
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+})

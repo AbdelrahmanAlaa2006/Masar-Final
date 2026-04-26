@@ -28,7 +28,7 @@ export default function Exams() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
       setUserId(u?.id || null)
       // students auto-land on their own grade
@@ -62,7 +62,7 @@ export default function Exams() {
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(localStorage.getItem('masar-user')) || {}
+        const u = JSON.parse(sessionStorage.getItem('masar-user')) || {}
         const grade = u.grade
         if (!grade) return
         const rows = await listEffectiveOverrides({

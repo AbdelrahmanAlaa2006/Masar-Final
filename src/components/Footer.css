@@ -255,6 +255,32 @@
   color: #43e97b;
 }
 
+/* Text-only variant: same row layout, no pill/background, hover only
+   tints the colour. Used for static stage rows. */
+.sf-links--text li > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #94a3b8;
+  font-size: 0.93rem;
+  padding: 0.35rem 0;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+.sf-links--text li > span i {
+  width: 16px;
+  text-align: center;
+  color: #4facfe;
+  font-size: 0.85rem;
+  transition: filter 0.2s ease;
+}
+.sf-links--text li > span:hover {
+  color: #e2e8f0;
+}
+.sf-links--text li > span:hover i {
+  filter: brightness(1.15);
+}
+
 /* Badges */
 .sf-badges {
   display: flex;
@@ -275,6 +301,19 @@
   color: #cbd5e0;
 }
 .sf-badge i { color: #43e97b; font-size: 0.8rem; }
+
+/* Text-only variant: no pill, no border, plain text with icon. Hover
+   subtly tints the colour so the row still feels alive. */
+.sf-badge--text {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+.sf-badge--text:hover { color: #e2e8f0; }
+.sf-badge--text:hover i { filter: brightness(1.15); }
 
 /* Static stages — display-only rows (no link / hover) */
 .sf-links--static li > span {

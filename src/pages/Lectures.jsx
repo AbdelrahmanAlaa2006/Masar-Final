@@ -101,10 +101,14 @@ export default function Lectures() {
   // The admin picks a PDF from their device; we upload it straight to R2.
   const [pdfFile, setPdfFile] = useState(null)
   const [uploadPct, setUploadPct] = useState(0)
+  // Inline PDF viewer: when set, render a full-screen overlay with an
+  // <iframe>. Modern browsers ship a PDF renderer that works inside an
+  // iframe, so this avoids spawning a new browser tab.
+  const [pdfViewer, setPdfViewer] = useState(null) // { url, title } | null
 
   useEffect(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       setUserRole(u?.role || null)
       setUserId(u?.id || null)
       // auto-select the student's own grade; admins still pick
@@ -332,7 +336,7 @@ export default function Lectures() {
                     lec={lec}
                     isAdmin={userRole === 'admin'}
                     onOpen={() => {
-                      if (lec.pdf_url) window.open(lec.pdf_url, '_blank', 'noopener')
+                      if (lec.pdf_url) setPdfViewer({ url: lec.pdf_url, title: lec.title })
                       else flash('لا يوجد ملف PDF لهذه المحاضرة', 'warning')
                     }}
                     onDelete={() => requestDeleteLecture(lec)}
@@ -541,6 +545,34 @@ export default function Lectures() {
           onConfirm={performDeleteLecture}
         />
       )}
+
+      {pdfViewer && createPortal(
+        <div className="lec-pdf-overlay" onClick={() => setPdfViewer(null)}>
+          <div className="lec-pdf-window" onClick={(e) => e.stopPropagation()}>
+            <header className="lec-pdf-head">
+              <div className="lec-pdf-title">
+                <i className="fas fa-file-pdf"></i>
+                <span>{pdfViewer.title}</span>
+              </div>
+              <button
+                type="button"
+                className="lec-pdf-close"
+                onClick={() => setPdfViewer(null)}
+                aria-label="إغلاق"
+                title="إغلاق"
+              >
+                <i className="fas fa-xmark"></i>
+              </button>
+            </header>
+            <iframe
+              className="lec-pdf-frame"
+              src={pdfViewer.url}
+              title={pdfViewer.title}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </main>
   )
 }
@@ -606,17 +638,6 @@ function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
           <button className="lec-btn lec-btn-primary" onClick={onOpen}>
             <i className="fas fa-eye"></i> فتح المحاضرة
           </button>
-          {lec.pdf_url && (
-            <a
-              className="lec-btn lec-btn-ghost"
-              href={lec.pdf_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-            >
-              <i className="fas fa-download"></i> تحميل
-            </a>
-          )}
           {isAdmin && (
             <button className="lec-btn lec-btn-danger lec-btn-icon" onClick={onDelete} title="حذف">
               <i className="fas fa-trash"></i>

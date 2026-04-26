@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
-import { parseQuestionsText, validateQuestions, totalPoints } from '../utils/parseQuestions'
+import { useState, useEffect, useMemo } from 'react'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
+import { listExams } from '@backend/examsApi'
 
 // Pull a YouTube video id out of any common share URL. If the user already
 // pasted a bare 11-char id, keep it as-is.
@@ -25,12 +25,11 @@ function extractYouTubeId(input) {
 
 const makeQuiz = () => ({
   localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-  title: '',
+  examId: '',               // id of the exam selected from the exams library
   scope: 'whole',           // 'whole' | 'part'
   partIndex: '',            // index into videoParts when scope === 'part'
-  passingQuestions: 1,      // how many questions the student must answer correctly
-  maxAttempts: 3,           // how many tries the student gets before they're locked out
-  raw: ''
+  passingQuestions: '',     // how many questions the student must answer correctly (default = all)
+  maxAttempts: '',          // tries before lockout (default = exam's max_attempts)
 })
 
 export default function VideoAdd() {
@@ -41,6 +40,8 @@ export default function VideoAdd() {
   const [videoParts, setVideoParts] = useState([])
   const [numParts, setNumParts] = useState('')
   const [quizzes, setQuizzes] = useState([])
+  const [examsLibrary, setExamsLibrary] = useState([])
+  const [examsLoading, setExamsLoading] = useState(false)
   const [savedVideos, setSavedVideos] = useState([])
   const [showRestoreSection, setShowRestoreSection] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -52,6 +53,25 @@ export default function VideoAdd() {
     loadSavedVideos()
     setVideoGrade(selectedGrade)
   }, [selectedGrade])
+
+  // Load the exam library so the admin can pick a prerequisite exam.
+  useEffect(() => {
+    let cancelled = false
+    setExamsLoading(true)
+    listExams()
+      .then(rows => { if (!cancelled) setExamsLibrary(rows || []) })
+      .catch(() => { if (!cancelled) setExamsLibrary([]) })
+      .finally(() => { if (!cancelled) setExamsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // Only show exams matching the video's grade (with a fallback to all if
+  // the grade filter would empty the list — admins can still cross-grade).
+  const examsForGrade = useMemo(
+    () => examsLibrary.filter(e => e.grade === videoGrade),
+    [examsLibrary, videoGrade]
+  )
+  const findExam = (id) => examsLibrary.find(e => e.id === id) || null
 
   const generateParts = () => {
     const count = parseInt(numParts)
@@ -108,16 +128,18 @@ export default function VideoAdd() {
     setVideoParts(restoredParts)
     setNumParts(restoredParts.length.toString())
 
-    // Restore quizzes (back-compat: older saved videos may have no quizzes)
-    const restoredQuizzes = (video.quizzes || []).map((qz) => ({
-      localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      title: qz.title || '',
-      scope: qz.scope || 'whole',
-      partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
-      passingQuestions: qz.passingQuestions ?? Math.max(1, Math.ceil((qz.questions?.length || 1) * (qz.passingPercentage || 60) / 100)),
-      maxAttempts: qz.maxAttempts ?? 3,
-      raw: qz.raw || ''
-    }))
+    // Restore quizzes — only those that reference an existing exam in the
+    // library survive the new picker-based flow.
+    const restoredQuizzes = (video.quizzes || [])
+      .filter(qz => qz.examId || qz.exam_id)
+      .map((qz) => ({
+        localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        examId: qz.examId || qz.exam_id || '',
+        scope: qz.scope || 'whole',
+        partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
+        passingQuestions: qz.passingQuestions ?? '',
+        maxAttempts: qz.maxAttempts ?? '',
+      }))
     setQuizzes(restoredQuizzes)
 
     setShowPreview(false)
@@ -138,54 +160,54 @@ export default function VideoAdd() {
       return
     }
 
-    // Validate & parse quizzes
+    // Validate quizzes (each is a reference to an existing exam from the
+    // library — we snapshot the exam's questions so QuizRunner keeps working
+    // without needing a separate fetch at watch time).
     const parsedQuizzes = []
     for (let i = 0; i < quizzes.length; i++) {
       const qz = quizzes[i]
-      if (!qz.raw.trim()) {
-        alert(`الامتحان ${i + 1} فارغ — أضف الأسئلة أو احذف الامتحان`)
+      const exam = findExam(qz.examId)
+      if (!exam) {
+        notify(`الامتحان ${i + 1}: اختر امتحانًا من القائمة`, { type: 'warning' })
         return
       }
-      const parsed = parseQuestionsText(qz.raw)
-      const v = validateQuestions(parsed)
-      if (!v.valid) {
-        alert(`الامتحان ${i + 1}: ${v.error}`)
-        return
-      }
-      const pq = parseInt(qz.passingQuestions)
-      if (Number.isNaN(pq) || pq < 1) {
-        alert(`الامتحان ${i + 1}: عدد أسئلة النجاح يجب أن يكون 1 على الأقل`)
-        return
-      }
-      if (pq > parsed.length) {
-        alert(`الامتحان ${i + 1}: عدد أسئلة النجاح (${pq}) أكبر من عدد الأسئلة (${parsed.length})`)
+      const questions = Array.isArray(exam.questions) ? exam.questions : []
+      if (questions.length === 0) {
+        notify(`الامتحان ${i + 1}: لا يحتوي الامتحان المحدد على أسئلة`, { type: 'warning' })
         return
       }
       if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex === null || qz.partIndex === undefined)) {
-        alert(`الامتحان ${i + 1}: اختر الجزء المرتبط بالامتحان`)
+        notify(`الامتحان ${i + 1}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
         return
       }
-      const maxAtt = parseInt(qz.maxAttempts)
-      if (Number.isNaN(maxAtt) || maxAtt < 1) {
-        alert(`الامتحان ${i + 1}: عدد المحاولات يجب أن يكون 1 على الأقل`)
+      const pqRaw = parseInt(qz.passingQuestions)
+      const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
+      if (pq < 1 || pq > questions.length) {
+        notify(`الامتحان ${i + 1}: عدد أسئلة النجاح يجب أن يكون بين 1 و ${questions.length}`, { type: 'warning' })
+        return
+      }
+      const maxAttRaw = parseInt(qz.maxAttempts)
+      const maxAtt = Number.isNaN(maxAttRaw) ? (exam.max_attempts || 1) : maxAttRaw
+      if (maxAtt < 1) {
+        notify(`الامتحان ${i + 1}: عدد المحاولات يجب أن يكون 1 على الأقل`, { type: 'warning' })
         return
       }
       parsedQuizzes.push({
         localId: qz.localId,
-        title: qz.title.trim() || `امتحان ${i + 1}`,
+        examId: exam.id,
+        title: exam.title || `امتحان ${i + 1}`,
         scope: qz.scope,
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
         passingQuestions: pq,
         maxAttempts: maxAtt,
-        questions: parsed,
-        totalPoints: totalPoints(parsed),
-        raw: qz.raw
+        questions,
+        totalPoints: exam.total_points || questions.reduce((s, q) => s + (q.points || 1), 0),
       })
     }
 
     let createdBy = null
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       createdBy = u?.id || null
     } catch { /* ignore */ }
 
@@ -242,15 +264,20 @@ export default function VideoAdd() {
       parts: videoParts,
       activeHours: parseInt(activeHours),
       quizzes: quizzes.map((qz, i) => {
-        const parsed = parseQuestionsText(qz.raw)
+        const exam = findExam(qz.examId)
+        const questions = Array.isArray(exam?.questions) ? exam.questions : []
+        const pqRaw = parseInt(qz.passingQuestions)
+        const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
+        const maxAttRaw = parseInt(qz.maxAttempts)
+        const maxAtt = Number.isNaN(maxAttRaw) ? (exam?.max_attempts || 1) : maxAttRaw
         return {
-          title: qz.title.trim() || `امتحان ${i + 1}`,
+          title: exam?.title || `امتحان ${i + 1}`,
           scope: qz.scope,
           partIndex: qz.scope === 'part' ? qz.partIndex : null,
-          passingQuestions: qz.passingQuestions,
-          maxAttempts: qz.maxAttempts,
-          questionCount: parsed.length,
-          totalPoints: totalPoints(parsed)
+          passingQuestions: pq,
+          maxAttempts: maxAtt,
+          questionCount: questions.length,
+          totalPoints: exam?.total_points || questions.reduce((s, q) => s + (q.points || 1), 0),
         }
       })
     })
@@ -406,8 +433,8 @@ export default function VideoAdd() {
                 <div>
                   <h3 className="section-title">📝 امتحانات قبل المشاهدة</h3>
                   <p className="quizzes-hint">
-                    أضف امتحان أو أكثر يلزم الطالب اجتيازه قبل مشاهدة الفيديو.
-                    اختر إن كان للفيديو كاملًا أو لجزء معيّن، وحدد نسبة النجاح.
+                    اختر امتحانًا موجودًا من مكتبة الامتحانات يلزم الطالب اجتيازه قبل مشاهدة الفيديو.
+                    تستطيع تحديد إن كان للفيديو كاملًا أو لجزء معيّن.
                   </p>
                 </div>
                 <button className="btn btn-secondary" type="button" onClick={addQuiz}>
@@ -423,9 +450,15 @@ export default function VideoAdd() {
               )}
 
               {quizzes.map((qz, qi) => {
-                const parsed = parseQuestionsText(qz.raw)
-                const pts = totalPoints(parsed)
-                const valid = validateQuestions(parsed)
+                const exam = findExam(qz.examId)
+                const questionCount = Array.isArray(exam?.questions) ? exam.questions.length : 0
+                const pts = exam?.total_points || (Array.isArray(exam?.questions)
+                  ? exam.questions.reduce((s, q) => s + (q.points || 1), 0)
+                  : 0)
+                const usedExamIds = new Set(
+                  quizzes.filter(q => q.localId !== qz.localId && q.examId).map(q => q.examId)
+                )
+                const options = examsForGrade.filter(e => !usedExamIds.has(e.id) || e.id === qz.examId)
                 return (
                   <div key={qz.localId} className="quiz-block">
                     <div className="quiz-block-head">
@@ -441,13 +474,30 @@ export default function VideoAdd() {
                     </div>
 
                     <div className="form-group">
-                      <label>عنوان الامتحان</label>
-                      <input
-                        type="text"
-                        placeholder="مثال: امتحان قبلي على المقدمة"
-                        value={qz.title}
-                        onChange={(e) => updateQuiz(qz.localId, 'title', e.target.value)}
-                      />
+                      <label>اختر امتحانًا من المكتبة</label>
+                      <select
+                        value={qz.examId}
+                        onChange={(e) => updateQuiz(qz.localId, 'examId', e.target.value)}
+                      >
+                        <option value="">
+                          {examsLoading ? '... جاري التحميل' : '-- اختر امتحانًا --'}
+                        </option>
+                        {options.map(e => (
+                          <option key={e.id} value={e.id}>
+                            {e.number ? `#${e.number} — ` : ''}{e.title} ({(e.questions || []).length} سؤال)
+                          </option>
+                        ))}
+                      </select>
+                      {!examsLoading && examsForGrade.length === 0 && (
+                        <small className="quiz-warn">
+                          لا يوجد امتحانات لهذا الصف. أنشئ امتحانًا من صفحة «إضافة امتحان» أولاً.
+                        </small>
+                      )}
+                      {exam && (
+                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          {questionCount} سؤال · {pts} نقطة · مدة {exam.duration_minutes} دقيقة
+                        </small>
+                      )}
                     </div>
 
                     <div className="form-row">
@@ -502,12 +552,13 @@ export default function VideoAdd() {
                         <input
                           type="number"
                           min="1"
-                          max={Math.max(parsed.length, 1)}
+                          max={Math.max(questionCount, 1)}
+                          placeholder={questionCount ? String(questionCount) : ''}
                           value={qz.passingQuestions}
                           onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
                         />
                         <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
-                          من إجمالي {parsed.length} سؤال
+                          {questionCount ? `من إجمالي ${questionCount} سؤال` : 'سيُحدد بعد اختيار الامتحان'}
                         </small>
                       </div>
 
@@ -516,48 +567,15 @@ export default function VideoAdd() {
                         <input
                           type="number"
                           min="1"
+                          placeholder={exam?.max_attempts ? String(exam.max_attempts) : ''}
                           value={qz.maxAttempts}
                           onChange={(e) => updateQuiz(qz.localId, 'maxAttempts', e.target.value)}
                         />
                         <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
-                          عدد مرات محاولة الطالب قبل القفل
+                          {exam?.max_attempts
+                            ? `الافتراضي من الامتحان: ${exam.max_attempts}`
+                            : 'عدد مرات محاولة الطالب قبل القفل'}
                         </small>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>الأسئلة</label>
-                      <textarea
-                        className="quiz-textarea"
-                        rows={10}
-                        dir="rtl"
-                        placeholder={`@ ما ناتج 3 + 2؟\n# 4\n## 5\n# 6\n!2\n\n@ اختر الإجابات الصحيحة\n## أ\n# ب\n## ج`}
-                        value={qz.raw}
-                        onChange={(e) => updateQuiz(qz.localId, 'raw', e.target.value)}
-                      />
-                      <div className="quiz-syntax">
-                        <span><code>@</code> سؤال جديد</span>
-                        <span><code>#</code> اختيار</span>
-                        <span><code>##</code> إجابة صحيحة</span>
-                        <span><code>!2</code> نقاط السؤال</span>
-                      </div>
-                      <div className="quiz-stats">
-                        <span className="quiz-stat">
-                          <i className="fas fa-list-ol"></i> {parsed.length} سؤال
-                        </span>
-                        <span className="quiz-stat">
-                          <i className="fas fa-star"></i> {pts} نقطة
-                        </span>
-                        {qz.raw.trim() && !valid.valid && (
-                          <span className="quiz-stat quiz-stat-bad">
-                            <i className="fas fa-triangle-exclamation"></i> {valid.error}
-                          </span>
-                        )}
-                        {qz.raw.trim() && valid.valid && (
-                          <span className="quiz-stat quiz-stat-ok">
-                            <i className="fas fa-check"></i> الصيغة صحيحة
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>

@@ -8,7 +8,10 @@
       "Bash(git checkout *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(grep -n \"نسخ\\\\|استيراد\\\\|إنشاء\\\\|importQuestions\\\\|pasteQuestions\\\\|quizText\\\\|@\\\\\\\\|#\" src/pages/VideoAdd.jsx)",
+      "Bash(xargs grep *)",
+      "Bash(python -c ' *)"
     ]
   }
 }

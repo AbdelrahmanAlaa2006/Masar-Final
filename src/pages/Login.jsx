@@ -237,7 +237,7 @@ export default function Login() {
 
       // Store token and user data
       tokenAPI.setToken(response.token)
-      localStorage.setItem('masar-user', JSON.stringify(response.user))
+      sessionStorage.setItem('masar-user', JSON.stringify(response.user))
       clearFailures() // successful login resets the attempt counter
 
       console.log('Token stored:', response.token)

@@ -186,7 +186,7 @@ export default function ExamAdd() {
 
     let createdBy = null
     try {
-      const u = JSON.parse(localStorage.getItem('masar-user'))
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
       createdBy = u?.id || null
     } catch { /* ignore */ }
 

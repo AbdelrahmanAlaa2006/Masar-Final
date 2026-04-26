@@ -89,15 +89,15 @@ export default function Footer() {
           {/* Stages */}
           <div className="sf-col">
             <h4 className="sf-col-title"><i className="fas fa-graduation-cap"></i> المراحل الدراسية</h4>
-            <ul className="sf-links">
-              <li><a href="#"><i className="fas fa-seedling"></i> الصف الأول الإعدادي</a></li>
-              <li><a href="#"><i className="fas fa-book-open-reader"></i> الصف الثاني الإعدادي</a></li>
-              <li><a href="#"><i className="fas fa-trophy"></i> الصف الثالث الإعدادي</a></li>
+            <ul className="sf-links sf-links--text">
+              <li><span><i className="fas fa-seedling"></i> الصف الأول الإعدادي</span></li>
+              <li><span><i className="fas fa-book-open-reader"></i> الصف الثاني الإعدادي</span></li>
+              <li><span><i className="fas fa-trophy"></i> الصف الثالث الإعدادي</span></li>
             </ul>
-            <div className="sf-badges">
-              <span className="sf-badge"><i className="fas fa-shield-halved"></i> آمن</span>
-              <span className="sf-badge"><i className="fas fa-bolt"></i> سريع</span>
-              <span className="sf-badge"><i className="fas fa-mobile"></i> متجاوب</span>
+            <div className="sf-badges sf-badges--text">
+              <span className="sf-badge sf-badge--text"><i className="fas fa-shield-halved"></i> آمن</span>
+              <span className="sf-badge sf-badge--text"><i className="fas fa-bolt"></i> سريع</span>
+              <span className="sf-badge sf-badge--text"><i className="fas fa-mobile"></i> متجاوب</span>
             </div>
           </div>
 
@@ -140,9 +140,9 @@ export default function Footer() {
               صُنع بكل <i className="fas fa-heart sf-heart"></i> لطلاب مصر
             </p>
             <ul className="sf-mini">
-              <li><a href="#">سياسة الخصوصية</a></li>
-              <li><a href="#">شروط الاستخدام</a></li>
-              <li><a href="#">المساعدة</a></li>
+              <li><Link to="/privacy">سياسة الخصوصية</Link></li>
+              <li><Link to="/terms">شروط الاستخدام</Link></li>
+              <li><Link to="/help">المساعدة</Link></li>
             </ul>
           </div>
         </div>
