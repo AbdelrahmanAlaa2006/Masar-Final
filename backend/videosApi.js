@@ -10,7 +10,11 @@ export async function listVideos() {
     .select(`
       id, title, description, grade,
       active_hours, expiry_at, quizzes, created_at,
-      video_parts ( id, part_index, title, youtube_id, youtube_url, view_limit )
+      video_parts (
+        id, part_index, title,
+        source, youtube_id, youtube_url, drive_id, duration_seconds,
+        view_limit
+      )
     `)
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -69,16 +73,28 @@ export async function createVideo(input) {
   if (error) throw error
 
   if (Array.isArray(input.parts) && input.parts.length) {
-    const rows = input.parts.map((p, i) => ({
-      video_id: video.id,
-      part_index: i,
-      title: p.title,
-      youtube_id: p.youtube_id || extractYouTubeId(p.youtube_url || ''),
-      // null = unlimited views; otherwise the per-part default cap.
-      view_limit: p.view_limit == null || p.view_limit === ''
-        ? null
-        : Math.max(1, Math.min(99, parseInt(p.view_limit, 10) || 1)),
-    }))
+    const rows = input.parts.map((p, i) => {
+      const source = p.source === 'drive' ? 'drive' : 'youtube'
+      return {
+        video_id: video.id,
+        part_index: i,
+        title: p.title,
+        source,
+        // YouTube fields populated only when source = 'youtube'.
+        youtube_id: source === 'youtube'
+          ? (p.youtube_id || extractYouTubeId(p.youtube_url || ''))
+          : null,
+        // Drive fields populated only when source = 'drive'.
+        drive_id: source === 'drive' ? (p.drive_id || null) : null,
+        duration_seconds: source === 'drive' && p.duration_seconds
+          ? Math.max(1, parseInt(p.duration_seconds, 10) || 0) || null
+          : null,
+        // null = unlimited views; otherwise the per-part default cap.
+        view_limit: p.view_limit == null || p.view_limit === ''
+          ? null
+          : Math.max(1, Math.min(99, parseInt(p.view_limit, 10) || 1)),
+      }
+    })
     const { error: partsErr } = await supabase.from('video_parts').insert(rows)
     if (partsErr) {
       // best-effort rollback so we don't leave a headless video row

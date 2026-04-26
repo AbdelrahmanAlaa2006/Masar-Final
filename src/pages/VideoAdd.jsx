@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
-import { listExams } from '@backend/examsApi'
+import QuestionImagePicker from '../components/QuestionImagePicker'
 
 // Pull a YouTube video id out of any common share URL. If the user already
 // pasted a bare 11-char id, keep it as-is.
@@ -23,13 +23,49 @@ function extractYouTubeId(input) {
   return ''
 }
 
+// Pull a Google Drive file id out of a share URL. Patterns we accept:
+//   https://drive.google.com/file/d/{ID}/view?usp=sharing
+//   https://drive.google.com/open?id={ID}
+//   https://drive.google.com/uc?id={ID}&export=download
+//   bare {ID} (any non-empty string of allowed chars)
+function extractDriveId(input) {
+  if (!input) return ''
+  const s = String(input).trim()
+  // Bare id — Drive ids are typically 25-44 chars, A-Z a-z 0-9 _ -
+  if (/^[A-Za-z0-9_-]{15,}$/.test(s)) return s
+  try {
+    const u = new URL(s)
+    if (!u.hostname.includes('drive.google.com')) return ''
+    const m = u.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/)
+    if (m) return m[1]
+    const idParam = u.searchParams.get('id')
+    if (idParam) return idParam
+  } catch { /* not a URL */ }
+  return ''
+}
+
+// ── Inline quiz builder ───────────────────────────────────────
+// Pre-video quizzes are STANDALONE — they are NOT pulled from the exams
+// library and they do NOT show up in the exams report. Each quiz lives
+// entirely on the video row itself (snapshotted into `videos.quizzes`).
+const makeQuestion = () => ({
+  qid: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  question: '',
+  image: '',
+  options: ['', ''],
+  answers: [0],
+  points: 1,
+  isMultiple: false,
+})
+
 const makeQuiz = () => ({
   localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-  examId: '',               // id of the exam selected from the exams library
+  title: '',                // friendly name shown to the student
   scope: 'whole',           // 'whole' | 'part'
   partIndex: '',            // index into videoParts when scope === 'part'
-  passingQuestions: '',     // how many questions the student must answer correctly (default = all)
-  maxAttempts: '',          // tries before lockout (default = exam's max_attempts)
+  passingQuestions: '',     // questions that must be correct (default = all)
+  maxAttempts: 1,           // tries before lockout
+  questions: [makeQuestion()],
 })
 
 export default function VideoAdd() {
@@ -40,8 +76,6 @@ export default function VideoAdd() {
   const [videoParts, setVideoParts] = useState([])
   const [numParts, setNumParts] = useState('')
   const [quizzes, setQuizzes] = useState([])
-  const [examsLibrary, setExamsLibrary] = useState([])
-  const [examsLoading, setExamsLoading] = useState(false)
   const [savedVideos, setSavedVideos] = useState([])
   const [showRestoreSection, setShowRestoreSection] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -54,25 +88,6 @@ export default function VideoAdd() {
     setVideoGrade(selectedGrade)
   }, [selectedGrade])
 
-  // Load the exam library so the admin can pick a prerequisite exam.
-  useEffect(() => {
-    let cancelled = false
-    setExamsLoading(true)
-    listExams()
-      .then(rows => { if (!cancelled) setExamsLibrary(rows || []) })
-      .catch(() => { if (!cancelled) setExamsLibrary([]) })
-      .finally(() => { if (!cancelled) setExamsLoading(false) })
-    return () => { cancelled = true }
-  }, [])
-
-  // Only show exams matching the video's grade (with a fallback to all if
-  // the grade filter would empty the list — admins can still cross-grade).
-  const examsForGrade = useMemo(
-    () => examsLibrary.filter(e => e.grade === videoGrade),
-    [examsLibrary, videoGrade]
-  )
-  const findExam = (id) => examsLibrary.find(e => e.id === id) || null
-
   const generateParts = () => {
     const count = parseInt(numParts)
     if (!count || count <= 0) {
@@ -83,8 +98,11 @@ export default function VideoAdd() {
     const newParts = Array(count).fill(null).map((_, i) => ({
       id: i,
       title: '',
-      videoId: '',
-      viewLimit: 3, // default: each student gets 3 views per part
+      source: 'youtube',         // 'youtube' | 'drive'
+      videoId: '',                // YouTube id (when source='youtube')
+      driveId: '',                // Drive file id (when source='drive')
+      durationMinutes: '',        // admin-entered duration for Drive parts
+      viewLimit: 3,
     }))
 
     setVideoParts(newParts)
@@ -101,6 +119,71 @@ export default function VideoAdd() {
     setQuizzes(prev => prev.filter(q => q.localId !== localId))
   const updateQuiz = (localId, field, value) =>
     setQuizzes(prev => prev.map(q => q.localId === localId ? { ...q, [field]: value } : q))
+
+  // ── Per-question helpers (inline quiz builder) ────────────────
+  // Each question lives on quizzes[i].questions[j]. We update by mapping the
+  // owner quiz so React sees a fresh quizzes array on every change.
+  const mapQuestions = (quizId, fn) =>
+    setQuizzes(prev => prev.map(qz =>
+      qz.localId === quizId ? { ...qz, questions: fn(qz.questions) } : qz
+    ))
+
+  const addQuestion = (quizId) =>
+    mapQuestions(quizId, qs => [...qs, makeQuestion()])
+
+  const removeQuestion = (quizId, qid) =>
+    mapQuestions(quizId, qs => qs.length > 1 ? qs.filter(q => q.qid !== qid) : qs)
+
+  const updateQuestionField = (quizId, qid, field, value) =>
+    mapQuestions(quizId, qs => qs.map(q => q.qid === qid ? { ...q, [field]: value } : q))
+
+  const addQuestionOption = (quizId, qid) =>
+    mapQuestions(quizId, qs => qs.map(q =>
+      q.qid === qid ? { ...q, options: [...q.options, ''] } : q
+    ))
+
+  const removeQuestionOption = (quizId, qid, optIdx) =>
+    mapQuestions(quizId, qs => qs.map(q => {
+      if (q.qid !== qid || q.options.length <= 2) return q
+      const options = q.options.filter((_, i) => i !== optIdx)
+      // Rebuild correct-answer indices around the removed option.
+      const answers = q.answers
+        .filter(a => a !== optIdx)
+        .map(a => a > optIdx ? a - 1 : a)
+      return { ...q, options, answers: answers.length ? answers : [0] }
+    }))
+
+  const updateQuestionOption = (quizId, qid, optIdx, value) =>
+    mapQuestions(quizId, qs => qs.map(q => {
+      if (q.qid !== qid) return q
+      const options = q.options.map((o, i) => i === optIdx ? value : o)
+      return { ...q, options }
+    }))
+
+  const toggleMultiple = (quizId, qid) =>
+    mapQuestions(quizId, qs => qs.map(q => {
+      if (q.qid !== qid) return q
+      const isMultiple = !q.isMultiple
+      // Switching back to single-answer collapses any extra picks down to
+      // the first one selected (or default to option 0).
+      const answers = isMultiple ? q.answers : [q.answers[0] ?? 0]
+      return { ...q, isMultiple, answers }
+    }))
+
+  const setCorrectAnswer = (quizId, qid, optIdx, checked) =>
+    mapQuestions(quizId, qs => qs.map(q => {
+      if (q.qid !== qid) return q
+      let answers
+      if (q.isMultiple) {
+        answers = checked
+          ? Array.from(new Set([...q.answers, optIdx]))
+          : q.answers.filter(a => a !== optIdx)
+        if (answers.length === 0) answers = [optIdx] // can't have zero
+      } else {
+        answers = [optIdx]
+      }
+      return { ...q, answers }
+    }))
 
   const loadSavedVideos = () => {
     const videos = JSON.parse(localStorage.getItem('videos')) || []
@@ -121,24 +204,37 @@ export default function VideoAdd() {
     const restoredParts = video.parts.map((p, i) => ({
       id: i,
       title: p.title,
+      source: p.source || 'youtube',
       videoId: p.videoId || extractYouTubeId(p.videoUrl || ''),
+      driveId: p.driveId || '',
+      durationMinutes: p.durationMinutes || '',
       viewLimit: p.viewLimit ?? 3,
     }))
 
     setVideoParts(restoredParts)
     setNumParts(restoredParts.length.toString())
 
-    // Restore quizzes — only those that reference an existing exam in the
-    // library survive the new picker-based flow.
+    // Restore quizzes — re-hydrate inline question rows so the admin can
+    // tweak them. Older quizzes that referenced a now-removed exams library
+    // entry are silently dropped.
     const restoredQuizzes = (video.quizzes || [])
-      .filter(qz => qz.examId || qz.exam_id)
+      .filter(qz => Array.isArray(qz.questions) && qz.questions.length > 0)
       .map((qz) => ({
         localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        examId: qz.examId || qz.exam_id || '',
+        title: qz.title || '',
         scope: qz.scope || 'whole',
         partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
         passingQuestions: qz.passingQuestions ?? '',
-        maxAttempts: qz.maxAttempts ?? '',
+        maxAttempts: qz.maxAttempts ?? 1,
+        questions: qz.questions.map((q) => ({
+          qid: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          question: q.question || '',
+          image: q.image || '',
+          options: Array.isArray(q.options) && q.options.length >= 2 ? [...q.options] : ['', ''],
+          answers: Array.isArray(q.answers) && q.answers.length > 0 ? [...q.answers] : [0],
+          points: Math.max(1, parseInt(q.points) || 1),
+          isMultiple: !!q.isMultiple,
+        })),
       }))
     setQuizzes(restoredQuizzes)
 
@@ -151,57 +247,95 @@ export default function VideoAdd() {
       return
     }
 
-    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoId.trim())) {
-      notify('يرجى ملء كل أجزاء الفيديو (العنوان و معرّف الفيديو)', { type: 'warning' })
+    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim())) {
+      notify('يرجى ملء عنوان كل جزء', { type: 'warning' })
       return
     }
-    if (videoParts.some(p => !/^[a-zA-Z0-9_-]{11}$/.test(p.videoId.trim()))) {
-      notify('معرّف يوتيوب غير صالح — تأكد أنه 11 حرفًا', { type: 'warning' })
-      return
+    // Validate per-source identifiers
+    for (let i = 0; i < videoParts.length; i++) {
+      const p = videoParts[i]
+      if (p.source === 'drive') {
+        if (!p.driveId || !p.driveId.trim()) {
+          notify(`الجزء ${i + 1}: أدخل معرّف ملف Google Drive`, { type: 'warning' })
+          return
+        }
+        if (!/^[A-Za-z0-9_-]{15,}$/.test(p.driveId.trim())) {
+          notify(`الجزء ${i + 1}: معرّف Drive غير صالح`, { type: 'warning' })
+          return
+        }
+      } else {
+        if (!p.videoId || !p.videoId.trim()) {
+          notify(`الجزء ${i + 1}: أدخل معرّف فيديو يوتيوب`, { type: 'warning' })
+          return
+        }
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(p.videoId.trim())) {
+          notify(`الجزء ${i + 1}: معرّف يوتيوب غير صالح — تأكد أنه 11 حرفًا`, { type: 'warning' })
+          return
+        }
+      }
     }
 
-    // Validate quizzes (each is a reference to an existing exam from the
-    // library — we snapshot the exam's questions so QuizRunner keeps working
-    // without needing a separate fetch at watch time).
+    // Validate quizzes (inline definitions — questions live on this video
+    // only and are NOT shared with the exams library/report).
     const parsedQuizzes = []
     for (let i = 0; i < quizzes.length; i++) {
       const qz = quizzes[i]
-      const exam = findExam(qz.examId)
-      if (!exam) {
-        notify(`الامتحان ${i + 1}: اختر امتحانًا من القائمة`, { type: 'warning' })
-        return
-      }
-      const questions = Array.isArray(exam.questions) ? exam.questions : []
+      const label = `الامتحان ${i + 1}`
+      const questions = Array.isArray(qz.questions) ? qz.questions : []
       if (questions.length === 0) {
-        notify(`الامتحان ${i + 1}: لا يحتوي الامتحان المحدد على أسئلة`, { type: 'warning' })
+        notify(`${label}: أضف سؤالاً واحداً على الأقل`, { type: 'warning' })
         return
       }
-      if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex === null || qz.partIndex === undefined)) {
-        notify(`الامتحان ${i + 1}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
+      // Per-question integrity
+      for (let qi = 0; qi < questions.length; qi++) {
+        const q = questions[qi]
+        if (!q.question.trim()) {
+          notify(`${label} — السؤال ${qi + 1}: اكتب نص السؤال`, { type: 'warning' })
+          return
+        }
+        if (q.options.length < 2 || q.options.some(o => !String(o).trim())) {
+          notify(`${label} — السؤال ${qi + 1}: أدخل اختيارين على الأقل وكلها مكتوبة`, { type: 'warning' })
+          return
+        }
+        if (!Array.isArray(q.answers) || q.answers.length === 0) {
+          notify(`${label} — السؤال ${qi + 1}: حدد الإجابة الصحيحة`, { type: 'warning' })
+          return
+        }
+      }
+      if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
+        notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
         return
       }
       const pqRaw = parseInt(qz.passingQuestions)
       const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
       if (pq < 1 || pq > questions.length) {
-        notify(`الامتحان ${i + 1}: عدد أسئلة النجاح يجب أن يكون بين 1 و ${questions.length}`, { type: 'warning' })
+        notify(`${label}: عدد أسئلة النجاح يجب أن يكون بين 1 و ${questions.length}`, { type: 'warning' })
         return
       }
       const maxAttRaw = parseInt(qz.maxAttempts)
-      const maxAtt = Number.isNaN(maxAttRaw) ? (exam.max_attempts || 1) : maxAttRaw
+      const maxAtt = Number.isNaN(maxAttRaw) ? 1 : maxAttRaw
       if (maxAtt < 1) {
-        notify(`الامتحان ${i + 1}: عدد المحاولات يجب أن يكون 1 على الأقل`, { type: 'warning' })
+        notify(`${label}: عدد المحاولات يجب أن يكون 1 على الأقل`, { type: 'warning' })
         return
       }
+      const cleanQuestions = questions.map(q => ({
+        question: q.question.trim(),
+        image: q.image || null,
+        options: q.options.map(o => String(o).trim()),
+        answers: [...q.answers].sort((a, b) => a - b),
+        points: Math.max(1, parseInt(q.points) || 1),
+        isMultiple: !!q.isMultiple,
+      }))
+      const totalPoints = cleanQuestions.reduce((s, q) => s + q.points, 0)
       parsedQuizzes.push({
         localId: qz.localId,
-        examId: exam.id,
-        title: exam.title || `امتحان ${i + 1}`,
+        title: qz.title.trim() || label,
         scope: qz.scope,
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
         passingQuestions: pq,
         maxAttempts: maxAtt,
-        questions,
-        totalPoints: exam.total_points || questions.reduce((s, q) => s + (q.points || 1), 0),
+        questions: cleanQuestions,
+        totalPoints,
       })
     }
 
@@ -219,11 +353,20 @@ export default function VideoAdd() {
         active_hours: activeHours,
         quizzes: parsedQuizzes,
         created_by: createdBy,
-        parts: videoParts.map(p => ({
-          title: p.title.trim(),
-          youtube_id: p.videoId.trim(),
-          view_limit: p.viewLimit,
-        })),
+        parts: videoParts.map(p => {
+          const isDrive = p.source === 'drive'
+          const mins = parseFloat(p.durationMinutes)
+          return {
+            title: p.title.trim(),
+            source: isDrive ? 'drive' : 'youtube',
+            youtube_id: isDrive ? null : p.videoId.trim(),
+            drive_id:   isDrive ? p.driveId.trim() : null,
+            duration_seconds: isDrive && mins > 0
+              ? Math.round(mins * 60)
+              : null,
+            view_limit: p.viewLimit,
+          }
+        }),
       })
       setShowSuccess(true)
       setTimeout(() => {
@@ -264,20 +407,19 @@ export default function VideoAdd() {
       parts: videoParts,
       activeHours: parseInt(activeHours),
       quizzes: quizzes.map((qz, i) => {
-        const exam = findExam(qz.examId)
-        const questions = Array.isArray(exam?.questions) ? exam.questions : []
+        const questions = Array.isArray(qz.questions) ? qz.questions : []
         const pqRaw = parseInt(qz.passingQuestions)
         const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
         const maxAttRaw = parseInt(qz.maxAttempts)
-        const maxAtt = Number.isNaN(maxAttRaw) ? (exam?.max_attempts || 1) : maxAttRaw
+        const maxAtt = Number.isNaN(maxAttRaw) ? 1 : maxAttRaw
         return {
-          title: exam?.title || `امتحان ${i + 1}`,
+          title: qz.title.trim() || `امتحان ${i + 1}`,
           scope: qz.scope,
           partIndex: qz.scope === 'part' ? qz.partIndex : null,
           passingQuestions: pq,
           maxAttempts: maxAtt,
           questionCount: questions.length,
-          totalPoints: exam?.total_points || questions.reduce((s, q) => s + (q.points || 1), 0),
+          totalPoints: questions.reduce((s, q) => s + (parseInt(q.points) || 1), 0),
         }
       })
     })
@@ -382,29 +524,97 @@ export default function VideoAdd() {
                       />
                     </div>
 
+                    {/* Source picker — YouTube or Google Drive ──────── */}
                     <div className="form-group">
-                      <label>معرّف فيديو يوتيوب (Video ID)</label>
-                      <input
-                        type="text"
-                        placeholder="مثال: dQw4w9WgXcQ"
-                        value={part.videoId}
-                        onChange={(e) => {
-                          // Auto-extract id if admin pastes a full URL.
-                          const v = e.target.value
-                          const extracted = extractYouTubeId(v)
-                          updatePart(part.id, 'videoId', extracted || v)
-                        }}
-                        maxLength={64}
-                      />
-                      <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                        الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
-                      </small>
-                      {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
-                        <small style={{ color: '#c53030', fontSize: 12 }}>
-                          المعرّف يجب أن يكون 11 حرفاً.
-                        </small>
-                      )}
+                      <label>مصدر الفيديو</label>
+                      <div className="quiz-scope">
+                        <label className={`quiz-scope-opt ${part.source === 'youtube' ? 'is-on' : ''}`}>
+                          <input
+                            type="radio"
+                            name={`source-${part.id}`}
+                            checked={part.source === 'youtube'}
+                            onChange={() => updatePart(part.id, 'source', 'youtube')}
+                          />
+                          <i className="fab fa-youtube" style={{ color: '#ef4444' }}></i>
+                          <span>YouTube</span>
+                        </label>
+                        <label className={`quiz-scope-opt ${part.source === 'drive' ? 'is-on' : ''}`}>
+                          <input
+                            type="radio"
+                            name={`source-${part.id}`}
+                            checked={part.source === 'drive'}
+                            onChange={() => updatePart(part.id, 'source', 'drive')}
+                          />
+                          <i className="fab fa-google-drive" style={{ color: '#4285f4' }}></i>
+                          <span>Google Drive</span>
+                        </label>
+                      </div>
                     </div>
+
+                    {part.source === 'youtube' ? (
+                      <div className="form-group">
+                        <label>معرّف فيديو يوتيوب (Video ID)</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: dQw4w9WgXcQ"
+                          value={part.videoId}
+                          onChange={(e) => {
+                            // Auto-extract id if admin pastes a full URL.
+                            const v = e.target.value
+                            const extracted = extractYouTubeId(v)
+                            updatePart(part.id, 'videoId', extracted || v)
+                          }}
+                          maxLength={64}
+                        />
+                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
+                        </small>
+                        {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
+                          <small style={{ color: '#c53030', fontSize: 12 }}>
+                            المعرّف يجب أن يكون 11 حرفاً.
+                          </small>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="form-group">
+                          <label>رابط أو معرّف ملف Google Drive</label>
+                          <input
+                            type="text"
+                            placeholder="ألصق رابط Drive أو معرّف الملف"
+                            value={part.driveId}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              const extracted = extractDriveId(v)
+                              updatePart(part.id, 'driveId', extracted || v)
+                            }}
+                          />
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6, display: 'block', marginTop: 4 }}>
+                            <strong>مهم:</strong> يجب ضبط الملف في Drive على «أي شخص لديه الرابط يمكنه العرض».
+                            سيتم استخراج المعرّف تلقائياً من الرابط. الحد الأقصى للحجم ~100MB لتشغيل سلس.
+                          </small>
+                          {part.driveId && !/^[A-Za-z0-9_-]{15,}$/.test(part.driveId) && (
+                            <small style={{ color: '#c53030', fontSize: 12 }}>
+                              معرّف Drive غير صالح.
+                            </small>
+                          )}
+                        </div>
+                        <div className="form-group">
+                          <label>مدة الفيديو (بالدقائق) — اختياري</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            placeholder="مثال: 12"
+                            value={part.durationMinutes}
+                            onChange={(e) => updatePart(part.id, 'durationMinutes', e.target.value)}
+                          />
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            تُستخدم في تقرير المشاهدة. إن تركتها فارغة ستُحسب تلقائياً عند أول تشغيل للطالب.
+                          </small>
+                        </div>
+                      </>
+                    )}
 
                     <div className="form-group">
                       <label>عدد المحاولات لكل طالب</label>
@@ -427,82 +637,68 @@ export default function VideoAdd() {
               </div>
             )}
 
-            {/* ── Quizzes Section ───────────────────────────────────── */}
+            {/* ── Quizzes Section ─────────────────────────────────────
+                 Inline pre-video quizzes. These are STANDALONE — they are
+                 NOT pulled from the exams library and they do NOT appear in
+                 the exams report. Each quiz is just questions stored on the
+                 video itself, used purely to gate access to the part/video. */}
             <div className="quizzes-section">
               <div className="quizzes-head">
                 <div>
-                  <h3 className="section-title">📝 امتحانات قبل المشاهدة</h3>
+                  <h3 className="section-title">📝 اختبار قبل المشاهدة (اختياري)</h3>
                   <p className="quizzes-hint">
-                    اختر امتحانًا موجودًا من مكتبة الامتحانات يلزم الطالب اجتيازه قبل مشاهدة الفيديو.
-                    تستطيع تحديد إن كان للفيديو كاملًا أو لجزء معيّن.
+                    أنشئ اختباراً سريعاً مرتبطاً بالفيديو فقط. هذه الاختبارات
+                    مستقلة عن صفحة الامتحانات ولا تظهر في تقارير الامتحانات —
+                    الغرض منها فتح المحتوى للطالب فقط.
                   </p>
                 </div>
                 <button className="btn btn-secondary" type="button" onClick={addQuiz}>
-                  ➕ إضافة امتحان
+                  ➕ إضافة اختبار
                 </button>
               </div>
 
               {quizzes.length === 0 && (
                 <div className="quizzes-empty">
                   <i className="fas fa-circle-info"></i>
-                  لا يوجد امتحانات. اضغط «إضافة امتحان»
+                  لا يوجد اختبارات. اضغط «إضافة اختبار» إذا رغبت في إلزام الطالب بحلّه قبل المشاهدة.
                 </div>
               )}
 
               {quizzes.map((qz, qi) => {
-                const exam = findExam(qz.examId)
-                const questionCount = Array.isArray(exam?.questions) ? exam.questions.length : 0
-                const pts = exam?.total_points || (Array.isArray(exam?.questions)
-                  ? exam.questions.reduce((s, q) => s + (q.points || 1), 0)
-                  : 0)
-                const usedExamIds = new Set(
-                  quizzes.filter(q => q.localId !== qz.localId && q.examId).map(q => q.examId)
+                const questionCount = qz.questions.length
+                const totalPts = qz.questions.reduce(
+                  (s, q) => s + (parseInt(q.points) || 1), 0
                 )
-                const options = examsForGrade.filter(e => !usedExamIds.has(e.id) || e.id === qz.examId)
                 return (
                   <div key={qz.localId} className="quiz-block">
                     <div className="quiz-block-head">
-                      <span className="quiz-block-num">امتحان {qi + 1}</span>
+                      <span className="quiz-block-num">اختبار {qi + 1}</span>
+                      <span className="quiz-block-meta">
+                        {questionCount} سؤال · {totalPts} نقطة
+                      </span>
                       <button
                         type="button"
                         className="quiz-remove"
                         onClick={() => removeQuiz(qz.localId)}
-                        title="حذف الامتحان"
+                        title="حذف الاختبار"
                       >
                         <i className="fas fa-trash"></i>
                       </button>
                     </div>
 
                     <div className="form-group">
-                      <label>اختر امتحانًا من المكتبة</label>
-                      <select
-                        value={qz.examId}
-                        onChange={(e) => updateQuiz(qz.localId, 'examId', e.target.value)}
-                      >
-                        <option value="">
-                          {examsLoading ? '... جاري التحميل' : '-- اختر امتحانًا --'}
-                        </option>
-                        {options.map(e => (
-                          <option key={e.id} value={e.id}>
-                            {e.number ? `#${e.number} — ` : ''}{e.title} ({(e.questions || []).length} سؤال)
-                          </option>
-                        ))}
-                      </select>
-                      {!examsLoading && examsForGrade.length === 0 && (
-                        <small className="quiz-warn">
-                          لا يوجد امتحانات لهذا الصف. أنشئ امتحانًا من صفحة «إضافة امتحان» أولاً.
-                        </small>
-                      )}
-                      {exam && (
-                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                          {questionCount} سؤال · {pts} نقطة · مدة {exam.duration_minutes} دقيقة
-                        </small>
-                      )}
+                      <label>عنوان الاختبار</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: مراجعة سريعة قبل الجزء الأول"
+                        value={qz.title}
+                        onChange={(e) => updateQuiz(qz.localId, 'title', e.target.value)}
+                      />
                     </div>
 
                     <div className="form-row">
                       <div className="form-group flex-1">
-                        <label>نطاق الامتحان</label>
+                        <label>نطاق الاختبار</label>
                         <div className="quiz-scope">
                           <label className={`quiz-scope-opt ${qz.scope === 'whole' ? 'is-on' : ''}`}>
                             <input
@@ -548,35 +744,150 @@ export default function VideoAdd() {
                       )}
 
                       <div className="form-group flex-1">
-                        <label>عدد الأسئلة المطلوبة للنجاح</label>
+                        <label>الأسئلة المطلوبة للنجاح</label>
                         <input
                           type="number"
                           min="1"
                           max={Math.max(questionCount, 1)}
-                          placeholder={questionCount ? String(questionCount) : ''}
+                          placeholder={String(questionCount)}
                           value={qz.passingQuestions}
                           onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
                         />
-                        <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
-                          {questionCount ? `من إجمالي ${questionCount} سؤال` : 'سيُحدد بعد اختيار الامتحان'}
+                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          من إجمالي {questionCount} سؤال (الافتراضي: الكل)
                         </small>
                       </div>
 
                       <div className="form-group flex-1">
-                        <label>عدد المحاولات المسموح بها</label>
+                        <label>عدد المحاولات</label>
                         <input
                           type="number"
                           min="1"
-                          placeholder={exam?.max_attempts ? String(exam.max_attempts) : ''}
                           value={qz.maxAttempts}
                           onChange={(e) => updateQuiz(qz.localId, 'maxAttempts', e.target.value)}
                         />
-                        <small className="quiz-warn" style={{ color: 'var(--text-muted)' }}>
-                          {exam?.max_attempts
-                            ? `الافتراضي من الامتحان: ${exam.max_attempts}`
-                            : 'عدد مرات محاولة الطالب قبل القفل'}
+                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          عدد المحاولات المسموح بها قبل القفل
                         </small>
                       </div>
+                    </div>
+
+                    {/* Inline questions builder */}
+                    <div className="qb-questions">
+                      <div className="qb-questions-head">
+                        <h4 className="qb-questions-title">
+                          <i className="fas fa-list-ul"></i> أسئلة الاختبار
+                        </h4>
+                        <button
+                          type="button"
+                          className="btn btn-secondary qb-add-q"
+                          onClick={() => addQuestion(qz.localId)}
+                        >
+                          ➕ سؤال جديد
+                        </button>
+                      </div>
+
+                      {qz.questions.map((q, qIdx) => (
+                        <div key={q.qid} className="qb-question">
+                          <div className="qb-q-head">
+                            <span className="qb-q-num">{qIdx + 1}</span>
+                            <input
+                              type="text"
+                              className="qb-q-text"
+                              placeholder="اكتب نص السؤال هنا..."
+                              value={q.question}
+                              onChange={(e) => updateQuestionField(qz.localId, q.qid, 'question', e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className={`qb-mode-toggle ${q.isMultiple ? 'is-multi' : ''}`}
+                              onClick={() => toggleMultiple(qz.localId, q.qid)}
+                              title={q.isMultiple ? 'إجابة متعددة (اضغط لجعلها مفردة)' : 'إجابة مفردة (اضغط للسماح بإجابات متعددة)'}
+                            >
+                              <i className={`fas ${q.isMultiple ? 'fa-check-double' : 'fa-check'}`}></i>
+                              {q.isMultiple ? ' متعدد' : ' مفرد'}
+                            </button>
+                            <div className="qb-points">
+                              <label>النقاط</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={q.points}
+                                onChange={(e) => updateQuestionField(qz.localId, q.qid, 'points',
+                                  Math.max(1, parseInt(e.target.value) || 1)
+                                )}
+                              />
+                            </div>
+                            {qz.questions.length > 1 && (
+                              <button
+                                type="button"
+                                className="qb-remove-q"
+                                onClick={() => removeQuestion(qz.localId, q.qid)}
+                                title="حذف السؤال"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            )}
+                          </div>
+
+                          <QuestionImagePicker
+                            value={q.image}
+                            onChange={(url) => updateQuestionField(qz.localId, q.qid, 'image', url)}
+                          />
+
+                          <div className="qb-options">
+                            {q.options.map((opt, oIdx) => {
+                              const correct = q.answers.includes(oIdx)
+                              return (
+                                <div key={oIdx} className={`qb-option ${correct ? 'is-correct' : ''}`}>
+                                  <button
+                                    type="button"
+                                    className={`qb-correct-btn ${correct ? 'is-on' : ''}`}
+                                    onClick={() => setCorrectAnswer(qz.localId, q.qid, oIdx, !correct)}
+                                    title={correct ? 'إجابة صحيحة (اضغط لإلغاء)' : 'اضغط لتحديدها كإجابة صحيحة'}
+                                  >
+                                    {q.isMultiple ? (
+                                      <i className={`far ${correct ? 'fa-square-check' : 'fa-square'}`}></i>
+                                    ) : (
+                                      <i className={`far ${correct ? 'fa-circle-dot' : 'fa-circle'}`}></i>
+                                    )}
+                                  </button>
+                                  <input
+                                    type="text"
+                                    className="qb-option-input"
+                                    placeholder={`الاختيار ${oIdx + 1}`}
+                                    value={opt}
+                                    onChange={(e) => updateQuestionOption(qz.localId, q.qid, oIdx, e.target.value)}
+                                  />
+                                  {q.options.length > 2 && (
+                                    <button
+                                      type="button"
+                                      className="qb-remove-opt"
+                                      onClick={() => removeQuestionOption(qz.localId, q.qid, oIdx)}
+                                      title="حذف الاختيار"
+                                    >
+                                      <i className="fas fa-xmark"></i>
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                            <button
+                              type="button"
+                              className="qb-add-opt"
+                              onClick={() => addQuestionOption(qz.localId, q.qid)}
+                            >
+                              <i className="fas fa-plus"></i> إضافة اختيار
+                            </button>
+                            <p className="qb-hint">
+                              <i className="fas fa-circle-info"></i>{' '}
+                              {q.isMultiple
+                                ? 'اضغط على المربعات بجانب كل إجابة صحيحة (يمكن اختيار أكثر من واحدة).'
+                                : 'اضغط على الدائرة بجانب الإجابة الصحيحة.'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )
@@ -675,7 +986,10 @@ export default function VideoAdd() {
                         <span className="part-index">الجزء {index + 1}:</span>
                         <div className="part-details">
                           <div>{part.title}</div>
-                          <div className="part-duration">معرّف: <code>{part.videoId || '—'}</code></div>
+                          <div className="part-duration">
+                            {part.source === 'drive' ? 'Drive' : 'YouTube'}:{' '}
+                            <code>{(part.source === 'drive' ? part.driveId : part.videoId) || '—'}</code>
+                          </div>
                         </div>
                       </div>
                     ))}

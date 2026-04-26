@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { listExams, setExamRevealGrades, updateExamAvailability } from '@backend/examsApi'
 import { listVideos, updateVideoAvailability } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
+import { resetStudentVideoAttempts, resetGradeVideoAttempts } from '@backend/progressApi'
 import { syncStudentsCsv } from '@backend/studentsSyncApi'
 import {
   listOverridesForTarget,
@@ -226,18 +227,37 @@ export default function ControlPanel() {
   const resetItem = async (item) => {
     const key = keyFor(item)
     const prev = overrides[key]
-    if (!prev) return // already default
-    setOverrides((p) => { const n = { ...p }; delete n[key]; return n })
+    // Even if there is no override row, we still want the reset button to
+    // zero the actual usage counter for videos (that was the user's main
+    // pain: the counter never went back to 0). For exams there is nothing
+    // else to clear, so an absent override means "already at default".
+    if (!prev && section !== 'videos') return
+    if (prev) {
+      setOverrides((p) => { const n = { ...p }; delete n[key]; return n })
+    }
     try {
-      await deleteOverride({
-        scope: target.kind,
-        targetId: target.id,
-        itemType: section === 'videos' ? 'video' : 'exam',
-        itemId: item.id,
-      })
-      flash('تم استرجاع الإعدادات الافتراضية')
+      if (prev) {
+        await deleteOverride({
+          scope: target.kind,
+          targetId: target.id,
+          itemType: section === 'videos' ? 'video' : 'exam',
+          itemId: item.id,
+        })
+      }
+      // For videos, also zero out the per-student view counter so a fresh
+      // bonus allowance actually starts from 0/N — not (5+N)/N.
+      if (section === 'videos') {
+        if (target.kind === 'student') {
+          await resetStudentVideoAttempts({ student_id: target.id, video_id: item.id })
+        } else if (target.kind === 'prep') {
+          await resetGradeVideoAttempts({ grade: target.id, video_id: item.id })
+        }
+      }
+      flash(section === 'videos'
+        ? 'تم تصفير المحاولات وإعادة الإعدادات الافتراضية'
+        : 'تم استرجاع الإعدادات الافتراضية')
     } catch (e) {
-      setOverrides((p) => ({ ...p, [key]: prev }))
+      if (prev) setOverrides((p) => ({ ...p, [key]: prev }))
       flash(e.message || 'تعذر الاسترجاع', 'warning')
     }
   }
@@ -881,7 +901,13 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }
           )}
         </button>
 
-        <button className="cp-icon-btn" onClick={onReset} title="استرجاع الإعدادات الافتراضية">
+        <button
+          className="cp-icon-btn"
+          onClick={onReset}
+          title={isVideo
+            ? 'تصفير المحاولات المستخدمة وإرجاع الإعدادات الافتراضية'
+            : 'استرجاع الإعدادات الافتراضية'}
+        >
           <i className="fas fa-rotate-left"></i>
         </button>
       </div>

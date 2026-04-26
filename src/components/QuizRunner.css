@@ -310,10 +310,103 @@ body.dark .qr-opt { color: #e5e7eb; }
 body.dark .qr-close { background: #1f2937; border-color: rgba(255,255,255,0.08); color: #cbd5e1; }
 body.dark .qr-head { background: linear-gradient(135deg, rgba(129, 140, 248, 0.14), rgba(167, 139, 250, 0.14)); border-bottom-color: rgba(255,255,255,0.08); }
 
+/* ─── Mobile (≤ 600px) ─────────────────────────────────────────
+   Goals on phones:
+     • Modal hugs the viewport with breathing room (no horizontal scroll)
+     • Question header wraps cleanly — number + text on one line, points
+       drop to a chip below so a long question never gets clipped
+     • Options are taller (touch targets) and text wraps inside them
+     • Footer buttons stack full-width so they're easy to thumb
+   ────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .qr-head, .qr-body, .qr-foot { padding-inline: 1.1rem; }
-  .qr-title { font-size: 1.2rem; }
-  .qr-q-text { font-size: 14px; }
-  .qr-foot { flex-direction: column-reverse; }
-  .qr-btn { width: 100%; justify-content: center; }
+  .qr-overlay { padding: .6rem; }
+  .qr-modal {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+    border-radius: 14px;
+  }
+
+  /* Header: tighter padding, allow title/meta to wrap fully */
+  .qr-head {
+    padding: 1rem 1rem;
+    flex-wrap: wrap;
+    gap: .6rem;
+  }
+  .qr-head-info { flex: 1 1 100%; min-width: 0; }
+  .qr-title { font-size: 1.1rem; line-height: 1.3; word-break: break-word; }
+  .qr-meta { font-size: 12px; gap: 6px; row-gap: 4px; }
+  .qr-meta .qr-dot { display: none; } /* dots crowd a wrapping line */
+  .qr-meta > span {
+    background: rgba(102, 126, 234, 0.08);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  body.dark .qr-meta > span { background: rgba(129, 140, 248, 0.12); }
+  .qr-close { width: 32px; height: 32px; }
+
+  /* Body */
+  .qr-body { padding: 1rem; }
+  .qr-intro { font-size: 12.5px; padding: .65rem .85rem; }
+  .qr-result { padding: .85rem .9rem; gap: 10px; }
+  .qr-result-icon { font-size: 1.8rem; }
+  .qr-result-text h3 { font-size: 1rem; }
+  .qr-result-text p  { font-size: 12.5px; }
+
+  /* Question card */
+  .qr-q { padding: 12px 12px; border-radius: 12px; }
+  .qr-q-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .qr-q-num { width: 26px; height: 26px; font-size: 12px; border-radius: 7px; }
+  .qr-q-text {
+    font-size: 14px;
+    line-height: 1.45;
+    flex: 1 1 calc(100% - 36px); /* sit beside the number */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .qr-q-points {
+    /* Drop the points chip onto its own line so long questions never
+       get squeezed. Keeps it visible without elbowing the question. */
+    flex: 0 0 auto;
+    margin-inline-start: 36px;
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  /* Options — taller, wrapping text */
+  .qr-options { gap: 6px; }
+  .qr-opt {
+    padding: 12px 12px;
+    font-size: 13.5px;
+    line-height: 1.4;
+    align-items: flex-start;
+    gap: 9px;
+  }
+  .qr-opt-mark { padding-top: 1px; }
+  .qr-opt-text { word-break: break-word; overflow-wrap: anywhere; }
+
+  /* Footer buttons stack & go full-width */
+  .qr-foot {
+    flex-direction: column-reverse;
+    padding: .9rem 1rem;
+    gap: 8px;
+  }
+  .qr-btn {
+    width: 100%;
+    justify-content: center;
+    height: 46px; /* easier tap target */
+  }
+}
+
+/* Extra-narrow phones (≤ 380px) — squeeze a touch more */
+@media (max-width: 380px) {
+  .qr-head, .qr-body, .qr-foot { padding-inline: .8rem; }
+  .qr-title { font-size: 1rem; }
+  .qr-meta { font-size: 11.5px; }
+  .qr-q { padding: 10px; }
+  .qr-opt { padding: 11px 10px; font-size: 13px; }
 }

@@ -73,9 +73,11 @@ export default function VideosReport() {
           : allVideos
 
         // All progress rows for the target student across those videos.
+        // We need seconds_watched here so the report reflects ACTUAL time
+        // watched (not just "did they open this part once").
         const { data: progressRows, error: progErr } = await supabase
           .from('video_progress')
-          .select('video_id, part_id, views_used, last_watched_at')
+          .select('video_id, part_id, views_used, seconds_watched, last_watched_at')
           .eq('student_id', targetId)
         if (progErr) throw progErr
 
@@ -86,30 +88,52 @@ export default function VideosReport() {
           byVideo.get(p.video_id).push(p)
         }
 
-        // Probe REAL durations from YouTube for every unique part across
-        // the videos this student has access to. We no longer store
-        // admin-entered minutes on the row — duration comes from the
-        // player itself. Results are cached per-tab so subsequent report
-        // loads on the same videos are instant.
-        const allPartIds = videos.flatMap((v) =>
-          (v.video_parts || []).map((p) => p.youtube_id).filter(Boolean)
+        // Probe REAL durations from YouTube for every unique YT part. For
+        // Drive-sourced parts we don't have an external API to query, so
+        // we fall back to the admin-entered `duration_seconds` from the DB.
+        const ytIds = videos.flatMap((v) =>
+          (v.video_parts || [])
+            .filter((p) => (p.source || 'youtube') === 'youtube' && p.youtube_id)
+            .map((p) => p.youtube_id)
         )
-        const durMap = await getYoutubeDurations(allPartIds)
+        const durMap = await getYoutubeDurations(ytIds)
         if (cancelled) return
 
         const rows = videos.map((v) => {
           const parts = v.video_parts || []
           const progList = byVideo.get(v.id) || []
-          const viewedPartIds = new Set(
-            progList.filter((p) => (p.views_used || 0) > 0).map((p) => p.part_id)
+          // Map part_id → seconds_watched so we can credit each part by
+          // ACTUAL time, not by a binary "opened" flag.
+          const watchedByPart = new Map(
+            progList.map((p) => [p.part_id, Math.max(0, p.seconds_watched || 0)])
           )
-          const totalParts = parts.length || 1
-          const watchedParts = parts.filter((p) => viewedPartIds.has(p.id)).length
-          const progress = Math.round((watchedParts / totalParts) * 100)
+
+          const partSeconds = (p) => {
+            // Drive parts → admin-entered duration; YouTube parts → oEmbed
+            // result (cached). Fall back to 0 when neither is available.
+            if ((p.source || 'youtube') === 'drive') {
+              return parseInt(p.duration_seconds, 10) || 0
+            }
+            return durMap.get(p.youtube_id) || parseInt(p.duration_seconds, 10) || 0
+          }
+          const totalSecs = parts.reduce((s, p) => s + partSeconds(p), 0)
+          // Per-part watched is capped at the part's own duration so a
+          // small clock-drift can't push a part above 100%.
+          const watchedSecs = parts.reduce((s, p) => {
+            const dur  = partSeconds(p)
+            const seen = watchedByPart.get(p.id) || 0
+            return s + (dur ? Math.min(seen, dur) : seen)
+          }, 0)
+
+          // Progress is now driven by real seconds watched / total seconds.
+          // Falls back to 0 when YouTube duration metadata isn't ready yet.
+          const progress = totalSecs > 0
+            ? Math.min(100, Math.round((watchedSecs / totalSecs) * 100))
+            : 0
 
           let status = 'none'
           let statusText = 'لم تتم المشاهدة'
-          if (progress >= 100) { status = 'completed'; statusText = 'تم المشاهدة بالكامل' }
+          if (progress >= 90) { status = 'completed'; statusText = 'تم المشاهدة بالكامل' }
           else if (progress > 0) { status = 'partial'; statusText = `تم مشاهدة ${progress}%` }
 
           const lastWatched = progList
@@ -118,15 +142,11 @@ export default function VideosReport() {
             .sort()
             .pop()
 
-          // Real durations (in seconds) → minutes, rounded up so a 30-sec
-          // outro still contributes 1 minute to the total.
-          const partSeconds = (p) => durMap.get(p.youtube_id) || 0
-          const totalSecs = parts.reduce((s, p) => s + partSeconds(p), 0)
-          const watchedSecs = parts
-            .filter((p) => viewedPartIds.has(p.id))
-            .reduce((s, p) => s + partSeconds(p), 0)
+          // Round minutes: ceil for total so a 30-sec outro shows 1 min,
+          // but floor for watched so a student who watched 0:25 of a part
+          // doesn't see "1 minute" credited.
           const totalMins = Math.ceil(totalSecs / 60)
-          const watchedMins = Math.ceil(watchedSecs / 60)
+          const watchedMins = Math.floor(watchedSecs / 60)
 
           return {
             id: v.id,

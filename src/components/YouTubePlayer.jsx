@@ -85,8 +85,11 @@ export default function YouTubePlayer({
   const [volume, setVolume]     = useState(100)
   const [qualities, setQualities] = useState([])
   const [quality, setQuality]   = useState('auto')
+  const [rate, setRate]         = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [rateMenuOpen, setRateMenuOpen] = useState(false)
+  const RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 
   // Double-tap-to-seek state. We track the last tap's time + side so the
   // second tap in the same half within DOUBLE_TAP_MS triggers a ±10s seek
@@ -320,6 +323,12 @@ export default function YouTubePlayer({
     const p = playerRef.current; if (!p) return
     try { p.setPlaybackQuality(q) } catch {}
     setQuality(q); setMenuOpen(false)
+  }
+
+  const pickRate = (r) => {
+    const p = playerRef.current; if (!p) return
+    try { p.setPlaybackRate(r) } catch {}
+    setRate(r); setRateMenuOpen(false)
   }
 
   const toggleFullscreen = () => {
@@ -563,10 +572,60 @@ export default function YouTubePlayer({
           />
         </div>
 
+        {/* Playback speed */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => { setRateMenuOpen(v => !v); setMenuOpen(false) }}
+            aria-label="Playback speed"
+            title="سرعة التشغيل"
+            style={{
+              ...iconBtn,
+              width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 700,
+            }}
+          >
+            <i className="fas fa-gauge-high" style={{ marginInlineEnd: 6 }}></i>
+            {rate === 1 ? '1x' : `${rate}x`}
+          </button>
+          {rateMenuOpen && (
+            <div style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 8px)',
+              right: 0,
+              minWidth: 120,
+              background: 'rgba(20,20,26,0.96)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
+            }}>
+              <div style={{
+                padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
+              }}>السرعة</div>
+              {RATES.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => pickRate(r)}
+                  style={{
+                    display: 'flex', width: '100%', justifyContent: 'space-between',
+                    alignItems: 'center', gap: 10,
+                    padding: '8px 12px',
+                    background: r === rate ? 'rgba(197,48,48,0.2)' : 'transparent',
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    fontSize: 13, textAlign: 'start',
+                  }}
+                >
+                  <span>{r === 1 ? 'عادي (1x)' : `${r}x`}</span>
+                  {r === rate && <i className="fas fa-check" style={{ color: '#f56565' }}></i>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Quality */}
         <div style={{ position: 'relative' }}>
           <button
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => { setMenuOpen((v) => !v); setRateMenuOpen(false) }}
             aria-label="Quality"
             style={{
               ...iconBtn,

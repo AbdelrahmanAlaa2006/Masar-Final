@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade } from '@backend/examsApi'
+import QuestionImagePicker from '../components/QuestionImagePicker'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
@@ -33,6 +34,7 @@ export default function ExamAdd() {
     const newQuestions = Array(count).fill(null).map((_, i) => ({
       id: i,
       question: '',
+      image: '',          // optional public URL (from `quiz-images` bucket)
       options: ['', ''],
       answers: [0],
       points: 1,
@@ -41,6 +43,30 @@ export default function ExamAdd() {
 
     setQuestions(newQuestions)
     setShowCopySection(true)
+  }
+
+  // ── Friendly one-click "add another question" ──────────────────
+  // For non-technical admins: no need to fiddle with the count input.
+  // We append a blank question with a fresh id.
+  const addSingleQuestion = () => {
+    const nextId = questions.length === 0
+      ? 0
+      : Math.max(...questions.map(q => q.id)) + 1
+    setQuestions(prev => [
+      ...prev,
+      { id: nextId, question: '', image: '', options: ['', ''], answers: [0], points: 1, isMultiple: false },
+    ])
+    setNumQuestions(String(questions.length + 1))
+    setShowCopySection(true)
+  }
+
+  // Delete a single question (and renumber the displayed count).
+  const removeQuestion = (id) => {
+    setQuestions(prev => {
+      const next = prev.filter(q => q.id !== id)
+      setNumQuestions(String(next.length))
+      return next
+    })
   }
 
   const updateQuestion = (id, field, value) => {
@@ -97,57 +123,121 @@ export default function ExamAdd() {
     }))
   }
 
+  // ── Bulk import (two formats supported) ──────────────────────
+  // 1) NATURAL format (preferred — easy for non-technical admins):
+  //      • Blank line separates questions.
+  //      • First line of each block = the question.
+  //      • Following lines = options.
+  //      • A line starting with `*` (or `★`) marks a correct option.
+  //      • Optional line starting with `!N` at end of a block = points.
+  //
+  // 2) LEGACY format (kept for backwards compat):
+  //      • `@` starts a question, `#` an option, `##` a correct option,
+  //        `!N` for points. Triggered when any line begins with `@`.
   const parseCopiedQuestions = () => {
     const text = questionsCopy.trim()
     if (!text) {
-      notify('يرجى إدخال الأسئلة بالتنسيق المطلوب', { type: 'warning' })
+      notify('يرجى إدخال الأسئلة', { type: 'warning' })
       return
     }
-
-    const questionTexts = text.split('@').filter(q => q.trim() !== '')
-    if (questionTexts.length === 0) {
-      notify('لم يتم العثور على أسئلة', { type: 'warning' })
+    // Auto-detect: if the user pasted the legacy `@...` format, fall back
+    // to the legacy parser so existing materials still work.
+    const usesLegacy = /^\s*@/m.test(text)
+    let parsedQuestions = []
+    if (usesLegacy) {
+      parsedQuestions = parseLegacyFormat(text)
+    } else {
+      parsedQuestions = parseNaturalFormat(text)
+    }
+    if (parsedQuestions.length === 0) {
+      notify('لم يتم العثور على أسئلة — تأكد من التنسيق', { type: 'warning' })
       return
     }
+    setNumQuestions(parsedQuestions.length.toString())
+    setQuestions(parsedQuestions)
+    notify(`تم استيراد ${parsedQuestions.length} سؤال بنجاح`, { type: 'success' })
+  }
 
-    setNumQuestions(questionTexts.length.toString())
+  // Splits the input on blank lines, then turns each block into a question.
+  // First line = question; subsequent lines = options. `*` (or `★`) prefix
+  // marks correct. A trailing `!N` line (or `[N]` after the question) sets
+  // points. Lenient whitespace and Arabic punctuation.
+  const parseNaturalFormat = (text) => {
+    const blocks = text
+      .split(/\n\s*\n+/) // blank-line separator
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0)
+    return blocks.map((block, i) => {
+      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
+      let points = 1
+      // Trailing "!2" line sets points
+      if (lines.length > 1 && /^!\s*\d+/.test(lines[lines.length - 1])) {
+        const m = lines.pop().match(/\d+/)
+        if (m) points = Math.max(1, parseInt(m[0], 10))
+      }
+      // Inline "[2]" right after the question text
+      let questionLine = lines[0] || ''
+      const inlinePts = questionLine.match(/[\[\(](\d+)[\]\)]\s*$/)
+      if (inlinePts) {
+        points = Math.max(1, parseInt(inlinePts[1], 10))
+        questionLine = questionLine.replace(/[\[\(](\d+)[\]\)]\s*$/, '').trim()
+      }
+      const options = []
+      const correctAnswers = []
+      for (let j = 1; j < lines.length; j++) {
+        let opt = lines[j]
+        // Strip optional bullet markers like "- ", "1. ", "أ) "
+        opt = opt.replace(/^[-•·]\s+/, '')
+                 .replace(/^[٠-٩\d]+[\.\)\-]\s*/, '')
+                 .replace(/^[a-zA-Zء-ي][\.\)\-]\s*/, '')
+        const isCorrect = /^[\*★✓✔]\s*/.test(opt)
+        if (isCorrect) opt = opt.replace(/^[\*★✓✔]\s*/, '').trim()
+        if (!opt) continue
+        options.push(opt)
+        if (isCorrect) correctAnswers.push(options.length - 1)
+      }
+      return {
+        id: i,
+        question: questionLine,
+        options: options.length >= 2 ? options : (options.length ? [...options, ''] : ['', '']),
+        answers: correctAnswers.length > 0 ? correctAnswers : [0],
+        points,
+        isMultiple: correctAnswers.length > 1,
+      }
+    })
+  }
 
-    const parsedQuestions = questionTexts.map((q, i) => {
-      const lines = q.trim().split('\n').filter(line => line.trim() !== '')
+  // Legacy parser — kept for materials that already use the @/#/##/! syntax.
+  const parseLegacyFormat = (text) => {
+    const questionTexts = text.split('@').filter((q) => q.trim() !== '')
+    return questionTexts.map((q, i) => {
+      const lines = q.trim().split('\n').filter((line) => line.trim() !== '')
       let points = 1
       const lastLine = lines[lines.length - 1]
-      
-      if (lastLine.startsWith('!')) {
+      if (lastLine && lastLine.startsWith('!')) {
         points = parseInt(lastLine.substring(1)) || 1
         lines.pop()
       }
-
       const options = []
       const correctAnswers = []
-
       for (let j = 1; j < lines.length; j++) {
         const line = lines[j].trim()
         if (line.startsWith('##')) {
-          const optionText = line.replace(/^##\s*/, '').trim()
-          options.push(optionText)
+          options.push(line.replace(/^##\s*/, '').trim())
           correctAnswers.push(options.length - 1)
         } else if (line.startsWith('#')) {
-          const optionText = line.replace(/^#\s*/, '').trim()
-          options.push(optionText)
+          options.push(line.replace(/^#\s*/, '').trim())
         }
       }
-
       return {
         id: i,
         question: lines[0]?.trim() || '',
         options: options.length > 0 ? options : ['', ''],
         answers: correctAnswers.length > 0 ? correctAnswers : [0],
         points,
-        isMultiple: correctAnswers.length > 1
+        isMultiple: correctAnswers.length > 1,
       }
     })
-
-    setQuestions(parsedQuestions)
   }
 
   const saveExam = async () => {
@@ -177,6 +267,7 @@ export default function ExamAdd() {
 
     const cleanQuestions = questions.map(q => ({
       question: q.question,
+      image: q.image || null,
       options: q.options,
       answers: q.answers,
       points: q.points,
@@ -299,24 +390,128 @@ export default function ExamAdd() {
 
         <div className="form-group">
           <label htmlFor="numQuestions">❓ عدد الأسئلة:</label>
-          <input 
-            type="number" 
+          <p style={{
+            fontSize: 12.5,
+            color: 'var(--text-muted, #718096)',
+            margin: '4px 0 8px',
+            fontWeight: 600,
+          }}>
+            اختر طريقة الإضافة: أدخل عدداً وأضغط «إنشاء» لتجهيز عدة أسئلة فارغة دفعة واحدة،
+            أو أضف سؤالاً واحداً في كل مرة بزر «➕ سؤال جديد».
+          </p>
+          <input
+            type="number"
             id="numQuestions"
             value={numQuestions}
             onChange={(e) => setNumQuestions(e.target.value)}
             placeholder="مثلاً 3"
           />
-          <button className="btn" onClick={generateQuestions}>✨ إنشاء الأسئلة</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+            <button className="btn" onClick={generateQuestions}>✨ إنشاء عدة أسئلة</button>
+            <button
+              className="btn"
+              onClick={addSingleQuestion}
+              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+            >
+              ➕ سؤال جديد
+            </button>
+          </div>
         </div>
 
         {showCopySection && (
           <div className="form-group copy-questions">
-            <label htmlFor="questionsCopy">📋 نسخ الأسئلة:</label>
-            <textarea 
+            <label htmlFor="questionsCopy">📋 إستيراد سريع (لصق عدة أسئلة دفعة واحدة):</label>
+            <details
+              open
+              style={{
+                margin: '4px 0 8px',
+                padding: '10px 12px',
+                background: 'rgba(34, 197, 94, 0.06)',
+                border: '1px dashed rgba(34, 197, 94, 0.4)',
+                borderRadius: 8,
+                fontSize: 13,
+                color: 'var(--text-secondary, #4a5568)',
+              }}
+            >
+              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#16a34a' }}>
+                <i className="fas fa-wand-magic-sparkles"></i> الطريقة السهلة (موصى بها)
+              </summary>
+              <div style={{ marginTop: 8, lineHeight: 1.8 }}>
+                <div>اكتب كل سؤال في فقرة منفصلة، السطر الأول هو السؤال، والأسطر التالية هي الاختيارات.</div>
+                <div>ضع <strong style={{ color: '#16a34a' }}>*</strong> في بداية الإجابة الصحيحة (يمكن وضعها قبل أكثر من اختيار في حالة الإجابة المتعددة).</div>
+                <div>افصل بين الأسئلة بسطر فارغ. اختياري: ضع <code>!2</code> في آخر سطر لتحديد النقاط.</div>
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: '#0f172a',
+                    color: '#86efac',
+                    padding: 12,
+                    borderRadius: 6,
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.7,
+                  }}
+                >
+{`ما عاصمة مصر؟
+*القاهرة
+الإسكندرية
+الجيزة
+
+ما ناتج 3 + 2؟
+2
+3
+*5
+4
+!2`}
+                </div>
+              </div>
+            </details>
+
+            <details
+              style={{
+                margin: '4px 0 8px',
+                padding: '10px 12px',
+                background: 'rgba(102, 126, 234, 0.06)',
+                border: '1px dashed rgba(102, 126, 234, 0.3)',
+                borderRadius: 8,
+                fontSize: 13,
+                color: 'var(--text-secondary, #4a5568)',
+              }}
+            >
+              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#667eea' }}>
+                <i className="fas fa-circle-question"></i> الطريقة القديمة (الرموز @ # ##)
+              </summary>
+              <div style={{ marginTop: 8, lineHeight: 1.7 }}>
+                <div><strong style={{ color: '#667eea' }}>@</strong> في بداية كل سؤال.</div>
+                <div><strong style={{ color: '#667eea' }}>#</strong> قبل كل اختيار خاطئ.</div>
+                <div><strong style={{ color: '#22c55e' }}>##</strong> قبل الاختيار الصحيح.</div>
+                <div><strong style={{ color: '#ed8936' }}>!</strong> آخر سطر اختياري لتحديد عدد النقاط (الافتراضي 1).</div>
+                <div style={{
+                  marginTop: 6,
+                  background: '#0f172a',
+                  color: '#a5b4fc',
+                  padding: 10,
+                  borderRadius: 6,
+                  fontFamily: 'monospace',
+                  fontSize: 12.5,
+                  whiteSpace: 'pre-wrap',
+                  direction: 'ltr',
+                }}>
+{`@ ما هو ناتج 3 + 2 ؟
+# 2
+# 3
+## 5
+# 4
+! 2`}
+                </div>
+              </div>
+            </details>
+            <textarea
               id="questionsCopy"
               value={questionsCopy}
               onChange={(e) => setQuestionsCopy(e.target.value)}
-              placeholder="@what is the total of 3+2&#10;#2&#10;#3&#10;##5&#10;#4&#10;!2"
+              placeholder={`ما عاصمة مصر؟\n*القاهرة\nالإسكندرية\nالجيزة\n\nما ناتج 3 + 2؟\n2\n3\n*5\n4`}
             />
             <button className="btn" onClick={parseCopiedQuestions}>📥 استيراد الأسئلة</button>
           </div>
@@ -332,27 +527,44 @@ export default function ExamAdd() {
                 <button className="btn-icon" onClick={() => removeOption(q.id)}>
                   <i className="fas fa-minus"></i> حذف اختيار
                 </button>
-                <button 
+                <button
                   className={`btn-icon ${q.isMultiple ? 'active' : ''}`}
                   onClick={() => toggleMultipleAnswers(q.id)}
                 >
                   <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
                 </button>
                 <span>النقاط:</span>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   min="1"
                   value={q.points}
                   onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value))}
                   className="points-input"
                 />
+                <button
+                  className="btn-icon"
+                  onClick={() => removeQuestion(q.id)}
+                  title="حذف هذا السؤال"
+                  style={{
+                    marginInlineStart: 'auto',
+                    color: '#dc2626',
+                    borderColor: 'rgba(239, 68, 68, 0.35)',
+                  }}
+                >
+                  <i className="fas fa-trash"></i> حذف السؤال
+                </button>
               </div>
 
               <label>❓ السؤال {i + 1}:</label>
-              <textarea 
+              <textarea
                 value={q.question}
                 onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
                 placeholder="اكتب السؤال هنا..."
+              />
+
+              <QuestionImagePicker
+                value={q.image}
+                onChange={(url) => updateQuestion(q.id, 'image', url)}
               />
 
               <label>📋 الاختيارات:</label>
@@ -406,9 +618,33 @@ export default function ExamAdd() {
         </div>
 
         {questions.length > 0 && (
-          <button className="btn btn-save" onClick={saveExam} disabled={saving}>
-            {saving ? '⏳ جاري الحفظ...' : '💾 حفظ ومعاينة الامتحان'}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={addSingleQuestion}
+              style={{
+                width: '100%',
+                marginTop: 8,
+                padding: '12px 18px',
+                borderRadius: 10,
+                border: '2px dashed rgba(102, 126, 234, 0.4)',
+                background: 'rgba(102, 126, 234, 0.06)',
+                color: '#667eea',
+                fontFamily: 'inherit',
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'background .18s, border-color .18s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(102, 126, 234, 0.12)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(102, 126, 234, 0.06)' }}
+            >
+              <i className="fas fa-plus"></i> إضافة سؤال آخر
+            </button>
+            <button className="btn btn-save" onClick={saveExam} disabled={saving}>
+              {saving ? '⏳ جاري الحفظ...' : '💾 حفظ ومعاينة الامتحان'}
+            </button>
+          </>
         )}
 
         {showSuccess && (

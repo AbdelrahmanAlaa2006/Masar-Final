@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import YouTubePlayer from '../components/YouTubePlayer'
+import DrivePlayer from '../components/DrivePlayer'
 import { listVideos, deleteVideo } from '@backend/videosApi'
 import {
   listQuizAttemptsForVideo,
@@ -31,7 +32,10 @@ function shapeVideo(row) {
   const parts = (row.video_parts || []).map((p) => ({
     id: p.id,
     title: p.title,
+    source: p.source || 'youtube',
     youtubeId: p.youtube_id || '',
+    driveId: p.drive_id || '',
+    durationSeconds: p.duration_seconds || null,
     part_index: p.part_index,
     viewLimit: p.view_limit ?? null, // null = unlimited
   }))
@@ -70,6 +74,11 @@ function shapeVideo(row) {
 
   const [activeQuiz, setActiveQuiz] = useState(null)
   const [pendingPart, setPendingPart] = useState(null)
+  // Quizzes the student has just passed in this session. We add to this set
+  // the moment a pass fires so the immediate `playVideoPart` retry doesn't
+  // re-read stale `quizAttempts` (which is fetched async) and re-show the
+  // quiz that was literally just passed.
+  const passedThisSessionRef = useRef(new Set())
 
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
@@ -146,6 +155,7 @@ function shapeVideo(row) {
       if (!currentVideo || !currentUser?.id) {
         setQuizAttempts([])
         setProgressRows([])
+        passedThisSessionRef.current = new Set()
         return
       }
       try {
@@ -174,6 +184,9 @@ function shapeVideo(row) {
       (qz.scope === 'part' && qz.partIndex === partIdx)
     for (const qz of video.quizzes) {
       if (!applies(qz)) continue
+      // Just-passed quizzes are remembered in a ref so the immediate retry
+      // in handleQuizPass doesn't re-block on an un-refreshed cache.
+      if (passedThisSessionRef.current.has(qz.localId)) continue
       const att = quizAttempts.find(a => a.quiz_local_id === qz.localId)
       if (!att?.passed) return qz
     }
@@ -309,28 +322,48 @@ function shapeVideo(row) {
       return
     }
 
-    // Log the view (powers VideosReport). Not used for enforcement anymore.
-    if (userRole !== 'admin' && currentUser?.id) {
-      try {
-        const updated = await incrementPartView({
-          student_id: currentUser.id,
-          video_id: currentVideo.id,
-          part_id: part.id,
-        })
-        setProgressRows(prev => {
-          const others = prev.filter(p => p.part_id !== part.id)
-          return [...others, updated]
-        })
-      } catch (err) {
-        console.error('incrementPartView failed', err)
-      }
-    }
+    // NOTE: we no longer increment views_used here. Counting on click was
+    // double-charging students who navigated in/out of the player without
+    // actually watching. The view is now logged ONCE on exit (when the
+    // selected part changes or the player closes) — see the cleanup effect
+    // below.
 
     // The YouTubePlayer component mounts against `part.youtubeId`.
     setSelectedPart(part)
   }
 
+  // ── Count an attempt on EXIT, not on click ────────────────────
+  // The cleanup function fires when:
+  //   • the student picks a different part,
+  //   • the player view closes (currentVideo / selectedPart -> null),
+  //   • or the page unmounts.
+  // We snapshot the part/video/student IDs so the API call uses a stable
+  // reference even if the underlying state has already moved on.
+  useEffect(() => {
+    if (!selectedPart || userRole === 'admin' || !currentUser?.id || !currentVideo?.id) return
+    const partId    = selectedPart.id
+    const studentId = currentUser.id
+    const videoId   = currentVideo.id
+    return () => {
+      incrementPartView({ student_id: studentId, video_id: videoId, part_id: partId })
+        .then((updated) => {
+          if (!updated) return
+          setProgressRows((prev) => {
+            const others = prev.filter((p) => p.part_id !== partId)
+            return [...others, updated]
+          })
+        })
+        .catch((err) => console.error('exit-time view increment failed', err))
+    }
+  }, [selectedPart, currentUser, currentVideo, userRole])
+
   const handleQuizPass = () => {
+    // Remember the pass synchronously — findBlockingQuiz reads this ref so
+    // the immediate retry below doesn't get tricked into re-prompting while
+    // the new `quiz_attempts` row is still in flight.
+    if (activeQuiz?.localId != null) {
+      passedThisSessionRef.current.add(activeQuiz.localId)
+    }
     setActiveQuiz(null)
     setQuizTick(t => t + 1) // re-fetch quiz_attempts so gating flips
     const part = pendingPart
@@ -494,19 +527,12 @@ function shapeVideo(row) {
           <div className="video-player-container">
             <div className="video-main">
               <div className="card" style={{ padding: 12 }}>
-                {selectedPart && selectedPart.youtubeId ? (
-                  <YouTubePlayer
-                    key={selectedPart.id}
-                    videoId={selectedPart.youtubeId}
-                    initialWatchedSeconds={
-                      progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
-                    }
-                    onProgress={({ watchedSeconds }) => {
-                      // Students only — admins shouldn't pollute progress rows.
+                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId) ? (
+                  (() => {
+                    // Both players share the same onProgress contract, so
+                    // we hoist the handler and just swap the component.
+                    const handleProgress = ({ watchedSeconds }) => {
                       if (userRole === 'admin' || !currentUser?.id) return
-                      // We store ACTUAL watched time (not currentTime), so a
-                      // student who scrubs from 0:10 → 9:00 doesn't get 9 mins
-                      // credited. The 5s skip button does count (see player).
                       updatePartProgress({
                         student_id: currentUser.id,
                         video_id: currentVideo.id,
@@ -519,8 +545,27 @@ function shapeVideo(row) {
                           return [...others, row]
                         })
                       }).catch((e) => console.error('updatePartProgress failed', e))
-                    }}
-                  />
+                    }
+                    const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
+                    if (selectedPart.source === 'drive') {
+                      return (
+                        <DrivePlayer
+                          key={selectedPart.id}
+                          driveId={selectedPart.driveId}
+                          initialWatchedSeconds={seed}
+                          onProgress={handleProgress}
+                        />
+                      )
+                    }
+                    return (
+                      <YouTubePlayer
+                        key={selectedPart.id}
+                        videoId={selectedPart.youtubeId}
+                        initialWatchedSeconds={seed}
+                        onProgress={handleProgress}
+                      />
+                    )
+                  })()
                 ) : (
                   <div className="placeholder-video">
                     <div>

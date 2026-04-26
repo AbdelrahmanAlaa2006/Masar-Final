@@ -11,7 +11,9 @@
       "Bash(git push *)",
       "Bash(grep -n \"نسخ\\\\|استيراد\\\\|إنشاء\\\\|importQuestions\\\\|pasteQuestions\\\\|quizText\\\\|@\\\\\\\\|#\" src/pages/VideoAdd.jsx)",
       "Bash(xargs grep *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('src/pages/VideoAdd.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/ExamAdd.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/Videos.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/VideosReport.jsx','utf8'\\); console.log\\('files readable'\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

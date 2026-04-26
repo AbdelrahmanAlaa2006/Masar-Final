@@ -210,6 +210,11 @@ export default function QuizRunner({ quiz, videoId, studentId, priorAttempt, onP
                     <span className="qr-q-text">{q.question}</span>
                     <span className="qr-q-points">{q.points} نقطة</span>
                   </div>
+                  {q.image && (
+                    <div className="qr-q-image">
+                      <img src={q.image} alt="صورة السؤال" />
+                    </div>
+                  )}
                   <div className="qr-options">
                     {q.options.map((opt, oIdx) => {
                       const selected = isOptionSelected(qIdx, oIdx)

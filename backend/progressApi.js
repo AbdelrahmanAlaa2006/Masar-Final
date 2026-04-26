@@ -81,6 +81,48 @@ export async function incrementPartView({ student_id, video_id, part_id }) {
   return data
 }
 
+// Admin: zero out a student's view counter for every part of one video.
+// Used by the ControlPanel "reset" button so when an admin grants a fresh
+// attempts allowance, prior usage doesn't keep eating into the new cap.
+// Both `views_used` and `seconds_watched` are zeroed so the report also
+// reflects the clean slate.
+export async function resetStudentVideoAttempts({ student_id, video_id }) {
+  const { error } = await supabase
+    .from('video_progress')
+    .update({
+      views_used: 0,
+      seconds_watched: 0,
+      last_watched_at: new Date().toISOString(),
+    })
+    .eq('student_id', student_id)
+    .eq('video_id', video_id)
+  if (error) throw error
+}
+
+// Admin: same as above but for an entire grade — clears every student's
+// counters for one video. Used when a grade-scoped override is reset.
+export async function resetGradeVideoAttempts({ grade, video_id }) {
+  // First find every student in that grade. RLS for admin role allows this.
+  const { data: students, error: sErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('grade', grade)
+    .eq('role', 'student')
+  if (sErr) throw sErr
+  const ids = (students || []).map((s) => s.id)
+  if (ids.length === 0) return
+  const { error } = await supabase
+    .from('video_progress')
+    .update({
+      views_used: 0,
+      seconds_watched: 0,
+      last_watched_at: new Date().toISOString(),
+    })
+    .eq('video_id', video_id)
+    .in('student_id', ids)
+  if (error) throw error
+}
+
 // Persist watched seconds for a part, monotonically — we only ever raise
 // the stored value, so scrubbing backwards or rewatching doesn't lose
 // progress. Throttled at the call site (every ~5s while playing).
