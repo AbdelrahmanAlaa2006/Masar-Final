@@ -109,7 +109,7 @@ export default function VideoAdd() {
 
   const restoreVideo = (index) => {
     if (index === '') return
-    
+
     const video = savedVideos[parseInt(index)]
     if (!video) return
 
@@ -445,7 +445,7 @@ export default function VideoAdd() {
               {quizzes.length === 0 && (
                 <div className="quizzes-empty">
                   <i className="fas fa-circle-info"></i>
-                  لا يوجد امتحانات. اضغط «إضافة امتحان» لإنشاء أول امتحان.
+                  لا يوجد امتحانات. اضغط «إضافة امتحان»
                 </div>
               )}
 
