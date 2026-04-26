@@ -1822,6 +1822,58 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
    Dry-run by default; the admin must explicitly confirm to apply
    destructive deletes.
    ────────────────────────────────────────────────────────────── */
+// ── IndexedDB tiny helper for storing the FileSystemFileHandle ─────
+// We use IDB instead of localStorage because file handles are not JSON-
+// serializable. This is the only place in the app that needs IDB so we
+// keep it inline (~20 lines) rather than pulling a library.
+const IDB_NAME = 'masar-cp'
+const IDB_STORE = 'kv'
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open(IDB_NAME, 1)
+    r.onupgradeneeded = () => r.result.createObjectStore(IDB_STORE)
+    r.onsuccess = () => resolve(r.result)
+    r.onerror = () => reject(r.error)
+  })
+}
+async function idbGet(key) {
+  try {
+    const db = await idbOpen()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly')
+      const req = tx.objectStore(IDB_STORE).get(key)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror   = () => reject(req.error)
+    })
+  } catch { return null }
+}
+async function idbSet(key, value) {
+  try {
+    const db = await idbOpen()
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite')
+      tx.objectStore(IDB_STORE).put(value, key)
+      tx.oncomplete = () => resolve()
+      tx.onerror    = () => reject(tx.error)
+    })
+  } catch { /* ignore */ }
+}
+async function idbDel(key) {
+  try {
+    const db = await idbOpen()
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite')
+      tx.objectStore(IDB_STORE).delete(key)
+      tx.oncomplete = () => resolve()
+      tx.onerror    = () => reject(tx.error)
+    })
+  } catch { /* ignore */ }
+}
+
+const CSV_HANDLE_KEY = 'students-csv-handle'
+const CSV_TEXT_KEY   = 'masar-students-csv-text'
+const CSV_NAME_KEY   = 'masar-students-csv-name'
+
 function StudentsSyncPanel() {
   const [csvText, setCsvText] = useState('')
   const [fileName, setFileName] = useState('')
@@ -1830,16 +1882,126 @@ function StudentsSyncPanel() {
   const [report, setReport] = useState(null)
   const [dragOver, setDragOver] = useState(false)
   const [confirmApply, setConfirmApply] = useState(false)
+  // True when we restored a previously-picked file at mount time. We show
+  // a small "auto" badge so the admin knows where the content came from.
+  const [restored, setRestored] = useState(false)
+  // Live FileSystemFileHandle (Chrome/Edge only) — kept in a ref so it
+  // survives renders without triggering them.
+  const fileHandleRef = React.useRef(null)
+  const supportsFsAccess = typeof window !== 'undefined' && 'showOpenFilePicker' in window
 
+  // Read the latest content from a stored file handle, requesting permission
+  // first if needed. Falls back silently if the user revokes permission.
+  const reReadFromHandle = React.useCallback(async (handle, opts = {}) => {
+    if (!handle) return null
+    try {
+      // Permission state may have lapsed since the previous session.
+      let perm = await handle.queryPermission?.({ mode: 'read' })
+      if (perm !== 'granted' && opts.requestIfNeeded) {
+        perm = await handle.requestPermission?.({ mode: 'read' })
+      }
+      if (perm !== 'granted') return null
+      const file = await handle.getFile()
+      const text = await file.text()
+      setCsvText(text)
+      setFileName(file.name)
+      return text
+    } catch { return null }
+  }, [])
+
+  // ── On mount: restore the previously-picked file ─────────────────
+  // 1) Try the FS handle (Chrome/Edge) — gives us the LIVE file content.
+  // 2) Fall back to the cached CSV text in localStorage (any browser).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      // (1) FS handle path
+      if (supportsFsAccess) {
+        const handle = await idbGet(CSV_HANDLE_KEY)
+        if (handle && !cancelled) {
+          fileHandleRef.current = handle
+          // queryPermission only — we DON'T prompt the user on mount.
+          // If the browser still trusts us, we re-read the file silently.
+          const txt = await reReadFromHandle(handle, { requestIfNeeded: false })
+          if (txt && !cancelled) { setRestored(true); return }
+        }
+      }
+      // (2) Cached-text fallback
+      try {
+        const txt = localStorage.getItem(CSV_TEXT_KEY)
+        const name = localStorage.getItem(CSV_NAME_KEY)
+        if (txt && !cancelled) {
+          setCsvText(txt)
+          setFileName(name || 'students.csv')
+          setRestored(true)
+        }
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supportsFsAccess])
+
+  // Whenever csvText changes (from any path), mirror it to localStorage
+  // so even non-FS-Access browsers keep the file across reloads.
+  useEffect(() => {
+    try {
+      if (csvText) {
+        localStorage.setItem(CSV_TEXT_KEY, csvText)
+        localStorage.setItem(CSV_NAME_KEY, fileName || 'students.csv')
+      }
+    } catch { /* quota — ignore */ }
+  }, [csvText, fileName])
+
+  // Auto-refresh: when the admin returns to the tab, re-read the live
+  // file from disk (only meaningful with FS Access API). This is the
+  // "any editing in the file is reflected automatically" behaviour.
+  useEffect(() => {
+    if (!supportsFsAccess) return
+    const refresh = () => {
+      const h = fileHandleRef.current
+      if (h) reReadFromHandle(h, { requestIfNeeded: false })
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [supportsFsAccess, reReadFromHandle])
+
+  // Read a freshly-picked File (drag-drop, or fallback <input type=file>).
   const readFile = (file) => {
     if (!file) return
     setFileName(file.name)
     setError(null)
     setReport(null)
+    setRestored(false)
     const reader = new FileReader()
     reader.onload = () => setCsvText(String(reader.result || ''))
     reader.onerror = () => setError('تعذر قراءة الملف')
     reader.readAsText(file, 'utf-8')
+  }
+
+  // Preferred picker for Chrome/Edge: returns a handle we can re-read.
+  const pickWithFsAccess = async () => {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'CSV',
+          accept: { 'text/csv': ['.csv'] },
+        }],
+        multiple: false,
+        excludeAcceptAllOption: false,
+      })
+      if (!handle) return
+      fileHandleRef.current = handle
+      await idbSet(CSV_HANDLE_KEY, handle)
+      const file = await handle.getFile()
+      readFile(file)
+    } catch (e) {
+      // User cancelled / permission denied — silent.
+      if (e?.name !== 'AbortError') setError(e.message || 'تعذر فتح الملف')
+    }
   }
 
   const onFile = (e) => readFile(e.target.files?.[0])
@@ -1847,9 +2009,24 @@ function StudentsSyncPanel() {
     e.preventDefault(); setDragOver(false)
     readFile(e.dataTransfer.files?.[0])
   }
+  // When the drop zone is clicked, prefer the FS Access picker (so the
+  // file persists + auto-refreshes); fall back to native input otherwise.
+  const onDropZoneClick = (e) => {
+    if (supportsFsAccess) {
+      e.preventDefault()
+      pickWithFsAccess()
+    }
+    // else: the wrapping <label> opens the hidden <input>, business as usual
+  }
 
-  const clearFile = () => {
-    setCsvText(''); setFileName(''); setReport(null); setError(null)
+  const clearFile = async () => {
+    setCsvText(''); setFileName(''); setReport(null); setError(null); setRestored(false)
+    fileHandleRef.current = null
+    await idbDel(CSV_HANDLE_KEY)
+    try {
+      localStorage.removeItem(CSV_TEXT_KEY)
+      localStorage.removeItem(CSV_NAME_KEY)
+    } catch { /* ignore */ }
   }
 
   const run = async (apply) => {
@@ -1888,10 +2065,14 @@ function StudentsSyncPanel() {
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
+          onClick={onDropZoneClick}
         >
           <div className="sync-drop-icon"><i className="fas fa-file-csv"></i></div>
           <div className="sync-drop-title">اسحب ملف الطلاب هنا</div>
-          <div className="sync-drop-sub">أو اضغط لاختيار ملف من جهازك</div>
+          <div className="sync-drop-sub">
+            أو اضغط لاختيار ملف من جهازك
+            {supportsFsAccess && ' — سيتم تذكّر الملف وتحديثه تلقائياً عند تعديله'}
+          </div>
           <input type="file" accept=".csv,text/csv" onChange={onFile} hidden />
         </label>
       )}
@@ -1901,9 +2082,38 @@ function StudentsSyncPanel() {
         <div className="sync-file-chip">
           <i className="fas fa-file-csv sync-file-chip-icon"></i>
           <div className="sync-file-chip-meta">
-            <div className="sync-file-chip-name">{fileName}</div>
-            <div className="sync-file-chip-sub">جاهز للمعاينة</div>
+            <div className="sync-file-chip-name">
+              {fileName}
+              {restored && (
+                <span style={{
+                  marginInlineStart: 8,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(34, 197, 94, 0.14)',
+                  color: '#16a34a',
+                }}>
+                  <i className="fas fa-rotate"></i> محفوظ تلقائياً
+                </span>
+              )}
+            </div>
+            <div className="sync-file-chip-sub">
+              {fileHandleRef.current
+                ? 'سيتم تحديث المحتوى تلقائياً عند تعديل الملف'
+                : 'جاهز للمعاينة'}
+            </div>
           </div>
+          {fileHandleRef.current && (
+            <button
+              className="sync-file-chip-x"
+              onClick={() => reReadFromHandle(fileHandleRef.current, { requestIfNeeded: true })}
+              title="إعادة قراءة الملف الآن"
+              style={{ marginInlineEnd: 6 }}
+            >
+              <i className="fas fa-arrows-rotate"></i>
+            </button>
+          )}
           <button className="sync-file-chip-x" onClick={clearFile} title="إزالة الملف">
             <i className="fas fa-xmark"></i>
           </button>

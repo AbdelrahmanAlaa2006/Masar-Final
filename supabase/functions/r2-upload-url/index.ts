@@ -1,24 +1,22 @@
 // Supabase Edge Function: r2-upload-url
 // ----------------------------------------------------------------------------
-// Returns a short-lived presigned PUT URL for Cloudflare R2 so the admin can
-// upload a PDF *directly from the browser* without ever seeing the Cloudflare
-// dashboard. The admin form does:
+// Returns a short-lived presigned PUT URL for Cloudflare R2 so the browser
+// can upload directly to R2 without exposing R2 credentials.
 //
-//   1. POST { filename, contentType } to this function.
-//   2. fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': ... } })
-//   3. INSERT into lectures with { pdf_key, pdf_url } returned from step 1.
+// Now serves THREE kinds of uploads (request body: { kind, filename, contentType }):
 //
-// Only authenticated admins may call it (checked server-side against profiles).
+//   kind='lecture'    → PDFs only.       Admin-only.        prefix: lectures/
+//   kind='avatar'     → image/* only.    Any authed user.   prefix: avatars/{userId}/
+//   kind='quiz-image' → image/* only.    Admin-only.        prefix: quiz-images/{userId}/
+//
+// Defaults to 'lecture' when `kind` is omitted (backwards compat).
 //
 // Required Supabase function secrets (set with `supabase secrets set ...`):
 //   R2_ACCOUNT_ID
 //   R2_ACCESS_KEY_ID
 //   R2_SECRET_ACCESS_KEY
-//   R2_BUCKET
+//   R2_BUCKET                 (single bucket — kinds are folders inside it)
 //   R2_PUBLIC_BASE            (e.g. https://pub-xxxx.r2.dev)
-//   SUPABASE_URL              (auto-injected by Supabase)
-//   SUPABASE_ANON_KEY         (auto-injected)
-//   SUPABASE_SERVICE_ROLE_KEY (auto-injected)
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -39,19 +37,52 @@ function json(body: unknown, init: ResponseInit = {}) {
   })
 }
 
-function sanitizeFilename(name: string): string {
-  // Keep original extension (fallback to .pdf) but drop user-supplied path pieces.
-  const base = (name || '').split(/[\\/]/).pop() || 'file.pdf'
+function sanitizeExt(name: string, fallback: string): string {
+  const base = (name || '').split(/[\\/]/).pop() || ''
   const dot = base.lastIndexOf('.')
-  const ext = dot > 0 ? base.slice(dot).toLowerCase() : '.pdf'
-  return ext.replace(/[^a-z0-9.]/g, '') || '.pdf'
+  const ext = dot > 0 ? base.slice(dot).toLowerCase() : fallback
+  return ext.replace(/[^a-z0-9.]/g, '') || fallback
+}
+
+type Kind = 'lecture' | 'avatar' | 'quiz-image'
+
+interface KindRule {
+  adminOnly: boolean
+  prefix: (userId: string) => string
+  defaultExt: string
+  allowed: (ct: string) => boolean
+  invalidMsg: string
+}
+
+const RULES: Record<Kind, KindRule> = {
+  lecture: {
+    adminOnly: true,
+    prefix: () => 'lectures',
+    defaultExt: '.pdf',
+    allowed: (ct) => ct === 'application/pdf',
+    invalidMsg: 'only application/pdf is allowed',
+  },
+  avatar: {
+    adminOnly: false,           // any logged-in user can upload their own avatar
+    prefix: (uid) => `avatars/${uid}`,
+    defaultExt: '.png',
+    allowed: (ct) => ct.startsWith('image/'),
+    invalidMsg: 'only image/* content types are allowed',
+  },
+  'quiz-image': {
+    adminOnly: true,
+    prefix: (uid) => `quiz-images/${uid}`,
+    defaultExt: '.png',
+    allowed: (ct) => ct.startsWith('image/'),
+    invalidMsg: 'only image/* content types are allowed',
+  },
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, { status: 405 })
 
-  // --- auth check: must be an admin ----------------------------------------
+  // --- auth check ------------------------------------------------------------
   const authHeader = req.headers.get('Authorization') || ''
   if (!authHeader.startsWith('Bearer ')) {
     return json({ error: 'missing auth' }, { status: 401 })
@@ -61,7 +92,6 @@ serve(async (req) => {
   const anonKey    = Deno.env.get('SUPABASE_ANON_KEY')!
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-  // Verify the caller's JWT and look up their profile role with service key.
   const supabaseAsUser = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   })
@@ -71,29 +101,33 @@ serve(async (req) => {
   }
   const userId = userRes.user.id
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey)
-  const { data: profile, error: profErr } = await supabaseAdmin
-    .from('profiles').select('role').eq('id', userId).single()
-  if (profErr || profile?.role !== 'admin') {
-    return json({ error: 'admin only' }, { status: 403 })
+  // --- input ----------------------------------------------------------------
+  let body: { filename?: string; contentType?: string; kind?: Kind } = {}
+  try { body = await req.json() } catch { /* tolerate empty */ }
+
+  const kind: Kind = (body.kind && RULES[body.kind]) ? body.kind : 'lecture'
+  const rule = RULES[kind]
+  const contentType = body.contentType || (kind === 'lecture' ? 'application/pdf' : 'image/png')
+
+  // Per-kind permission check.
+  if (rule.adminOnly) {
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey)
+    const { data: profile, error: profErr } = await supabaseAdmin
+      .from('profiles').select('role').eq('id', userId).single()
+    if (profErr || profile?.role !== 'admin') {
+      return json({ error: 'admin only' }, { status: 403 })
+    }
   }
 
-  // --- input ---------------------------------------------------------------
-  let body: { filename?: string; contentType?: string } = {}
-  try { body = await req.json() } catch { /* tolerate empty body */ }
-
-  const ext = sanitizeFilename(body.filename || '')
-  const contentType = body.contentType || 'application/pdf'
-
-  // Only allow PDF for MVP.
-  if (contentType !== 'application/pdf') {
-    return json({ error: 'only application/pdf is allowed' }, { status: 400 })
+  if (!rule.allowed(contentType)) {
+    return json({ error: rule.invalidMsg }, { status: 400 })
   }
 
+  const ext = sanitizeExt(body.filename || '', rule.defaultExt)
   // UUID-keyed object so URLs are unguessable and collisions are impossible.
-  const key = `lectures/${crypto.randomUUID()}${ext.endsWith('.pdf') ? ext : '.pdf'}`
+  const key = `${rule.prefix(userId)}/${crypto.randomUUID()}${ext.startsWith('.') ? ext : '.' + ext}`
 
-  // --- R2 presign ----------------------------------------------------------
+  // --- R2 presign -----------------------------------------------------------
   const accountId   = Deno.env.get('R2_ACCOUNT_ID')!
   const accessKey   = Deno.env.get('R2_ACCESS_KEY_ID')!
   const secret      = Deno.env.get('R2_SECRET_ACCESS_KEY')!
@@ -113,7 +147,7 @@ serve(async (req) => {
   const uploadUrl = await getSignedUrl(
     s3,
     new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }),
-    { expiresIn: 60 * 10 }, // 10 minutes
+    { expiresIn: 60 * 10 },
   )
 
   return json({
@@ -121,6 +155,7 @@ serve(async (req) => {
     key,
     publicUrl: `${publicBase}/${key}`,
     contentType,
+    kind,
     expiresIn: 600,
   })
 })

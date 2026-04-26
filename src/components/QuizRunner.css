@@ -410,3 +410,29 @@ body.dark .qr-head { background: linear-gradient(135deg, rgba(129, 140, 248, 0.1
   .qr-q { padding: 10px; }
   .qr-opt { padding: 11px 10px; font-size: 13px; }
 }
+
+/* Optional image attached to a question */
+.qr-q-image {
+  margin: 4px 0 12px;
+  padding: 6px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  background: rgba(102, 126, 234, 0.04);
+  text-align: center;
+}
+.qr-q-image img {
+  max-width: 100%;
+  max-height: 320px;
+  height: auto;
+  border-radius: 8px;
+  cursor: zoom-in;
+  background: #000;
+  object-fit: contain;
+}
+body.dark .qr-q-image {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(129, 140, 248, 0.06);
+}
+@media (max-width: 600px) {
+  .qr-q-image img { max-height: 240px; }
+}

@@ -753,3 +753,28 @@ body.dark .et-modal-title { color: #e2e8f0; }
 body.dark .et-modal-sub { color: #94a3b8; }
 body.dark .et-modal-chip { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
+
+/* Optional image attached to a question */
+.et-question-image {
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  background: rgba(102, 126, 234, 0.04);
+  text-align: center;
+}
+.et-question-image img {
+  max-width: 100%;
+  max-height: 360px;
+  height: auto;
+  border-radius: 10px;
+  background: #000;
+  object-fit: contain;
+}
+body.dark .et-question-image {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(129, 140, 248, 0.06);
+}
+@media (max-width: 600px) {
+  .et-question-image img { max-height: 240px; }
+}

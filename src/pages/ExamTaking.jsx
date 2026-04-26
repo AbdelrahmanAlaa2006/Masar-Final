@@ -328,6 +328,11 @@ export default function ExamTaking() {
                 )}
               </div>
               <p className="et-question-text">{currentQ.question}</p>
+              {currentQ.image && (
+                <div className="et-question-image">
+                  <img src={currentQ.image} alt="صورة السؤال" />
+                </div>
+              )}
             </div>
 
             <div className="et-options">
