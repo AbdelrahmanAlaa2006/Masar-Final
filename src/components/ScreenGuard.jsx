@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 /**
@@ -12,8 +12,13 @@ import { createPortal } from 'react-dom'
  *      student's identity, so any leak is traceable.
  *   2. Hides the page contents behind a full-screen blackout whenever the
  *      window loses focus / the tab becomes hidden / the cursor leaves
- *      the document. This blocks the most common screen-recording tricks
- *      (sharing the tab to OBS, alt-tabbing, picture-in-picture, etc.).
+ *      the document / a known screenshot shortcut is pressed. Once the
+ *      blackout is shown it stays up for a minimum dwell time AND
+ *      requires an explicit user click on the "متابعة" button to dismiss.
+ *      That kills the "click anywhere → content reappears" hole the
+ *      previous version had: a screen recorder or Snipping Tool that
+ *      briefly steals focus can no longer be cleared by an accidental
+ *      mouse click.
  *   3. Best-effort intercept of PrintScreen + Windows-Snip / macOS
  *      screenshot shortcuts. Browsers often never see these key events
  *      because the OS captures them first — that's why points 1 and 2
@@ -26,61 +31,105 @@ import { createPortal } from 'react-dom'
  * Props:
  *   active  — toggle the entire guard on/off
  *   label   — the watermark text (typically "اسم — هاتف")
+ *   strict  — when true (default, used for exams), ANY focus/visibility
+ *             loss or cursor-leave arms the blackout. When false (used
+ *             for the videos page), only explicit screenshot keys
+ *             (PrintScreen / Win+Shift+S / macOS Cmd+Shift+3-4-5) do.
+ *             A student moving the cursor off the window or briefly
+ *             alt-tabbing won't black the page out in lenient mode.
  */
-export default function ScreenGuard({ active = true, label = '' }) {
-  const [hidden, setHidden] = useState(false)
+
+// How long the blackout stays up at minimum after a danger signal,
+// even after focus is fully restored. Long enough that a Snipping
+// Tool capture window grabs the blackout, not the content.
+const MIN_HIDE_MS = 2000
+
+export default function ScreenGuard({ active = true, label = '', strict = true }) {
+  const [hidden, setHidden]     = useState(false)
+  // Tracks whether the user has explicitly acknowledged the blackout
+  // by clicking "متابعة". Until they do, focus alone won't dismiss it.
+  const acknowledgedRef = useRef(true)
+  // Earliest wall-clock time at which dismissal is allowed.
+  const lockUntilRef = useRef(0)
 
   useEffect(() => {
     if (!active) return
 
-    // Compute the "page is not really being watched right now" flag from
-    // every signal we can read. We treat any of them as "hide content".
-    const compute = () => {
-      const isHidden = document.hidden || !document.hasFocus()
-      setHidden(isHidden)
+    // Every danger signal funnels through here. Sets hidden=true,
+    // arms the dwell-time lock, and clears the user's prior ack.
+    const trigger = () => {
+      lockUntilRef.current = Date.now() + MIN_HIDE_MS
+      acknowledgedRef.current = false
+      setHidden(true)
     }
-    compute()
 
-    const onBlur  = () => setHidden(true)
-    const onFocus = () => setHidden(document.hidden)
-    const onVis   = () => compute()
-    const onLeave = () => setHidden(true)
-    const onEnter = () => compute()
+    // Strict mode: any focus/visibility/cursor signal arms the blackout.
+    // Lenient mode (videos): we ignore those — the cursor leaving the
+    // window or a brief alt-tab is not a capture attempt — and rely on
+    // the screenshot-key handler below as the only trigger.
+    let onBlur, onVis, onLeave
+    if (strict) {
+      // Initial state: visible if the page is already focused & onscreen.
+      const isUnsafe = () => document.hidden || !document.hasFocus()
+      if (isUnsafe()) trigger()
 
-    window.addEventListener('blur', onBlur)
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVis)
-    document.addEventListener('mouseleave', onLeave)
-    document.addEventListener('mouseenter', onEnter)
+      onBlur  = () => trigger()
+      onVis   = () => { if (document.hidden) trigger() }
+      onLeave = () => trigger()
+      // Note: we deliberately don't attach focus/mouseenter listeners.
+      // The blackout is sticky and only the "متابعة" button can clear
+      // it, so there's nothing those events would need to do.
+      window.addEventListener('blur', onBlur)
+      document.addEventListener('visibilitychange', onVis)
+      document.addEventListener('mouseleave', onLeave)
+    }
 
     // Best-effort key blocking. Win+Shift+S (Snip), macOS Cmd+Shift+3/4/5,
     // PrintScreen. The OS often consumes these before the browser sees
-    // them — we still try, and we wipe the clipboard right after as a
-    // small extra obstacle for the rare cases where the event arrives.
+    // them — when we DO see them we proactively trigger the blackout
+    // and wipe the clipboard so any captured pixels land on a black
+    // panel and the clipboard ends up empty.
     const onKey = (e) => {
       const k = (e.key || '').toLowerCase()
       if (e.key === 'PrintScreen' || k === 'printscreen') {
         e.preventDefault()
+        trigger()
         try { navigator.clipboard?.writeText?.('') } catch { /* ignore */ }
         return
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (k === 's' || k === '3' || k === '4' || k === '5')) {
         e.preventDefault()
+        trigger()
       }
     }
     document.addEventListener('keydown', onKey, true)
     document.addEventListener('keyup', onKey, true)
 
     return () => {
-      window.removeEventListener('blur', onBlur)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVis)
-      document.removeEventListener('mouseleave', onLeave)
-      document.removeEventListener('mouseenter', onEnter)
+      if (strict) {
+        window.removeEventListener('blur', onBlur)
+        document.removeEventListener('visibilitychange', onVis)
+        document.removeEventListener('mouseleave', onLeave)
+      }
       document.removeEventListener('keydown', onKey, true)
       document.removeEventListener('keyup', onKey, true)
     }
-  }, [active])
+  }, [active, strict])
+
+  // Dismiss handler — only succeeds when the dwell-time lock has
+  // elapsed AND the page is currently focused. Otherwise we re-arm
+  // the lock so another click is needed.
+  const tryDismiss = () => {
+    const now = Date.now()
+    if (now < lockUntilRef.current || document.hidden || !document.hasFocus()) {
+      // Re-arm: keep the user from spamming the button while the
+      // capture window is still likely open.
+      lockUntilRef.current = Math.max(lockUntilRef.current, now + 800)
+      return
+    }
+    acknowledgedRef.current = true
+    setHidden(false)
+  }
 
   if (!active) return null
 
@@ -116,7 +165,7 @@ export default function ScreenGuard({ active = true, label = '' }) {
         }}
       />
 
-      {/* ── Blackout panel (only when window/tab is unfocused) ───── */}
+      {/* ── Blackout panel (sticky until user clicks متابعة) ─────── */}
       <div
         role="alert"
         aria-live="polite"
@@ -145,10 +194,27 @@ export default function ScreenGuard({ active = true, label = '' }) {
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
           المحتوى موقوف
         </h2>
-        <p style={{ margin: 0, opacity: 0.85, maxWidth: 420 }}>
-          لا يمكن التقاط الشاشة أو تسجيلها أثناء هذه الصفحة.
-          عُد إلى التبويب لمتابعة المشاهدة.
+        <p style={{ margin: 0, opacity: 0.85, maxWidth: 420, marginBottom: 18 }}>
+          تم رصد محاولة التقاط للشاشة أو خروج عن النافذة.
+          اضغط «متابعة» للعودة إلى المحتوى.
         </p>
+        <button
+          type="button"
+          onClick={tryDismiss}
+          style={{
+            background: '#f59e0b',
+            color: '#0f172a',
+            border: 0,
+            padding: '12px 28px',
+            borderRadius: 12,
+            fontWeight: 800,
+            fontSize: 16,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          متابعة
+        </button>
       </div>
     </>,
     document.body

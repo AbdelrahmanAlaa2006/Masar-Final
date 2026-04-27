@@ -145,6 +145,24 @@ export default function Footer() {
               <li><Link to="/help">المساعدة</Link></li>
             </ul>
           </div>
+
+          <div className="sf-container sf-devs" dir="ltr">
+            <div className="sf-devs-card">
+              <span className="sf-devs-tag">
+                <i className="fas fa-code"></i>
+                Developed by
+              </span>
+              <div className="sf-devs-people">
+                <a className="sf-dev-pill" href="#" aria-label="Abdelrahman Alaa">
+                  <span className="sf-dev-name">Abdelrahman Alaa</span>
+                </a>
+                <span className="sf-devs-amp" aria-hidden="true">&amp;</span>
+                <a className="sf-dev-pill" href="#" aria-label="Eyad Elalkamy">
+                  <span className="sf-dev-name">Eyad Elalkamy</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

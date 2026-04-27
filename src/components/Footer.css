@@ -415,6 +415,144 @@ body:not(.dark) .sf-links--static li > span { color: #475569; }
 }
 .sf-mini a:hover { color: #4facfe; }
 
+/* ── developer credit row ───────────────────────────────────
+   Centered glassy card with pill-shaped chips per developer:
+   gradient avatar circle + name. Quiet enough not to compete
+   with the main footer, but polished enough that visitors who
+   look at it know real people built this. */
+.sf-devs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.sf-devs-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 18px;
+  background: linear-gradient(135deg,
+    rgba(79, 172, 254, 0.10),
+    rgba(0, 242, 254, 0.05));
+  border: 1px solid rgba(79, 172, 254, 0.22);
+  border-radius: 999px;
+  box-shadow: 0 6px 22px rgba(2, 6, 23, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sf-devs-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.sf-devs-tag i {
+  color: #4facfe;
+  font-size: 0.78rem;
+}
+.sf-devs-people {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sf-dev-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(79, 172, 254, 0.25);
+  border-radius: 999px;
+  text-decoration: none;
+  transition:
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    background 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.sf-dev-pill::before {
+  /* shine sweep on hover */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 45%,
+    transparent 90%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+.sf-dev-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(79, 172, 254, 0.55);
+  box-shadow: 0 10px 24px rgba(79, 172, 254, 0.22);
+  background: rgba(15, 23, 42, 0.65);
+}
+.sf-dev-pill:hover::before { transform: translateX(120%); }
+.sf-dev-name {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: 'Inter', 'Cairo', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.sf-devs-amp {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: rgba(79, 172, 254, 0.7);
+  margin: 0 2px;
+  user-select: none;
+}
+
+/* Light mode */
+body:not(.dark) .sf-devs {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+body:not(.dark) .sf-devs-card {
+  background: linear-gradient(135deg,
+    rgba(79, 172, 254, 0.10),
+    rgba(0, 242, 254, 0.06));
+  border-color: rgba(79, 172, 254, 0.30);
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
+}
+body:not(.dark) .sf-devs-tag { color: #475569; }
+body:not(.dark) .sf-dev-pill {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(79, 172, 254, 0.30);
+}
+body:not(.dark) .sf-dev-pill:hover {
+  background: #fff;
+  border-color: rgba(79, 172, 254, 0.55);
+}
+body:not(.dark) .sf-devs-amp { color: rgba(79, 172, 254, 0.85); }
+
+@media (max-width: 520px) {
+  .sf-devs-card {
+    padding: 7px 12px;
+    gap: 10px;
+  }
+  .sf-dev-name { font-size: 0.84rem; }
+  .sf-dev-pill { padding: 6px 12px; }
+}
+
 /* ── responsive ── */
 @media (max-width: 980px) {
   .sf-main > .sf-container {

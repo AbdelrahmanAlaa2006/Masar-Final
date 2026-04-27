@@ -21,6 +21,7 @@ export default function ExamsGroupReport() {
   const [loadError, setLoadError] = useState(null)
 
   const [currentGrade, setCurrentGrade] = useState('')
+  const [currentGroup, setCurrentGroup] = useState('') // class group label, '' = all
   const [currentExam, setCurrentExam]   = useState('') // exam id
   const [currentFilter, setCurrentFilter] = useState('all')
 
@@ -54,13 +55,38 @@ export default function ExamsGroupReport() {
     () => exams.filter(e => e.grade === currentGrade),
     [exams, currentGrade]
   )
-  const studentsForGrade = useMemo(
+  // All students in the chosen grade — used to derive group chips.
+  const studentsInGrade = useMemo(
     () => students.filter(s => s.grade === currentGrade),
     [students, currentGrade]
   )
 
+  // Distinct, non-empty groups within the selected grade.
+  const groupsForGrade = useMemo(() => {
+    const set = new Set(
+      studentsInGrade.map(s => (s.group || '').trim()).filter(Boolean)
+    )
+    return [...set].sort((a, b) => a.localeCompare(b, 'ar'))
+  }, [studentsInGrade])
+
+  // Students after the (optional) group filter is applied.
+  const studentsForGrade = useMemo(() => {
+    if (!currentGroup) return studentsInGrade
+    return studentsInGrade.filter(s => (s.group || '').trim() === currentGroup)
+  }, [studentsInGrade, currentGroup])
+
   const selectGrade = (grade) => {
     setCurrentGrade(grade)
+    setCurrentGroup('')
+    setCurrentExam('')
+    setAllStudentsData([])
+    setDisplayedStudents([])
+    setCurrentFilter('all')
+  }
+
+  const selectGroup = (group) => {
+    setCurrentGroup(group)
+    // Cached rows are scoped to the previous group — clear them.
     setCurrentExam('')
     setAllStudentsData([])
     setDisplayedStudents([])
@@ -126,7 +152,7 @@ export default function ExamsGroupReport() {
         return {
           name: stu.name,
           id: stu.phone || stu.id.slice(0, 8),
-          group: GRADE_LABEL[stu.grade] || '',
+          group: (stu.group || '').trim() || GRADE_LABEL[stu.grade] || '',
           exam: exam.title,
           date,
           score: pct,      // percentage, used by summary/filter
@@ -253,6 +279,42 @@ export default function ExamsGroupReport() {
             </div>
           )}
         </div>
+
+        {/* Group — only when the chosen grade actually has groups defined.
+            "الكل" keeps the legacy behaviour for grades without groups. */}
+        {currentGrade && groupsForGrade.length > 0 && (
+          <div className="egr-section">
+            <h2 className="egr-section-title">
+              <i className="fas fa-user-group"></i>
+              اختر المجموعة
+            </h2>
+            <div className="egr-chips">
+              <button
+                className={`egr-chip ${currentGroup === '' ? 'active' : ''}`}
+                onClick={() => selectGroup('')}
+              >
+                <i className="fas fa-layer-group"></i>
+                كل المجموعات
+                <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                  {studentsInGrade.length}
+                </span>
+              </button>
+              {groupsForGrade.map((g) => (
+                <button
+                  key={g}
+                  className={`egr-chip ${currentGroup === g ? 'active' : ''}`}
+                  onClick={() => selectGroup(g)}
+                >
+                  <i className="fas fa-user-group"></i>
+                  {g}
+                  <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                    {studentsInGrade.filter(s => (s.group || '').trim() === g).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Exam */}
         {currentGrade && (

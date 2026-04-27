@@ -829,6 +829,192 @@
   margin: 0 auto;
 }
 
+/* ── File-format guide card ────────────────────────────────────
+   Shows non-technical admins exactly which columns to put in
+   the file, with a worked example for each. Lives between the
+   panel header and the drop zone so it's seen before upload. */
+.sync-format {
+  background: linear-gradient(135deg,
+    rgba(99, 102, 241, 0.06),
+    rgba(16, 185, 129, 0.04));
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 18px;
+  padding: 1.1rem 1.3rem 1.2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+.sync-format-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.9rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+.sync-format-head > i {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.sync-format-hint {
+  margin-inline-start: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+  letter-spacing: 0.2px;
+}
+/* Mini spreadsheet preview — header row across the top, single
+   example row underneath. dir="ltr" on the table forces the
+   visual order to match Excel's column-A-on-the-left convention,
+   so the admin sees the exact layout they need to reproduce. */
+.sync-format-sheet-wrap {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.sync-format-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  min-width: 560px;
+}
+.sync-format-sheet thead th {
+  background: linear-gradient(180deg,
+    rgba(99, 102, 241, 0.14),
+    rgba(99, 102, 241, 0.06));
+  color: var(--primary);
+  font-weight: 800;
+  text-align: center;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+  border-inline-end: 1px solid rgba(99, 102, 241, 0.18);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.sync-format-sheet thead th:last-child { border-inline-end: 0; }
+.sync-format-sheet tbody td {
+  padding: 12px 14px;
+  text-align: center;
+  color: var(--text-color);
+  border-inline-end: 1px solid var(--border-light, #e2e8f0);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.sync-format-sheet tbody td:last-child { border-inline-end: 0; }
+.sync-format-rownum {
+  background: rgba(99, 102, 241, 0.06) !important;
+  color: var(--text-muted) !important;
+  font-weight: 700;
+  width: 38px;
+  font-size: 0.78rem !important;
+  padding: 12px 8px !important;
+}
+
+/* Legend grid — one card per column, mapping the English header to
+   a plain-Arabic description. Auto-fills to whatever width is
+   available so it stays tidy across screen sizes. */
+.sync-format-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.sync-format-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+.sync-format-legend-item:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+}
+.sync-format-legend-item > i {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.sync-format-legend-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sync-format-legend-item code {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  align-self: flex-start;
+}
+.sync-format-legend-item span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sync-format-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(99, 102, 241, 0.2);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.sync-format-foot > i {
+  color: var(--primary);
+  font-size: 1rem;
+}
+.sync-format-foot code {
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin: 0 2px;
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  color: var(--text-color);
+}
+
+@media (max-width: 640px) {
+  .sync-format { padding: 0.9rem 0.9rem 1rem; }
+  .sync-format-sheet { font-size: 0.82rem; }
+  .sync-format-sheet thead th,
+  .sync-format-sheet tbody td { padding: 10px 10px; }
+}
+
 /* Drag & Drop Zone */
 .sync-drop {
   display: flex;

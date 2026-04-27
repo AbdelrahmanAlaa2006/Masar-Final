@@ -23,6 +23,7 @@ export default function VideosGroupReport() {
   const [loadError, setLoadError] = useState(null)
 
   const [currentGrade, setCurrentGrade] = useState('') // DB enum value
+  const [currentGroup, setCurrentGroup] = useState('') // class group label, '' = all
   const [currentVideo, setCurrentVideo] = useState('') // video id
   const [currentFilter, setCurrentFilter] = useState('all')
 
@@ -58,13 +59,41 @@ export default function VideosGroupReport() {
     () => videos.filter(v => v.grade === currentGrade),
     [videos, currentGrade]
   )
-  const studentsForGrade = useMemo(
+  // All students in the selected grade — used to derive group chips.
+  const studentsInGrade = useMemo(
     () => students.filter(s => s.grade === currentGrade),
     [students, currentGrade]
   )
 
+  // Distinct, non-empty groups within the selected grade. Sorted
+  // alphabetically so the chip order is stable across renders.
+  const groupsForGrade = useMemo(() => {
+    const set = new Set(
+      studentsInGrade.map(s => (s.group || '').trim()).filter(Boolean)
+    )
+    return [...set].sort((a, b) => a.localeCompare(b, 'ar'))
+  }, [studentsInGrade])
+
+  // Students after the (optional) group filter is applied. When
+  // currentGroup is '' (الكل) we keep every student in the grade.
+  const studentsForGrade = useMemo(() => {
+    if (!currentGroup) return studentsInGrade
+    return studentsInGrade.filter(s => (s.group || '').trim() === currentGroup)
+  }, [studentsInGrade, currentGroup])
+
   const selectGrade = (grade) => {
     setCurrentGrade(grade)
+    setCurrentGroup('')
+    setCurrentVideo('')
+    setAllStudentsData([])
+    setDisplayedStudents([])
+    setCurrentFilter('all')
+  }
+
+  const selectGroup = (group) => {
+    setCurrentGroup(group)
+    // Re-running the report with the new group scope means the cached
+    // rows would be stale — clear and let the admin re-pick the video.
     setCurrentVideo('')
     setAllStudentsData([])
     setDisplayedStudents([])
@@ -130,7 +159,7 @@ export default function VideosGroupReport() {
         return {
           name: stu.name,
           id: stu.phone || stu.id.slice(0, 8),
-          group: GRADE_LABEL[stu.grade] || '',
+          group: (stu.group || '').trim() || GRADE_LABEL[stu.grade] || '',
           video: video.title,
           date: dateStr,
           percentage,
@@ -252,6 +281,44 @@ export default function VideosGroupReport() {
             </div>
           )}
         </div>
+
+        {/* Group — only when the chosen grade actually has groups defined.
+            We keep this step optional: an "الكل" chip lets the admin run
+            the report on every student in the grade, matching the old
+            behaviour for grades that don't use groups yet. */}
+        {currentGrade && groupsForGrade.length > 0 && (
+          <div className="vgr-section">
+            <h2 className="vgr-section-title">
+              <i className="fas fa-user-group"></i>
+              اختر المجموعة
+            </h2>
+            <div className="vgr-chips">
+              <button
+                className={`vgr-chip ${currentGroup === '' ? 'active' : ''}`}
+                onClick={() => selectGroup('')}
+              >
+                <i className="fas fa-layer-group"></i>
+                كل المجموعات
+                <span className="vgr-count-badge" style={{marginInlineStart:8}}>
+                  {studentsInGrade.length}
+                </span>
+              </button>
+              {groupsForGrade.map((g) => (
+                <button
+                  key={g}
+                  className={`vgr-chip ${currentGroup === g ? 'active' : ''}`}
+                  onClick={() => selectGroup(g)}
+                >
+                  <i className="fas fa-user-group"></i>
+                  {g}
+                  <span className="vgr-count-badge" style={{marginInlineStart:8}}>
+                    {studentsInGrade.filter(s => (s.group || '').trim() === g).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Video */}
         {currentGrade && (

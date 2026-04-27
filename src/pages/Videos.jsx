@@ -391,7 +391,10 @@ function shapeVideo(row) {
 
   return (
     <div className="videos-page" dir="rtl">
-      <ScreenGuard active={guardActive} label={guardLabel} />
+      {/* strict=false → cursor leaving the player or a brief alt-tab
+          won't black the page out. Only real screenshot-keys arm the
+          blackout for the videos page; exams keep the strict default. */}
+      <ScreenGuard active={guardActive} label={guardLabel} strict={false} />
 
       {/* Grade Selection (admins only — students auto-land) */}
       {view === 'grades' && (

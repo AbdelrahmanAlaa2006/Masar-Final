@@ -2064,9 +2064,96 @@ function StudentsSyncPanel() {
         <div>
           <h2><i className="fas fa-users"></i> مزامنة الطلاب</h2>
           <p className="cp-panel-sub">
-            اختر ملف الطلاب (Excel أو CSV). سنريك أولاً ما الذي سيتغيّر،
-            ثم تضغط على «تطبيق» لحفظ التعديلات.
+            ارفع ملف الطلاب (Excel أو CSV). سنعرض لك التغييرات قبل التنفيذ،
+            ثم تضغط «تطبيق» للحفظ.
           </p>
+        </div>
+      </div>
+
+      {/* ── Format guide: a mini spreadsheet preview so non-technical
+          admins see the layout as it'll look in Excel — column names
+          across the top, an example row underneath, and a legend for
+          each column. All five columns are required. ─────────────── */}
+      <div className="sync-format">
+        <div className="sync-format-head">
+          <i className="fas fa-table-cells"></i>
+          <span>تنسيق الملف — هكذا يجب أن يبدو في Excel</span>
+          <span className="sync-format-hint">جميع الأعمدة مطلوبة</span>
+        </div>
+
+        {/* The spreadsheet preview: header row + one example data row,
+            laid out left-to-right like an actual sheet. */}
+        <div className="sync-format-sheet-wrap">
+          <table className="sync-format-sheet" dir="ltr">
+            <thead>
+              <tr>
+                <th className="sync-format-rownum"></th>
+                <th>name</th>
+                <th>phone</th>
+                <th>password</th>
+                <th>grade</th>
+                <th>group</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="sync-format-rownum">1</td>
+                <td>أحمد محمد</td>
+                <td>01012345678</td>
+                <td>123456</td>
+                <td>first-prep</td>
+                <td>السبت 4م</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Legend: one card per column with icon + plain-Arabic
+            description, so admins know what each header means. */}
+        <div className="sync-format-legend">
+          <div className="sync-format-legend-item">
+            <i className="fas fa-user"></i>
+            <div>
+              <code>name</code>
+              <span>اسم الطالب</span>
+            </div>
+          </div>
+          <div className="sync-format-legend-item">
+            <i className="fas fa-phone"></i>
+            <div>
+              <code>phone</code>
+              <span>رقم الهاتف (يُستخدم للدخول)</span>
+            </div>
+          </div>
+          <div className="sync-format-legend-item">
+            <i className="fas fa-key"></i>
+            <div>
+              <code>password</code>
+              <span>كلمة المرور الأولية</span>
+            </div>
+          </div>
+          <div className="sync-format-legend-item">
+            <i className="fas fa-graduation-cap"></i>
+            <div>
+              <code>grade</code>
+              <span>المرحلة الدراسية</span>
+            </div>
+          </div>
+          <div className="sync-format-legend-item">
+            <i className="fas fa-user-group"></i>
+            <div>
+              <code>group</code>
+              <span>اسم المجموعة / الفصل</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="sync-format-foot">
+          <i className="fas fa-circle-info"></i>
+          <span>
+            القيم المسموحة لعمود <code>grade</code>:
+            <code>first-prep</code> ، <code>second-prep</code> ، <code>third-prep</code>
+          </span>
         </div>
       </div>
 
@@ -2292,7 +2379,10 @@ function StudentsSyncPanel() {
                           }
                           
                           if (rightPart) {
-                            grade = GRADE_LABEL[rightPart] || rightPart;
+                            // Edge function may append " [group]" after the
+                            // grade enum; strip it before the label lookup.
+                            const gradeOnly = rightPart.replace(/\s*\[[^\]]+\]\s*$/, '').trim();
+                            grade = GRADE_LABEL[gradeOnly] || gradeOnly;
                           }
                         } else {
                           student = cleanLog;

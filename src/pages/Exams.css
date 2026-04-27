@@ -26,10 +26,31 @@ body.dark {
   --shadow-hover: 0 20px 40px rgba(0,0,0,0.4);
 }
 
-* {
+/* Reset is scoped to .exams-container instead of `*` so the rule
+   doesn't trigger an app-wide layout recalc the first time this
+   stylesheet attaches — that recalc was cancelling the smooth
+   scroll-to-top in App.jsx, making the /exams link in the footer
+   feel like it snapped to top instead of animating like the rest. */
+.exams-container,
+.exams-container *,
+.exams-container *::before,
+.exams-container *::after {
+  box-sizing: border-box;
+}
+.exams-container h1,
+.exams-container h2,
+.exams-container h3,
+.exams-container h4,
+.exams-container h5,
+.exams-container h6,
+.exams-container p,
+.exams-container ul,
+.exams-container ol,
+.exams-container li,
+.exams-container figure,
+.exams-container blockquote {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 .exams-container {
