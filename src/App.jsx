@@ -54,6 +54,16 @@ function AppContent() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Scroll to top whenever the route changes. Without this, react-router
+  // preserves the previous page's scroll position, which felt jarring
+  // when jumping from a long page (lectures / videos) to a short one.
+  // We also clear the hash so back/forward stays predictable.
+  useEffect(() => {
+    // `instant` keeps the jump unobtrusive; smooth scrolling here looks
+    // janky because the new page is still painting in.
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+  }, [location.pathname])
+
   // Apply the saved theme app-wide so it survives routes that don't
    //render the Header (e.g. /exam-taking, where the toggle is hidden).
   useEffect(() => {

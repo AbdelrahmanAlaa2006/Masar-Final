@@ -10,7 +10,8 @@ import {
   uiToDbGrade,
   dbToUiGrade,
 } from '@backend/lecturesApi'
-import { uploadLecturePdf } from '@backend/r2'
+import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
+import QuestionImagePicker from '../components/QuestionImagePicker'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -64,10 +65,12 @@ function rowToCard(row) {
   return {
     id: row.id,
     title: row.title,
-    desc: row.description || '—',
-    subject: row.subject || 'عام',
-    teacher: row.teacher || '—',
-    week: row.week || '—',
+    // Empty optional fields stay as null so the card can hide the
+    // corresponding chip/pill instead of rendering a useless "—".
+    desc: row.description || '',
+    subject: row.subject || '',
+    teacher: row.teacher || '',
+    week: row.week || '',
     date: (row.created_at || '').slice(0, 10),
     cover: row.cover_url || PLACEHOLDER_COVER,
     pdf_url: row.pdf_url || null,
@@ -164,6 +167,18 @@ export default function Lectures() {
     )
   }, [lectures, grade, search])
 
+  // Closes the add-lecture modal AND cleans up any image the admin
+  // uploaded for the cover but never committed (because the form was
+  // cancelled / dismissed). Without this, every cancelled "add lecture"
+  // attempt would leak its cover image as an R2 orphan.
+  const closeAddModal = () => {
+    const orphanCover = form.cover_url
+    if (orphanCover) {
+      deleteR2Object({ url: orphanCover }).catch(() => {})
+    }
+    setModalOpen(false)
+  }
+
   const openAddModal = () => {
     setForm({
       title: '',
@@ -190,10 +205,13 @@ export default function Lectures() {
       return
     }
     setSubmitting(true)
+    // Track the freshly-uploaded R2 object separately so we can delete
+    // it as an orphan if createLecture fails after the bytes have already
+    // been pushed to R2.
+    let uploadedKey = null
+    let uploadedUrl = null
     try {
       // If a PDF was picked, upload it to R2 first; then attach its URL + key.
-      let pdfUrl = null
-      let pdfKey = null
       if (pdfFile) {
         if (pdfFile.type && pdfFile.type !== 'application/pdf') {
           throw new Error('الملف يجب أن يكون بصيغة PDF')
@@ -202,8 +220,8 @@ export default function Lectures() {
         const { key, publicUrl } = await uploadLecturePdf(pdfFile, {
           onProgress: (p) => setUploadPct(Math.max(1, p)),
         })
-        pdfUrl = publicUrl
-        pdfKey = key
+        uploadedKey = key
+        uploadedUrl = publicUrl
       }
 
       await createLecture({
@@ -214,14 +232,30 @@ export default function Lectures() {
         week: form.week.trim() || null,
         grade: dbGrade,
         cover_url: form.cover_url.trim() || null,
-        pdf_url: pdfUrl,
-        pdf_key: pdfKey,
+        pdf_url: uploadedUrl,
+        pdf_key: uploadedKey,
         created_by: userId,
       })
+      // Lecture row was inserted successfully — the upload is no longer
+      // an orphan candidate. Clear the locals so the catch block doesn't
+      // delete it.
+      uploadedKey = null
+      uploadedUrl = null
+
       flash('تمت إضافة المحاضرة بنجاح')
       setModalOpen(false)
       await refresh()
     } catch (err) {
+      // If we already pushed bytes to R2 but the DB insert failed, clean
+      // up the orphans so the admin doesn't pay storage for nothing.
+      if (uploadedKey || uploadedUrl) {
+        deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => {})
+      }
+      // The cover (if any) was uploaded by the picker before submit; it's
+      // now orphaned because no row references it.
+      if (form.cover_url) {
+        deleteR2Object({ url: form.cover_url }).catch(() => {})
+      }
       flash(err.message || 'تعذر حفظ المحاضرة', 'warning')
     } finally {
       setSubmitting(false)
@@ -350,7 +384,7 @@ export default function Lectures() {
 
       {/* Add modal */}
       {modalOpen && createPortal(
-        <div className="lec-modal-overlay" onClick={() => setModalOpen(false)}>
+        <div className="lec-modal-overlay" onClick={() => closeAddModal()}>
           <form className="lec-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
             <div className="lec-modal-head">
               <div className="lec-modal-icon"><i className="fas fa-circle-plus"></i></div>
@@ -358,34 +392,52 @@ export default function Lectures() {
                 <h3>إضافة محاضرة جديدة</h3>
                 <p>املأ بيانات المحاضرة وارفع ملف الـ PDF من جهازك</p>
               </div>
-              <button type="button" className="lec-modal-close" onClick={() => setModalOpen(false)}>
+              <button type="button" className="lec-modal-close" onClick={() => closeAddModal()}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
             <div className="lec-modal-body">
-              <div className="lec-form-row">
-                <Field label="عنوان المحاضرة" icon="fa-heading" required>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    placeholder="مثال: مقدمة في الجبر"
-                    required
-                  />
-                </Field>
-                <Field label="الصف الدراسي" icon="fa-graduation-cap" required>
-                  <select
-                    value={form.grade}
-                    onChange={(e) => setForm({ ...form, grade: e.target.value })}
-                    required
-                  >
-                    <option value="first">الأول الإعدادي</option>
-                    <option value="second">الثاني الإعدادي</option>
-                    <option value="third">الثالث الإعدادي</option>
-                  </select>
-                </Field>
-              </div>
+              {/* Title — own row so the field gets full width */}
+              <Field label="عنوان المحاضرة" icon="fa-heading" required>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="مثال: مقدمة في الجبر"
+                  required
+                />
+              </Field>
+
+              {/* Grade picker — full-width pill grid (3 colored cards) */}
+              <Field label="الصف الدراسي" icon="fa-graduation-cap" required>
+                <div className="lec-grade-picker" role="radiogroup" aria-label="الصف الدراسي">
+                  {PREPS.map((p) => {
+                    const active = form.grade === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={`lec-grade-opt lec-grade-${p.accent} ${active ? 'is-on' : ''}`}
+                        onClick={() => setForm({ ...form, grade: p.id })}
+                      >
+                        <span className="lec-grade-opt-icon">
+                          <i className={`fas ${p.icon}`}></i>
+                        </span>
+                        <span className="lec-grade-opt-text">
+                          <span className="lec-grade-opt-name">{p.nameAr}</span>
+                          <span className="lec-grade-opt-en">{p.nameEn}</span>
+                        </span>
+                        {active && (
+                          <i className="fas fa-circle-check lec-grade-opt-tick" aria-hidden="true" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
 
               <div className="lec-form-row">
                 <Field label="المادة" icon="fa-book">
@@ -424,12 +476,14 @@ export default function Lectures() {
                 />
               </Field>
 
-              <Field label="رابط صورة الغلاف (اختياري)" icon="fa-image">
-                <input
-                  type="url"
+              <Field label="صورة الغلاف (اختيارية)" icon="fa-image">
+                {/* Same drop/click R2 uploader used for profile + quiz
+                    images — keeps cover-image management consistent and
+                    avoids the admin needing to host/paste an image URL. */}
+                <QuestionImagePicker
                   value={form.cover_url}
-                  onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
-                  placeholder="https://..."
+                  onChange={(url) => setForm({ ...form, cover_url: url })}
+                  label="ارفع صورة الغلاف من جهازك"
                 />
               </Field>
 
@@ -504,7 +558,7 @@ export default function Lectures() {
               <button
                 type="button"
                 className="lec-btn lec-btn-ghost"
-                onClick={() => setModalOpen(false)}
+                onClick={() => closeAddModal()}
                 disabled={submitting}
               >
                 إلغاء
@@ -611,19 +665,33 @@ function LectureCard({ lec, isAdmin, onOpen, onDelete }) {
         <div className="lec-card-ribbon">
           <i className="fas fa-circle-play"></i> محاضرة
         </div>
-        <div className="lec-card-title-pill">
-          <i className="fas fa-bookmark"></i> {lec.week}
-        </div>
+        {/* Show the week pill only when the admin actually set one */}
+        {lec.week && (
+          <div className="lec-card-title-pill">
+            <i className="fas fa-bookmark"></i> {lec.week}
+          </div>
+        )}
       </div>
 
       <div className="lec-card-body">
-        <div className="lec-card-tags">
-          <span className="lec-tag lec-tag-subject"><i className="fas fa-book"></i> {lec.subject}</span>
-          <span className="lec-tag"><i className="fas fa-chalkboard-user"></i> {lec.teacher}</span>
-        </div>
+        {/* Hide the whole tag row when neither subject nor teacher exists */}
+        {(lec.subject || lec.teacher) && (
+          <div className="lec-card-tags">
+            {lec.subject && (
+              <span className="lec-tag lec-tag-subject">
+                <i className="fas fa-book"></i> {lec.subject}
+              </span>
+            )}
+            {lec.teacher && (
+              <span className="lec-tag">
+                <i className="fas fa-chalkboard-user"></i> {lec.teacher}
+              </span>
+            )}
+          </div>
+        )}
 
         <h3 className="lec-card-title">{lec.title}</h3>
-        <p className="lec-card-desc">{lec.desc}</p>
+        {lec.desc && <p className="lec-card-desc">{lec.desc}</p>}
 
         <div className="lec-card-meta">
           <span><i className="fas fa-calendar"></i> {lec.date}</span>

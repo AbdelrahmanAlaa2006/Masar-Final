@@ -6,6 +6,7 @@ import QuizRunner from '../components/QuizRunner'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import YouTubePlayer from '../components/YouTubePlayer'
 import DrivePlayer from '../components/DrivePlayer'
+import ScreenGuard from '../components/ScreenGuard'
 import { listVideos, deleteVideo } from '@backend/videosApi'
 import {
   listQuizAttemptsForVideo,
@@ -378,8 +379,19 @@ function shapeVideo(row) {
   }
 
   // ── Render ───────────────────────────────────────────────────
+  // Anti-screenshot label — student name + phone tiled across the video
+  // page only when actually playing a part. Admins are exempt so they
+  // can debug freely; the rest of the app stays unguarded so students
+  // can screenshot bug reports etc.
+  const guardActive = view === 'player' && !!selectedPart && userRole !== 'admin'
+  const guardLabel = (() => {
+    if (!currentUser) return ''
+    return `${currentUser.name || ''} · ${currentUser.phone || ''}`
+  })()
+
   return (
     <div className="videos-page" dir="rtl">
+      <ScreenGuard active={guardActive} label={guardLabel} />
 
       {/* Grade Selection (admins only — students auto-land) */}
       {view === 'grades' && (

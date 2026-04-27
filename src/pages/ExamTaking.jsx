@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
+import ScreenGuard from '../components/ScreenGuard'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
@@ -255,8 +256,27 @@ export default function ExamTaking() {
   const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
   const progress = ((currentQuestion + 1) / questions.length) * 100
 
+  // Watermark text — student name + phone, pulled from sessionStorage so
+  // the guard can identify the test-taker on any leaked screenshot. We
+  // also disable the guard for admins so they can debug exam content
+  // freely without the blackout fighting their dev workflow.
+  const { guardLabel, isAdmin } = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      return {
+        guardLabel: u ? `${u.name || ''} · ${u.phone || ''}` : '',
+        isAdmin: u?.role === 'admin',
+      }
+    } catch { return { guardLabel: '', isAdmin: false } }
+  })()
+
   return (
     <div className="et-wrapper">
+      {/* Anti-screenshot guard: active for the whole exam-taking flow,
+          including the post-submit results screen so a student can't
+          easily capture the answer key after seeing it. Admins skipped. */}
+      <ScreenGuard active={!isAdmin} label={guardLabel} />
+
       {examFinished && (
         <div className="et-back-row">
           <button className="et-back-btn" onClick={() => navigate('/exams')}>

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { uploadQuestionImage } from '@backend/quizImagesApi'
+import { deleteR2Object } from '@backend/r2'
 
 /**
  * Per-question image attachment.
@@ -26,15 +27,30 @@ export default function QuestionImagePicker({ value, onChange, label = 'صورة
     if (!file) return
     setErr('')
     setBusy(true)
+    // If the question already had an image, that R2 object becomes
+    // orphaned the moment we point onChange at the new URL. Clean it
+    // up best-effort once the new upload succeeds.
+    const previous = value
     try {
       const url = await uploadQuestionImage(file, { userId })
       onChange(url)
+      if (previous && previous !== url) {
+        deleteR2Object({ url: previous }).catch(() => {})
+      }
     } catch (e) {
       setErr(e.message || 'فشل رفع الصورة')
     } finally {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  // Click on the trash button: clear the URL on the question AND remove
+  // the bytes from R2 so we don't leak storage.
+  const handleRemove = () => {
+    const previous = value
+    onChange('')
+    if (previous) deleteR2Object({ url: previous }).catch(() => {})
   }
 
   const onPick = (e) => handleFile(e.target.files?.[0])
@@ -63,7 +79,7 @@ export default function QuestionImagePicker({ value, onChange, label = 'صورة
             </button>
             <button
               type="button"
-              onClick={() => onChange('')}
+              onClick={handleRemove}
               disabled={busy}
               style={smallBtn('#dc2626')}
             >

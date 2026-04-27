@@ -39,6 +39,29 @@ export async function createLecture(input) {
 }
 
 export async function deleteLecture(id) {
+  // Read the row first so we can clean up the R2 objects (PDF + cover)
+  // after the DB delete succeeds. Best-effort — failures are swallowed
+  // so the user-visible delete still completes.
+  const { data: row } = await supabase
+    .from('lectures')
+    .select('pdf_key, pdf_url, cover_url')
+    .eq('id', id)
+    .maybeSingle()
+
   const { error } = await supabase.from('lectures').delete().eq('id', id)
   if (error) throw error
+
+  if (row?.pdf_key || row?.pdf_url || row?.cover_url) {
+    try {
+      const { deleteR2Object } = await import('./r2')
+      const tasks = []
+      if (row.pdf_key || row.pdf_url) {
+        tasks.push(deleteR2Object({ key: row.pdf_key, url: row.pdf_url }).catch(() => {}))
+      }
+      if (row.cover_url) {
+        tasks.push(deleteR2Object({ url: row.cover_url }).catch(() => {}))
+      }
+      await Promise.all(tasks)
+    } catch { /* orphans in R2 — admin can clean up later */ }
+  }
 }

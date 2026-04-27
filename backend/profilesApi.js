@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 export async function listStudents() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, avatar_url, created_at')
+    .select('id, name, phone, grade, "group", avatar_url, created_at')
     .eq('role', 'student')
     .order('name', { ascending: true })
   if (error) throw error
@@ -18,7 +18,7 @@ export async function listStudents() {
 export async function getProfile(id) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, role, avatar_url')
+    .select('id, name, phone, grade, "group", role, avatar_url')
     .eq('id', id)
     .maybeSingle()
   if (error) throw error

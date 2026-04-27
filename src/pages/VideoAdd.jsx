@@ -591,7 +591,7 @@ export default function VideoAdd() {
                           />
                           <small style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6, display: 'block', marginTop: 4 }}>
                             <strong>مهم:</strong> يجب ضبط الملف في Drive على «أي شخص لديه الرابط يمكنه العرض».
-                            سيتم استخراج المعرّف تلقائياً من الرابط. الحد الأقصى للحجم ~100MB لتشغيل سلس.
+                            سيتم استخراج المعرّف تلقائياً من الرابط. لا يوجد حد لحجم الفيديو — يبقى الملف في Drive ولا يستهلك مساحة Cloudflare.
                           </small>
                           {part.driveId && !/^[A-Za-z0-9_-]{15,}$/.test(part.driveId) && (
                             <small style={{ color: '#c53030', fontSize: 12 }}>
@@ -916,13 +916,16 @@ export default function VideoAdd() {
             {/* Action Buttons */}
             <div className="action-buttons">
               <button className="btn btn-success" onClick={saveVideo}>
-                💾 حفظ الفيديو
+                <i className="fas fa-floppy-disk"></i>
+                <span>حفظ الفيديو</span>
               </button>
               <button className="btn btn-warning" onClick={showVideoPreview}>
-                👁️ معاينة الفيديو
+                <i className="fas fa-magnifying-glass"></i>
+                <span>معاينة الفيديو</span>
               </button>
               <button className="btn btn-danger" onClick={resetForm}>
-                🔄 إعادة تعيين
+                <i className="fas fa-arrows-rotate"></i>
+                <span>إعادة تعيين</span>
               </button>
             </div>
           </div>

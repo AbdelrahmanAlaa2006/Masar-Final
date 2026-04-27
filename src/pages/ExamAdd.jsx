@@ -123,32 +123,19 @@ export default function ExamAdd() {
     }))
   }
 
-  // ── Bulk import (two formats supported) ──────────────────────
-  // 1) NATURAL format (preferred — easy for non-technical admins):
-  //      • Blank line separates questions.
-  //      • First line of each block = the question.
-  //      • Following lines = options.
-  //      • A line starting with `*` (or `★`) marks a correct option.
-  //      • Optional line starting with `!N` at end of a block = points.
-  //
-  // 2) LEGACY format (kept for backwards compat):
-  //      • `@` starts a question, `#` an option, `##` a correct option,
-  //        `!N` for points. Triggered when any line begins with `@`.
+  // ── Bulk import (single, simple format) ──────────────────────
+  //   • Blank line separates questions.
+  //   • First line of each block = the question.
+  //   • Following lines = options.
+  //   • A line starting with `*` (or `★ ✓ ✔`) marks a correct option.
+  //   • Optional line starting with `!N` at end of a block = points.
   const parseCopiedQuestions = () => {
     const text = questionsCopy.trim()
     if (!text) {
       notify('يرجى إدخال الأسئلة', { type: 'warning' })
       return
     }
-    // Auto-detect: if the user pasted the legacy `@...` format, fall back
-    // to the legacy parser so existing materials still work.
-    const usesLegacy = /^\s*@/m.test(text)
-    let parsedQuestions = []
-    if (usesLegacy) {
-      parsedQuestions = parseLegacyFormat(text)
-    } else {
-      parsedQuestions = parseNaturalFormat(text)
-    }
+    const parsedQuestions = parseNaturalFormat(text)
     if (parsedQuestions.length === 0) {
       notify('لم يتم العثور على أسئلة — تأكد من التنسيق', { type: 'warning' })
       return
@@ -207,64 +194,28 @@ export default function ExamAdd() {
     })
   }
 
-  // Legacy parser — kept for materials that already use the @/#/##/! syntax.
-  const parseLegacyFormat = (text) => {
-    const questionTexts = text.split('@').filter((q) => q.trim() !== '')
-    return questionTexts.map((q, i) => {
-      const lines = q.trim().split('\n').filter((line) => line.trim() !== '')
-      let points = 1
-      const lastLine = lines[lines.length - 1]
-      if (lastLine && lastLine.startsWith('!')) {
-        points = parseInt(lastLine.substring(1)) || 1
-        lines.pop()
-      }
-      const options = []
-      const correctAnswers = []
-      for (let j = 1; j < lines.length; j++) {
-        const line = lines[j].trim()
-        if (line.startsWith('##')) {
-          options.push(line.replace(/^##\s*/, '').trim())
-          correctAnswers.push(options.length - 1)
-        } else if (line.startsWith('#')) {
-          options.push(line.replace(/^#\s*/, '').trim())
-        }
-      }
-      return {
-        id: i,
-        question: lines[0]?.trim() || '',
-        options: options.length > 0 ? options : ['', ''],
-        answers: correctAnswers.length > 0 ? correctAnswers : [0],
-        points,
-        isMultiple: correctAnswers.length > 1,
-      }
-    })
-  }
 
-  const saveExam = async () => {
-    if (saving) return
+  // Shared validation + clean-question shaping. Returns the preview-ready
+  // payload, or null when validation fails (with a notify already fired).
+  const buildExamPayload = () => {
     if (!examTitle.trim() || !duration || questions.length === 0) {
       notify('يرجى ملء جميع البيانات المطلوبة', { type: 'warning' })
-      return
+      return null
     }
-
     const dbGrade = uiToDbGrade(examGrade)
     if (!dbGrade) {
       notify('يرجى اختيار الصف الدراسي', { type: 'warning' })
-      return
+      return null
     }
-
-    let isValid = true
-    questions.forEach(q => {
-      if (!q.question.trim() || q.options.some(opt => !opt.trim()) || q.answers.length === 0) {
-        isValid = false
-      }
-    })
-
+    const isValid = questions.every(q =>
+      q.question.trim() &&
+      q.options.every(opt => opt.trim()) &&
+      q.answers.length > 0
+    )
     if (!isValid) {
       notify('يرجى التأكد من ملء جميع الأسئلة والاختيارات وتحديد الإجابات الصحيحة', { type: 'warning' })
-      return
+      return null
     }
-
     const cleanQuestions = questions.map(q => ({
       question: q.question,
       image: q.image || null,
@@ -274,6 +225,37 @@ export default function ExamAdd() {
       isMultiple: q.isMultiple,
     }))
     const total_points = cleanQuestions.reduce((sum, q) => sum + (q.points || 1), 0)
+    return { dbGrade, cleanQuestions, total_points }
+  }
+
+  // Preview-only — shows the same preview card without writing to DB.
+  // Lets the admin sanity-check questions + answers before committing.
+  const previewExam = () => {
+    const payload = buildExamPayload()
+    if (!payload) return
+    setPreviewData({
+      number: examNumber,
+      title: examTitle,
+      duration: parseInt(duration),
+      maxAttempts: parseInt(maxAttempts),
+      examDurationHours: parseInt(examDurationHours),
+      questions: payload.cleanQuestions,
+      totalPoints: payload.total_points,
+    })
+    setShowPreview(true)
+    // Smooth-scroll to the preview block so it's obvious where to look.
+    setTimeout(() => {
+      document.querySelector('.preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+  }
+
+  // Save-only — writes the exam and navigates to the exams list. Does NOT
+  // flash the preview card; admins who want to verify use the preview
+  // button first.
+  const saveExam = async () => {
+    if (saving) return
+    const payload = buildExamPayload()
+    if (!payload) return
 
     let createdBy = null
     try {
@@ -286,28 +268,16 @@ export default function ExamAdd() {
       await createExam({
         number: examNumber.trim() || null,
         title: examTitle.trim(),
-        grade: dbGrade,
+        grade: payload.dbGrade,
         duration_minutes: parseInt(duration),
         max_attempts: parseInt(maxAttempts),
         available_hours: parseInt(examDurationHours),
-        questions: cleanQuestions,
-        total_points,
+        questions: payload.cleanQuestions,
+        total_points: payload.total_points,
         created_by: createdBy,
       })
-
-      setPreviewData({
-        number: examNumber,
-        title: examTitle,
-        duration: parseInt(duration),
-        maxAttempts: parseInt(maxAttempts),
-        examDurationHours: parseInt(examDurationHours),
-        questions: cleanQuestions,
-        totalPoints: total_points,
-      })
-      setShowPreview(true)
       setShowSuccess(true)
-
-      setTimeout(() => { navigate('/exams') }, 2000)
+      setTimeout(() => { navigate('/exams') }, 1200)
     } catch (err) {
       notify(err.message || 'تعذر حفظ الامتحان', { type: 'warning' })
       setSaving(false)
@@ -434,7 +404,7 @@ export default function ExamAdd() {
               }}
             >
               <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#16a34a' }}>
-                <i className="fas fa-wand-magic-sparkles"></i> الطريقة السهلة (موصى بها)
+                <i className="fas fa-wand-magic-sparkles"></i> طريقة الكتابة
               </summary>
               <div style={{ marginTop: 8, lineHeight: 1.8 }}>
                 <div>اكتب كل سؤال في فقرة منفصلة، السطر الأول هو السؤال، والأسطر التالية هي الاختيارات.</div>
@@ -468,45 +438,6 @@ export default function ExamAdd() {
               </div>
             </details>
 
-            <details
-              style={{
-                margin: '4px 0 8px',
-                padding: '10px 12px',
-                background: 'rgba(102, 126, 234, 0.06)',
-                border: '1px dashed rgba(102, 126, 234, 0.3)',
-                borderRadius: 8,
-                fontSize: 13,
-                color: 'var(--text-secondary, #4a5568)',
-              }}
-            >
-              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#667eea' }}>
-                <i className="fas fa-circle-question"></i> الطريقة القديمة (الرموز @ # ##)
-              </summary>
-              <div style={{ marginTop: 8, lineHeight: 1.7 }}>
-                <div><strong style={{ color: '#667eea' }}>@</strong> في بداية كل سؤال.</div>
-                <div><strong style={{ color: '#667eea' }}>#</strong> قبل كل اختيار خاطئ.</div>
-                <div><strong style={{ color: '#22c55e' }}>##</strong> قبل الاختيار الصحيح.</div>
-                <div><strong style={{ color: '#ed8936' }}>!</strong> آخر سطر اختياري لتحديد عدد النقاط (الافتراضي 1).</div>
-                <div style={{
-                  marginTop: 6,
-                  background: '#0f172a',
-                  color: '#a5b4fc',
-                  padding: 10,
-                  borderRadius: 6,
-                  fontFamily: 'monospace',
-                  fontSize: 12.5,
-                  whiteSpace: 'pre-wrap',
-                  direction: 'ltr',
-                }}>
-{`@ ما هو ناتج 3 + 2 ؟
-# 2
-# 3
-## 5
-# 4
-! 2`}
-                </div>
-              </div>
-            </details>
             <textarea
               id="questionsCopy"
               value={questionsCopy}
@@ -533,14 +464,16 @@ export default function ExamAdd() {
                 >
                   <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
                 </button>
-                <span>النقاط:</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={q.points}
-                  onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value))}
-                  className="points-input"
-                />
+                <span className="points-wrap">
+                  <span className="points-lbl">النقاط:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={q.points}
+                    onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value))}
+                    className="points-input"
+                  />
+                </span>
                 <button
                   className="btn-icon"
                   onClick={() => removeQuestion(q.id)}
@@ -622,28 +555,35 @@ export default function ExamAdd() {
             <button
               type="button"
               onClick={addSingleQuestion}
-              style={{
-                width: '100%',
-                marginTop: 8,
-                padding: '12px 18px',
-                borderRadius: 10,
-                border: '2px dashed rgba(102, 126, 234, 0.4)',
-                background: 'rgba(102, 126, 234, 0.06)',
-                color: '#667eea',
-                fontFamily: 'inherit',
-                fontSize: 14,
-                fontWeight: 800,
-                cursor: 'pointer',
-                transition: 'background .18s, border-color .18s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(102, 126, 234, 0.12)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(102, 126, 234, 0.06)' }}
+              className="exam-add-q-btn"
             >
-              <i className="fas fa-plus"></i> إضافة سؤال آخر
+              <i className="fas fa-plus"></i>
+              <span>إضافة سؤال آخر</span>
             </button>
-            <button className="btn btn-save" onClick={saveExam} disabled={saving}>
-              {saving ? '⏳ جاري الحفظ...' : '💾 حفظ ومعاينة الامتحان'}
-            </button>
+
+            {/* Two distinct actions: preview-only (no DB write) and save.
+                Splitting them lets the admin sanity-check before committing
+                without the previous "save then bounce away" flash. */}
+            <div className="exam-action-row">
+              <button
+                type="button"
+                className="btn btn-preview"
+                onClick={previewExam}
+                disabled={saving}
+              >
+                <i className="fas fa-magnifying-glass"></i>
+                <span>معاينة الامتحان</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-save"
+                onClick={saveExam}
+                disabled={saving}
+              >
+                <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
+                <span>{saving ? 'جاري الحفظ...' : 'حفظ الامتحان'}</span>
+              </button>
+            </div>
           </>
         )}
 
@@ -655,7 +595,7 @@ export default function ExamAdd() {
 
         {showPreview && previewData && (
           <div className="preview">
-            <h2>🧪 المعاينة:</h2>
+            <h2><i className="fas fa-magnifying-glass" style={{ color: '#f59e0b', marginInlineEnd: 8 }}></i> المعاينة</h2>
             <h3>📝 الامتحان رقم {previewData.number}</h3>
             <p><strong>العنوان:</strong> {previewData.title}</p>
             <p><strong>المدة:</strong> {previewData.duration} دقيقة</p>

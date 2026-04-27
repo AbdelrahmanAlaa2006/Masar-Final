@@ -151,6 +151,16 @@ textarea {
   height: 120px;
 }
 
+/* Pair-wrapper around the points label + input. Keeps them glued
+   together as a single flex item inside `.question-controls` (and
+   forms a tidy pill on mobile — see media query below). */
+.points-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.points-lbl { font-weight: 600; }
+
 .points-input {
   width: 80px !important;
   padding: 8px 12px !important;
@@ -495,13 +505,52 @@ body.dark .restore-exam {
     flex-direction: column;
   }
 
+  /* Mobile question-controls: lay out as a tight wrapping grid so the
+     three button-icons sit side-by-side, the points label+input form a
+     compact pair, and the "delete question" button drops onto its own
+     full-width row at the bottom. The previous column-stack made the
+     bar look misaligned with the points input ballooning to full width. */
   .question-controls {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-items: stretch;
+    gap: 8px;
   }
-
-  .points-input {
-    width: 100% !important;
+  .question-controls .btn-icon {
+    width: 100%;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+  /* Points label + input live in their own pill so the bare "النقاط:"
+     text doesn't dangle over the row. Spans both columns. */
+  .question-controls .points-wrap {
+    grid-column: 1 / -1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+  .question-controls .points-lbl { font-weight: 700; }
+  .question-controls .points-input {
+    width: 90px !important;
+    margin: 0 !important;
+  }
+  /* The "delete question" button always lands on its own row, full width,
+     so it's distinct from the structural option-management buttons. */
+  .question-controls > button:last-child {
+    grid-column: 1 / -1;
+    margin-inline-start: 0 !important;
   }
 
   .btn {
@@ -559,4 +608,120 @@ body.dark .restore-exam {
     padding: 8px;
     font-size: 12px;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   "Add another question" full-width dashed button + the new
+   split action row (Preview / Save).
+   ────────────────────────────────────────────────────────────── */
+.exam-add-q-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 2px dashed rgba(102, 126, 234, 0.4);
+  background: rgba(102, 126, 234, 0.06);
+  color: #667eea;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+
+  /* Flex-centered: text + icon stay glued together in the middle of the
+     button regardless of viewport width. The earlier inline-style version
+     looked off-center on mobile because Arabic text rendered against the
+     button's start edge. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+
+  cursor: pointer;
+  transition: background .18s, border-color .18s, color .18s;
+}
+.exam-add-q-btn:hover {
+  background: rgba(102, 126, 234, 0.12);
+  border-color: rgba(102, 126, 234, 0.65);
+}
+.exam-add-q-btn i { font-size: 13px; }
+
+/* Action row at the bottom of the form: 2 buttons side-by-side,
+   stacking on mobile so each gets full width and easy thumb access. */
+.exam-action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+/* High-specificity overrides — `.btn-save` sets margin: 30px 0 and
+   width: 100% in the base file which made the side-by-side layout
+   collapse and jammed the icon against the label. We force flex
+   centering, equal share, and explicit gap here. */
+.exam-action-row > .btn,
+.exam-action-row > .btn.btn-save,
+.exam-action-row > .btn.btn-preview {
+  flex: 1 1 0;
+  width: auto;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 14px 20px;
+  font-size: 16px;
+  line-height: 1.2;
+}
+.exam-action-row > .btn > i {
+  font-size: 15px;
+  line-height: 1;
+}
+.exam-action-row > .btn > span {
+  display: inline-block;
+}
+
+.btn-preview {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+}
+.btn-preview:hover { filter: brightness(1.06); }
+
+@media (max-width: 600px) {
+  .exam-action-row {
+    flex-direction: column;
+    /* generous spacing between the two buttons so they read as
+       two distinct actions, not one squished pair */
+    gap: 16px;
+    margin-top: 22px;
+  }
+  .exam-action-row > .btn,
+  .exam-action-row > .btn.btn-save,
+  .exam-action-row > .btn.btn-preview {
+    width: 100%;
+    padding: 18px 20px;     /* taller — easier thumb target */
+    font-size: 17px;
+    font-weight: 700;
+    border-radius: 14px;
+    gap: 12px;              /* clean spacing between icon + text */
+  }
+  .exam-action-row > .btn > i  { font-size: 16px; }
+  .exam-action-row > .btn > span { font-weight: 700; }
+
+  /* "Add another question" full-width dashed button — re-assert
+     flex-centering at the high specificity media-query level so
+     RTL + icon spacing render symmetrically inside the button. */
+  .exam-add-q-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 13px 16px;
+    font-size: 14px;
+    text-align: center;
+  }
+  .exam-add-q-btn > i { font-size: 14px; line-height: 1; }
+  .exam-add-q-btn > span { display: inline-block; }
 }

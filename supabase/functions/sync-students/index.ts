@@ -1,8 +1,8 @@
 // Supabase Edge Function: sync-students
 // ----------------------------------------------------------------------------
 // Mirrors a CSV against the Supabase auth + profiles tables. The admin
-// uploads a CSV (header row: name,phone,password,grade) from Control
-// Panel; this function:
+// uploads a CSV (header row: name,phone,password,grade[,group]) from
+// Control Panel; this function:
 //
 //   1. Verifies the caller is an admin.
 //   2. Upserts every CSV row (creates auth user if missing; sets grade).
@@ -88,13 +88,27 @@ serve(async (req) => {
   // ── 1) upsert each CSV row ───────────────────────────────────────────
   for (const r of rows) {
     const { name, phone, password, grade } = r
+    // `group` is optional; tolerate variants of the header.
+    const groupRaw = r.group ?? r.Group ?? r['المجموعة'] ?? ''
+    const group = String(groupRaw || '').trim() || null
+    // Excel often saves a trailing line with all-empty fields (`,,,`).
+    // Silently ignore those — they're not real data and shouldn't show
+    // up in the "lines that didn't run" counter or the tech log.
+    const allEmpty = !String(name || '').trim()
+                  && !String(phone || '').trim()
+                  && !String(password || '').trim()
+                  && !String(grade || '').trim()
+    if (allEmpty) continue
     if (!name || !phone || !password || !GRADES.has(grade)) {
       logs.push(`skip: bad row ${JSON.stringify(r)}`); skipped++; continue
     }
     csvPhones.add(normPhone(phone))
     const email = `${phone}@masaar.app`
 
-    if (!apply) { logs.push(`would upsert: ${name} (${phone}) → ${grade}`); ok++; continue }
+    if (!apply) {
+      logs.push(`would upsert: ${name} (${phone}) → ${grade}${group ? ` [${group}]` : ''}`)
+      ok++; continue
+    }
 
     const { data: created, error: authErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true,
@@ -112,10 +126,10 @@ serve(async (req) => {
 
     const { error: upErr } = await admin
       .from('profiles')
-      .update({ name, phone, grade, role: 'student' })
+      .update({ name, phone, grade, group, role: 'student' })
       .eq('id', userId)
     if (upErr) { logs.push(`grade fail ${phone}: ${upErr.message}`); failed++; continue }
-    logs.push(`ok: ${name} (${phone}) → ${grade}`); ok++
+    logs.push(`ok: ${name} (${phone}) → ${grade}${group ? ` [${group}]` : ''}`); ok++
   }
 
   // ── 2) find + (optionally) delete orphans ────────────────────────────

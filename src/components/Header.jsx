@@ -235,7 +235,9 @@ export default function Header() {
         >
           <header className="mh-drawer__head">
             <div className="mh__brand">
-              <span className="mh__mark"><span className="mh__mark-letter">م</span></span>
+              <span className="mh__mark">
+                <img src={masarLogo} alt="" className="mh__mark-img" />
+              </span>
               <span className="mh__wordmark">
                 <span className="mh__brand-name">مسار</span>
                 <span className="mh__brand-tag">منصة تعليمية</span>

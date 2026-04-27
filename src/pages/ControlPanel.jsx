@@ -1910,23 +1910,16 @@ function StudentsSyncPanel() {
   }, [])
 
   // ── On mount: restore the previously-picked file ─────────────────
-  // 1) Try the FS handle (Chrome/Edge) — gives us the LIVE file content.
-  // 2) Fall back to the cached CSV text in localStorage (any browser).
+  // Show the cached text instantly so the admin sees something even
+  // if permission has lapsed. Then, if the FS handle is still in
+  // 'granted' state from a prior session, re-read the live file
+  // silently — that's how edits the admin made in Excel (Ctrl+S)
+  // get picked up on refresh without a permission prompt. We never
+  // call requestPermission here; that requires a user gesture.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      // (1) FS handle path
-      if (supportsFsAccess) {
-        const handle = await idbGet(CSV_HANDLE_KEY)
-        if (handle && !cancelled) {
-          fileHandleRef.current = handle
-          // queryPermission only — we DON'T prompt the user on mount.
-          // If the browser still trusts us, we re-read the file silently.
-          const txt = await reReadFromHandle(handle, { requestIfNeeded: false })
-          if (txt && !cancelled) { setRestored(true); return }
-        }
-      }
-      // (2) Cached-text fallback
+      // (1) Cached-text path — immediate, no prompt.
       try {
         const txt = localStorage.getItem(CSV_TEXT_KEY)
         const name = localStorage.getItem(CSV_NAME_KEY)
@@ -1936,25 +1929,22 @@ function StudentsSyncPanel() {
           setRestored(true)
         }
       } catch { /* ignore */ }
+      // (2) FS handle path — silently re-read if permission survived.
+      if (supportsFsAccess) {
+        const handle = await idbGet(CSV_HANDLE_KEY)
+        if (handle && !cancelled) {
+          fileHandleRef.current = handle
+          await reReadFromHandle(handle, { requestIfNeeded: false })
+        }
+      }
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supportsFsAccess])
 
-  // Whenever csvText changes (from any path), mirror it to localStorage
-  // so even non-FS-Access browsers keep the file across reloads.
-  useEffect(() => {
-    try {
-      if (csvText) {
-        localStorage.setItem(CSV_TEXT_KEY, csvText)
-        localStorage.setItem(CSV_NAME_KEY, fileName || 'students.csv')
-      }
-    } catch { /* quota — ignore */ }
-  }, [csvText, fileName])
-
-  // Auto-refresh: when the admin returns to the tab, re-read the live
-  // file from disk (only meaningful with FS Access API). This is the
-  // "any editing in the file is reflected automatically" behaviour.
+  // Auto-refresh: when the admin returns to the tab after editing the
+  // CSV in Excel, silently re-read the live file. No permission prompt
+  // (queryPermission only); falls back silently if revoked.
   useEffect(() => {
     if (!supportsFsAccess) return
     const refresh = () => {
@@ -1968,6 +1958,17 @@ function StudentsSyncPanel() {
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [supportsFsAccess, reReadFromHandle])
+
+  // Whenever csvText changes (from any path), mirror it to localStorage
+  // so even non-FS-Access browsers keep the file across reloads.
+  useEffect(() => {
+    try {
+      if (csvText) {
+        localStorage.setItem(CSV_TEXT_KEY, csvText)
+        localStorage.setItem(CSV_NAME_KEY, fileName || 'students.csv')
+      }
+    } catch { /* quota — ignore */ }
+  }, [csvText, fileName])
 
   // Read a freshly-picked File (drag-drop, or fallback <input type=file>).
   const readFile = (file) => {
@@ -2030,10 +2031,21 @@ function StudentsSyncPanel() {
   }
 
   const run = async (apply) => {
-    if (!csvText.trim()) { setError('اختر ملف الطلاب أولاً'); return }
-    setBusy(true); setError(null)
+    setError(null)
+    // If we have a live FS handle (Chrome/Edge), re-read the file from
+    // disk first so any edits the admin made in Excel are picked up
+    // automatically. Click is a real user gesture, so requestPermission
+    // works cleanly here. Falls back to whatever's already in csvText
+    // when permission is denied / API not supported.
+    let textToSend = csvText
+    if (fileHandleRef.current) {
+      const fresh = await reReadFromHandle(fileHandleRef.current, { requestIfNeeded: true })
+      if (fresh) textToSend = fresh
+    }
+    if (!textToSend.trim()) { setError('اختر ملف الطلاب أولاً'); return }
+    setBusy(true)
     try {
-      const data = await syncStudentsCsv(csvText, { apply })
+      const data = await syncStudentsCsv(textToSend, { apply })
       setReport(data)
     } catch (err) {
       setError(err.message || 'فشل الاتصال بالخادم')
@@ -2100,20 +2112,10 @@ function StudentsSyncPanel() {
             </div>
             <div className="sync-file-chip-sub">
               {fileHandleRef.current
-                ? 'سيتم تحديث المحتوى تلقائياً عند تعديل الملف'
+                ? 'سيتم قراءة آخر تعديلات الملف تلقائياً عند المعاينة'
                 : 'جاهز للمعاينة'}
             </div>
           </div>
-          {fileHandleRef.current && (
-            <button
-              className="sync-file-chip-x"
-              onClick={() => reReadFromHandle(fileHandleRef.current, { requestIfNeeded: true })}
-              title="إعادة قراءة الملف الآن"
-              style={{ marginInlineEnd: 6 }}
-            >
-              <i className="fas fa-arrows-rotate"></i>
-            </button>
-          )}
           <button className="sync-file-chip-x" onClick={clearFile} title="إزالة الملف">
             <i className="fas fa-xmark"></i>
           </button>
@@ -2227,6 +2229,19 @@ function StudentsSyncPanel() {
           )}
           {report.apply && (
             <div className="sync-actions">
+              {/* Primary post-apply action: re-preview after the admin
+                  edited the CSV again. We clear the previous report so
+                  the preview cards re-render with the new diff. */}
+              <button
+                className="sync-btn sync-btn-primary"
+                onClick={() => { setReport(null); run(false) }}
+                disabled={busy}
+                title="قراءة آخر تعديلات الملف وإظهار التغييرات الجديدة"
+              >
+                {busy
+                  ? <><i className="fas fa-spinner fa-spin"></i> جارٍ التحقق...</>
+                  : <><i className="fas fa-rotate"></i> إعادة الفحص</>}
+              </button>
               <button className="sync-btn sync-btn-ghost" onClick={clearFile}>
                 <i className="fas fa-arrow-rotate-left"></i> رفع ملف آخر
               </button>

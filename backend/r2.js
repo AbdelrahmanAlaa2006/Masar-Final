@@ -103,3 +103,35 @@ export async function uploadQuizImage(file, opts = {}) {
 export async function getLecturePdfUploadUrl(file) {
   return presignUpload({ file, kind: 'lecture' })
 }
+
+// ── Delete an R2 object via the r2-delete Edge Function ──────────────
+// Pass either the key (preferred — uniquely identifies the object) or a
+// public URL (we strip the public base on the server). Best-effort: errors
+// are swallowed by callers so a failed cleanup never blocks the user
+// action that triggered it.
+export async function deleteR2Object({ key, url } = {}) {
+  if (!key && !url) return
+  // Strip our cache-busting query (?t=...) before sending
+  const cleanUrl = url ? url.split('?')[0] : undefined
+  const { data, error } = await supabase.functions.invoke('r2-delete', {
+    body: { key, url: cleanUrl },
+  })
+  if (error) {
+    let detail = error.message || 'فشل حذف الملف من التخزين'
+    try {
+      const resp = error.context?.response || error.context
+      if (resp && typeof resp.text === 'function') {
+        const raw = await resp.text()
+        if (raw) {
+          try {
+            const j = JSON.parse(raw)
+            if (j?.error) detail = j.error
+            else detail = raw
+          } catch { detail = raw }
+        }
+      }
+    } catch {/* ignore */}
+    throw new Error(detail)
+  }
+  return data
+}

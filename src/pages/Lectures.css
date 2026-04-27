@@ -846,14 +846,28 @@ body.dark .lec-card-title-pill { color: #1a202c; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lec-pdf-close {
-  width: 36px; height: 36px;
+  flex: 0 0 auto;             /* don't stretch in the flex header  */
+  width: 40px;
+  height: 40px;
+  min-width: 40px;            /* defeat any external squeeze       */
+  padding: 0;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: #cbd5e0;
   cursor: pointer;
-  display: grid; place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;            /* fixes oversized icon inheritance  */
+  line-height: 1;
   transition: background 0.18s ease, color 0.18s ease;
+}
+.lec-pdf-close i {
+  display: block;
+  font-size: inherit;
+  line-height: 1;
+  margin: 0;
 }
 .lec-pdf-close:hover {
   background: rgba(239, 68, 68, 0.15);
@@ -881,3 +895,121 @@ body:not(.dark) .lec-pdf-close {
   color: #475569;
 }
 body:not(.dark) .lec-pdf-frame { background: #f1f5f9; }
+
+/* ──────────────────────────────────────────────────────────────
+   Grade picker inside the "add lecture" modal — 3 colored pill
+   cards mirroring the main prep tiles on the page. Each card
+   carries its own accent (green/blue/orange) so the active state
+   reads at a glance.
+   ────────────────────────────────────────────────────────────── */
+.lec-grade-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.lec-grade-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  background: var(--page-bg-secondary, #fff);
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  text-align: start;
+  transition: transform .15s, border-color .18s, background .18s, box-shadow .2s;
+  overflow: hidden;
+}
+.lec-grade-opt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--g, transparent);
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.lec-grade-opt:hover {
+  transform: translateY(-1px);
+  border-color: var(--c, #94a3b8);
+}
+.lec-grade-opt.is-on {
+  border-color: var(--c, #667eea);
+  box-shadow: 0 8px 18px -10px var(--c, rgba(102, 126, 234, 0.55));
+}
+.lec-grade-opt.is-on::before { opacity: 0.10; }
+
+.lec-grade-opt-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c, #667eea) 12%, transparent);
+  color: var(--c, #667eea);
+  font-size: 16px;
+  position: relative;
+  z-index: 1;
+}
+.lec-grade-opt.is-on .lec-grade-opt-icon {
+  background: var(--c, #667eea);
+  color: #fff;
+}
+
+.lec-grade-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+.lec-grade-opt-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.2;
+}
+.lec-grade-opt-en {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.lec-grade-opt-tick {
+  margin-inline-start: auto;
+  color: var(--c, #16a34a);
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Per-grade accent colors */
+.lec-grade-green  { --c: #22c55e; --g: linear-gradient(135deg, #22c55e, #16a34a); }
+.lec-grade-blue   { --c: #3b82f6; --g: linear-gradient(135deg, #3b82f6, #6366f1); }
+.lec-grade-orange { --c: #f97316; --g: linear-gradient(135deg, #f97316, #ea580c); }
+
+body.dark .lec-grade-opt {
+  background: #1f2937;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+}
+body.dark .lec-grade-opt-name { color: #f1f5f9; }
+body.dark .lec-grade-opt-en   { color: #94a3b8; }
+
+/* Mobile — stack vertically so each card stays readable */
+@media (max-width: 600px) {
+  .lec-grade-picker { grid-template-columns: 1fr; }
+  .lec-grade-opt { padding: 11px 12px; }
+}

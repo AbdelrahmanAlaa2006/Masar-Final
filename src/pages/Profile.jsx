@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
+import { uploadAvatarImage, deleteR2Object } from '@backend/r2'
 import './Profile.css'
 
 export default function Profile() {
@@ -27,6 +28,14 @@ export default function Profile() {
   const roleName = user?.role === 'admin' ? 'مشرف' : 'طالب'
   const isAdmin = user?.role === 'admin'
 
+  // Map DB grade enum → Arabic label for display.
+  const GRADE_LABEL = {
+    'first-prep':  'الصف الأول الإعدادي',
+    'second-prep': 'الصف الثاني الإعدادي',
+    'third-prep':  'الصف الثالث الإعدادي',
+  }
+  const gradeLabel = GRADE_LABEL[user?.grade] || '—'
+
   // Upload avatar
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
@@ -45,37 +54,36 @@ export default function Profile() {
     setUploading(true)
     setErrorMsg('')
 
+    // Snapshot the previous URL BEFORE we overwrite it so we can clean
+    // up the orphan in R2 once the new image is safely persisted.
+    const previousUrl = (user.avatar_url || '').split('?')[0] || null
+
     try {
-      const ext = file.name.split('.').pop()
-      const fileName = `${user.id}.${ext}`
-      const filePath = `avatars/${fileName}`
+      // Upload directly to Cloudflare R2 via the presigned-URL Edge
+      // Function. The bucket is public, so we get back a stable
+      // publicUrl we can store on the profile row.
+      const { publicUrl } = await uploadAvatarImage(file)
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-      // Add cache-busting param
-      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`
-
-      // Update profile in DB
+      // Persist the bare URL on the row. The cache-buster lives only on
+      // the in-memory copy so the new image renders immediately without
+      // dirtying the DB value.
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: urlWithCacheBust })
+        .update({ avatar_url: publicUrl })
         .eq('id', user.id)
 
       if (updateError) throw updateError
 
+      // Best-effort cleanup of the previous avatar object so we don't
+      // accumulate orphans in R2. Failure here is silent — the new
+      // avatar is already in place.
+      if (previousUrl && previousUrl !== publicUrl) {
+        deleteR2Object({ url: previousUrl }).catch(() => {})
+      }
+
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`
       setAvatarUrl(urlWithCacheBust)
 
-      // Update local storage
       const updated = { ...user, avatar_url: urlWithCacheBust }
       sessionStorage.setItem('masar-user', JSON.stringify(updated))
       window.dispatchEvent(new Event('masar-user-updated'))
@@ -96,6 +104,9 @@ export default function Profile() {
     setUploading(true)
     setErrorMsg('')
 
+    // Snapshot for the post-update cleanup.
+    const targetUrl = (user.avatar_url || avatarUrl || '').split('?')[0]
+
     try {
       const { error: updateError } = await supabase
         .from('profiles')
@@ -103,6 +114,12 @@ export default function Profile() {
         .eq('id', user.id)
 
       if (updateError) throw updateError
+
+      // Delete the R2 object so we don't pay storage for an unreferenced
+      // file. Best-effort; we don't block the UI on it.
+      if (targetUrl) {
+        deleteR2Object({ url: targetUrl }).catch(() => {})
+      }
 
       setAvatarUrl(null)
       const updated = { ...user, avatar_url: null }
@@ -222,14 +239,31 @@ export default function Profile() {
             <span className="profile-info-value" dir="ltr">{user.phone || '—'}</span>
           </div>
 
-          {/* Level Stage — Coming Soon (students only) */}
+          {/* Level / Stage — students see their grade. */}
           {!isAdmin && (
             <div className="profile-info-row">
               <span className="profile-info-label">
                 <i className="fas fa-graduation-cap" />
                 المرحلة الدراسية
               </span>
-              <span className="profile-coming-badge">قريبًا</span>
+              <span className="profile-info-value">{gradeLabel}</span>
+            </div>
+          )}
+
+          {/* Group / class — auto-flips from the "قريبًا" placeholder to
+              the real value the moment the profiles row carries a `group`
+              field. No code change needed when the CSV column gets wired:
+              once `user.group` is populated, the badge disappears and the
+              actual group label takes its place. */}
+          {!isAdmin && (
+            <div className="profile-info-row">
+              <span className="profile-info-label">
+                <i className="fas fa-user-group" />
+                المجموعة
+              </span>
+              {user.group
+                ? <span className="profile-info-value">{user.group}</span>
+                : <span className="profile-coming-badge">قريبًا</span>}
             </div>
           )}
         </div>

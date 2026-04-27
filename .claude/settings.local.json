@@ -13,7 +13,8 @@
       "Bash(xargs grep *)",
       "Bash(python -c ' *)",
       "Bash(node -e \"require\\('fs'\\).readFileSync\\('src/pages/VideoAdd.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/ExamAdd.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/Videos.jsx','utf8'\\); require\\('fs'\\).readFileSync\\('src/pages/VideosReport.jsx','utf8'\\); console.log\\('files readable'\\)\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node -e \"['src/pages/Lectures.jsx','backend/lecturesApi.js'].forEach\\(p=>{ try{require\\('fs'\\).readFileSync\\(p,'utf8'\\); console.log\\('OK',p\\);}catch\\(e\\){console.log\\('FAIL',p,e.message\\);} }\\);\")"
     ]
   }
 }
