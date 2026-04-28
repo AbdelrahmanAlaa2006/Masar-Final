@@ -11,6 +11,13 @@ import {
   groupTargetId,
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
+import {
+  SEASONAL_THEMES,
+  setSeasonOverride,
+  getSeasonOverride,
+  useSeasonalTheme,
+} from '../seasonal/useSeasonalTheme'
+import { findThemeForDate, todayIso } from '../seasonal/themes'
 import './ControlPanel.css'
 
 const GRADE_LABEL = {
@@ -38,7 +45,7 @@ const fmtDate = (iso) => {
    ────────────────────────────────────────────────────────────── */
 export default function ControlPanel() {
   /* navigation */
-  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams' | 'students'
+  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams' | 'students' | 'seasons'
   // Which sub-panel is active inside a section. Videos has: attempts, availability.
   // Exams adds: reveal. Only meaningful when section !== 'home'.
   const [subtab, setSubtab] = useState('attempts') // 'attempts' | 'availability' | 'reveal'
@@ -394,10 +401,18 @@ export default function ControlPanel() {
               desc="رفع ملف CSV لإضافة/تحديث الطلاب وحذف من تم استبعاده"
               onClick={() => enterSection('students')}
             />
+            <SectionCard
+              icon="fa-moon"
+              accent="orange"
+              title="السمات الموسمية"
+              desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي حسب التاريخ"
+              onClick={() => enterSection('seasons')}
+            />
           </div>
         )}
 
         {section === 'students' && <StudentsSyncPanel />}
+        {section === 'seasons'  && <SeasonalThemePanel />}
 
         {/* SUB-TAB BAR — videos: attempts/availability. exams: + reveal. */}
         {(section === 'videos' || section === 'exams') && (
@@ -1956,6 +1971,162 @@ function AvailabilityRow({ item, isExam, audience, overrideHours, onSave, onClea
       </div>
     </li>
   )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SeasonalThemePanel — admin override for seasonal theming.
+
+   Two-axis control:
+     • Mode: auto / off / specific theme (preview without changing date)
+     • Each catalogue entry shows a preview swatch + a hint of when it
+       activates next (so admins know "Ramadan → Feb 17 next year").
+
+   Persists via localStorage('season-override'), read by
+   useSeasonalTheme. The hook listens for both the cross-tab `storage`
+   event and a same-tab `masar-season-changed` custom event, so the
+   accent + decor update instantly when the radio is changed.
+   ────────────────────────────────────────────────────────────── */
+function SeasonalThemePanel() {
+  // Subscribing to the live theme keeps the "حالياً مفعّل" badge accurate
+  // when the admin flips the override on this very page.
+  const active = useSeasonalTheme()
+  const [override, setOverride] = useState(() => getSeasonOverride() || 'auto')
+
+  // The "auto" choice means: clear the override; the date-based theme
+  // (or null) takes over. We mirror useSeasonalTheme's storage event
+  // by writing the same key it reads.
+  const apply = (value) => {
+    setOverride(value)
+    if (value === 'auto') setSeasonOverride(null)
+    else setSeasonOverride(value)
+  }
+
+  // Helper: when does this theme next become active? Cosmetic — we
+  // pick the first range whose end is in the future.
+  const nextRange = (theme) => {
+    const today = todayIso()
+    const upcoming = (theme.ranges || [])
+      .find((r) => r.end >= today)
+    return upcoming || null
+  }
+
+  const autoTheme = findThemeForDate()
+
+  return (
+    <section className="cp-panel">
+      <div className="cp-panel-header">
+        <h2><i className="fas fa-moon"></i> السمات الموسمية</h2>
+        <p>
+          تتبدّل ألوان وزخارف الموقع تلقائياً حسب المناسبة (رمضان، الأعياد، الشتاء).
+          يمكنك تعطيلها أو إجبارها على سمة معيّنة من هنا.
+        </p>
+      </div>
+
+      {/* Mode picker — auto / off ─────────────────────────── */}
+      <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
+        <button
+          className={`cp-btn ${override === 'auto' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          onClick={() => apply('auto')}
+        >
+          <i className="fas fa-wand-magic-sparkles"></i> تلقائي حسب التاريخ
+        </button>
+        <button
+          className={`cp-btn ${override === 'none' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          onClick={() => apply('none')}
+        >
+          <i className="fas fa-ban"></i> تعطيل التزيين
+        </button>
+      </div>
+
+      {override === 'auto' && (
+        <div className="cp-empty" style={{ marginTop: 12, padding: 14 }}>
+          <i className={`fas ${autoTheme ? 'fa-check-circle' : 'fa-circle-info'}`}
+             style={{ color: autoTheme ? '#16a34a' : '#64748b' }} />
+          <p>
+            {autoTheme
+              ? `السمة المفعّلة الآن: ${autoTheme.label}`
+              : 'لا توجد سمة موسمية مفعّلة الآن — السمة الأساسية فقط.'}
+          </p>
+        </div>
+      )}
+
+      {/* Theme cards — swatches + force-pick ──────────────── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: 12,
+          marginTop: 16,
+        }}
+      >
+        {SEASONAL_THEMES.map((t) => {
+          const next = nextRange(t)
+          const isCurrentlyActive = active?.id === t.id
+          const isPicked = override === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => apply(t.id)}
+              className={`cp-target ${isPicked ? 'is-active' : ''}`}
+              style={{ padding: 14, borderRadius: 14, textAlign: 'start' }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: 56, height: 56, borderRadius: 14,
+                  flexShrink: 0,
+                  background: `linear-gradient(135deg, ${t.vars['--season-accent']}, ${t.vars['--season-accent-soft']})`,
+                  boxShadow: t.vars['--season-glow'] || '0 0 14px rgba(0,0,0,0.15)',
+                  display: 'grid', placeItems: 'center',
+                  color: '#fff', fontSize: 22,
+                }}
+              >
+                <i className={`fas ${ICONS[t.id] || 'fa-star'}`}></i>
+              </div>
+              <div className="cp-target-body">
+                <div className="cp-target-name">
+                  <span>{t.label}</span>
+                  {isCurrentlyActive && (
+                    <span className="cp-id-pill cp-id-pill-active">
+                      <i className="fas fa-circle-check"></i> مفعّلة الآن
+                    </span>
+                  )}
+                </div>
+                <div className="cp-target-sub">
+                  {next ? (
+                    <span>
+                      <i className="fas fa-calendar-day"></i>
+                      {' '}{formatRange(next)}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>
+                      <i className="fas fa-circle-exclamation"></i>
+                      {' '}أضِف نطاقات تواريخ في themes.js
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+const ICONS = {
+  ramadan:    'fa-moon',
+  'eid-fitr': 'fa-cookie-bite',
+  'eid-adha': 'fa-mosque',
+  christmas:  'fa-snowflake',
+}
+
+function formatRange({ start, end }) {
+  // Egyptian-Arabic locale dates so admins read them naturally.
+  const fmt = (iso) => new Date(iso).toLocaleDateString('ar-EG', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+  return `${fmt(start)} — ${fmt(end)}`
 }
 
 /* ──────────────────────────────────────────────────────────────

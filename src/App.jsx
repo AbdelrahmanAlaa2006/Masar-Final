@@ -21,6 +21,8 @@ import Help from './pages/Help'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { tokenAPI } from '@backend/authApi'
+import SeasonalDecor from './seasonal/SeasonalDecor'
+import './seasonal/seasonal.css'
 import './App.css'
 
 function App() {
@@ -212,6 +214,12 @@ function AppContent() {
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
+      {/* Seasonal ambient overlay (Ramadan lanterns / Eid kahk / Adha
+          arabesque / winter snow). Suppressed on the exam-taking
+          screen so animations never distract during a timed exam —
+          the seasonal accent classes on <body> still apply, so the
+          subtle top tint and selection color remain. */}
+      <SeasonalDecor suppress={isExamTaking} />
       {!isLoginPage && !isExamTaking && <Header />}
 
       <div className="page-container">

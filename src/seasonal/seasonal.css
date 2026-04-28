@@ -1,0 +1,55 @@
+/* ──────────────────────────────────────────────────────────────
+   Seasonal accent layer.
+
+   Designed to be ADDITIVE, not destructive — the main palette
+   (--primary, --secondary, etc.) is left alone. We only tint a
+   handful of accents that benefit from a seasonal flavour:
+
+     • text selection
+     • a soft glow tint on the header bottom border
+     • the scroll-progress / accent shadows on hero blocks
+
+   Each block is body.season-<id> scoped so it activates only when
+   that theme's body class is present. If a future theme wants
+   more visual reach, add overrides here, not in the core CSS.
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Ramadan ── gold + purple touches ─────────────────────── */
+body.season-ramadan ::selection {
+  background: rgba(124, 92, 255, 0.45);
+  color: #fff;
+}
+body.season-ramadan {
+  /* Subtle ambient warmth at the very top of the viewport. The
+     decor layer already carries the heavy lifting (crescent +
+     lanterns) — this is just a hint of warmth so even pages
+     without the decor (exam-taking) still read as Ramadan. */
+  box-shadow: inset 0 4px 0 0 rgba(201, 164, 90, 0.55);
+}
+
+/* ── Eid al-Fitr ── beige + soft pink ───────────────────── */
+body.season-eid-fitr ::selection {
+  background: rgba(243, 168, 192, 0.50);
+  color: #4a1f2a;
+}
+body.season-eid-fitr {
+  box-shadow: inset 0 4px 0 0 rgba(226, 176, 122, 0.55);
+}
+
+/* ── Eid al-Adha ── deep green + ivory + gold ───────────── */
+body.season-eid-adha ::selection {
+  background: rgba(31, 122, 82, 0.45);
+  color: #fff;
+}
+body.season-eid-adha {
+  box-shadow: inset 0 4px 0 0 rgba(31, 122, 82, 0.55);
+}
+
+/* ── Christmas / Winter ── icy cyan ──────────────────────── */
+body.season-christmas ::selection {
+  background: rgba(125, 211, 252, 0.50);
+  color: #0c2a47;
+}
+body.season-christmas {
+  box-shadow: inset 0 4px 0 0 rgba(125, 211, 252, 0.55);
+}

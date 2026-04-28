@@ -120,34 +120,45 @@ export default function DrivePlayer({
           edges. The blocks have pointerEvents:'auto' so clicks land
           on us instead of the iframe — that kills the pop-out button
           and stops the user from accidentally jumping to the strip
-          scrubber when they meant to tap the player. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0,
-          height: 40,
-          background: '#000',
-          zIndex: 2,
-          pointerEvents: 'auto',
-        }}
-      />
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: 0,
-          insetInlineEnd: 0,
-          width: 64, height: 64,
-          background: '#000',
-          zIndex: 2,
-          pointerEvents: 'auto',
-        }}
-      />
+          scrubber when they meant to tap the player.
+
+          We deliberately hide both masks while the wrapper is in
+          fullscreen — Drive's native landscape UI is already clean
+          there, and our overlays misalign once the geometry changes. */}
+      {!fullscreen && (
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0,
+              height: 40,
+              background: '#000',
+              zIndex: 2,
+              pointerEvents: 'auto',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 0,
+              insetInlineEnd: 0,
+              width: 64, height: 64,
+              background: '#000',
+              zIndex: 2,
+              pointerEvents: 'auto',
+            }}
+          />
+        </>
+      )}
 
       {/* Small floating fullscreen button so the user can go full-screen
           on the wrapper (Drive's own button works too — this is just a
-          convenience). Sits above the iframe in a corner. */}
+          convenience). Sits above the iframe in a corner. Hidden in
+          fullscreen since Drive renders its own exit-fullscreen button
+          in landscape. */}
+      {!fullscreen && (
       <button
         onClick={toggleFullscreen}
         title={fullscreen ? 'الخروج من ملء الشاشة' : 'ملء الشاشة'}
@@ -175,6 +186,7 @@ export default function DrivePlayer({
       >
         <i className={`fas ${fullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
       </button>
+      )}
     </div>
   )
 }
