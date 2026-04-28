@@ -896,6 +896,23 @@ body:not(.dark) .lec-pdf-close {
 }
 body:not(.dark) .lec-pdf-frame { background: #f1f5f9; }
 
+/* On phones, give the PDF the entire viewport so the embedded
+   gview toolbar (top) doesn't compete with the page chrome. */
+@media (max-width: 640px) {
+  .lec-pdf-overlay { padding: 0; }
+  .lec-pdf-window {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* iOS Safari: ignore the dynamic toolbar */
+    max-height: none;
+    border-radius: 0;
+    border: 0;
+  }
+  .lec-pdf-head { padding: 10px 14px; }
+  .lec-pdf-title { font-size: 0.9rem; }
+  .lec-pdf-close { width: 36px; height: 36px; min-width: 36px; }
+}
+
 /* ──────────────────────────────────────────────────────────────
    Grade picker inside the "add lecture" modal — 3 colored pill
    cards mirroring the main prep tiles on the page. Each card

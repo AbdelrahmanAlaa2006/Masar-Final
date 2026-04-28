@@ -260,11 +260,32 @@ export default function YouTubePlayer({
     return () => cancelAnimationFrame(rafRef.current)
   }, [onProgress])
 
-  // Fullscreen change listener (OS-level Esc still works).
+  // Fullscreen change listener. Also drives the mobile landscape lock —
+  // when we enter fullscreen on a phone we ask the OS to rotate to
+  // landscape, and release it on exit. Browsers that don't support the
+  // Screen Orientation API just skip silently.
   useEffect(() => {
-    const onFs = () => setFullscreen(document.fullscreenElement === wrapRef.current)
+    const onFs = () => {
+      const isFs = document.fullscreenElement === wrapRef.current
+      setFullscreen(isFs)
+      try {
+        if (isFs) screen.orientation?.lock?.('landscape').catch(() => {})
+        else screen.orientation?.unlock?.()
+      } catch { /* not supported — fine */ }
+    }
     document.addEventListener('fullscreenchange', onFs)
     return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [])
+
+  // Tell the rest of the component which control variant to render.
+  // Recomputed on resize so toggling the device orientation updates it.
+  const [isNarrow, setIsNarrow] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 640
+  )
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 640)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   // ---------- Control handlers ----------
@@ -356,6 +377,10 @@ export default function YouTubePlayer({
         direction: 'ltr',
         fontFamily: 'inherit',
         userSelect: 'none',
+        // In fullscreen the wrapper IS the viewport, so make sure
+        // the iframe gets the full height (some Android browsers
+        // collapse 100% inside :fullscreen otherwise).
+        ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : null),
       }}
     >
       {/* The YT iframe mounts here. Controls are layered above. */}
@@ -470,14 +495,17 @@ export default function YouTubePlayer({
         </button>
       )}
 
-      {/* Fixed control bar — always visible */}
+      {/* Fixed control bar — always visible. On phones we collapse the
+          gap, drop the volume slider, and shrink the icon buttons so the
+          row actually fits on one line instead of overflowing. */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: 56,
-          padding: '0 12px',
-          display: 'flex', alignItems: 'center', gap: 10,
+          height: isNarrow ? 48 : 56,
+          padding: isNarrow ? '0 6px' : '0 12px',
+          display: 'flex', alignItems: 'center',
+          gap: isNarrow ? 4 : 10,
           background: 'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.15))',
           color: '#fff',
           zIndex: 4,
@@ -520,10 +548,12 @@ export default function YouTubePlayer({
           }}>5</span>
         </button>
 
-        {/* Time */}
-        <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, opacity: 0.9 }}>
-          {fmtTime(current)} / {fmtTime(duration)}
-        </span>
+        {/* Time — hidden on phones to free up width for the scrubber. */}
+        {!isNarrow && (
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, opacity: 0.9 }}>
+            {fmtTime(current)} / {fmtTime(duration)}
+          </span>
+        )}
 
         {/* Scrubber */}
         <div
@@ -557,20 +587,24 @@ export default function YouTubePlayer({
           }} />
         </div>
 
-        {/* Volume */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} style={iconBtn}>
-            <i className={`fas ${muted || volume === 0 ? 'fa-volume-xmark' : volume < 40 ? 'fa-volume-low' : 'fa-volume-high'}`}></i>
-          </button>
-          <input
-            type="range" min={0} max={100}
-            value={muted ? 0 : volume}
-            onChange={(e) => onVolume(e.target.value)}
-            style={{
-              width: 70, accentColor: '#c53030', cursor: 'pointer',
-            }}
-          />
-        </div>
+        {/* Volume — phones use hardware buttons, so we hide the slider
+            and even the mute icon (the platform handles mute via the
+            silent switch / volume keys). Desktop keeps both. */}
+        {!isNarrow && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} style={iconBtn}>
+              <i className={`fas ${muted || volume === 0 ? 'fa-volume-xmark' : volume < 40 ? 'fa-volume-low' : 'fa-volume-high'}`}></i>
+            </button>
+            <input
+              type="range" min={0} max={100}
+              value={muted ? 0 : volume}
+              onChange={(e) => onVolume(e.target.value)}
+              style={{
+                width: 70, accentColor: '#c53030', cursor: 'pointer',
+              }}
+            />
+          </div>
+        )}
 
         {/* Playback speed */}
         <div style={{ position: 'relative' }}>
@@ -580,11 +614,13 @@ export default function YouTubePlayer({
             title="سرعة التشغيل"
             style={{
               ...iconBtn,
-              width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 700,
+              width: isNarrow ? 36 : 'auto',
+              padding: isNarrow ? 0 : '0 10px',
+              fontSize: 12, fontWeight: 700,
             }}
           >
-            <i className="fas fa-gauge-high" style={{ marginInlineEnd: 6 }}></i>
-            {rate === 1 ? '1x' : `${rate}x`}
+            <i className="fas fa-gauge-high" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
+            {!isNarrow && (rate === 1 ? '1x' : `${rate}x`)}
           </button>
           {rateMenuOpen && (
             <div style={{
@@ -629,11 +665,13 @@ export default function YouTubePlayer({
             aria-label="Quality"
             style={{
               ...iconBtn,
-              width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 600,
+              width: isNarrow ? 36 : 'auto',
+              padding: isNarrow ? 0 : '0 10px',
+              fontSize: 12, fontWeight: 600,
             }}
           >
-            <i className="fas fa-gear" style={{ marginInlineEnd: 6 }}></i>
-            {QUALITY_LABEL[quality] || 'Auto'}
+            <i className="fas fa-gear" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
+            {!isNarrow && (QUALITY_LABEL[quality] || 'Auto')}
           </button>
           {menuOpen && (
             <div style={{

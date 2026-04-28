@@ -66,7 +66,7 @@ export default function Exams() {
         const grade = u.grade
         if (!grade) return
         const rows = await listEffectiveOverrides({
-          studentId: userId, grade, itemType: 'exam',
+          studentId: userId, grade, group: u.group || null, itemType: 'exam',
         })
         if (!cancelled) setOverridesMap(reduceEffective(rows))
       } catch { /* ignore — defaults apply */ }

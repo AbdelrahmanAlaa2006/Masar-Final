@@ -135,14 +135,25 @@ export default function ScreenGuard({ active = true, label = '', strict = true }
 
   // Build the watermark tile as an inline SVG. Repeated as a background
   // image — survives screenshots since it's part of the rendered DOM.
+  //
+  // On mobile we can't reliably prevent the OS from grabbing the screen,
+  // so the watermark IS the defense: small tile (lots of repeats per
+  // screen) and higher fill alpha so the student's name+phone are
+  // unavoidable in every screenshot. The mix-blend-mode keeps the
+  // text legible against light AND dark page backgrounds.
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
   const safeLabel = String(label || '—').replace(/[<>"&']/g, '')
+  const tileW = isMobile ? 240 : 360
+  const tileH = isMobile ? 140 : 200
+  const fontSize = isMobile ? 14 : 17
+  const fillAlpha = isMobile ? 0.20 : 0.13
   const tileSvg = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="240">
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}">
        <text x="50%" y="50%" font-family="Cairo, Arial, sans-serif"
-             font-size="18" font-weight="700"
-             fill="rgba(255,255,255,0.10)"
+             font-size="${fontSize}" font-weight="700"
+             fill="rgba(255,255,255,${fillAlpha})"
              text-anchor="middle" dominant-baseline="middle"
-             transform="rotate(-22 210 120)">${safeLabel}</text>
+             transform="rotate(-22 ${tileW / 2} ${tileH / 2})">${safeLabel}</text>
      </svg>`
   )
 

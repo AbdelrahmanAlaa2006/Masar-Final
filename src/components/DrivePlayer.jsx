@@ -112,6 +112,39 @@ export default function DrivePlayer({
         }}
       />
 
+      {/* Drive's /preview iframe puts a thin progress strip along the
+          very top edge of the player AND a "pop out to new window"
+          button in the top-right. Both are part of Drive's UI and we
+          can't reach into the cross-origin iframe to hide them, so we
+          mask them with two opaque overlays anchored to the same
+          edges. The blocks have pointerEvents:'auto' so clicks land
+          on us instead of the iframe — that kills the pop-out button
+          and stops the user from accidentally jumping to the strip
+          scrubber when they meant to tap the player. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: 40,
+          background: '#000',
+          zIndex: 2,
+          pointerEvents: 'auto',
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 0,
+          insetInlineEnd: 0,
+          width: 64, height: 64,
+          background: '#000',
+          zIndex: 2,
+          pointerEvents: 'auto',
+        }}
+      />
+
       {/* Small floating fullscreen button so the user can go full-screen
           on the wrapper (Drive's own button works too — this is just a
           convenience). Sits above the iframe in a corner. */}
@@ -120,20 +153,24 @@ export default function DrivePlayer({
         title={fullscreen ? 'الخروج من ملء الشاشة' : 'ملء الشاشة'}
         style={{
           position: 'absolute',
-          top: 10,
-          insetInlineEnd: 10,
-          width: 36, height: 36,
+          // Lifted onto the top mask so the button is the only thing
+          // visible in that corner — the user can still go fullscreen
+          // even though Drive's own pop-out button is hidden.
+          top: 8,
+          insetInlineEnd: 8,
+          width: 32, height: 32,
           borderRadius: 8,
-          border: 'none',
-          background: 'rgba(0, 0, 0, 0.55)',
+          border: '1px solid rgba(255, 255, 255, 0.16)',
+          background: 'rgba(255, 255, 255, 0.10)',
           color: '#fff',
           cursor: 'pointer',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           backdropFilter: 'blur(4px)',
-          fontSize: 14,
-          zIndex: 2,
+          fontSize: 13,
+          // Above both masks; stays interactive when Drive's UI is hidden.
+          zIndex: 3,
         }}
       >
         <i className={`fas ${fullscreen ? 'fa-compress' : 'fa-expand'}`}></i>

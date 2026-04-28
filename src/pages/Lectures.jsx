@@ -601,30 +601,7 @@ export default function Lectures() {
       )}
 
       {pdfViewer && createPortal(
-        <div className="lec-pdf-overlay" onClick={() => setPdfViewer(null)}>
-          <div className="lec-pdf-window" onClick={(e) => e.stopPropagation()}>
-            <header className="lec-pdf-head">
-              <div className="lec-pdf-title">
-                <i className="fas fa-file-pdf"></i>
-                <span>{pdfViewer.title}</span>
-              </div>
-              <button
-                type="button"
-                className="lec-pdf-close"
-                onClick={() => setPdfViewer(null)}
-                aria-label="إغلاق"
-                title="إغلاق"
-              >
-                <i className="fas fa-xmark"></i>
-              </button>
-            </header>
-            <iframe
-              className="lec-pdf-frame"
-              src={pdfViewer.url}
-              title={pdfViewer.title}
-            />
-          </div>
-        </div>,
+        <PdfViewerModal viewer={pdfViewer} onClose={() => setPdfViewer(null)} />,
         document.body
       )}
     </main>
@@ -632,6 +609,61 @@ export default function Lectures() {
 }
 
 /* ─────────────────────── sub-components ─────────────────────── */
+
+/* PdfViewerModal — overlays the PDF in an iframe.
+   On mobile (Chrome / Safari) embedding a PDF URL directly in an
+   <iframe> doesn't render — the OS shows a download / "Open" prompt
+   instead, which is what the student saw. As a fallback we route the
+   PDF through Google Docs' embed viewer, which IS rendered inline by
+   every mobile browser. Desktop browsers can stream the PDF directly,
+   so we keep the bare URL there for full fidelity. */
+function PdfViewerModal({ viewer, onClose }) {
+  const isMobile = typeof navigator !== 'undefined' &&
+    /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
+
+  // Google's embed-viewer URL works for any publicly-readable PDF.
+  // We keep `embedded=true` so the toolbar doesn't show the
+  // "Open in Drive" buttons — students should stay in our shell.
+  const iframeSrc = isMobile
+    ? `https://docs.google.com/gview?url=${encodeURIComponent(viewer.url)}&embedded=true`
+    : viewer.url
+
+  // Esc-to-close for keyboard users / desktop.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="lec-pdf-overlay" onClick={onClose}>
+      <div className="lec-pdf-window" onClick={(e) => e.stopPropagation()}>
+        <header className="lec-pdf-head">
+          <div className="lec-pdf-title">
+            <i className="fas fa-file-pdf"></i>
+            <span>{viewer.title}</span>
+          </div>
+          <button
+            type="button"
+            className="lec-pdf-close"
+            onClick={onClose}
+            aria-label="إغلاق"
+            title="إغلاق"
+          >
+            <i className="fas fa-xmark"></i>
+          </button>
+        </header>
+        <iframe
+          className="lec-pdf-frame"
+          src={iframeSrc}
+          title={viewer.title}
+          // On mobile we route through gview; allow it to load freely.
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    </div>
+  )
+}
 
 function PrepCard({ prep, count, onClick }) {
   return (

@@ -132,6 +132,7 @@ function shapeVideo(row) {
         const rows = await listEffectiveOverrides({
           studentId: isAdmin ? '00000000-0000-0000-0000-000000000000' : currentUser.id,
           grade,
+          group: isAdmin ? null : (currentUser.group || null),
           itemType: 'video',
         })
         if (!cancelled) setVideoOverrides(reduceEffective(rows))

@@ -8,6 +8,7 @@ import {
   listOverridesForTarget,
   upsertOverride,
   deleteOverride,
+  groupTargetId,
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
 import './ControlPanel.css'
@@ -934,10 +935,12 @@ function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }
 function RevealPanel({ onBack, flash }) {
   // Audience the reveal action targets.
   //   'all'     → flips exams.reveal_grades (global toggle)
-  //   'grade'   → upsert access_overrides scope='prep',  target_id=grade
+  //   'grade'   → upsert access_overrides scope='prep',   target_id=grade
+  //   'group'   → upsert access_overrides scope='group',  target_id="<grade>:<group>"
   //   'student' → upsert access_overrides scope='student', target_id=studentId
   const [audience, setAudience] = useState('all')
   const [grade, setGrade]       = useState('first-prep')
+  const [groupValue, setGroupValue] = useState('')
   const [studentId, setStudentId] = useState('')
 
   const [exams, setExams]       = useState([])
@@ -971,19 +974,24 @@ function RevealPanel({ onBack, flash }) {
     return () => { cancelled = true }
   }, [])
 
+  // Maps the chosen audience to (scope, target_id) used for both reads
+  // and writes. Centralised so we can't drift between fetch + mutation.
+  const audienceTarget = () => {
+    if (audience === 'grade')   return { scope: 'prep',    target: grade }
+    if (audience === 'group')   return { scope: 'group',   target: grade && groupValue ? groupTargetId(grade, groupValue) : '' }
+    if (audience === 'student') return { scope: 'student', target: studentId }
+    return { scope: null, target: '' }
+  }
+
   // When audience/target changes, fetch existing overrides for that target.
   useEffect(() => {
     if (audience === 'all') { setOverrides(new Map()); return }
-    const target = audience === 'grade' ? grade : studentId
-    if (!target) { setOverrides(new Map()); return }
+    const { scope, target } = audienceTarget()
+    if (!scope || !target) { setOverrides(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
-        const map = await listOverridesForTarget(
-          audience === 'grade' ? 'prep' : 'student',
-          target,
-          'exam_reveal'
-        )
+        const map = await listOverridesForTarget(scope, target, 'exam_reveal')
         if (cancelled) return
         // listOverridesForTarget keys by "item_type:item_id" — unwrap.
         const out = new Map()
@@ -995,7 +1003,7 @@ function RevealPanel({ onBack, flash }) {
       } catch { if (!cancelled) setOverrides(new Map()) }
     })()
     return () => { cancelled = true }
-  }, [audience, grade, studentId])
+  }, [audience, grade, groupValue, studentId])
 
   // Effective revealed state per exam under the current audience.
   const isRevealed = (ex) => {
@@ -1006,12 +1014,14 @@ function RevealPanel({ onBack, flash }) {
     return !!o && o.allowed !== false
   }
 
-  // List of exams relevant to this audience (grade-filtered when grade/student).
-  const targetGrade = audience === 'grade'
-    ? grade
-    : audience === 'student'
-      ? (students.find((s) => s.id === studentId)?.grade || null)
-      : null
+  // List of exams relevant to this audience (grade-filtered when
+  // grade/group/student). For 'group' the grade is whatever the admin
+  // picked at the GradePicker step.
+  const targetGrade =
+    audience === 'grade'   ? grade
+    : audience === 'group' ? grade
+    : audience === 'student' ? (students.find((s) => s.id === studentId)?.grade || null)
+    : null
 
   const baseExams = useMemo(() => {
     if (!targetGrade) return exams
@@ -1040,6 +1050,7 @@ function RevealPanel({ onBack, flash }) {
   const audienceLabel = () => {
     if (audience === 'all') return 'كل الطلاب'
     if (audience === 'grade') return GRADE_LABEL[grade] || grade
+    if (audience === 'group') return `${groupValue || 'مجموعة'} — ${GRADE_LABEL[grade] || grade}`
     if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
     return ''
   }
@@ -1058,6 +1069,10 @@ function RevealPanel({ onBack, flash }) {
       } else if (audience === 'grade') {
         await createNotification({ title, message, level: 'success', scope: 'grade',
           targetGrade: grade, meta: { examId: exam.id, kind: 'reveal' }, createdBy })
+      } else if (audience === 'group' && grade && groupValue) {
+        await createNotification({ title, message, level: 'success', scope: 'group',
+          targetGroup: groupTargetId(grade, groupValue),
+          meta: { examId: exam.id, kind: 'reveal' }, createdBy })
       } else if (audience === 'student' && studentId) {
         await createNotification({ title, message, level: 'success', scope: 'student',
           targetStudent: studentId, meta: { examId: exam.id, kind: 'reveal' }, createdBy })
@@ -1074,9 +1089,14 @@ function RevealPanel({ onBack, flash }) {
         await setExamRevealGrades(exam.id, next)
         setExams((prev) => prev.map((r) => r.id === exam.id ? { ...r, reveal_grades: next } : r))
       } else {
-        const scope    = audience === 'grade' ? 'prep' : 'student'
-        const targetId = audience === 'grade' ? grade  : studentId
-        if (!targetId) { flash('اختر المرحلة أو الطالب أولاً', 'warning'); return }
+        const { scope, target: targetId } = audienceTarget()
+        if (!scope || !targetId) {
+          flash(audience === 'group'
+            ? 'اختر المرحلة والمجموعة أولاً'
+            : 'اختر المرحلة أو الطالب أولاً',
+            'warning')
+          return
+        }
 
         if (next) {
           await upsertOverride({
@@ -1110,7 +1130,8 @@ function RevealPanel({ onBack, flash }) {
   const revealedCount = filtered.filter(isRevealed).length
   const hiddenCount   = filtered.length - revealedCount
   const canInteract   = audience === 'all'
-                     || (audience === 'grade' && !!grade)
+                     || (audience === 'grade'   && !!grade)
+                     || (audience === 'group'   && !!grade && !!groupValue)
                      || (audience === 'student' && !!studentId)
 
   return (
@@ -1123,9 +1144,10 @@ function RevealPanel({ onBack, flash }) {
       {/* Audience selector */}
       <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
         {[
-          { id: 'all',     icon: 'fa-users',     label: 'كل الطلاب' },
+          { id: 'all',     icon: 'fa-users',       label: 'كل الطلاب' },
           { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
-          { id: 'student', icon: 'fa-user',      label: 'طالب محدد' },
+          { id: 'group',   icon: 'fa-user-group',  label: 'مجموعة محددة' },
+          { id: 'student', icon: 'fa-user',        label: 'طالب محدد' },
         ].map((opt) => (
           <button
             key={opt.id}
@@ -1137,9 +1159,27 @@ function RevealPanel({ onBack, flash }) {
         ))}
       </div>
 
-      {/* Grade picker — card grid, visually consistent with the rest of CP. */}
-      {audience === 'grade' && (
-        <GradePickerCards value={grade} onChange={setGrade} students={students} />
+      {/* Grade picker — shared by 'grade' and 'group' audiences. The
+          'group' audience always needs a grade first because the
+          group label is only meaningful inside one grade. */}
+      {(audience === 'grade' || audience === 'group') && (
+        <GradePickerCards
+          value={grade}
+          onChange={(g) => { setGrade(g); setGroupValue('') }}
+          students={students}
+        />
+      )}
+
+      {/* Group picker — chips of distinct groups inside the picked grade.
+          Hidden until a grade is picked AND that grade actually has any
+          group labels assigned (we won't synthesise empty placeholders). */}
+      {audience === 'group' && grade && (
+        <GroupPickerCards
+          grade={grade}
+          value={groupValue}
+          onChange={setGroupValue}
+          students={students}
+        />
       )}
 
       {/* Student picker */}
@@ -1374,6 +1414,80 @@ function GradePickerCards({ value, onChange, students = [] }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   GroupPickerCards — chips for distinct profiles.group values
+   inside a chosen grade. Reads the group label off each student
+   row so we don't need a separate groups table; if the grade has
+   no students with a group label assigned yet, we render a hint
+   instead of an empty picker.
+   ────────────────────────────────────────────────────────────── */
+function GroupPickerCards({ grade, value, onChange, students = [] }) {
+  // Distinct, non-empty group labels for students in this grade.
+  const groups = useMemo(() => {
+    const set = new Set()
+    for (const s of students) {
+      if (s?.grade !== grade) continue
+      const g = (s.group || '').trim()
+      if (g) set.add(g)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'ar'))
+  }, [students, grade])
+
+  // Per-group counts for the chip badge.
+  const counts = useMemo(() => {
+    const out = {}
+    for (const s of students) {
+      if (s?.grade !== grade) continue
+      const g = (s.group || '').trim()
+      if (!g) continue
+      out[g] = (out[g] || 0) + 1
+    }
+    return out
+  }, [students, grade])
+
+  if (groups.length === 0) {
+    return (
+      <div className="cp-empty" style={{ marginTop: 12 }}>
+        <i className="fas fa-circle-info"></i>
+        <p>لا توجد مجموعات معرّفة لهذه المرحلة بعد. أضف عمود <code>group</code> في ملف الطلاب وأعد المزامنة.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="cp-group-picker"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 10,
+        marginTop: 12,
+      }}
+    >
+      {groups.map((g) => {
+        const active = value === g
+        return (
+          <button
+            key={g}
+            onClick={() => onChange(g)}
+            className={`cp-btn ${active ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            style={{ borderRadius: 999 }}
+          >
+            <i className="fas fa-user-group"></i>
+            <span>{g}</span>
+            <span
+              className="cp-id-pill cp-id-pill-sm"
+              style={{ marginInlineStart: 6 }}
+            >
+              {counts[g] || 0}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
    AvailabilityPanel — edit how many hours an exam or a video
    remains available after it was created.
 
@@ -1382,7 +1496,8 @@ function GradePickerCards({ value, onChange, students = [] }) {
                    videos.active_hours) — affects every student.
      • 'grade'   → upsert into access_overrides (scope='prep',
                    available_hours=N) for exactly that prep.
-     • 'student' → same but scope='student'. Admin can also clear the
+     • 'group'   → scope='group',  target_id="<grade>:<group>".
+     • 'student' → scope='student'. Admin can also clear the
                    override to fall back to the item's default.
 
    For non-'all' audiences the draft starts from the override if it
@@ -1398,6 +1513,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
   // Audience targeting mirrors RevealPanel so admins learn one pattern.
   const [audience, setAudience] = useState('all')
   const [grade, setGrade]       = useState('first-prep')
+  const [groupValue, setGroupValue] = useState('')
   const [studentId, setStudentId] = useState('')
 
   const [exams, setExams] = useState([])
@@ -1429,19 +1545,23 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
 
   const itemType = tab === 'exams' ? 'exam' : 'video'
 
+  // Centralised audience → (scope, target_id) — same shape as RevealPanel.
+  const audienceTarget = () => {
+    if (audience === 'grade')   return { scope: 'prep',    target: grade }
+    if (audience === 'group')   return { scope: 'group',   target: grade && groupValue ? groupTargetId(grade, groupValue) : '' }
+    if (audience === 'student') return { scope: 'student', target: studentId }
+    return { scope: null, target: '' }
+  }
+
   // When audience/target/tab changes, refetch overrides for that audience.
   useEffect(() => {
     if (audience === 'all') { setOverrides(new Map()); return }
-    const target = audience === 'grade' ? grade : studentId
-    if (!target) { setOverrides(new Map()); return }
+    const { scope, target } = audienceTarget()
+    if (!scope || !target) { setOverrides(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
-        const map = await listOverridesForTarget(
-          audience === 'grade' ? 'prep' : 'student',
-          target,
-          itemType
-        )
+        const map = await listOverridesForTarget(scope, target, itemType)
         if (cancelled) return
         const out = new Map()
         for (const [, r] of map) {
@@ -1451,13 +1571,14 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
       } catch { if (!cancelled) setOverrides(new Map()) }
     })()
     return () => { cancelled = true }
-  }, [audience, grade, studentId, itemType])
+  }, [audience, grade, groupValue, studentId, itemType])
 
   // Filter by grade when an audience is selected so admins don't see
   // items irrelevant to their audience (e.g. exams from other preps).
   const rows = tab === 'exams' ? exams : videos
   const targetGrade =
-    audience === 'grade' ? grade
+    audience === 'grade'   ? grade
+    : audience === 'group' ? grade
     : audience === 'student' ? (students.find((s) => s.id === studentId)?.grade || null)
     : null
 
@@ -1487,11 +1608,12 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
   const audienceLabel = () => {
     if (audience === 'all') return 'كل الطلاب'
     if (audience === 'grade') return GRADE_LABEL[grade] || grade
+    if (audience === 'group') return `${groupValue || 'مجموعة'} — ${GRADE_LABEL[grade] || grade}`
     if (audience === 'student') return selectedStudent?.name || 'طالب محدد'
     return ''
   }
 
-  // Save handler: 'all' updates the item column itself; grade/student
+  // Save handler: 'all' updates the item column itself; grade/group/student
   // upserts an override row with available_hours. Returning the new saved
   // state lets the row re-sync its dirty flag.
   const saveRow = async (item, hours) => {
@@ -1507,9 +1629,14 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
           } : r))
         }
       } else {
-        const scope = audience === 'grade' ? 'prep' : 'student'
-        const targetId = audience === 'grade' ? grade : studentId
-        if (!targetId) { flash('اختر المرحلة أو الطالب أولاً', 'warning'); return }
+        const { scope, target: targetId } = audienceTarget()
+        if (!scope || !targetId) {
+          flash(audience === 'group'
+            ? 'اختر المرحلة والمجموعة أولاً'
+            : 'اختر المرحلة أو الطالب أولاً',
+            'warning')
+          return
+        }
         await upsertOverride({ scope, targetId, itemType, itemId: item.id, availableHours: hours })
         setOverrides((p) => {
           const n = new Map(p)
@@ -1528,9 +1655,8 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
   // Clear a per-audience override — row falls back to the item default.
   const clearOverride = async (item) => {
     if (audience === 'all') return // 'all' can't be "cleared" — it IS the default
-    const scope = audience === 'grade' ? 'prep' : 'student'
-    const targetId = audience === 'grade' ? grade : studentId
-    if (!targetId) return
+    const { scope, target: targetId } = audienceTarget()
+    if (!scope || !targetId) return
     try {
       // Use upsert with available_hours:null so we don't wipe allowed/attempts
       // if the admin set those in another panel — only the hours override
@@ -1550,6 +1676,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
 
   const canInteract = audience === 'all'
                    || (audience === 'grade'   && !!grade)
+                   || (audience === 'group'   && !!grade && !!groupValue)
                    || (audience === 'student' && !!studentId)
 
   return (
@@ -1584,6 +1711,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
         {[
           { id: 'all',     icon: 'fa-users',       label: 'كل الطلاب' },
           { id: 'grade',   icon: 'fa-layer-group', label: 'مرحلة محددة' },
+          { id: 'group',   icon: 'fa-user-group',  label: 'مجموعة محددة' },
           { id: 'student', icon: 'fa-user',        label: 'طالب محدد' },
         ].map((opt) => (
           <button
@@ -1596,9 +1724,23 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
         ))}
       </div>
 
-      {/* Grade card picker */}
-      {audience === 'grade' && (
-        <GradePickerCards value={grade} onChange={setGrade} students={students} />
+      {/* Grade card picker — shared by 'grade' and 'group'. */}
+      {(audience === 'grade' || audience === 'group') && (
+        <GradePickerCards
+          value={grade}
+          onChange={(g) => { setGrade(g); setGroupValue('') }}
+          students={students}
+        />
+      )}
+
+      {/* Group chips inside the chosen grade. */}
+      {audience === 'group' && grade && (
+        <GroupPickerCards
+          grade={grade}
+          value={groupValue}
+          onChange={setGroupValue}
+          students={students}
+        />
       )}
 
       {/* Student picker (reuse same pattern as RevealPanel) */}

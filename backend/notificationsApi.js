@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 export async function listNotifications({ limit = 50 } = {}) {
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, title, message, level, scope, target_grade, target_student, meta, created_by, created_at')
+    .select('id, title, message, level, scope, target_grade, target_group, target_student, meta, created_by, created_at')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
@@ -46,16 +46,18 @@ export async function markAllRead(notificationIds, userId) {
   if (error && error.code !== '23505') throw error
 }
 
-/* Admin-only: create a notification targeted at one of {all grades, one
-   grade, one student}. Exactly one of target_grade / target_student should
-   be set depending on scope. */
+/* Admin-only: create a notification targeted at one of {all, one grade,
+   one group, one student}. Exactly one of target_grade / target_group /
+   target_student is set depending on scope. target_group is the literal
+   "<grade>:<group>" composite — same convention as access_overrides. */
 export async function createNotification({
   title,
   message = '',
   level = 'info',
-  scope,              // 'all' | 'grade' | 'student'
-  targetGrade = null, // when scope='grade'
-  targetStudent = null, // when scope='student'
+  scope,                 // 'all' | 'grade' | 'group' | 'student'
+  targetGrade = null,    // when scope='grade'
+  targetGroup = null,    // when scope='group' — "<grade>:<group>"
+  targetStudent = null,  // when scope='student'
   meta = {},
   createdBy = null,
 }) {
@@ -65,6 +67,7 @@ export async function createNotification({
     level,
     scope,
     target_grade:   scope === 'grade'   ? targetGrade   : null,
+    target_group:   scope === 'group'   ? targetGroup   : null,
     target_student: scope === 'student' ? targetStudent : null,
     meta,
     created_by: createdBy,

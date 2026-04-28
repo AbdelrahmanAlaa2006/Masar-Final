@@ -68,9 +68,11 @@ export default function ExamsReport() {
         // Resolve the target student's grade so we only show their grade's
         // exams. An admin would otherwise get every grade via RLS.
         let targetGrade = u?.grade || null
+        let targetGroup = u?.group || null
         if (paramId && paramId !== u?.id) {
           const p = await getProfile(paramId)
           targetGrade = p?.grade || null
+          targetGroup = p?.group || null
           if (p?.name) setStudentName(p.name)
           if (p?.phone) setStudentId(p.phone)
         }
@@ -90,7 +92,8 @@ export default function ExamsReport() {
         try {
           if (targetGrade) {
             const rows = await listEffectiveOverrides({
-              studentId: targetId, grade: targetGrade, itemType: 'exam_reveal',
+              studentId: targetId, grade: targetGrade, group: targetGroup,
+              itemType: 'exam_reveal',
             })
             revealMap = reduceEffective(rows)
           }
