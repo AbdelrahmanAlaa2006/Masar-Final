@@ -1,55 +1,170 @@
 /* ──────────────────────────────────────────────────────────────
    Seasonal accent layer.
 
-   Designed to be ADDITIVE, not destructive — the main palette
-   (--primary, --secondary, etc.) is left alone. We only tint a
-   handful of accents that benefit from a seasonal flavour:
+   Each theme overrides the app's core palette variables so the
+   visual change is immediate and unmistakable. The structure of
+   the app — gradients, cards, buttons, hover states — is built
+   on these vars in :root, so the body-class selector here just
+   "swaps" them out:
 
-     • text selection
-     • a soft glow tint on the header bottom border
-     • the scroll-progress / accent shadows on hero blocks
+       --primary            primary brand colour
+       --secondary          gradient companion
+       --primary-gradient   used by hero buttons / titles
+       --bg-color           page background gradient
+       --bg-secondary       alt background
 
-   Each block is body.season-<id> scoped so it activates only when
-   that theme's body class is present. If a future theme wants
-   more visual reach, add overrides here, not in the core CSS.
+   Every theme has a light + dark variant (body.dark.season-…)
+   so we never end up with low-contrast text. Mobile gets a
+   tighter background gradient via @media inside each block.
+
+   Keep this file scoped to overrides only — the keyframes and
+   decor positioning live in SeasonalDecor.css.
    ────────────────────────────────────────────────────────────── */
 
-/* ── Ramadan ── gold + purple touches ─────────────────────── */
+
+/* ╔═══ RAMADAN ═══════════════════════════════════════════════╗
+   Royal-purple background with rich gold accents — readable
+   yet distinctly festive. Cards stay readable in both modes.   */
+body.season-ramadan {
+  --primary:         #b08540;   /* rich gold */
+  --secondary:       #6b4eff;   /* royal purple */
+  --primary-gradient: linear-gradient(135deg, #b08540 0%, #6b4eff 100%);
+  --bg-color:        linear-gradient(135deg, #f7ecd3 0%, #efe1ff 100%);
+  --bg-secondary:    #fbf3df;
+  --card-bg:         #ffffff;
+  --text-color:      #2a1854;
+  --text-muted:      #6b5b8a;
+}
 body.season-ramadan ::selection {
   background: rgba(124, 92, 255, 0.45);
   color: #fff;
 }
-body.season-ramadan {
-  /* Subtle ambient warmth at the very top of the viewport. The
-     decor layer already carries the heavy lifting (crescent +
-     lanterns) — this is just a hint of warmth so even pages
-     without the decor (exam-taking) still read as Ramadan. */
-  box-shadow: inset 0 4px 0 0 rgba(201, 164, 90, 0.55);
+body.dark.season-ramadan {
+  --primary:         #c9a45a;
+  --secondary:       #8b6cff;
+  --primary-gradient: linear-gradient(135deg, #c9a45a 0%, #8b6cff 100%);
+  --bg-color:        linear-gradient(135deg, #1a1335 0%, #2d1f3f 100%);
+  --bg-secondary:    #1a1335;
+  --card-bg:         #2a1d44;
+  --text-color:      #f7f1e0;
+  --text-muted:      #c8b8e8;
+}
+@media (max-width: 640px) {
+  body.season-ramadan {
+    --bg-color: linear-gradient(160deg, #f7ecd3 0%, #efe1ff 100%);
+  }
+  body.dark.season-ramadan {
+    --bg-color: linear-gradient(160deg, #1a1335 0%, #2d1f3f 100%);
+  }
 }
 
-/* ── Eid al-Fitr ── beige + soft pink ───────────────────── */
-body.season-eid-fitr ::selection {
-  background: rgba(243, 168, 192, 0.50);
-  color: #4a1f2a;
-}
+
+/* ╔═══ EID AL-FITR ═══════════════════════════════════════════╗
+   Warm caramel / soft-pink — celebratory, gentler than Ramadan
+   so the holidays read as "after-Ramadan calm".                 */
 body.season-eid-fitr {
-  box-shadow: inset 0 4px 0 0 rgba(226, 176, 122, 0.55);
+  --primary:         #c97f4d;   /* warm caramel */
+  --secondary:       #e3789a;   /* soft pink */
+  --primary-gradient: linear-gradient(135deg, #c97f4d 0%, #e3789a 100%);
+  --bg-color:        linear-gradient(135deg, #fef0dd 0%, #ffe1e9 100%);
+  --bg-secondary:    #fff5e6;
+  --card-bg:         #ffffff;
+  --text-color:      #4a1f2a;
+  --text-muted:      #875767;
+}
+body.season-eid-fitr ::selection {
+  background: rgba(227, 120, 154, 0.50);
+  color: #fff;
+}
+body.dark.season-eid-fitr {
+  --primary:         #e8a874;
+  --secondary:       #f3a8c0;
+  --primary-gradient: linear-gradient(135deg, #e8a874 0%, #f3a8c0 100%);
+  --bg-color:        linear-gradient(135deg, #2a1c14 0%, #322028 100%);
+  --bg-secondary:    #2a1c14;
+  --card-bg:         #382630;
+  --text-color:      #fae6dd;
+  --text-muted:      #f3c8b9;
+}
+@media (max-width: 640px) {
+  body.season-eid-fitr {
+    --bg-color: linear-gradient(160deg, #fef0dd 0%, #ffe1e9 100%);
+  }
+  body.dark.season-eid-fitr {
+    --bg-color: linear-gradient(160deg, #2a1c14 0%, #322028 100%);
+  }
 }
 
-/* ── Eid al-Adha ── deep green + ivory + gold ───────────── */
+
+/* ╔═══ EID AL-ADHA ═══════════════════════════════════════════╗
+   Deep islamic green + gold — calmer, more "polite" — no harsh
+   contrast, no animation. Cream/ivory paper feel in light mode. */
+body.season-eid-adha {
+  --primary:         #1f7a52;   /* deep green */
+  --secondary:       #c9a45a;   /* warm gold */
+  --primary-gradient: linear-gradient(135deg, #1f7a52 0%, #c9a45a 100%);
+  --bg-color:        linear-gradient(135deg, #eaf5ee 0%, #f5ecd2 100%);
+  --bg-secondary:    #f0f7f3;
+  --card-bg:         #ffffff;
+  --text-color:      #103626;
+  --text-muted:      #547b6c;
+}
 body.season-eid-adha ::selection {
   background: rgba(31, 122, 82, 0.45);
   color: #fff;
 }
-body.season-eid-adha {
-  box-shadow: inset 0 4px 0 0 rgba(31, 122, 82, 0.55);
+body.dark.season-eid-adha {
+  --primary:         #2f9268;
+  --secondary:       #d4b66a;
+  --primary-gradient: linear-gradient(135deg, #2f9268 0%, #d4b66a 100%);
+  --bg-color:        linear-gradient(135deg, #0c1e17 0%, #1c241a 100%);
+  --bg-secondary:    #0c1e17;
+  --card-bg:         #173026;
+  --text-color:      #e6f3eb;
+  --text-muted:      #b8d2c5;
+}
+@media (max-width: 640px) {
+  body.season-eid-adha {
+    --bg-color: linear-gradient(160deg, #eaf5ee 0%, #f5ecd2 100%);
+  }
+  body.dark.season-eid-adha {
+    --bg-color: linear-gradient(160deg, #0c1e17 0%, #1c241a 100%);
+  }
 }
 
-/* ── Christmas / Winter ── icy cyan ──────────────────────── */
+
+/* ╔═══ CHRISTMAS / WINTER ════════════════════════════════════╗
+   Frost-blue with icy cyan — pure winter feel. Light mode is
+   "fresh snow", dark mode is "deep winter night sky".            */
+body.season-christmas {
+  --primary:         #1d4ed8;   /* deep winter blue */
+  --secondary:       #38bdf8;   /* icy cyan */
+  --primary-gradient: linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%);
+  --bg-color:        linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+  --bg-secondary:    #f0f9ff;
+  --card-bg:         #ffffff;
+  --text-color:      #0c2a47;
+  --text-muted:      #4f6f8d;
+}
 body.season-christmas ::selection {
-  background: rgba(125, 211, 252, 0.50);
+  background: rgba(56, 189, 248, 0.50);
   color: #0c2a47;
 }
-body.season-christmas {
-  box-shadow: inset 0 4px 0 0 rgba(125, 211, 252, 0.55);
+body.dark.season-christmas {
+  --primary:         #38bdf8;
+  --secondary:       #7dd3fc;
+  --primary-gradient: linear-gradient(135deg, #38bdf8 0%, #7dd3fc 100%);
+  --bg-color:        linear-gradient(135deg, #0a1929 0%, #142a3d 100%);
+  --bg-secondary:    #0a1929;
+  --card-bg:         #1a2c44;
+  --text-color:      #e0f2fe;
+  --text-muted:      #a3c4dc;
+}
+@media (max-width: 640px) {
+  body.season-christmas {
+    --bg-color: linear-gradient(160deg, #e0f2fe 0%, #f0f9ff 100%);
+  }
+  body.dark.season-christmas {
+    --bg-color: linear-gradient(160deg, #0a1929 0%, #142a3d 100%);
+  }
 }

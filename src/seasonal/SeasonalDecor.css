@@ -1,9 +1,10 @@
 /* ──────────────────────────────────────────────────────────────
    SeasonalDecor — ambient overlay layer.
 
-   The wrapper is fixed, full-viewport, click-through. Each variant
-   uses its own absolutely-positioned children. All animations
-   short-circuit when the user has prefers-reduced-motion set.
+   Wrapper is fixed, full-viewport, click-through. Each variant
+   uses absolutely-positioned children. Mobile breakpoints scale
+   sizes down so the ambiance carries through without crowding
+   small screens.
    ────────────────────────────────────────────────────────────── */
 
 .season-decor {
@@ -11,37 +12,60 @@
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  /* Below dialogs/modals (they sit at 1100+) but above page bg. */
+  /* Below dialogs/modals (those sit at 1100+) but above the page bg. */
   z-index: 1;
 }
 
-/* ── Ramadan ─────────────────────────────────────────────── */
+
+/* ╔═══ Ramadan ════════════════════════════════════════════ */
+
+/* Soft purple/gold haze that tints the whole viewport for an
+   "Ramadan night" feel. Sits behind everything else. */
+.season-night-tint {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 0%,  rgba(124, 92, 255, 0.18), transparent 55%),
+    radial-gradient(ellipse at 20% 100%, rgba(201, 164, 90, 0.18), transparent 55%);
+}
+
 .season-crescent {
   position: absolute;
-  top: 24px;
-  inset-inline-start: 24px;
-  filter: drop-shadow(0 0 22px rgba(201, 164, 90, 0.55));
+  top: 32px;
+  inset-inline-start: 32px;
+  filter: drop-shadow(0 0 30px rgba(201, 164, 90, 0.65));
   animation: crescent-shimmer 6s ease-in-out infinite;
 }
 @keyframes crescent-shimmer {
-  0%, 100% { opacity: 0.85; transform: rotate(-6deg); }
+  0%, 100% { opacity: 0.92; transform: rotate(-6deg); }
   50%      { opacity: 1;    transform: rotate(-2deg); }
+}
+
+.season-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff7d8;
+  box-shadow: 0 0 8px rgba(255, 247, 216, 0.95);
+  animation: star-twinkle 3.4s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  50%      { opacity: 1;    transform: scale(1); }
 }
 
 .season-lantern {
   position: absolute;
-  bottom: -90px;
-  filter: drop-shadow(0 0 16px rgba(201, 164, 90, 0.55));
+  bottom: -110px;
+  filter: drop-shadow(0 0 22px rgba(201, 164, 90, 0.75));
   animation-name: lantern-rise;
   animation-iteration-count: infinite;
   animation-timing-function: linear;
-  will-change: transform;
+  will-change: transform, opacity;
 }
 @keyframes lantern-rise {
   0%   { transform: translateY(0)         scale(var(--scale, 1)); opacity: 0; }
-  10%  { opacity: 0.85; }
-  90%  { opacity: 0.85; }
-  100% { transform: translateY(-110vh)    scale(var(--scale, 1)); opacity: 0; }
+  10%  { opacity: 0.95; }
+  90%  { opacity: 0.95; }
+  100% { transform: translateY(-115vh)    scale(var(--scale, 1)); opacity: 0; }
 }
 .season-lantern-swing {
   display: inline-block;
@@ -58,51 +82,119 @@
   animation-duration: 5.5s;
 }
 @keyframes lantern-swing-a {
-  0%, 100% { transform: rotate(-6deg); }
-  50%      { transform: rotate(6deg); }
+  0%, 100% { transform: rotate(-7deg); }
+  50%      { transform: rotate(7deg); }
 }
 @keyframes lantern-swing-b {
   0%, 100% { transform: rotate(8deg); }
   50%      { transform: rotate(-8deg); }
 }
 
-/* ── Eid al-Fitr ─────────────────────────────────────────── */
+
+/* ╔═══ Eid al-Fitr ════════════════════════════════════════ */
+
+.season-warm-tint {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%,   rgba(227, 120, 154, 0.22), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(244, 201, 122, 0.22), transparent 55%);
+}
+.season-warm-blob {
+  position: absolute;
+  top: -120px;
+  inset-inline-start: -120px;
+  width: 360px; height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(244, 201, 122, 0.55), transparent 65%);
+  filter: blur(8px);
+}
+
 .season-kahk {
   position: absolute;
-  top: -40px;
+  top: -50px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
   animation-name: kahk-fall;
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   opacity: 0;
+  will-change: transform, opacity;
 }
 @keyframes kahk-fall {
-  0%   { transform: translate(0, 0)    rotate(0deg);   opacity: 0; }
-  10%  { opacity: 0.7; }
-  90%  { opacity: 0.7; }
-  100% { transform: translate(-40px, 110vh) rotate(220deg); opacity: 0; }
+  0%   { transform: translate(0, 0)            rotate(var(--rot-a, 0deg));   opacity: 0; }
+  10%  { opacity: 0.85; }
+  90%  { opacity: 0.85; }
+  100% { transform: translate(-60px, 115vh)    rotate(var(--rot-b, 360deg)); opacity: 0; }
 }
 
-/* ── Eid al-Adha ─────────────────────────────────────────── */
+.season-confetti {
+  position: absolute;
+  top: -20px;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  opacity: 0;
+}
+@keyframes confetti-fall {
+  0%   { transform: translate(0, 0)            rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.9; }
+  100% { transform: translate(40px, 110vh)     rotate(720deg); opacity: 0; }
+}
+
+
+/* ╔═══ Eid al-Adha ════════════════════════════════════════ */
+
+.season-green-tint {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(31, 122, 82, 0.20), transparent 60%),
+    radial-gradient(ellipse at 50% 0%,   rgba(201, 164, 90, 0.14), transparent 60%);
+}
+
 .season-arabesque {
   position: absolute;
-  filter: drop-shadow(0 0 26px rgba(31, 122, 82, 0.18));
-  opacity: 0.85;
+  filter: drop-shadow(0 0 36px rgba(31, 122, 82, 0.30));
+  opacity: 0.95;
 }
-.season-arabesque-top-start {
-  top: -40px;
-  inset-inline-start: -40px;
-}
-.season-arabesque-bottom-end {
-  bottom: -40px;
-  inset-inline-end: -40px;
+.season-arabesque-top-start    { top: -60px; inset-inline-start: -60px; }
+.season-arabesque-top-end      { top: -60px; inset-inline-end:   -60px; }
+.season-arabesque-bottom-start { bottom: -60px; inset-inline-start: -60px; }
+.season-arabesque-bottom-end   { bottom: -60px; inset-inline-end:   -60px; }
+
+.season-mosque {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  filter: drop-shadow(0 0 18px rgba(31, 122, 82, 0.32));
 }
 
-/* ── Christmas / Winter ──────────────────────────────────── */
+
+/* ╔═══ Christmas / Winter ═════════════════════════════════ */
+
+/* Frost gradients at the top and bottom edges so the page feels
+   like it's framed by a window covered in ice. */
+.season-frost-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 180px;
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.20), transparent);
+  pointer-events: none;
+}
+.season-frost-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 240px;
+  background: linear-gradient(0deg, rgba(56, 189, 248, 0.22), transparent);
+  pointer-events: none;
+}
+
 .season-snowflake {
   position: absolute;
-  top: -24px;
-  filter: drop-shadow(0 0 4px rgba(125, 211, 252, 0.65));
+  top: -28px;
+  filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.85));
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   will-change: transform;
@@ -111,43 +203,67 @@
 .snow-drift-b { animation-name: snow-fall-b; }
 @keyframes snow-fall-a {
   0%   { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(20px, 110vh) rotate(360deg); }
+  100% { transform: translate(20px, 115vh) rotate(360deg); }
 }
 @keyframes snow-fall-b {
   0%   { transform: translate(0, 0) rotate(0deg); }
   50%  { transform: translate(-30px, 55vh) rotate(180deg); }
-  100% { transform: translate(20px, 110vh) rotate(360deg); }
+  100% { transform: translate(20px, 115vh) rotate(360deg); }
 }
 
 .season-sparkle {
   position: absolute;
-  filter: drop-shadow(0 0 20px rgba(125, 211, 252, 0.7));
+  filter: drop-shadow(0 0 24px rgba(125, 211, 252, 0.85));
   opacity: 0;
   animation: sparkle-pulse 7s ease-in-out infinite;
 }
-.season-sparkle-top-start    { top: 60px;    inset-inline-start: 80px;  animation-delay: 0s; }
-.season-sparkle-top-end      { top: 80px;    inset-inline-end: 60px;    animation-delay: 1.6s; }
-.season-sparkle-bottom-start { bottom: 100px; inset-inline-start: 50px;  animation-delay: 3.2s; }
-.season-sparkle-bottom-end   { bottom: 60px; inset-inline-end: 100px;   animation-delay: 4.8s; }
+.season-sparkle-top-start    { top: 60px;     inset-inline-start: 60px;  animation-delay: 0s;   }
+.season-sparkle-top-end      { top: 80px;     inset-inline-end:   60px;  animation-delay: 1.2s; }
+.season-sparkle-mid-start    { top: 50%;      inset-inline-start: 30px;  animation-delay: 2.4s; }
+.season-sparkle-mid-end      { top: 50%;      inset-inline-end:   30px;  animation-delay: 3.6s; }
+.season-sparkle-bottom-start { bottom: 100px; inset-inline-start: 60px;  animation-delay: 4.8s; }
+.season-sparkle-bottom-end   { bottom: 80px;  inset-inline-end:   80px;  animation-delay: 6.0s; }
 @keyframes sparkle-pulse {
   0%, 100% { opacity: 0;   transform: scale(0.7); }
-  10%      { opacity: 0.9; transform: scale(1);   }
-  20%      { opacity: 0;   transform: scale(1.1); }
+  10%      { opacity: 0.95; transform: scale(1); }
+  20%      { opacity: 0;    transform: scale(1.1); }
 }
 
-/* ── Reduced motion ─────────────────────────────────────── */
+
+/* ╔═══ Mobile scaling ════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Ramadan: shrink the crescent + lanterns; keep stars. */
+  .season-crescent { width: 110px !important; height: 110px !important; top: 20px; inset-inline-start: 16px; }
+  .season-lantern svg { width: 36px !important; height: 60px !important; }
+
+  /* Eid al-Fitr: shrink kahk; trim confetti spread. */
+  .season-warm-blob { width: 220px; height: 220px; top: -80px; inset-inline-start: -80px; }
+
+  /* Eid al-Adha: shrink corner ornaments. */
+  .season-arabesque { width: 180px !important; height: 180px !important; }
+  .season-mosque { width: 200px !important; height: 100px !important; }
+
+  /* Christmas: keep the snow but shorter sparkles. */
+  .season-sparkle { width: 36px !important; height: 36px !important; }
+}
+
+
+/* ╔═══ Reduced motion ════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .season-crescent,
+  .season-star,
   .season-lantern,
   .season-lantern-swing,
   .season-kahk,
+  .season-confetti,
   .season-snowflake,
   .season-sparkle {
     animation: none !important;
     transition: none !important;
   }
-  /* Hide motion-only elements; keep static ornaments visible. */
+  /* Hide motion-only elements; keep static ornaments + tints visible. */
   .season-lantern,
   .season-kahk,
+  .season-confetti,
   .season-snowflake { display: none !important; }
 }

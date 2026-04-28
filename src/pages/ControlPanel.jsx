@@ -1992,14 +1992,78 @@ function SeasonalThemePanel() {
   const active = useSeasonalTheme()
   const [override, setOverride] = useState(() => getSeasonOverride() || 'auto')
 
+  // Auto-cycle preview: walks through all four themes in sequence so
+  // the admin sees every one without having to click each card. We
+  // park the original override before starting and restore it at the
+  // end, so cancelling mid-cycle (or unmounting) doesn't leave the
+  // user stuck on a forced theme.
+  const [cycleIdx, setCycleIdx] = useState(-1) // -1 = idle
+  const cycleSavedRef = React.useRef(null)
+  const CYCLE_MS = 8000
+  const isCycling = cycleIdx >= 0
+
   // The "auto" choice means: clear the override; the date-based theme
   // (or null) takes over. We mirror useSeasonalTheme's storage event
   // by writing the same key it reads.
   const apply = (value) => {
+    // Manual choice cancels any in-progress cycle.
+    if (isCycling) stopCycle({ restore: false })
     setOverride(value)
     if (value === 'auto') setSeasonOverride(null)
     else setSeasonOverride(value)
   }
+
+  const startCycle = () => {
+    cycleSavedRef.current = getSeasonOverride() // remember to restore later
+    setCycleIdx(0)
+  }
+  const stopCycle = ({ restore = true } = {}) => {
+    setCycleIdx(-1)
+    if (restore) {
+      const saved = cycleSavedRef.current
+      cycleSavedRef.current = null
+      // Restore the admin's previous selection (auto / off / a specific theme).
+      if (!saved) {
+        setSeasonOverride(null)
+        setOverride('auto')
+      } else {
+        setSeasonOverride(saved)
+        setOverride(saved)
+      }
+    }
+  }
+
+  // Drive the cycle: each tick advances one theme, the last one stops
+  // and restores. Cleanup handles unmount mid-cycle.
+  useEffect(() => {
+    if (cycleIdx < 0) return
+    const theme = SEASONAL_THEMES[cycleIdx]
+    if (!theme) { stopCycle({ restore: true }); return }
+    setSeasonOverride(theme.id)
+    setOverride(theme.id)
+    const t = setTimeout(() => {
+      if (cycleIdx + 1 >= SEASONAL_THEMES.length) {
+        stopCycle({ restore: true })
+      } else {
+        setCycleIdx(cycleIdx + 1)
+      }
+    }, CYCLE_MS)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycleIdx])
+
+  // If the admin navigates away mid-cycle, restore so they don't get
+  // a stuck-forced theme on other pages.
+  useEffect(() => {
+    return () => {
+      if (cycleSavedRef.current !== null) {
+        const saved = cycleSavedRef.current
+        cycleSavedRef.current = null
+        if (!saved) setSeasonOverride(null)
+        else setSeasonOverride(saved)
+      }
+    }
+  }, [])
 
   // Helper: when does this theme next become active? Cosmetic — we
   // pick the first range whose end is in the future.
@@ -2022,19 +2086,40 @@ function SeasonalThemePanel() {
         </p>
       </div>
 
-      {/* Mode picker — auto / off ─────────────────────────── */}
+      {/* Mode picker — auto / off / cycle preview ──────────── */}
       <div className="cp-stats-row" style={{ gap: 12, flexWrap: 'wrap' }}>
         <button
-          className={`cp-btn ${override === 'auto' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          className={`cp-btn ${override === 'auto' && !isCycling ? 'cp-btn-info-active' : 'cp-btn-info'}`}
           onClick={() => apply('auto')}
+          disabled={isCycling}
         >
           <i className="fas fa-wand-magic-sparkles"></i> تلقائي حسب التاريخ
         </button>
         <button
-          className={`cp-btn ${override === 'none' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          className={`cp-btn ${override === 'none' && !isCycling ? 'cp-btn-info-active' : 'cp-btn-info'}`}
           onClick={() => apply('none')}
+          disabled={isCycling}
         >
           <i className="fas fa-ban"></i> تعطيل التزيين
+        </button>
+        {/* One-click "show me every theme right now" — runs each
+            for ~8 s, then restores whatever was set before. */}
+        <button
+          className={`cp-btn ${isCycling ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+          onClick={() => isCycling ? stopCycle({ restore: true }) : startCycle()}
+        >
+          {isCycling ? (
+            <>
+              <i className="fas fa-stop"></i>
+              {' '}إيقاف المعاينة (
+                {SEASONAL_THEMES[cycleIdx]?.label || ''}
+                {' '}{cycleIdx + 1}/{SEASONAL_THEMES.length})
+            </>
+          ) : (
+            <>
+              <i className="fas fa-play"></i> تجربة كل السمات الآن
+            </>
+          )}
         </button>
       </div>
 
