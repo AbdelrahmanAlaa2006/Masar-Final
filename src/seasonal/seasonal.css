@@ -22,6 +22,14 @@
    ────────────────────────────────────────────────────────────── */
 
 
+/* The base page paints body / body::before / body::after with
+   hardcoded values (see Home.css, Header.css). They predate the
+   seasonal layer and don't read --bg-color, so we override them
+   directly here. Without this, swapping --primary alone wouldn't
+   change the actual page surface — that's why the prior pass
+   "didn't feel like much". */
+
+
 /* ╔═══ RAMADAN ═══════════════════════════════════════════════╗
    Royal-purple background with rich gold accents — readable
    yet distinctly festive. Cards stay readable in both modes.   */
@@ -56,6 +64,24 @@ body.dark.season-ramadan {
   body.dark.season-ramadan {
     --bg-color: linear-gradient(160deg, #1a1335 0%, #2d1f3f 100%);
   }
+}
+body.season-ramadan { background: #f7ecd3; }
+body.season-ramadan::before {
+  background: linear-gradient(135deg, #f7ecd3 0%, #efe1ff 100%);
+}
+body.season-ramadan::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(176, 133, 64, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(124, 92, 255, 0.16) 0%, transparent 50%);
+}
+body.dark.season-ramadan { background: #1a1335; }
+body.dark.season-ramadan::before {
+  background: linear-gradient(135deg, #1a1335 0%, #2d1f3f 100%);
+}
+body.dark.season-ramadan::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(201, 164, 90, 0.20) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(139, 108, 255, 0.18) 0%, transparent 50%);
 }
 
 
@@ -94,6 +120,24 @@ body.dark.season-eid-fitr {
     --bg-color: linear-gradient(160deg, #2a1c14 0%, #322028 100%);
   }
 }
+body.season-eid-fitr { background: #fef0dd; }
+body.season-eid-fitr::before {
+  background: linear-gradient(135deg, #fef0dd 0%, #ffe1e9 100%);
+}
+body.season-eid-fitr::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(201, 127, 77, 0.16) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(227, 120, 154, 0.18) 0%, transparent 50%);
+}
+body.dark.season-eid-fitr { background: #2a1c14; }
+body.dark.season-eid-fitr::before {
+  background: linear-gradient(135deg, #2a1c14 0%, #322028 100%);
+}
+body.dark.season-eid-fitr::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(232, 168, 116, 0.20) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(243, 168, 192, 0.18) 0%, transparent 50%);
+}
 
 
 /* ╔═══ EID AL-ADHA ═══════════════════════════════════════════╗
@@ -131,6 +175,24 @@ body.dark.season-eid-adha {
     --bg-color: linear-gradient(160deg, #0c1e17 0%, #1c241a 100%);
   }
 }
+body.season-eid-adha { background: #eaf5ee; }
+body.season-eid-adha::before {
+  background: linear-gradient(135deg, #eaf5ee 0%, #f5ecd2 100%);
+}
+body.season-eid-adha::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(31, 122, 82, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(201, 164, 90, 0.16) 0%, transparent 50%);
+}
+body.dark.season-eid-adha { background: #0c1e17; }
+body.dark.season-eid-adha::before {
+  background: linear-gradient(135deg, #0c1e17 0%, #1c241a 100%);
+}
+body.dark.season-eid-adha::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(47, 146, 104, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(212, 182, 106, 0.18) 0%, transparent 50%);
+}
 
 
 /* ╔═══ CHRISTMAS / WINTER ════════════════════════════════════╗
@@ -167,4 +229,22 @@ body.dark.season-christmas {
   body.dark.season-christmas {
     --bg-color: linear-gradient(160deg, #0a1929 0%, #142a3d 100%);
   }
+}
+body.season-christmas { background: #e0f2fe; }
+body.season-christmas::before {
+  background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+}
+body.season-christmas::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(29, 78, 216, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(56, 189, 248, 0.18) 0%, transparent 50%);
+}
+body.dark.season-christmas { background: #0a1929; }
+body.dark.season-christmas::before {
+  background: linear-gradient(135deg, #0a1929 0%, #142a3d 100%);
+}
+body.dark.season-christmas::after {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(56, 189, 248, 0.20) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(125, 211, 252, 0.18) 0%, transparent 50%);
 }

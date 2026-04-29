@@ -109,37 +109,51 @@
   filter: blur(8px);
 }
 
-.season-kahk {
+/* Slowly drifting golden crescents — replaces the kahk silhouettes.
+   Bigger and softer, with a gentle horizontal sway as they fall. */
+.season-fitr-crescent {
   position: absolute;
-  top: -50px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
-  animation-name: kahk-fall;
+  top: -60px;
+  filter: drop-shadow(0 6px 16px rgba(201, 127, 77, 0.35));
+  animation-name: fitr-crescent-fall;
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   opacity: 0;
   will-change: transform, opacity;
 }
-@keyframes kahk-fall {
-  0%   { transform: translate(0, 0)            rotate(var(--rot-a, 0deg));   opacity: 0; }
+@keyframes fitr-crescent-fall {
+  0%   { transform: translate(0, 0)         rotate(var(--rot, 0deg));        opacity: 0; }
   10%  { opacity: 0.85; }
+  50%  { transform: translate(-30px, 55vh)  rotate(calc(var(--rot, 0deg) + 90deg)); }
   90%  { opacity: 0.85; }
-  100% { transform: translate(-60px, 115vh)    rotate(var(--rot-b, 360deg)); opacity: 0; }
+  100% { transform: translate(40px, 115vh)  rotate(calc(var(--rot, 0deg) + 220deg)); opacity: 0; }
 }
 
-.season-confetti {
+/* Soft pink/peach petals drifting on long S-curves. */
+.season-petal {
   position: absolute;
-  top: -20px;
-  border-radius: 2px;
-  animation-name: confetti-fall;
+  top: -30px;
+  filter: drop-shadow(0 3px 6px rgba(227, 120, 154, 0.30));
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   opacity: 0;
+  will-change: transform, opacity;
 }
-@keyframes confetti-fall {
-  0%   { transform: translate(0, 0)            rotate(0deg);   opacity: 0; }
-  10%  { opacity: 0.9; }
-  90%  { opacity: 0.9; }
-  100% { transform: translate(40px, 110vh)     rotate(720deg); opacity: 0; }
+.petal-sway-a { animation-name: petal-sway-a; }
+.petal-sway-b { animation-name: petal-sway-b; }
+@keyframes petal-sway-a {
+  0%   { transform: translate(0, 0)        rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.85; }
+  50%  { transform: translate(40px, 55vh)  rotate(180deg); }
+  90%  { opacity: 0.85; }
+  100% { transform: translate(-30px, 115vh) rotate(360deg); opacity: 0; }
+}
+@keyframes petal-sway-b {
+  0%   { transform: translate(0, 0)        rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.85; }
+  50%  { transform: translate(-50px, 55vh) rotate(-180deg); }
+  90%  { opacity: 0.85; }
+  100% { transform: translate(20px, 115vh) rotate(-340deg); opacity: 0; }
 }
 
 
@@ -152,23 +166,45 @@
     radial-gradient(ellipse at 50% 0%,   rgba(201, 164, 90, 0.14), transparent 60%);
 }
 
-.season-arabesque {
+/* Row of pointed mihrab arches across the top of the viewport.
+   Replaces the previous static corner ornaments with a single
+   architectural element that reads as Islamic without crowding the
+   page. preserveAspectRatio="none" on the SVG means the arches
+   stretch with the viewport width, while the height stays fixed. */
+.season-arch-row {
   position: absolute;
-  filter: drop-shadow(0 0 36px rgba(31, 122, 82, 0.30));
-  opacity: 0.95;
+  top: 0; left: 0;
+  width: 100%;
+  height: 110px;
+  display: block;
+  filter: drop-shadow(0 6px 14px rgba(31, 122, 82, 0.18));
 }
-.season-arabesque-top-start    { top: -60px; inset-inline-start: -60px; }
-.season-arabesque-top-end      { top: -60px; inset-inline-end:   -60px; }
-.season-arabesque-bottom-start { bottom: -60px; inset-inline-start: -60px; }
-.season-arabesque-bottom-end   { bottom: -60px; inset-inline-end:   -60px; }
 
+/* Twinkling stars under the arches — same idea as Ramadan but
+   green-gold tinted to match the Adha palette. */
+.season-adha-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #f5e9c2;
+  box-shadow: 0 0 10px rgba(245, 233, 194, 0.95);
+  animation: adha-star-twinkle 3.6s ease-in-out infinite;
+}
+@keyframes adha-star-twinkle {
+  0%, 100% { opacity: 0.30; transform: scale(0.7); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+
+/* The mosque silhouette — kept from the earlier pass, refined: a
+   gradient that fades into the page, cleaner side-dome curves, a
+   subtle gold ground line. Static (no animation) since architecture
+   should feel grounded. */
 .season-mosque {
   position: absolute;
-  bottom: 16px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
-  filter: drop-shadow(0 0 18px rgba(31, 122, 82, 0.32));
+  filter: drop-shadow(0 0 22px rgba(31, 122, 82, 0.28));
 }
 
 
@@ -194,10 +230,19 @@
 .season-snowflake {
   position: absolute;
   top: -28px;
+  /* Default (dark mode) — icy white stroke + cyan halo. */
+  color: #e0f2fe;
   filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.85));
   animation-iteration-count: infinite;
   animation-timing-function: linear;
   will-change: transform;
+}
+/* Light-mode override: deeper blue stroke + tighter glow so the
+   crystals read clearly against the frost-cyan background, without
+   touching the background palette itself (the user wanted it kept). */
+body:not(.dark).season-christmas .season-snowflake {
+  color: #1d4ed8;
+  filter: drop-shadow(0 0 5px rgba(29, 78, 216, 0.55));
 }
 .snow-drift-a { animation-name: snow-fall-a; }
 .snow-drift-b { animation-name: snow-fall-b; }
@@ -234,16 +279,17 @@
 @media (max-width: 640px) {
   /* Ramadan: shrink the crescent + lanterns; keep stars. */
   .season-crescent { width: 110px !important; height: 110px !important; top: 20px; inset-inline-start: 16px; }
-  .season-lantern svg { width: 36px !important; height: 60px !important; }
+  .season-lantern svg { width: 44px !important; height: 76px !important; }
 
-  /* Eid al-Fitr: shrink kahk; trim confetti spread. */
+  /* Eid al-Fitr: shrink the warm blob, scale crescents/petals
+     proportionally — sizes are inline so they're already responsive. */
   .season-warm-blob { width: 220px; height: 220px; top: -80px; inset-inline-start: -80px; }
 
-  /* Eid al-Adha: shrink corner ornaments. */
-  .season-arabesque { width: 180px !important; height: 180px !important; }
-  .season-mosque { width: 200px !important; height: 100px !important; }
+  /* Eid al-Adha: shrink the arch row + mosque silhouette. */
+  .season-arch-row { height: 70px !important; }
+  .season-mosque   { width: 220px !important; height: 110px !important; }
 
-  /* Christmas: keep the snow but shorter sparkles. */
+  /* Christmas: keep the snow density, trim sparkle radius. */
   .season-sparkle { width: 36px !important; height: 36px !important; }
 }
 
@@ -252,10 +298,11 @@
 @media (prefers-reduced-motion: reduce) {
   .season-crescent,
   .season-star,
+  .season-adha-star,
   .season-lantern,
   .season-lantern-swing,
-  .season-kahk,
-  .season-confetti,
+  .season-fitr-crescent,
+  .season-petal,
   .season-snowflake,
   .season-sparkle {
     animation: none !important;
@@ -263,7 +310,7 @@
   }
   /* Hide motion-only elements; keep static ornaments + tints visible. */
   .season-lantern,
-  .season-kahk,
-  .season-confetti,
+  .season-fitr-crescent,
+  .season-petal,
   .season-snowflake { display: none !important; }
 }

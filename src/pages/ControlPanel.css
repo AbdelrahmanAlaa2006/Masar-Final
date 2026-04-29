@@ -123,9 +123,12 @@
   font-size: 1.5rem;
   flex-shrink: 0;
 }
-.cp-accent-blue .cp-section-icon { background: linear-gradient(135deg, #4facfe, #00a3ff); }
+.cp-accent-blue   .cp-section-icon { background: linear-gradient(135deg, #4facfe, #00a3ff); }
 .cp-accent-orange .cp-section-icon { background: linear-gradient(135deg, #f6ad55, #dd6b20); }
 .cp-accent-purple .cp-section-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+.cp-accent-green  .cp-section-icon { background: linear-gradient(135deg, #34d399, #059669); }
+.cp-accent-pink   .cp-section-icon { background: linear-gradient(135deg, #f472b6, #db2777); }
+.cp-accent-cyan   .cp-section-icon { background: linear-gradient(135deg, #22d3ee, #0891b2); }
 
 .cp-section-body { flex: 1; min-width: 0; }
 .cp-section-body h3 {

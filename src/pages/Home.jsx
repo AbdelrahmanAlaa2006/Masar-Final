@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import HomeDashboard from '../components/HomeDashboard'
+import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import './Home.css'
-import examsIcon from '../assets/exams.png'
-import lecturesIcon from '../assets/lectures.png'
-import reportsIcon from '../assets/reports.png'
-import videosIcon from '../assets/videos.png'
+// PNG home cards replaced with theme-aware inline SVG icons. The
+// old assets are kept on disk in case anywhere else still loads
+// them, but the home page no longer imports them.
+import {
+  VideosIcon, LecturesIcon, ReportsIcon, ExamsIcon,
+} from '../components/HomeCardIcons'
 
 export default function Home() {
   const [username, setUsername] = useState('')
@@ -193,6 +196,16 @@ export default function Home() {
     return () => clearInterval(particleInterval)
   }, [])
 
+  // Per-season greeting copy. Christmas deliberately stays null —
+  // the user wants only the three islamic occasions to render a
+  // banner on the home page.
+  const seasonalTheme = useSeasonalTheme()
+  const seasonalGreeting = seasonalTheme && {
+    'ramadan':  { en: 'Ramadan Kareem',   ar: 'رمضان كريم',          emoji: '🌙' },
+    'eid-fitr': { en: 'Eid Fitr Mubarak', ar: 'عيد الفطر المبارك',   emoji: '✨' },
+    'eid-adha': { en: 'Eid Adha Mubarak', ar: 'عيد الأضحى المبارك',  emoji: '🕌' },
+  }[seasonalTheme.id] || null
+
   const marqueeItems = [
     '🚀 قريبًا: دورات مكثفة للمرحلة الإعدادية',
     '📅 امتحانات شهرية جديدة كل أسبوع',
@@ -205,6 +218,58 @@ export default function Home() {
   return (
     <main className="home">
       <canvas ref={canvasRef} className="home-constellation" aria-hidden="true" />
+
+      {/* Seasonal greeting banner — only on home, only for Ramadan +
+          the two Eids per the product spec. Christmas has decor but
+          no banner since it isn't a religious occasion in this
+          context. */}
+      {seasonalGreeting && (
+        <section
+          className={`home-seasonal home-seasonal-${seasonalTheme.id}`}
+          aria-label={seasonalGreeting.ar}
+        >
+          {/* Decorative left flourish — eight-point star + petals */}
+          <span className="home-seasonal-flourish home-seasonal-flourish-start" aria-hidden="true">
+            <svg viewBox="0 0 60 60" width="38" height="38">
+              <g transform="translate(30 30)" fill="currentColor" opacity="0.85">
+                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" />
+                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" transform="rotate(22.5)" opacity="0.55" />
+                <circle r="4" />
+              </g>
+            </svg>
+          </span>
+
+          {/* Big emoji "monogram" inside a gradient ring */}
+          <span className="home-seasonal-mono" aria-hidden="true">
+            <span className="home-seasonal-mono-inner">{seasonalGreeting.emoji}</span>
+          </span>
+
+          {/* Stacked text: English on top, Arabic below — both gradient-filled,
+              both animated (shimmer for the English, scale-pulse for the Arabic) */}
+          <div className="home-seasonal-text">
+            <span className="home-seasonal-en" data-text={seasonalGreeting.en}>
+              {seasonalGreeting.en}
+            </span>
+            <span className="home-seasonal-ar">{seasonalGreeting.ar}</span>
+          </div>
+
+          {/* Decorative right flourish — mirror of the left */}
+          <span className="home-seasonal-flourish home-seasonal-flourish-end" aria-hidden="true">
+            <svg viewBox="0 0 60 60" width="38" height="38">
+              <g transform="translate(30 30)" fill="currentColor" opacity="0.85">
+                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" />
+                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" transform="rotate(22.5)" opacity="0.55" />
+                <circle r="4" />
+              </g>
+            </svg>
+          </span>
+
+          {/* Sparkle dots layered absolutely — pure decoration */}
+          <span className="home-seasonal-sparkle home-seasonal-sparkle-1" aria-hidden="true" />
+          <span className="home-seasonal-sparkle home-seasonal-sparkle-2" aria-hidden="true" />
+          <span className="home-seasonal-sparkle home-seasonal-sparkle-3" aria-hidden="true" />
+        </section>
+      )}
 
       {/* Greeting banner */}
       <section className="home-greeting">
@@ -267,25 +332,25 @@ export default function Home() {
       <div className="container">
         <div id="cards" className="cards-grid">
           <div className="card" onClick={() => goAndTrack('exams', '/exams')}>
-            <img src={examsIcon} alt="Exams Icon" />
+            <span className="home-card-icon" aria-hidden="true"><ExamsIcon /></span>
             <h2>الامتحانات</h2>
             <p>{role === 'admin' ? 'إدارة الامتحانات ومتابعة نتائج الطلاب' : 'اختبارات التدريب والامتحانات السابقة'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('lectures', '/lectures')}>
-            <img src={lecturesIcon} alt="Lectures Icon" />
+            <span className="home-card-icon" aria-hidden="true"><LecturesIcon /></span>
             <h2>المحاضرات</h2>
             <p>{role === 'admin' ? 'إضافة المحاضرات وتنظيمها حسب المراحل' : 'جميع ملاحظاتك ومحاضراتك الدراسية'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('report', '/report')}>
-            <img src={reportsIcon} alt="Reports Icon" />
+            <span className="home-card-icon" aria-hidden="true"><ReportsIcon /></span>
             <h2>التقارير</h2>
             <p>{role === 'admin' ? 'تقارير أداء الطلاب وتحليلات المجموعات' : 'عرض تقارير الأداء والتقدم'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('videos', '/videos')}>
-            <img src={videosIcon} alt="Videos Icon" />
+            <span className="home-card-icon" aria-hidden="true"><VideosIcon /></span>
             <h2>الفيديوهات</h2>
             <p>{role === 'admin' ? 'رفع الفيديوهات وضبط صلاحيات المشاهدة' : 'مشاهدة الفيديوهات التعليمية'}</p>
           </div>

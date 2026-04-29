@@ -147,6 +147,41 @@ body.dark::after {
   image-rendering: auto;
 }
 
+/* Theme-aware home card icons. Stroke colours flow from the
+   active palette via CSS variables, so swapping the seasonal
+   theme automatically retints the four cards.
+
+   --icon-primary   = main stroke (default: theme primary)
+   --icon-secondary = accent stroke (default: theme secondary)
+
+   The SVGs use these vars directly via stroke="var(--icon-primary)"
+   etc., so we never touch the markup — only the variables. */
+.home-card-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  --icon-primary:   var(--primary,   #667eea);
+  --icon-secondary: var(--secondary, #764ba2);
+  filter: drop-shadow(0 6px 14px rgba(102, 126, 234, 0.18));
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              filter    0.3s ease;
+}
+.home-card-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.card:hover .home-card-icon {
+  transform: scale(1.08) rotate(-3deg);
+  filter: drop-shadow(0 10px 20px rgba(102, 126, 234, 0.30));
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-card-icon { transition: none; }
+  .card:hover .home-card-icon { transform: none; }
+}
+
 .card h2 {
   font-size: 1.5rem;
   margin-bottom: 10px;
@@ -276,6 +311,245 @@ body.dark .home-constellation { opacity: 0.9; }
 }
 
 /* ── Greeting banner with glowing gradient ─────────────── */
+/* ──────────────────────────────────────────────────────────────
+   Seasonal greeting banner — Ramadan / Eid Al-Fitr / Eid Al-Adha.
+
+   Architecture:
+     - flourish-start   — left geometric ornament
+     - mono             — round monogram with the theme emoji
+     - text             - vertical stack of EN + AR
+     - flourish-end     — right ornament (mirror)
+     - sparkle 1/2/3    — pure decoration
+   The whole banner enters with a fade+rise, has an animated
+   gradient sheen behind it, the emoji ring breathes, and the
+   English text gets a slow shimmer pass over the gradient fill.
+   ────────────────────────────────────────────────────────────── */
+.home-seasonal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 22px;
+  margin: 32px auto 0;
+  max-width: 1100px;
+  padding: 22px 36px;
+  border-radius: 24px;
+  position: relative;
+  font-family: 'Cairo', sans-serif;
+  text-align: center;
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.65),
+      rgba(255, 255, 255, 0.40));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--primary, #7c5cff);
+  animation: home-seasonal-enter 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes home-seasonal-enter {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* Soft animated halo BEHIND the card. Uses the theme's gradient
+   so each season gets its own glow tint. */
+.home-seasonal::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -2;
+  border-radius: inherit;
+  background: var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff));
+  filter: blur(20px);
+  opacity: 0.55;
+  animation: home-seasonal-glow 6s ease-in-out infinite;
+}
+@keyframes home-seasonal-glow {
+  0%, 100% { opacity: 0.40; transform: scale(1);    }
+  50%      { opacity: 0.75; transform: scale(1.02); }
+}
+
+/* Slow horizontal sheen sweeping across the card. */
+.home-seasonal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: home-seasonal-sheen 5s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+@keyframes home-seasonal-sheen {
+  0%   { transform: translateX(-110%); }
+  60%  { transform: translateX(110%);  }
+  100% { transform: translateX(110%);  }
+}
+
+body.dark .home-seasonal {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.04));
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+/* ── Side flourishes ────────────────────────────────────── */
+.home-seasonal-flourish {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary, #c9a45a);
+  filter: drop-shadow(0 0 10px currentColor);
+  animation: home-seasonal-flourish-spin 18s linear infinite;
+}
+.home-seasonal-flourish-end {
+  animation-direction: reverse;
+}
+@keyframes home-seasonal-flourish-spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Emoji monogram ring ───────────────────────────────── */
+.home-seasonal-mono {
+  flex-shrink: 0;
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff));
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  position: relative;
+  animation: home-seasonal-mono-breathe 3.4s ease-in-out infinite;
+}
+.home-seasonal-mono::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed currentColor;
+  opacity: 0.45;
+  animation: home-seasonal-mono-orbit 28s linear infinite;
+}
+.home-seasonal-mono-inner {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.30));
+}
+@keyframes home-seasonal-mono-breathe {
+  0%, 100% { transform: scale(1);    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+  50%      { transform: scale(1.05); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.65); }
+}
+@keyframes home-seasonal-mono-orbit {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Text stack ────────────────────────────────────────── */
+.home-seasonal-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.home-seasonal-en {
+  font-family: 'Inter', 'Cairo', system-ui, sans-serif;
+  font-size: clamp(1.15rem, 2.4vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  background: var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff));
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: home-seasonal-en-shimmer 4s ease-in-out infinite;
+}
+@keyframes home-seasonal-en-shimmer {
+  0%, 100% { background-position: 0% 50%;   }
+  50%      { background-position: 100% 50%; }
+}
+.home-seasonal-ar {
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  font-weight: 800;
+  background: var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff));
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: home-seasonal-ar-shimmer 4s ease-in-out infinite reverse;
+}
+@keyframes home-seasonal-ar-shimmer {
+  0%, 100% { background-position: 0% 50%;   }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ── Sparkle dots ──────────────────────────────────────── */
+.home-seasonal-sparkle {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  filter: drop-shadow(0 0 6px currentColor);
+  pointer-events: none;
+  animation: home-seasonal-sparkle 3s ease-in-out infinite;
+}
+.home-seasonal-sparkle-1 { top: 20%;   inset-inline-start: 18%; animation-delay: 0s;   }
+.home-seasonal-sparkle-2 { top: 70%;   inset-inline-end:   22%; animation-delay: 1s;   }
+.home-seasonal-sparkle-3 { top: 40%;   inset-inline-end:   12%; animation-delay: 2.2s; }
+@keyframes home-seasonal-sparkle {
+  0%, 100% { opacity: 0;    transform: scale(0.5); }
+  50%      { opacity: 0.95; transform: scale(1.2); }
+}
+
+@media (max-width: 640px) {
+  .home-seasonal {
+    flex-wrap: nowrap;
+    gap: 12px;
+    padding: 16px 14px;
+    margin: 18px 12px 0;
+    border-radius: 18px;
+  }
+  .home-seasonal-flourish { display: none; } /* keep just the mono + text */
+  .home-seasonal-mono     { width: 50px; height: 50px; }
+  .home-seasonal-mono-inner { font-size: 1.55rem; }
+  .home-seasonal-en       { letter-spacing: 0.8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-seasonal,
+  .home-seasonal::before,
+  .home-seasonal::after,
+  .home-seasonal-flourish,
+  .home-seasonal-mono,
+  .home-seasonal-mono::before,
+  .home-seasonal-en,
+  .home-seasonal-ar,
+  .home-seasonal-sparkle {
+    animation: none !important;
+  }
+}
+
 .home-greeting {
   text-align: center;
   padding: 48px 20px 16px;
