@@ -66,7 +66,7 @@ function useContentStats({ role }) {
         const [L, V, E, S] = await Promise.all([
           wrap(cached('lectures', 60_000, listLectures), 'lectures'),
           wrap(cached('videos',   60_000, listVideos),   'videos'),
-          wrap(cached('exams',    60_000, () => listExams({ lean: true })), 'exams'),
+          wrap(cached('exams',    60_000, listExams), 'exams'),
           // Students aren't allowed to read other profiles → skip that.
           role === 'admin'
             ? wrap(cached('students', 60_000, listStudents), 'students')

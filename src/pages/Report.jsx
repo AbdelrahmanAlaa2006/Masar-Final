@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { listStudents } from '@backend/profilesApi'
+import { cached } from '../utils/cache'
 import './Report.css'
 
 /* Map DB grade enum → Arabic label shown in the UI */
@@ -42,7 +43,7 @@ export default function Report() {
       try {
         setStudentsLoading(true)
         setStudentsError('')
-        const rows = await listStudents()
+        const rows = await cached('students', 60_000, listStudents)
         if (cancelled) return
         setAllStudents(rows.map((r) => ({
           id:         r.id,

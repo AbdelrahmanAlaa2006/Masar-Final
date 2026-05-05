@@ -5,6 +5,7 @@ import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
+import { cached, invalidate as invalidateCache } from '../utils/cache'
 
 const PREP_META = {
   first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -44,7 +45,7 @@ export default function Exams() {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await listExams()
+      const data = await cached('exams', 60_000, listExams)
       setRows(data)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل الامتحانات')
@@ -155,6 +156,7 @@ export default function Exams() {
     if (!target) return
     try {
       await deleteExam(target.id)
+      invalidateCache('exams')
       setRows(prev => prev.filter(e => e.id !== target.id))
       setConfirmDelete(null)
     } catch (err) {

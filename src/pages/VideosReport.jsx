@@ -4,6 +4,7 @@ import { listVideos } from '@backend/videosApi'
 import { getProfile } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
+import { cached } from '../utils/cache'
 import './VideosReport.css'
 
 const fmtDate = (d) => {
@@ -67,7 +68,7 @@ export default function VideosReport() {
         }
 
         // Videos + parts. Admin sees all grades through RLS, so we narrow.
-        const allVideos = await listVideos()
+        const allVideos = await cached('videos', 60_000, listVideos)
         const videos = targetGrade
           ? allVideos.filter((v) => v.grade === targetGrade)
           : allVideos

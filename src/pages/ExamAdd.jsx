@@ -4,6 +4,7 @@ import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade } from '@backend/examsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+import { invalidate as invalidateCache } from '../utils/cache'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
@@ -276,6 +277,7 @@ export default function ExamAdd() {
         total_points: payload.total_points,
         created_by: createdBy,
       })
+      invalidateCache('exams')
       setShowSuccess(true)
       setTimeout(() => { navigate('/exams') }, 1200)
     } catch (err) {
