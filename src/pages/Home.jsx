@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import './Home.css'
@@ -10,6 +11,7 @@ import {
 } from '../components/HomeCardIcons'
 
 export default function Home() {
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [role, setRole] = useState(null)
   const canvasRef = useRef(null)
@@ -27,7 +29,10 @@ export default function Home() {
       const next = [{ type, route, at: new Date().toISOString() }, ...filtered].slice(0, 5)
       localStorage.setItem('masar-recent', JSON.stringify(next))
     } catch {}
-    window.location.href = route
+    // Use React Router so we don't blow away the in-memory cache with a
+    // full page reload. Previous code did `window.location.href = route`
+    // which forced every navigation to re-fetch everything.
+    navigate(route)
   }
 
   useEffect(() => {
