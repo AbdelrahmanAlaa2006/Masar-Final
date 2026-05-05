@@ -83,7 +83,7 @@ export default function ControlPanel() {
         const [s, v, e] = await Promise.all([
           cached('students', 60_000, listStudents),
           cached('videos',   60_000, listVideos),
-          cached('exams',    60_000, listExams),
+          cached('exams',    60_000, () => listExams({ lean: true })),
         ])
         if (cancelled) return
         setStudents(s)
@@ -982,7 +982,7 @@ function RevealPanel({ onBack, flash }) {
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, st] = await Promise.all([listExams(), listStudents()])
+        const [ex, st] = await Promise.all([listExams({ lean: true }), listStudents()])
         if (!cancelled) {
           setExams(ex)
           setStudents(st)
@@ -1554,7 +1554,7 @@ function AvailabilityPanel({ onBack, flash, restrictTo }) {
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, vd, st] = await Promise.all([listExams(), listVideos(), listStudents()])
+        const [ex, vd, st] = await Promise.all([listExams({ lean: true }), listVideos(), listStudents()])
         if (!cancelled) { setExams(ex); setVideos(vd); setStudents(st) }
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')

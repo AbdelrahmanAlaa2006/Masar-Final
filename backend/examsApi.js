@@ -6,13 +6,18 @@ const DB_TO_UI = { 'first-prep': 'first', 'second-prep': 'second', 'third-prep':
 export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
 export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 
-// Lists exam metadata. The `questions` JSON column is intentionally NOT
-// selected — it can be huge and is only needed inside ExamTaking, where
-// getExam(id) fetches it. Keeping it out of the list cuts payload by 10–100x.
-export async function listExams() {
+// Default returns full exam rows (including the `questions` JSON column)
+// because ExamsReport / ExamsGroupReport / Exams render question counts
+// and answer reviews from it. Pass { lean: true } to skip the heavy
+// `questions` payload — useful for ControlPanel where only metadata is
+// needed (cuts payload by 10–100x for big exams).
+export async function listExams({ lean = false } = {}) {
+  const cols = lean
+    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at'
+    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, reveal_grades, created_at'
   const { data, error } = await supabase
     .from('exams')
-    .select('id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at')
+    .select(cols)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
