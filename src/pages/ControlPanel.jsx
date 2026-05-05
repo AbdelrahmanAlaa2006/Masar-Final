@@ -18,6 +18,7 @@ import {
   useSeasonalTheme,
 } from '../seasonal/useSeasonalTheme'
 import { findThemeForDate, todayIso } from '../seasonal/themes'
+import { cached } from '../utils/cache'
 import './ControlPanel.css'
 
 const GRADE_LABEL = {
@@ -77,7 +78,13 @@ export default function ControlPanel() {
     let cancelled = false
     ;(async () => {
       try {
-        const [s, v, e] = await Promise.all([listStudents(), listVideos(), listExams()])
+        // Reuse the same caches Videos.jsx / Lectures.jsx use (60s TTL).
+        // Students list is admin-only, separate key.
+        const [s, v, e] = await Promise.all([
+          cached('students', 60_000, listStudents),
+          cached('videos',   60_000, listVideos),
+          cached('exams',    60_000, listExams),
+        ])
         if (cancelled) return
         setStudents(s)
         setVideos(v)

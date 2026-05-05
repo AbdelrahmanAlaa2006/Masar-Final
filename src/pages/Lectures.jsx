@@ -12,6 +12,7 @@ import {
 } from '@backend/lecturesApi'
 import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+import { cached, invalidate as invalidateCache } from '../utils/cache'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -123,11 +124,12 @@ export default function Lectures() {
     }
   }, [])
 
-  const refresh = async () => {
+  const refresh = async ({ force = false } = {}) => {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await listLectures()
+      if (force) invalidateCache('lectures')
+      const data = await cached('lectures', 60_000, listLectures)
       setRows(data)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل المحاضرات')
@@ -244,7 +246,7 @@ export default function Lectures() {
 
       flash('تمت إضافة المحاضرة بنجاح')
       setModalOpen(false)
-      await refresh()
+      await refresh({ force: true })
     } catch (err) {
       // If we already pushed bytes to R2 but the DB insert failed, clean
       // up the orphans so the admin doesn't pay storage for nothing.
@@ -273,6 +275,7 @@ export default function Lectures() {
     if (!target) return
     try {
       await deleteLecture(target.id)
+      invalidateCache('lectures')
       setRows((prev) => prev.filter((r) => r.id !== target.id))
       flash('تم حذف المحاضرة', 'warning')
     } catch (err) {

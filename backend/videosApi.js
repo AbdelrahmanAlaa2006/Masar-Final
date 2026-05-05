@@ -13,7 +13,7 @@ export async function listVideos() {
       video_parts (
         id, part_index, title,
         source, youtube_id, youtube_url, drive_id, duration_seconds,
-        view_limit
+        view_limit, bunny_video_id, bunny_library_id
       )
     `)
     .order('created_at', { ascending: false })
@@ -74,7 +74,9 @@ export async function createVideo(input) {
 
   if (Array.isArray(input.parts) && input.parts.length) {
     const rows = input.parts.map((p, i) => {
-      const source = p.source === 'drive' ? 'drive' : 'youtube'
+      const source = p.source === 'drive' ? 'drive'
+                  : p.source === 'bunny' ? 'bunny'
+                  : 'youtube'
       return {
         video_id: video.id,
         part_index: i,
@@ -86,9 +88,13 @@ export async function createVideo(input) {
           : null,
         // Drive fields populated only when source = 'drive'.
         drive_id: source === 'drive' ? (p.drive_id || null) : null,
-        duration_seconds: source === 'drive' && p.duration_seconds
-          ? Math.max(1, parseInt(p.duration_seconds, 10) || 0) || null
-          : null,
+        // Bunny fields populated only when source = 'bunny'.
+        bunny_video_id:   source === 'bunny' ? (p.bunny_video_id   || null) : null,
+        bunny_library_id: source === 'bunny' ? (p.bunny_library_id || null) : null,
+        duration_seconds:
+          (source === 'drive' || source === 'bunny') && p.duration_seconds
+            ? Math.max(1, parseInt(p.duration_seconds, 10) || 0) || null
+            : null,
         // null = unlimited views; otherwise the per-part default cap.
         view_limit: p.view_limit == null || p.view_limit === ''
           ? null

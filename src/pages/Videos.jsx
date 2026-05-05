@@ -6,8 +6,10 @@ import QuizRunner from '../components/QuizRunner'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import YouTubePlayer from '../components/YouTubePlayer'
 import DrivePlayer from '../components/DrivePlayer'
+import BunnyPlayer from '../components/BunnyPlayer'
 import ScreenGuard from '../components/ScreenGuard'
 import { listVideos, deleteVideo } from '@backend/videosApi'
+import { cached, invalidate as invalidateCache } from '../utils/cache'
 import {
   listQuizAttemptsForVideo,
   listProgressForVideo,
@@ -36,6 +38,8 @@ function shapeVideo(row) {
     source: p.source || 'youtube',
     youtubeId: p.youtube_id || '',
     driveId: p.drive_id || '',
+    bunnyVideoId: p.bunny_video_id || '',
+    bunnyLibraryId: p.bunny_library_id || null,
     durationSeconds: p.duration_seconds || null,
     part_index: p.part_index,
     viewLimit: p.view_limit ?? null, // null = unlimited
@@ -103,11 +107,13 @@ function shapeVideo(row) {
   }, [])
 
   // ── Load videos from Supabase ────────────────────────────────
+  // 60s cache: videos rarely change between navigations. Admins who just
+  // added/deleted a video invalidate from VideoAdd / handleDeleteVideo.
   const refreshVideos = async () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await listVideos()
+      const data = await cached('videos', 60_000, listVideos)
       setAllVideos(data.map(shapeVideo))
     } catch (err) {
       setLoadError(err.message || 'جاري التحميل...')
@@ -279,6 +285,7 @@ function shapeVideo(row) {
     if (!target) return
     try {
       await deleteVideo(target.id)
+      invalidateCache('videos')
       setAllVideos(prev => prev.filter(v => v.id !== target.id))
       setConfirmDelete(null)
     } catch (err) {
@@ -347,7 +354,8 @@ function shapeVideo(row) {
     const studentId = currentUser.id
     const videoId   = currentVideo.id
     return () => {
-      incrementPartView({ student_id: studentId, video_id: videoId, part_id: partId })
+      // student_id derived from auth.uid() server-side; arg ignored.
+      incrementPartView({ video_id: videoId, part_id: partId })
         .then((updated) => {
           if (!updated) return
           setProgressRows((prev) => {
@@ -543,7 +551,7 @@ function shapeVideo(row) {
           <div className="video-player-container">
             <div className="video-main">
               <div className="card" style={{ padding: 12 }}>
-                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId) ? (
+                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
                   (() => {
                     // Both players share the same onProgress contract, so
                     // we hoist the handler and just swap the component.
@@ -563,6 +571,16 @@ function shapeVideo(row) {
                       }).catch((e) => console.error('updatePartProgress failed', e))
                     }
                     const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
+                    if (selectedPart.source === 'bunny') {
+                      return (
+                        <BunnyPlayer
+                          key={selectedPart.id}
+                          partId={selectedPart.id}
+                          initialWatchedSeconds={seed}
+                          onProgress={handleProgress}
+                        />
+                      )
+                    }
                     if (selectedPart.source === 'drive') {
                       return (
                         <DrivePlayer

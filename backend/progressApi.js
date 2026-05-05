@@ -51,34 +51,18 @@ export async function listProgressForVideo(videoId, studentId) {
   return data || []
 }
 
-// Not atomic — read-modify-write. Fine for MVP since a student only watches
-// from one tab at a time.
-export async function incrementPartView({ student_id, video_id, part_id }) {
-  const { data: existing, error: readErr } = await supabase
-    .from('video_progress')
-    .select('views_used')
-    .eq('student_id', student_id)
-    .eq('part_id', part_id)
-    .maybeSingle()
-  if (readErr) throw readErr
-
-  const views_used = (existing?.views_used || 0) + 1
-  const { data, error } = await supabase
-    .from('video_progress')
-    .upsert(
-      {
-        student_id,
-        video_id,
-        part_id,
-        views_used,
-        last_watched_at: new Date().toISOString(),
-      },
-      { onConflict: 'student_id,part_id' }
-    )
-    .select()
-    .single()
+// Atomic — uses the increment_part_view() Postgres function so two
+// concurrent tabs can't both read views_used=2 and each write 3.
+// student_id is derived from auth.uid() inside the function, so the
+// argument here is ignored on the server side (kept for API compat).
+export async function incrementPartView({ video_id, part_id }) {
+  const { data, error } = await supabase.rpc('increment_part_view', {
+    p_video_id: video_id,
+    p_part_id: part_id,
+  })
   if (error) throw error
-  return data
+  // RPC returns the upserted video_progress row
+  return Array.isArray(data) ? data[0] : data
 }
 
 // Admin: zero out a student's view counter for every part of one video.

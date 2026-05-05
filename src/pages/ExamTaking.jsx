@@ -164,18 +164,9 @@ export default function ExamTaking() {
   const isSelected = (qIdx, optIdx) =>
     (answers[qIdx] && answers[qIdx].has(optIdx)) || false
 
-  const computeScore = () => {
-    let earned = 0
-    questions.forEach((q, qIdx) => {
-      const picked = Array.from(answers[qIdx] || []).sort((a, b) => a - b)
-      const correct = [...(q.answers || [])].sort((a, b) => a - b)
-      const allMatch =
-        picked.length === correct.length &&
-        picked.every((v, i) => v === correct[i])
-      if (allMatch) earned += (q.points || 1)
-    })
-    return earned
-  }
+  // NOTE: scoring is computed SERVER-SIDE by submit_exam_attempt(). The
+  // client only sends raw responses. We never trust a score that came
+  // from this browser.
 
   const unansweredIndices = useMemo(
     () => questions.map((_, i) => i).filter(i => !answers[i] || answers[i].size === 0),
@@ -192,23 +183,20 @@ export default function ExamTaking() {
     }
     submittedRef.current = true
     setSubmitting(true)
-    const score = computeScore()
     const responses = questions.map((q, qIdx) => ({
       questionId: qIdx,
       selected: Array.from(answers[qIdx] || []),
     }))
+    let serverScore = 0
     try {
       if (attemptId) {
-        await submitAttempt(attemptId, {
-          score,
-          max_score: exam.total_points,
-          responses,
-        })
+        const res = await submitAttempt(attemptId, { responses })
+        serverScore = res?.score ?? 0
       }
     } catch (err) {
       console.error('submitAttempt failed', err)
     }
-    setFinalScore(score)
+    setFinalScore(serverScore)
     setExamFinished(true)
     setSubmitting(false)
     if (storageKey) {

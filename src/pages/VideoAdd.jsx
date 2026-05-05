@@ -3,6 +3,7 @@ import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+import { invalidate as invalidateCache } from '../utils/cache'
 
 // Pull a YouTube video id out of any common share URL. If the user already
 // pasted a bare 11-char id, keep it as-is.
@@ -98,10 +99,12 @@ export default function VideoAdd() {
     const newParts = Array(count).fill(null).map((_, i) => ({
       id: i,
       title: '',
-      source: 'youtube',         // 'youtube' | 'drive'
+      source: 'youtube',         // 'youtube' | 'drive' | 'bunny'
       videoId: '',                // YouTube id (when source='youtube')
       driveId: '',                // Drive file id (when source='drive')
-      durationMinutes: '',        // admin-entered duration for Drive parts
+      bunnyVideoId: '',           // Bunny Stream GUID (when source='bunny')
+      bunnyLibraryId: '',         // optional per-part library id (else default)
+      durationMinutes: '',        // admin-entered duration for non-YT parts
       viewLimit: 3,
     }))
 
@@ -254,7 +257,17 @@ export default function VideoAdd() {
     // Validate per-source identifiers
     for (let i = 0; i < videoParts.length; i++) {
       const p = videoParts[i]
-      if (p.source === 'drive') {
+      if (p.source === 'bunny') {
+        if (!p.bunnyVideoId || !p.bunnyVideoId.trim()) {
+          notify(`الجزء ${i + 1}: أدخل معرّف Bunny`, { type: 'warning' })
+          return
+        }
+        // Bunny GUIDs are uuid v4
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.bunnyVideoId.trim())) {
+          notify(`الجزء ${i + 1}: معرّف Bunny غير صالح (يجب أن يكون GUID)`, { type: 'warning' })
+          return
+        }
+      } else if (p.source === 'drive') {
         if (!p.driveId || !p.driveId.trim()) {
           notify(`الجزء ${i + 1}: أدخل معرّف ملف Google Drive`, { type: 'warning' })
           return
@@ -354,20 +367,26 @@ export default function VideoAdd() {
         quizzes: parsedQuizzes,
         created_by: createdBy,
         parts: videoParts.map(p => {
-          const isDrive = p.source === 'drive'
+          const src = p.source === 'drive' ? 'drive'
+                    : p.source === 'bunny' ? 'bunny'
+                    : 'youtube'
           const mins = parseFloat(p.durationMinutes)
+          const libId = parseInt(p.bunnyLibraryId, 10)
           return {
             title: p.title.trim(),
-            source: isDrive ? 'drive' : 'youtube',
-            youtube_id: isDrive ? null : p.videoId.trim(),
-            drive_id:   isDrive ? p.driveId.trim() : null,
-            duration_seconds: isDrive && mins > 0
+            source: src,
+            youtube_id:       src === 'youtube' ? p.videoId.trim() : null,
+            drive_id:         src === 'drive'   ? p.driveId.trim() : null,
+            bunny_video_id:   src === 'bunny'   ? p.bunnyVideoId.trim() : null,
+            bunny_library_id: src === 'bunny' && Number.isFinite(libId) && libId > 0 ? libId : null,
+            duration_seconds: (src === 'drive' || src === 'bunny') && mins > 0
               ? Math.round(mins * 60)
               : null,
             view_limit: p.viewLimit,
           }
         }),
       })
+      invalidateCache('videos')
       setShowSuccess(true)
       setTimeout(() => {
         setShowSuccess(false)
@@ -394,7 +413,13 @@ export default function VideoAdd() {
       return
     }
 
-    if (videoParts.length === 0 || videoParts.some(p => !p.title.trim() || !p.videoId.trim())) {
+    const partIncomplete = (p) => {
+      if (!p.title.trim()) return true
+      if (p.source === 'bunny') return !p.bunnyVideoId?.trim()
+      if (p.source === 'drive') return !p.driveId?.trim()
+      return !p.videoId?.trim()
+    }
+    if (videoParts.length === 0 || videoParts.some(partIncomplete)) {
       notify('يرجى ملء كل أجزاء الفيديو', { type: 'warning' })
       return
     }
@@ -548,10 +573,59 @@ export default function VideoAdd() {
                           <i className="fab fa-google-drive" style={{ color: '#4285f4' }}></i>
                           <span>Google Drive</span>
                         </label>
+                        <label className={`quiz-scope-opt ${part.source === 'bunny' ? 'is-on' : ''}`}>
+                          <input
+                            type="radio"
+                            name={`source-${part.id}`}
+                            checked={part.source === 'bunny'}
+                            onChange={() => updatePart(part.id, 'source', 'bunny')}
+                          />
+                          <i className="fas fa-cloud" style={{ color: '#f97316' }}></i>
+                          <span>Bunny Stream</span>
+                        </label>
                       </div>
                     </div>
 
-                    {part.source === 'youtube' ? (
+                    {part.source === 'bunny' ? (
+                      <>
+                        <div className="form-group">
+                          <label>معرّف فيديو Bunny (GUID)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: 3f9c7d12-4b2a-4cf2-9e1b-72a0bfa0cbe4"
+                            value={part.bunnyVideoId}
+                            onChange={(e) => updatePart(part.id, 'bunnyVideoId', e.target.value.trim())}
+                            maxLength={64}
+                          />
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            انسخ GUID الفيديو من لوحة Bunny Stream بعد رفعه.
+                          </small>
+                        </div>
+                        <div className="form-group">
+                          <label>معرّف المكتبة (Library ID) — اختياري</label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="اتركه فارغاً لاستخدام المكتبة الافتراضية"
+                            value={part.bunnyLibraryId}
+                            onChange={(e) => updatePart(part.id, 'bunnyLibraryId', e.target.value)}
+                          />
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            استخدم هذا فقط إذا كان الفيديو في مكتبة Bunny مختلفة عن الافتراضية.
+                          </small>
+                        </div>
+                        <div className="form-group">
+                          <label>مدة الفيديو (بالدقائق) — اختياري</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={part.durationMinutes}
+                            onChange={(e) => updatePart(part.id, 'durationMinutes', e.target.value)}
+                          />
+                        </div>
+                      </>
+                    ) : part.source === 'youtube' ? (
                       <div className="form-group">
                         <label>معرّف فيديو يوتيوب (Video ID)</label>
                         <input
@@ -990,8 +1064,14 @@ export default function VideoAdd() {
                         <div className="part-details">
                           <div>{part.title}</div>
                           <div className="part-duration">
-                            {part.source === 'drive' ? 'Drive' : 'YouTube'}:{' '}
-                            <code>{(part.source === 'drive' ? part.driveId : part.videoId) || '—'}</code>
+                            {part.source === 'bunny' ? 'Bunny'
+                              : part.source === 'drive' ? 'Drive'
+                              : 'YouTube'}:{' '}
+                            <code>{
+                              part.source === 'bunny' ? (part.bunnyVideoId || '—')
+                              : part.source === 'drive' ? (part.driveId || '—')
+                              : (part.videoId || '—')
+                            }</code>
                           </div>
                         </div>
                       </div>

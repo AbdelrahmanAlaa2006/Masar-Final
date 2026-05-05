@@ -6,10 +6,13 @@ const DB_TO_UI = { 'first-prep': 'first', 'second-prep': 'second', 'third-prep':
 export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
 export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 
+// Lists exam metadata. The `questions` JSON column is intentionally NOT
+// selected — it can be huge and is only needed inside ExamTaking, where
+// getExam(id) fetches it. Keeping it out of the list cuts payload by 10–100x.
 export async function listExams() {
   const { data, error } = await supabase
     .from('exams')
-    .select('id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, reveal_grades, created_at')
+    .select('id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
@@ -111,20 +114,19 @@ export async function startAttempt({ exam_id, student_id, max_score }) {
   return data
 }
 
-export async function submitAttempt(attemptId, { score, max_score, responses }) {
-  const { data, error } = await supabase
-    .from('exam_attempts')
-    .update({
-      score: parseInt(score) || 0,
-      max_score: parseInt(max_score) || 0,
-      responses: responses || [],
-      submitted_at: new Date().toISOString(),
-    })
-    .eq('id', attemptId)
-    .select()
-    .single()
+// Submit answers and let the SERVER compute the score. The client does NOT
+// pass `score` — it can't be trusted. The Postgres function reads the
+// exam's correct answers, scores responses, and writes the row atomically.
+// See backend/migrations/2026_05_05_hardening.sql → submit_exam_attempt.
+export async function submitAttempt(attemptId, { responses }) {
+  const { data, error } = await supabase.rpc('submit_exam_attempt', {
+    p_attempt_id: attemptId,
+    p_responses: responses || [],
+  })
   if (error) throw error
-  return data
+  // RPC returns a single row {score, max_score}
+  const row = Array.isArray(data) ? data[0] : data
+  return row || { score: 0, max_score: 0 }
 }
 
 // Used by /exams-report. RLS restricts students to their own id automatically.
