@@ -3,6 +3,13 @@
 // re-fetches on every navigation. Never cache per-user mutable state
 // (progress, attempts, notifications) — those must stay fresh.
 
+// Default TTL for shared list caches (videos, lectures, exams, students).
+// 5 minutes is safe because every admin write path explicitly invalidates
+// its cache key, and the worst case is a user seeing a slightly stale list
+// for up to 5 minutes — never a stale view of their own progress / attempts
+// (those are not cached at all).
+export const LIST_TTL = 5 * 60 * 1000
+
 // Stores the in-flight Promise (not the resolved value) so two concurrent
 // callers for the same key share a single network request — without this,
 // React's double-mount in dev or two effects firing in the same tick both

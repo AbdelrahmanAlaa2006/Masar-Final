@@ -108,6 +108,32 @@ export async function countSubmittedAttempts(examId, studentId, sinceIso = null)
   return count || 0
 }
 
+// Batch version: one query for all of the student's submitted attempts
+// across the given exam IDs, returns a Map<examId, count>. Used by
+// Exams.jsx so the badge "X/Y محاولات" doesn't fire one request per exam.
+//
+// `sinceMap` is { [examId]: ISO-string|null } — when an override exists for
+// an exam, only attempts at/after that timestamp count. We do the date
+// filtering client-side (one round-trip) instead of issuing one filtered
+// query per exam.
+export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap = {}) {
+  if (!examIds?.length || !studentId) return new Map()
+  const { data, error } = await supabase
+    .from('exam_attempts')
+    .select('exam_id, submitted_at')
+    .eq('student_id', studentId)
+    .in('exam_id', examIds)
+    .not('submitted_at', 'is', null)
+  if (error) throw error
+  const out = new Map(examIds.map((id) => [id, 0]))
+  for (const r of data || []) {
+    const cutoff = sinceMap[r.exam_id]
+    if (cutoff && r.submitted_at < cutoff) continue
+    out.set(r.exam_id, (out.get(r.exam_id) || 0) + 1)
+  }
+  return out
+}
+
 // Create an in-flight attempt row. Returns the row id to update on submit.
 export async function startAttempt({ exam_id, student_id, max_score }) {
   const { data, error } = await supabase

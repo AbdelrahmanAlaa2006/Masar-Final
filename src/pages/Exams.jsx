@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
-import { listExams, deleteExam, dbToUiGrade, countSubmittedAttempts } from '@backend/examsApi'
+import { listExams, deleteExam, dbToUiGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache } from '../utils/cache'
 
@@ -82,22 +82,22 @@ export default function Exams() {
   useEffect(() => {
     if (!userId || rows.length === 0) return
     let cancelled = false
-    const run = async () => {
-      const entries = await Promise.all(
-        rows.map(async (e) => {
-          try {
-            const o = overridesMap.get(e.id)
-            const since = o?.updatedAt || null
-            const n = await countSubmittedAttempts(e.id, userId, since)
-            return [e.id, n]
-          } catch {
-            return [e.id, 0]
-          }
-        })
-      )
-      if (!cancelled) setAttemptsMap(Object.fromEntries(entries))
-    }
-    run()
+    ;(async () => {
+      try {
+        // One request for all exam IDs instead of one per exam.
+        const sinceMap = {}
+        for (const e of rows) {
+          const o = overridesMap.get(e.id)
+          if (o?.updatedAt) sinceMap[e.id] = o.updatedAt
+        }
+        const counts = await countSubmittedAttemptsBatch(
+          rows.map((e) => e.id), userId, sinceMap
+        )
+        if (!cancelled) setAttemptsMap(Object.fromEntries(counts))
+      } catch {
+        if (!cancelled) setAttemptsMap({})
+      }
+    })()
     return () => { cancelled = true }
   }, [rows, userId, overridesMap])
 
