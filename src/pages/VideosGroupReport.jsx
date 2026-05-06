@@ -5,7 +5,7 @@ import { listStudents } from '@backend/profilesApi'
 import { listVideos } from '@backend/videosApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
-import { cached } from '../utils/cache'
+import { cached, LIST_TTL } from '../utils/cache'
 
 // DB grade enum → Arabic label shown in the UI.
 const GRADE_LABEL = {
@@ -38,8 +38,8 @@ export default function VideosGroupReport() {
     ;(async () => {
       try {
         const [s, v] = await Promise.all([
-          cached('students', 60_000, listStudents),
-          cached('videos', 60_000, listVideos),
+          cached('students', LIST_TTL, listStudents),
+          cached('videos', LIST_TTL, listVideos),
         ])
         if (cancelled) return
         setStudents(s)

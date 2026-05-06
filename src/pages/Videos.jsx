@@ -9,7 +9,7 @@ import DrivePlayer from '../components/DrivePlayer'
 import BunnyPlayer from '../components/BunnyPlayer'
 import ScreenGuard from '../components/ScreenGuard'
 import { listVideos, deleteVideo } from '@backend/videosApi'
-import { cached, invalidate as invalidateCache } from '../utils/cache'
+import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import {
   listQuizAttemptsForVideo,
   listProgressForVideo,
@@ -113,7 +113,7 @@ function shapeVideo(row) {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await cached('videos', 60_000, listVideos)
+      const data = await cached('videos', LIST_TTL, listVideos)
       setAllVideos(data.map(shapeVideo))
     } catch (err) {
       setLoadError(err.message || 'جاري التحميل...')

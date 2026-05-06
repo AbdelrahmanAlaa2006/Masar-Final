@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import { getProfile } from '@backend/profilesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
-import { cached } from '../utils/cache'
+import { cached, LIST_TTL } from '../utils/cache'
 import './ExamsReport.css'
 
 /* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
@@ -79,7 +79,7 @@ export default function ExamsReport() {
         }
 
         // All exams the viewer can see, then filter to the target's grade.
-        const allExamsRaw = await cached('exams', 60_000, listExams)
+        const allExamsRaw = await cached('exams', LIST_TTL, listExams)
         const allExams = targetGrade
           ? allExamsRaw.filter((e) => e.grade === targetGrade)
           : allExamsRaw

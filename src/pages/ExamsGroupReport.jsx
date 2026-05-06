@@ -4,7 +4,7 @@ import './ExamsGroupReport.css'
 import { listStudents } from '@backend/profilesApi'
 import { listExams } from '@backend/examsApi'
 import { supabase } from '@backend/supabase'
-import { cached } from '../utils/cache'
+import { cached, LIST_TTL } from '../utils/cache'
 
 const GRADE_LABEL = {
   'first-prep':  'الأول الإعدادي',
@@ -35,8 +35,8 @@ export default function ExamsGroupReport() {
     ;(async () => {
       try {
         const [s, e] = await Promise.all([
-          cached('students', 60_000, listStudents),
-          cached('exams', 60_000, listExams),
+          cached('students', LIST_TTL, listStudents),
+          cached('exams', LIST_TTL, listExams),
         ])
         if (cancelled) return
         setStudents(s)

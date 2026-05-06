@@ -12,7 +12,7 @@ import {
 } from '@backend/lecturesApi'
 import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
 import QuestionImagePicker from '../components/QuestionImagePicker'
-import { cached, invalidate as invalidateCache } from '../utils/cache'
+import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 
 /* ──────────────────────────────────────────────────────────────
    Lectures page — image-driven course cards + prep picker.
@@ -129,7 +129,7 @@ export default function Lectures() {
     setLoadError(null)
     try {
       if (force) invalidateCache('lectures')
-      const data = await cached('lectures', 60_000, listLectures)
+      const data = await cached('lectures', LIST_TTL, listLectures)
       setRows(data)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل المحاضرات')

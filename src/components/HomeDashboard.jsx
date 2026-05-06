@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listLectures } from '@backend/lecturesApi'
-import { cached } from '../utils/cache'
+import { cached, LIST_TTL } from '../utils/cache'
 import { listStudents } from '@backend/profilesApi'
 import './HomeDashboard.css'
 
@@ -64,12 +64,12 @@ function useContentStats({ role }) {
         // navigating Home → Videos doesn't double-fetch the same lists.
         // We only need counts here, so use the lean variant for exams.
         const [L, V, E, S] = await Promise.all([
-          wrap(cached('lectures', 60_000, listLectures), 'lectures'),
-          wrap(cached('videos',   60_000, listVideos),   'videos'),
-          wrap(cached('exams',    60_000, listExams), 'exams'),
+          wrap(cached('lectures', LIST_TTL, listLectures), 'lectures'),
+          wrap(cached('videos',   LIST_TTL, listVideos),   'videos'),
+          wrap(cached('exams',    LIST_TTL, listExams), 'exams'),
           // Students aren't allowed to read other profiles → skip that.
           role === 'admin'
-            ? wrap(cached('students', 60_000, listStudents), 'students')
+            ? wrap(cached('students', LIST_TTL, listStudents), 'students')
             : Promise.resolve({ ok: true, v: [] }),
         ])
         if (cancelled) return
