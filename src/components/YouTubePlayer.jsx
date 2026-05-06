@@ -235,11 +235,14 @@ export default function YouTubePlayer({
           }
           lastTickRef.current = { realMs: nowMs, videoSec: t }
 
-          // Throttled progress emission — every ~5s of wall clock.
+          // Throttled progress emission — every ~15s of wall clock.
+          // 5s was wasteful: a 5-min watch → 60 DB writes. 15s drops it
+          // to 20 writes for the same playback while still capturing
+          // useful checkpoints if the student closes the tab mid-video.
           if (typeof onProgress === 'function') {
             const now = Date.now()
             if (
-              now - lastProgressRef.current.t >= 5000 &&
+              now - lastProgressRef.current.t >= 15000 &&
               Math.abs(t - lastProgressRef.current.secs) >= 1
             ) {
               lastProgressRef.current = { t: now, secs: t }

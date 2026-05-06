@@ -8,6 +8,12 @@ import {
   createNotification,
   deleteNotification,
 } from '@backend/notificationsApi'
+import { cached, invalidate as invalidateCache } from '../utils/cache'
+
+// Short TTL — notifications change more often than the slow-moving lists.
+// 30s feels live enough that a freshly-revealed exam shows up "soon" while
+// still letting the user open/close the bell without re-fetching.
+const NOTIF_TTL = 30 * 1000
 
 const formatWhen = (iso) => {
   try {
@@ -56,8 +62,10 @@ export default function Notifications() {
     setLoading(true)
     try {
       const [rows, reads] = await Promise.all([
-        listNotifications(),
-        uid ? listMyReadIds(uid) : Promise.resolve([]),
+        cached('notifications', NOTIF_TTL, () => listNotifications()),
+        uid
+          ? cached(`reads:${uid}`, NOTIF_TTL, () => listMyReadIds(uid))
+          : Promise.resolve([]),
       ])
       setList(rows)
       setReadIds(new Set(reads))
@@ -97,21 +105,29 @@ export default function Notifications() {
     if (!ids.length || !userId) return
     const next = new Set(readIds); ids.forEach((id) => next.add(id))
     setReadIds(next)
-    try { await apiMarkAllRead(ids, userId) } catch { /* ignore */ }
+    try {
+      await apiMarkAllRead(ids, userId)
+      invalidateCache(`reads:${userId}`)
+    } catch { /* ignore */ }
   }
 
   const markOneRead = async (id) => {
     if (readIds.has(id) || !userId) return
     const next = new Set(readIds); next.add(id)
     setReadIds(next)
-    try { await apiMarkRead(id, userId) } catch { /* ignore */ }
+    try {
+      await apiMarkRead(id, userId)
+      invalidateCache(`reads:${userId}`)
+    } catch { /* ignore */ }
   }
 
   const deleteOne = async (id) => {
     const prev = list
     setList(list.filter((n) => n.id !== id))
-    try { await deleteNotification(id) }
-    catch { setList(prev) }
+    try {
+      await deleteNotification(id)
+      invalidateCache('notifications')
+    } catch { setList(prev) }
   }
 
   const sendNotification = async (e) => {
@@ -127,6 +143,7 @@ export default function Notifications() {
         targetGrade: scope === 'grade' ? draft.grade : null,
         createdBy: userId,
       })
+      invalidateCache('notifications')
       setList((p) => [row, ...p])
       setDraft({ title: '', message: '', level: 'warning', grade: 'all' })
       setComposeOpen(false)

@@ -47,7 +47,7 @@ export default function BunnyPlayer({ partId, onProgress }) {
           : (t.type === 'timeupdate' ? Number(t.data?.currentTime) : NaN)
       if (!Number.isFinite(ct)) return
       const now = Date.now()
-      if (now - lastReportRef.current < 5000) return
+      if (now - lastReportRef.current < 15000) return
       lastReportRef.current = now
       onProgress({ watchedSeconds: Math.floor(ct) })
     }

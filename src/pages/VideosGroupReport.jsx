@@ -132,12 +132,18 @@ export default function VideosGroupReport() {
       const totalMinutes = Math.ceil(totalSeconds / 60)
 
       const ids = gradeStudents.map(s => s.id)
-      const { data: progressRows, error } = await supabase
-        .from('video_progress')
-        .select('student_id, part_id, views_used, last_watched_at')
-        .eq('video_id', videoId)
-        .in('student_id', ids)
-      if (error) throw error
+      // Same cache trick as ExamsGroupReport — flipping back to a
+      // previously-viewed video doesn't hit the DB again within 5min.
+      const cacheKey = `video_progress:${videoId}:${currentGrade || 'all'}`
+      const progressRows = await cached(cacheKey, LIST_TTL, async () => {
+        const { data, error } = await supabase
+          .from('video_progress')
+          .select('student_id, part_id, views_used, last_watched_at')
+          .eq('video_id', videoId)
+          .in('student_id', ids)
+        if (error) throw error
+        return data || []
+      })
 
       // group progress rows by student
       const byStudent = {}

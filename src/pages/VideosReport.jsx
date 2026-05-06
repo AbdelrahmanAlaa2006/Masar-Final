@@ -76,11 +76,19 @@ export default function VideosReport() {
         // All progress rows for the target student across those videos.
         // We need seconds_watched here so the report reflects ACTUAL time
         // watched (not just "did they open this part once").
-        const { data: progressRows, error: progErr } = await supabase
-          .from('video_progress')
-          .select('video_id, part_id, views_used, seconds_watched, last_watched_at')
-          .eq('student_id', targetId)
-        if (progErr) throw progErr
+        // Per-student progress is cached so flipping between students
+        // (admin) doesn't refetch the same student's data each click.
+        const progressRows = await cached(
+          `video_progress_student:${targetId}`, LIST_TTL,
+          async () => {
+            const { data, error } = await supabase
+              .from('video_progress')
+              .select('video_id, part_id, views_used, seconds_watched, last_watched_at')
+              .eq('student_id', targetId)
+            if (error) throw error
+            return data || []
+          }
+        )
 
         // Group progress by video_id.
         const byVideo = new Map()

@@ -116,13 +116,20 @@ export default function ExamsGroupReport() {
     setReportLoading(true)
     try {
       const ids = gradeStudents.map(s => s.id)
-      const { data: attempts, error } = await supabase
-        .from('exam_attempts')
-        .select('student_id, score, max_score, submitted_at')
-        .eq('exam_id', examId)
-        .in('student_id', ids)
-        .not('submitted_at', 'is', null)
-      if (error) throw error
+      // Cache the attempts payload per exam+grade. Flipping the dropdown
+      // back to a previously-viewed exam serves from memory; the 5min TTL
+      // is fine because admins refresh the page if they need live numbers.
+      const cacheKey = `exam_attempts:${examId}:${currentGrade || 'all'}`
+      const attempts = await cached(cacheKey, LIST_TTL, async () => {
+        const { data, error } = await supabase
+          .from('exam_attempts')
+          .select('student_id, score, max_score, submitted_at')
+          .eq('exam_id', examId)
+          .in('student_id', ids)
+          .not('submitted_at', 'is', null)
+        if (error) throw error
+        return data || []
+      })
 
       // group attempts by student — keep best score + count
       const byStudent = {}
