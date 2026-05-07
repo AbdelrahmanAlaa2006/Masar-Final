@@ -313,7 +313,7 @@ export default function Home() {
           <>
             <h1>لوحة إدارة منصة مسار</h1>
             <p>
-              تابع أداء الطلاب، أدِر المحاضرات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.
+              تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.
             </p>
             <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
               انتقل إلى الإدارة
@@ -342,10 +342,10 @@ export default function Home() {
             <p>{role === 'admin' ? 'إدارة الامتحانات ومتابعة نتائج الطلاب' : 'اختبارات التدريب والامتحانات السابقة'}</p>
           </div>
 
-          <div className="card" onClick={() => goAndTrack('lectures', '/lectures')}>
+          <div className="card" onClick={() => goAndTrack('homeworks', '/homework')}>
             <span className="home-card-icon" aria-hidden="true"><LecturesIcon /></span>
-            <h2>المحاضرات</h2>
-            <p>{role === 'admin' ? 'إضافة المحاضرات وتنظيمها حسب المراحل' : 'جميع ملاحظاتك ومحاضراتك الدراسية'}</p>
+            <h2>الواجبات</h2>
+            <p>{role === 'admin' ? 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها' : 'حلّ واجباتك وارفع إجاباتك للمعلم'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('report', '/report')}>

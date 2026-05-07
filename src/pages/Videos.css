@@ -583,8 +583,21 @@ body.dark .modal-content {
 }
 
 .video-main {
-  min-height: 600px;
+  /* Height now follows the player's natural aspect ratio (16/9) so we
+     don't leave a giant empty dark band below short videos on mobile. */
 }
+
+/* Player page header — desktop = 3 columns (back | title | spacer),
+   mobile = stacked rows so the title doesn't squeeze into 4 lines. */
+.vid-player-header {
+  display: grid;
+  grid-template-columns: auto 1fr 120px;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.vid-player-titles { text-align: center; min-width: 0; }
+.vid-player-spacer { width: 120px; }
 
 .video-sidebar {
   position: sticky;
@@ -621,14 +634,14 @@ body.dark .modal-content {
 
 .video-frame {
   width: 100%;
-  height: 500px;
+  aspect-ratio: 16 / 9;
   border-radius: 16px;
   border: none;
 }
 
 .placeholder-video {
   width: 100%;
-  height: 500px;
+  aspect-ratio: 16 / 9;
   background: var(--gradient-primary);
   border-radius: 16px;
   display: flex;
@@ -727,14 +740,35 @@ body.dark .modal-content {
 
   .video-player-container {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .video-sidebar {
     position: static;
   }
 
+  /* Stack the player header vertically on mobile so the title gets a
+     full row instead of being squeezed between the back button and an
+     invisible spacer. */
+  .vid-player-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .vid-player-back {
+    justify-self: start;
+  }
+  .vid-player-spacer {
+    display: none;
+  }
+
   .title-main {
     font-size: 1.8rem;
+  }
+
+  /* Tighter card padding around the iframe */
+  .video-main .card {
+    padding: 6px !important;
   }
 
   .videos-page {
@@ -744,7 +778,8 @@ body.dark .modal-content {
 
 @media (max-width: 480px) {
   .title-main {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    margin-bottom: 4px;
   }
 
   .title-section {
@@ -760,13 +795,7 @@ body.dark .modal-content {
     height: 150px;
   }
 
-  .placeholder-video {
-    height: 250px;
-  }
-
-  .video-frame {
-    height: 250px;
-  }
+  /* aspect-ratio handles height now — no fixed values */
 }
 .videos-page .grade-grid,
 .videos-page .grade-card {

@@ -539,13 +539,13 @@ function shapeVideo(row) {
       {/* Video player */}
       {view === 'player' && (
         <div>
-          <div className="flex justify-between items-center mb-8 max-w-7xl mx-auto">
-            <button className="btn btn-outline" onClick={goBackToVideos}>← العودة للفيديوهات</button>
-            <div className="text-center">
+          <div className="vid-player-header max-w-7xl mx-auto">
+            <button className="btn btn-outline vid-player-back" onClick={goBackToVideos}>← العودة للفيديوهات</button>
+            <div className="vid-player-titles">
               <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
               <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
             </div>
-            <div style={{ width: '120px' }}></div>
+            <div className="vid-player-spacer" />
           </div>
 
           <div className="video-player-container">

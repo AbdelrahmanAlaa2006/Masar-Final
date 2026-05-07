@@ -4,7 +4,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import Lectures from './pages/Lectures'
+import Homework from './pages/Homework'
 import Exams from './pages/Exams'
 import Videos from './pages/Videos'
 import Report from './pages/Report'
@@ -228,7 +228,10 @@ function AppContent() {
           <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
           <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
-          <Route path="/lectures" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Lectures /></ProtectedRoute>} />
+          {/* Old /lectures URLs redirect to the new /homework page so
+              shared links / browser bookmarks keep working. */}
+          <Route path="/homework" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute>} />
+          <Route path="/lectures" element={<Navigate to="/homework" replace />} />
           <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
           <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
           <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />

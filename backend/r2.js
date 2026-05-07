@@ -99,6 +99,21 @@ export async function uploadQuizImage(file, opts = {}) {
   return uploadFile(file, { ...opts, kind: 'quiz-image' })
 }
 
+// Homework assignment PDFs (admin-uploaded).
+export async function uploadHomeworkPdf(file, opts = {}) {
+  return uploadFile(file, { ...opts, kind: 'homework' })
+}
+// Homework submission files (student-uploaded). PDFs or images allowed,
+// max 10 MB so a phone photo of handwritten work fits.
+export async function uploadHomeworkSubmission(file, opts = {}) {
+  if (file && file.size > 10 * 1024 * 1024) {
+    throw new Error('حجم الملف يجب ألا يتجاوز 10 ميجابايت')
+  }
+  const ok = file?.type === 'application/pdf' || file?.type?.startsWith('image/')
+  if (!ok) throw new Error('الملف يجب أن يكون PDF أو صورة')
+  return uploadFile(file, { ...opts, kind: 'homework-submission' })
+}
+
 // Legacy export kept for back-compat with any existing import sites.
 export async function getLecturePdfUploadUrl(file) {
   return presignUpload({ file, kind: 'lecture' })

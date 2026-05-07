@@ -3,14 +3,14 @@
 // trackVisit(type) on mount; we keep the 5 most-recent visits.
 //
 // Stored under localStorage['masar-recent'] as:
-//   [{ type: 'videos'|'lectures'|'exams'|'report', route, at }]
+//   [{ type: 'videos'|'homeworks'|'exams'|'report', route, at }]
 
 const KEY = 'masar-recent'
 const ROUTES = {
-  lectures: '/lectures',
-  videos:   '/videos',
-  exams:    '/exams',
-  report:   '/report',
+  homeworks: '/homework',
+  videos:    '/videos',
+  exams:     '/exams',
+  report:    '/report',
 }
 
 export function trackVisit(type) {

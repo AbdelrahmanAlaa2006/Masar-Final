@@ -70,7 +70,9 @@ serve(async (req) => {
   const isAvatar     = key.startsWith('avatars/')
   const isQuizImage  = key.startsWith('quiz-images/')
   const isLecture    = key.startsWith('lectures/')
-  if (!isAvatar && !isQuizImage && !isLecture) {
+  const isHomework   = key.startsWith('homeworks/')
+  const isHwSub      = key.startsWith('homework-submissions/')
+  if (!isAvatar && !isQuizImage && !isLecture && !isHomework && !isHwSub) {
     return json({ error: 'unsupported prefix' }, { status: 400 })
   }
 
@@ -86,7 +88,13 @@ serve(async (req) => {
     if (!isAdmin && owner !== userId) {
       return json({ error: 'not your avatar' }, { status: 403 })
     }
-  } else if (isQuizImage || isLecture) {
+  } else if (isHwSub) {
+    // homework-submissions/<owner-id>/<file> — owner OR admin.
+    const owner = key.split('/')[1]
+    if (!isAdmin && owner !== userId) {
+      return json({ error: 'not your submission' }, { status: 403 })
+    }
+  } else if (isQuizImage || isLecture || isHomework) {
     if (!isAdmin) return json({ error: 'admin only' }, { status: 403 })
   }
 

@@ -44,7 +44,7 @@ function sanitizeExt(name: string, fallback: string): string {
   return ext.replace(/[^a-z0-9.]/g, '') || fallback
 }
 
-type Kind = 'lecture' | 'avatar' | 'quiz-image'
+type Kind = 'lecture' | 'avatar' | 'quiz-image' | 'homework' | 'homework-submission'
 
 interface KindRule {
   adminOnly: boolean
@@ -75,6 +75,24 @@ const RULES: Record<Kind, KindRule> = {
     defaultExt: '.png',
     allowed: (ct) => ct.startsWith('image/'),
     invalidMsg: 'only image/* content types are allowed',
+  },
+  // Homework PDFs (the assignment) — admin only.
+  homework: {
+    adminOnly: true,
+    prefix: () => 'homeworks',
+    defaultExt: '.pdf',
+    allowed: (ct) => ct === 'application/pdf',
+    invalidMsg: 'only application/pdf is allowed',
+  },
+  // Homework submissions (the student's answer file) — any logged-in
+  // user; we scope the key prefix to the submitting user so a student
+  // can never overwrite another student's file.
+  'homework-submission': {
+    adminOnly: false,
+    prefix: (uid) => `homework-submissions/${uid}`,
+    defaultExt: '.pdf',
+    allowed: (ct) => ct === 'application/pdf' || ct.startsWith('image/'),
+    invalidMsg: 'only application/pdf or image/* are allowed',
   },
 }
 

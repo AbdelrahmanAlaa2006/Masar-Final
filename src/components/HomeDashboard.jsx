@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
-import { listLectures } from '@backend/lecturesApi'
+import { listHomeworks } from '@backend/homeworksApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import { listStudents } from '@backend/profilesApi'
 import './HomeDashboard.css'
@@ -17,10 +17,10 @@ const safeParse = (key, fallback) => {
 }
 
 const ROUTE_META = {
-  lectures: { icon: 'fa-book-bookmark',  route: '/lectures' },
-  exams:    { icon: 'fa-file-alt',       route: '/exams' },
-  videos:   { icon: 'fa-video',          route: '/videos' },
-  report:   { icon: 'fa-chart-line',     route: '/report' },
+  homeworks: { icon: 'fa-clipboard-list', route: '/homework' },
+  exams:     { icon: 'fa-file-alt',       route: '/exams' },
+  videos:    { icon: 'fa-video',          route: '/videos' },
+  report:    { icon: 'fa-chart-line',     route: '/report' },
 }
 
 export default function HomeDashboard({ role }) {
@@ -38,7 +38,7 @@ export default function HomeDashboard({ role }) {
      loading — true while the initial fetch is in flight
 */
 function useContentStats({ role }) {
-  const [stats,  setStats]  = useState({ students: 0, lectures: 0, videos: 0, exams: 0 })
+  const [stats,  setStats]  = useState({ students: 0, homeworks: 0, videos: 0, exams: 0 })
   const [recent, setRecent] = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -63,10 +63,10 @@ function useContentStats({ role }) {
         // Share the 60s cache with Videos / Lectures / ControlPanel so
         // navigating Home → Videos doesn't double-fetch the same lists.
         // We only need counts here, so use the lean variant for exams.
-        const [L, V, E, S] = await Promise.all([
-          wrap(cached('lectures', LIST_TTL, listLectures), 'lectures'),
-          wrap(cached('videos',   LIST_TTL, listVideos),   'videos'),
-          wrap(cached('exams',    LIST_TTL, listExams), 'exams'),
+        const [H, V, E, S] = await Promise.all([
+          wrap(cached('homeworks', LIST_TTL, listHomeworks), 'homeworks'),
+          wrap(cached('videos',    LIST_TTL, listVideos),    'videos'),
+          wrap(cached('exams',     LIST_TTL, listExams),     'exams'),
           // Students aren't allowed to read other profiles → skip that.
           role === 'admin'
             ? wrap(cached('students', LIST_TTL, listStudents), 'students')
@@ -74,24 +74,24 @@ function useContentStats({ role }) {
         ])
         if (cancelled) return
 
-        const lectures = L.ok ? L.v : []
-        const videos   = V.ok ? V.v : []
-        const exams    = E.ok ? E.v : []
-        const students = S.ok ? S.v : []
+        const homeworks = H.ok ? H.v : []
+        const videos    = V.ok ? V.v : []
+        const exams     = E.ok ? E.v : []
+        const students  = S.ok ? S.v : []
 
         setStats({
-          students: students.length,
-          lectures: lectures.length,
-          videos:   videos.length,
-          exams:    exams.length,
+          students:  students.length,
+          homeworks: homeworks.length,
+          videos:    videos.length,
+          exams:     exams.length,
         })
 
         // Carry richer per-item details into the recent panel: the type
         // (so we can render the right icon/label), grade (so we can show
         // a pill), and one extra piece of context per resource.
         const combined = [
-          ...lectures.map(r => ({
-            type: 'lectures', title: r.title, at: r.created_at,
+          ...homeworks.map(r => ({
+            type: 'homeworks', title: r.title, at: r.created_at,
             grade: r.grade, extra: r.subject || r.teacher || null,
           })),
           ...videos.map(r => ({
@@ -108,7 +108,7 @@ function useContentStats({ role }) {
         combined.sort((a, b) => new Date(b.at) - new Date(a.at))
         setRecent(combined.slice(0, 5))
 
-        const fails = [L, V, E, S].filter((r) => !r.ok)
+        const fails = [H, V, E, S].filter((r) => !r.ok)
         if (fails.length) {
           setError(fails.map((f) => `${f.label}: ${f.e?.message || 'failed'}`).join(' • '))
         }
@@ -130,9 +130,9 @@ const GRADE_SHORT = {
   'third-prep':  'تالتة إعدادي',
 }
 const TYPE_LABEL = {
-  lectures: 'محاضرة',
-  videos:   'فيديو',
-  exams:    'امتحان',
+  homeworks: 'واجب',
+  videos:    'فيديو',
+  exams:     'امتحان',
 }
 
 /* ─────────── Student ─────────── */
@@ -141,16 +141,16 @@ function StudentDashboard() {
   const navigate = useNavigate()
   const [recentNav, setRecentNav] = useState(() => safeParse('masar-recent', []))
   const [progress] = useState(() => safeParse('masar-progress', {
-    lectures: { done: 0, total: 0 },
-    videos:   { done: 0, total: 0 },
-    exams:    { done: 0, total: 0 },
+    homeworks: { done: 0, total: 0 },
+    videos:    { done: 0, total: 0 },
+    exams:     { done: 0, total: 0 },
   }))
   const [upcoming] = useState(() => safeParse('masar-upcoming-exam', null))
   // Live content for THIS student's grade (RLS does the filtering).
   const { stats, recent, loading, error, refresh } = useContentStats({ role: 'student' })
 
   const routeLabels = {
-    lectures: 'المحاضرات',
+    homeworks: 'الواجبات',
     exams: 'الامتحانات',
     videos: 'الفيديوهات',
     report: 'التقارير',
@@ -178,7 +178,7 @@ function StudentDashboard() {
       {/* Live grade-scoped overview — RLS shows only this student's grade. */}
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
-          <StatCell icon="fa-book"     label="المحاضرات" value={stats.lectures} />
+          <StatCell icon="fa-clipboard-list" label="الواجبات"   value={stats.homeworks} />
           <StatCell icon="fa-video"    label="الفيديوهات"   value={stats.videos} />
           <StatCell icon="fa-file-alt" label="الامتحانات"    value={stats.exams} />
         </div>
@@ -218,7 +218,7 @@ function StudentDashboard() {
         title="تقدمك"
         accent="cyan"
       >
-        <ProgressRow label="المحاضرات" data={progress.lectures} accent="#8b5cf6" />
+        <ProgressRow label="الواجبات" data={progress.homeworks} accent="#8b5cf6" />
         <ProgressRow label="الفيديوهات" data={progress.videos}   accent="#06b6d4" />
         <ProgressRow label="الامتحانات" data={progress.exams}    accent="#f59e0b" />
       </WidgetCard>
@@ -290,7 +290,7 @@ function AdminDashboard() {
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
           <StatCell icon="fa-user-graduate" label="الطلاب" value={stats.students} />
-          <StatCell icon="fa-book"          label="المحاضرات" value={stats.lectures} />
+          <StatCell icon="fa-clipboard-list" label="الواجبات"  value={stats.homeworks} />
           <StatCell icon="fa-video"         label="الفيديوهات"   value={stats.videos} />
           <StatCell icon="fa-file-alt"      label="الامتحانات"    value={stats.exams} />
         </div>
