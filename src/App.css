@@ -152,3 +152,12 @@ body.dark .auth-toast-sub { color: #94a3b8; }
   background: linear-gradient(90deg, #10b981, #06b6d4);
 }
 @keyframes authBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* When a student is actively watching a video, hide the global header
+   + footer so the only way out is the page's own back button (which
+   shows a confirm dialog). Mirrors how the exam-taking screen hides
+   the header to prevent accidental navigation away mid-attempt. */
+body.is-watching-video .mh,
+body.is-watching-video footer {
+  display: none !important;
+}

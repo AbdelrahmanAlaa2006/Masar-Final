@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
 import ScreenGuard from '../components/ScreenGuard'
+import useExitGuard from '../hooks/useExitGuard'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
@@ -98,6 +99,18 @@ export default function ExamTaking() {
   }, [examId])
 
   const questions = exam?.questions || []
+
+  // Block accidental navigation while the exam is in progress. Disabled
+  // for admins (so they can preview/leave freely) and once the exam is
+  // finished (so the "العودة إلى الامتحانات" button works without prompt).
+  const guardActive = !!exam && !examFinished && !((() => {
+    try { return JSON.parse(sessionStorage.getItem('masar-user'))?.role === 'admin' }
+    catch { return false }
+  })())
+  useExitGuard({
+    active: guardActive,
+    message: 'الامتحان ما زال جارياً. الخروج الآن قد يضيع إجاباتك. هل أنت متأكد؟',
+  })
 
   // ── Persist progress on every change so a refresh resumes mid-exam.
   // We store the absolute deadline (not the remaining seconds) so the

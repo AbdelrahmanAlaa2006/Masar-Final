@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
-import { listExams, deleteExam, dbToUiGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
+import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 
@@ -56,10 +56,10 @@ export default function Exams() {
 
   useEffect(() => { refresh() }, [])
 
-  // Pull effective overrides (admin scope 'prep' + student scope 'student')
-  // for this student once we know their id+grade.
+  // Pull effective overrides — STUDENTS ONLY. Admins manage overrides via
+  // ControlPanel; the Exams page renders the raw list for them.
   useEffect(() => {
-    if (!userId) return
+    if (!userId || userRole === 'admin') { setOverridesMap(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
@@ -73,14 +73,18 @@ export default function Exams() {
       } catch { /* ignore — defaults apply */ }
     })()
     return () => { cancelled = true }
-  }, [userId])
+  }, [userId, userRole])
 
   // Fetch submitted-attempt counts for the currently displayed exams.
   // If an admin override exists for this exam, we only count attempts
   // submitted *since* the override was last saved — so bumping/re-saving
   // the bonus acts as a fresh "N tries from now" grant.
   useEffect(() => {
-    if (!userId || rows.length === 0) return
+    // Admins don't take exams — skip the attempt-count batch. Saves one
+    // round trip per visit to /exams for the admin.
+    if (!userId || userRole === 'admin' || rows.length === 0) {
+      setAttemptsMap({}); return
+    }
     let cancelled = false
     ;(async () => {
       try {
@@ -99,7 +103,7 @@ export default function Exams() {
       }
     })()
     return () => { cancelled = true }
-  }, [rows, userId, overridesMap])
+  }, [rows, userId, userRole, overridesMap])
 
   const examsByLevel = useMemo(() => {
     const out = { first: [], second: [], third: [] }
@@ -148,8 +152,22 @@ export default function Exams() {
   }
 
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+  const [editExam, setEditExam] = useState(null)           // exam row | null
 
   const requestDelete = (exam) => setConfirmDelete({ id: exam.id, title: exam.title })
+
+  const requestEdit = (exam) => setEditExam(exam)
+  const saveExamEdit = async (patch) => {
+    if (!editExam) return
+    try {
+      const updated = await updateExam(editExam.id, patch)
+      invalidateCache('exams')
+      setRows(prev => prev.map(e => e.id === editExam.id ? { ...e, ...updated } : e))
+      setEditExam(null)
+    } catch (err) {
+      setAlertModal('تعذر الحفظ', err.message || 'حدث خطأ أثناء حفظ التعديلات.')
+    }
+  }
 
   const performDelete = async () => {
     const target = confirmDelete
@@ -214,9 +232,14 @@ export default function Exams() {
           <span className="ec-status-dot" />
           <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
           {userRole === 'admin' && (
-            <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestDelete(exam) }}>
-              🗑 حذف
-            </button>
+            <>
+              <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestEdit(exam) }} style={{ marginInlineEnd: 6 }}>
+                ✏️ تعديل
+              </button>
+              <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestDelete(exam) }}>
+                🗑 حذف
+              </button>
+            </>
           )}
         </div>
 
@@ -361,6 +384,98 @@ export default function Exams() {
           onConfirm={performDelete}
         />
       )}
+
+      {editExam && (
+        <EditExamModal
+          exam={editExam}
+          onCancel={() => setEditExam(null)}
+          onSave={saveExamEdit}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ── Inline edit modal for an existing exam (basic metadata only).
+   Editing the questions array is intentionally NOT supported here —
+   delete + recreate the exam if you need to change question content. */
+function EditExamModal({ exam, onCancel, onSave }) {
+  const [title, setTitle]    = useState(exam.title || '')
+  const [number, setNumber]  = useState(exam.number || '')
+  const [grade, setGrade]    = useState(exam.grade || 'first-prep')
+  const [duration, setDur]   = useState(exam.duration_minutes || 30)
+  const [maxAtt, setMaxAtt]  = useState(exam.max_attempts || 1)
+  const [hours, setHours]    = useState(exam.available_hours || 72)
+  const [points, setPoints]  = useState(exam.total_points || 0)
+  const [reveal, setReveal]  = useState(!!exam.reveal_grades)
+  const [busy, setBusy]      = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (busy || !title.trim()) return
+    setBusy(true)
+    try {
+      await onSave({
+        title: title.trim(),
+        number: number || null,
+        grade,
+        duration_minutes: duration,
+        max_attempts: maxAtt,
+        available_hours: hours,
+        total_points: points,
+        reveal_grades: reveal,
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const inp = { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }
+  const lbl = { display: 'block', marginBottom: 4, fontWeight: 600 }
+
+  return (
+    <div className="modal show" onClick={onCancel}>
+      <div className="modal-content" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+        <button className="close-btn" onClick={onCancel}>&times;</button>
+        <h3 className="title-card mb-4">تعديل الامتحان</h3>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label><span style={lbl}>العنوان</span>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required style={inp} /></label>
+          <label><span style={lbl}>رقم الامتحان</span>
+            <input type="text" value={number} onChange={(e) => setNumber(e.target.value)} style={inp} /></label>
+          <label><span style={lbl}>الصف الدراسي</span>
+            <select value={grade} onChange={(e) => setGrade(e.target.value)} style={inp}>
+              <option value="first-prep">الصف الأول الإعدادي</option>
+              <option value="second-prep">الصف الثاني الإعدادي</option>
+              <option value="third-prep">الصف الثالث الإعدادي</option>
+            </select></label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label><span style={lbl}>المدة (دقيقة)</span>
+              <input type="number" min="1" value={duration} onChange={(e) => setDur(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
+            <label><span style={lbl}>عدد المحاولات</span>
+              <input type="number" min="1" value={maxAtt} onChange={(e) => setMaxAtt(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label><span style={lbl}>الإتاحة (ساعة)</span>
+              <input type="number" min="1" value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
+            <label><span style={lbl}>الدرجة الكاملة</span>
+              <input type="number" min="0" value={points} onChange={(e) => setPoints(parseInt(e.target.value, 10) || 0)} style={inp} /></label>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={reveal} onChange={(e) => setReveal(e.target.checked)} />
+            <span>إظهار الدرجات للطلاب</span>
+          </label>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+            <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>إلغاء</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? '⏳ جاري الحفظ...' : '✓ حفظ التعديلات'}
+            </button>
+          </div>
+        </form>
+        <p style={{ marginTop: 12, fontSize: 12, color: '#718096' }}>
+          ملاحظة: لتعديل الأسئلة، احذف الامتحان وأعد إنشاءه.
+        </p>
+      </div>
     </div>
   )
 }

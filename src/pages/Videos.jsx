@@ -8,7 +8,8 @@ import YouTubePlayer from '../components/YouTubePlayer'
 import DrivePlayer from '../components/DrivePlayer'
 import BunnyPlayer from '../components/BunnyPlayer'
 import ScreenGuard from '../components/ScreenGuard'
-import { listVideos, deleteVideo } from '@backend/videosApi'
+import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
+import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import {
   listQuizAttemptsForVideo,
@@ -124,28 +125,29 @@ function shapeVideo(row) {
 
   useEffect(() => { refreshVideos() }, [])
 
-  // Load admin-set overrides. For students we filter by their own id+grade
-  // (RLS would do it anyway). For admins we load by the grade they're
-  // currently browsing so the green/red dot reflects what students see.
+  // Load admin-set overrides — STUDENTS ONLY. Admins manage overrides
+  // through ControlPanel; on the Videos page they see all videos as
+  // "available" without per-student override resolution. This skips a
+  // network round-trip for every admin visit.
   useEffect(() => {
     if (!currentUser?.id) return
-    const isAdmin = currentUser.role === 'admin'
-    const grade = isAdmin ? currentGrade : currentUser.grade
+    if (currentUser.role === 'admin') { setVideoOverrides(new Map()); return }
+    const grade = currentUser.grade
     if (!grade) { setVideoOverrides(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
         const rows = await listEffectiveOverrides({
-          studentId: isAdmin ? '00000000-0000-0000-0000-000000000000' : currentUser.id,
+          studentId: currentUser.id,
           grade,
-          group: isAdmin ? null : (currentUser.group || null),
+          group: currentUser.group || null,
           itemType: 'video',
         })
         if (!cancelled) setVideoOverrides(reduceEffective(rows))
       } catch { /* defaults apply */ }
     })()
     return () => { cancelled = true }
-  }, [currentUser, currentGrade])
+  }, [currentUser])
 
   // ── Group by grade for the grid ──────────────────────────────
   const videosByGrade = useMemo(() => {
@@ -157,6 +159,9 @@ function shapeVideo(row) {
   }, [allVideos])
 
   // ── Load per-video quiz attempts & progress when player opens ─
+  // Admins don't have progress/attempts of their own — skip entirely.
+  // They preview videos without burning view counts (already enforced
+  // below) and aren't gated by quizzes.
   useEffect(() => {
     let cancelled = false
     const run = async () => {
@@ -164,6 +169,11 @@ function shapeVideo(row) {
         setQuizAttempts([])
         setProgressRows([])
         passedThisSessionRef.current = new Set()
+        return
+      }
+      if (currentUser.role === 'admin') {
+        setQuizAttempts([])
+        setProgressRows([])
         return
       }
       try {
@@ -256,6 +266,12 @@ function shapeVideo(row) {
     setCurrentGrade(''); setCurrentVideo(null); setSelectedPart(null); setView('grades')
   }
   const goBackToVideos = () => {
+    // Confirm before leaving an actively-playing part so a mistouch
+    // doesn't burn a view-counter (or close mid-video for the student).
+    // Admins are exempt — they preview without using attempts.
+    if (selectedPart && userRole !== 'admin') {
+      if (!confirmExit('هل تريد الخروج من الفيديو؟ المحاولة قد تُحتسب.')) return
+    }
     setCurrentVideo(null); setSelectedPart(null); setView('videos')
   }
   const openVideoPlayer = (video) => {
@@ -264,6 +280,22 @@ function shapeVideo(row) {
     }
     setCurrentVideo(video); setSelectedPart(null); setView('player')
   }
+  // Lock screen mode while a student is actively watching a part:
+  //   • exit guard intercepts back-button + tab-close
+  //   • body class hides the global Header / Footer so the only way out
+  //     is the page's own back button (which calls confirmExit)
+  // Admins are exempt — they preview videos without view-counter cost.
+  const isWatching = view === 'player' && !!selectedPart && userRole !== 'admin'
+  useExitGuard({
+    active: isWatching,
+    message: 'هل تريد الخروج من الفيديو؟ المحاولة قد تُحتسب إذا غادرت الآن.',
+  })
+  useEffect(() => {
+    if (!isWatching) return
+    document.body.classList.add('is-watching-video')
+    return () => document.body.classList.remove('is-watching-video')
+  }, [isWatching])
+
   const goToAddVideo = () => {
     localStorage.setItem('selectedVideoGrade', currentGrade)
     navigate('/video-add')
@@ -272,12 +304,36 @@ function shapeVideo(row) {
   const showAlertModal = (title, message) => { setAlertData({ title, message }); setShowAlert(true) }
   const closeAlertModal = () => setShowAlert(false)
 
-  // ── Delete (admin) ───────────────────────────────────────────
+  // ── Edit / Delete (admin) ─────────────────────────────────────
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, title } | null
+  const [editVideo, setEditVideo] = useState(null)         // video object | null
+
+  const handleEditVideo = (video, e) => {
+    e?.stopPropagation()
+    setEditVideo(video)
+  }
 
   const handleDeleteVideo = (video, e) => {
     e?.stopPropagation()
     setConfirmDelete({ id: video.id, title: video.title })
+  }
+
+  const saveVideoEdit = async (patch) => {
+    if (!editVideo) return
+    try {
+      const updated = await updateVideo(editVideo.id, patch)
+      invalidateCache('videos')
+      // Patch the in-memory list so the card reflects the change
+      // immediately without a re-fetch round-trip.
+      setAllVideos(prev => prev.map(v => v.id === editVideo.id
+        ? { ...v, title: updated.title, description: updated.description,
+            grade: updated.grade, activeHours: updated.active_hours,
+            expiryTime: updated.expiry_at }
+        : v))
+      setEditVideo(null)
+    } catch (err) {
+      showAlertModal('خطأ', err.message || 'تعذر حفظ التعديلات')
+    }
   }
 
   const performDeleteVideo = async () => {
@@ -490,9 +546,14 @@ function shapeVideo(row) {
                       <span className="vc-status-dot" />
                       <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
                       {userRole === 'admin' && (
-                        <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
-                          🗑 حذف
-                        </button>
+                        <>
+                          <button className="vc-delete-btn" onClick={(e) => handleEditVideo(video, e)} style={{ marginInlineEnd: 6 }}>
+                            ✏️ تعديل
+                          </button>
+                          <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
+                            🗑 حذف
+                          </button>
+                        </>
                       )}
                     </div>
 
@@ -571,33 +632,28 @@ function shapeVideo(row) {
                       }).catch((e) => console.error('updatePartProgress failed', e))
                     }
                     const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
-                    if (selectedPart.source === 'bunny') {
-                      return (
-                        <BunnyPlayer
-                          key={selectedPart.id}
-                          partId={selectedPart.id}
-                          initialWatchedSeconds={seed}
-                          onProgress={handleProgress}
-                        />
-                      )
-                    }
-                    if (selectedPart.source === 'drive') {
-                      return (
-                        <DrivePlayer
-                          key={selectedPart.id}
-                          driveId={selectedPart.driveId}
-                          initialWatchedSeconds={seed}
-                          onProgress={handleProgress}
-                        />
-                      )
-                    }
                     return (
-                      <YouTubePlayer
-                        key={selectedPart.id}
-                        videoId={selectedPart.youtubeId}
-                        initialWatchedSeconds={seed}
-                        onProgress={handleProgress}
-                      />
+                      <PlayerFacade key={selectedPart.id} part={selectedPart}>
+                        {selectedPart.source === 'bunny' ? (
+                          <BunnyPlayer
+                            partId={selectedPart.id}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                          />
+                        ) : selectedPart.source === 'drive' ? (
+                          <DrivePlayer
+                            driveId={selectedPart.driveId}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                          />
+                        ) : (
+                          <YouTubePlayer
+                            videoId={selectedPart.youtubeId}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                          />
+                        )}
+                      </PlayerFacade>
                     )
                   })()
                 ) : (
@@ -711,6 +767,180 @@ function shapeVideo(row) {
           onConfirm={performDeleteVideo}
         />
       )}
+
+      {/* Edit-video modal (basic metadata only) */}
+      {editVideo && (
+        <EditVideoModal
+          video={editVideo}
+          onCancel={() => setEditVideo(null)}
+          onSave={saveVideoEdit}
+        />
+      )}
     </div>
+  )
+}
+
+/* ── Inline edit modal for an existing video ───────────────────
+   Edits only metadata: title / description / grade / active_hours.
+   Editing parts/quizzes is intentionally NOT supported here — those
+   are nested arrays. To change them, delete the video and re-add. */
+function EditVideoModal({ video, onCancel, onSave }) {
+  const [title, setTitle] = useState(video.title || '')
+  const [desc,  setDesc]  = useState(video.description || '')
+  const [grade, setGrade] = useState(video.grade || 'first-prep')
+  const [hours, setHours] = useState(video.activeHours || 24)
+  const [busy,  setBusy]  = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (busy) return
+    if (!title.trim()) return
+    setBusy(true)
+    try {
+      await onSave({
+        title: title.trim(),
+        description: desc.trim(),
+        grade,
+        active_hours: parseInt(hours, 10) || 24,
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="modal show" onClick={onCancel}>
+      <div className="modal-content" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+        <button className="close-btn" onClick={onCancel}>&times;</button>
+        <h3 className="title-card mb-4">تعديل الفيديو</h3>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label>
+            <span style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>العنوان</span>
+            <input
+              type="text" value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }}
+            />
+          </label>
+          <label>
+            <span style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>الوصف</span>
+            <textarea
+              rows={3} value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }}
+            />
+          </label>
+          <label>
+            <span style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>الصف الدراسي</span>
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }}
+            >
+              <option value="first-prep">الصف الأول الإعدادي</option>
+              <option value="second-prep">الصف الثاني الإعدادي</option>
+              <option value="third-prep">الصف الثالث الإعدادي</option>
+            </select>
+          </label>
+          <label>
+            <span style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>مدة التفعيل (ساعة)</span>
+            <input
+              type="number" min="1" value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }}
+            />
+            <small style={{ display: 'block', marginTop: 4, color: '#718096' }}>
+              يُحتسب موعد الانتهاء من تاريخ الإنشاء + هذه المدة.
+            </small>
+          </label>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
+            <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>إلغاء</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? '⏳ جاري الحفظ...' : '✓ حفظ التعديلات'}
+            </button>
+          </div>
+        </form>
+        <p style={{ marginTop: 12, fontSize: 12, color: '#718096' }}>
+          ملاحظة: لتعديل أجزاء الفيديو أو الامتحانات داخله، احذف الفيديو وأعد إنشاءه.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* PlayerFacade — render a static thumbnail + custom play button until
+   the user clicks. ONLY THEN do we mount the real player (which loads
+   the YouTube IFrame API / Bunny iframe / Drive viewer). For YouTube
+   videos the thumbnail is fetched directly from i.ytimg.com — one
+   image request instead of the ~20 requests YouTube's embed normally
+   pulls (iframe_api, widgetapi, fonts, lottie, telemetry, etc.).
+
+   This is the standard "lite-youtube-embed" pattern but extended to
+   cover Drive + Bunny too. The wrapped child only mounts when the
+   admin/student actually clicks ▶. */
+function PlayerFacade({ part, children }) {
+  const [armed, setArmed] = useState(false)
+  if (armed) return children
+
+  // Pick the best free thumbnail per source.
+  let poster = null
+  if (part.source === 'youtube' && part.youtubeId) {
+    // hqdefault always exists for any public/unlisted video; smaller +
+    // faster than maxresdefault (which 404s for some videos).
+    poster = `https://i.ytimg.com/vi/${part.youtubeId}/hqdefault.jpg`
+  }
+  // Drive & Bunny don't expose a public thumbnail without auth; we
+  // render the gradient placeholder. (Bunny's preview URL needs a
+  // signed token, not worth a request just for a poster.)
+
+  return (
+    <button
+      type="button"
+      onClick={() => setArmed(true)}
+      aria-label="تشغيل الفيديو"
+      style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '16/9',
+        background: poster
+          ? `#000 center/cover no-repeat url(${poster})`
+          : 'linear-gradient(135deg, #1f2937, #4338ca)',
+        border: 0,
+        borderRadius: 8,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'rgba(0,0,0,0.25)',
+        transition: 'background .15s',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.92)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.4)',
+          color: '#7c3aed', fontSize: 28,
+        }}>
+          <i className="fas fa-play" aria-hidden="true"></i>
+        </span>
+      </div>
+      <div style={{
+        position: 'absolute', bottom: 12, insetInlineStart: 12,
+        background: 'rgba(0,0,0,0.65)', color: '#fff',
+        padding: '4px 10px', borderRadius: 6,
+        fontSize: 12, fontWeight: 600,
+      }}>
+        {part.source === 'bunny' ? 'Bunny Stream' :
+         part.source === 'drive' ? 'Google Drive' :
+         'YouTube'}
+      </div>
+    </button>
   )
 }

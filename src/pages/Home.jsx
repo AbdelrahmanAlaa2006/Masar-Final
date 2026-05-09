@@ -377,28 +377,7 @@ export default function Home() {
             : 'لو بتواجهك أي مشاكل أو عندك أي استفسارات أو اقتراحات أو أي حاجة عايزنا نعرفها متترددش إنك تتواصل معانا'}
         </p>
 
-        {/* Social Icons Section */}
-        <div className="social-icons-container">
-          <a href="https://github.com/yourUsername" target="_blank" rel="noopener noreferrer" className="social-icon">
-            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" alt="GitHub" />
-          </a>
 
-          <a href="https://wa.me/201234567890" target="_blank" rel="noopener noreferrer" className="social-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" />
-          </a>
-
-          <a href="https://www.facebook.com/yourPage" target="_blank" rel="noopener noreferrer" className="social-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" />
-          </a>
-
-          <a href="https://www.linkedin.com/in/yourProfile" target="_blank" rel="noopener noreferrer" className="social-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/145/145807.png" alt="LinkedIn" />
-          </a>
-
-          <a href="mailto:yourEmail@gmail.com" target="_blank" rel="noopener noreferrer" className="social-icon">
-            <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Gmail" />
-          </a>
-        </div>
       </section>
     </main>
   )

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 // UI grade id  ('first'/'second'/'third')  <->  DB grade enum  ('first-prep'/...)
 const UI_TO_DB = { first: 'first-prep', second: 'second-prep', third: 'third-prep' }
@@ -11,12 +12,19 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 // ────────────────────────────────────────────────────────────────────
 
 // RLS scopes students to their grade; admins see all.
+// answer_key holds the MCQ answer key — students get it too (RLS allows
+// SELECT) which means an attacker could read it. That's acceptable for
+// homework (not exam) since the score is ALSO stored server-side and
+// computed by submit_homework() — students learning the answer key just
+// guarantees themselves a perfect score, which they could do with a PDF
+// hint anyway. If you want the key hidden, move it to a server-only view
+// or strip it on the client. (For now we expose it so admin UI can edit.)
 export async function listHomeworks() {
   const { data, error } = await supabase
     .from('homeworks')
     .select(
       'id, title, description, subject, teacher, week, grade, ' +
-      'cover_url, pdf_url, pdf_key, due_at, max_score, created_at'
+      'cover_url, pdf_url, pdf_key, due_at, max_score, answer_key, created_at'
     )
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -24,6 +32,15 @@ export async function listHomeworks() {
 }
 
 export async function createHomework(input) {
+  // answer_key shape: [{ options: 4, correct: 1 }, ...]
+  // Total questions = answer_key.length. Each correct answer is worth
+  // round(max_score / questions) points.
+  const key = Array.isArray(input.answer_key) ? input.answer_key : []
+  const cleanKey = key.map((q) => ({
+    options: Math.max(2, Math.min(10, parseInt(q?.options, 10) || 4)),
+    correct: Math.max(0, parseInt(q?.correct, 10) || 0),
+  }))
+
   const payload = {
     title:       input.title,
     description: input.description || null,
@@ -35,7 +52,8 @@ export async function createHomework(input) {
     pdf_url:     input.pdf_url || null,
     pdf_key:     input.pdf_key || null,
     due_at:      input.due_at || null,
-    max_score:   input.max_score == null ? 100 : Math.max(0, parseInt(input.max_score, 10) || 0),
+    max_score:   input.max_score == null ? Math.max(1, cleanKey.length) : Math.max(0, parseInt(input.max_score, 10) || 0),
+    answer_key:  cleanKey,
     created_by:  input.created_by || null,
   }
   const { data, error } = await supabase
@@ -44,6 +62,49 @@ export async function createHomework(input) {
     .select()
     .single()
   if (error) throw error
+  return data
+}
+
+// Update an existing homework. Only the keys present in `input` are
+// written — pass `pdf_url`/`pdf_key` only when REPLACING the file (the
+// caller is responsible for cleaning up the old R2 object first if it
+// wants to). answer_key is replaced wholesale when present.
+export async function updateHomework(id, input) {
+  const patch = {}
+  const copy = (k) => { if (input[k] !== undefined) patch[k] = input[k] }
+  copy('title'); copy('description'); copy('subject'); copy('teacher')
+  copy('week'); copy('grade'); copy('cover_url')
+  copy('pdf_url'); copy('pdf_key'); copy('due_at')
+
+  if (input.max_score !== undefined) {
+    patch.max_score = Math.max(0, parseInt(input.max_score, 10) || 0)
+  }
+  if (Array.isArray(input.answer_key)) {
+    patch.answer_key = input.answer_key.map((q) => ({
+      options: Math.max(2, Math.min(10, parseInt(q?.options, 10) || 4)),
+      correct: Math.max(0, parseInt(q?.correct, 10) || 0),
+    }))
+  }
+
+  // If the admin uploaded a NEW pdf, we need to delete the OLD one in R2
+  // — fetch the previous key first.
+  let oldPdfKey = null
+  if (patch.pdf_key !== undefined) {
+    const { data: prev } = await supabase
+      .from('homeworks').select('pdf_key').eq('id', id).maybeSingle()
+    oldPdfKey = prev?.pdf_key || null
+  }
+
+  const { data, error } = await supabase
+    .from('homeworks').update(patch).eq('id', id).select().single()
+  if (error) throw error
+
+  if (oldPdfKey && oldPdfKey !== patch.pdf_key) {
+    try {
+      const { deleteR2Object } = await import('./r2')
+      await deleteR2Object({ key: oldPdfKey }).catch(() => {})
+    } catch { /* ignore */ }
+  }
   return data
 }
 
@@ -117,41 +178,36 @@ export async function getMySubmissionsBatch(homeworkIds, studentId) {
   return out
 }
 
-// Create or update the student's submission. RLS prevents writing
-// score/feedback/graded_* — those columns are admin-only.
-export async function upsertSubmission({
-  homework_id, student_id,
-  submission_url = null, submission_key = null, note = null,
-}) {
-  const payload = {
-    homework_id, student_id,
-    submission_url, submission_key, note,
-    submitted_at: new Date().toISOString(),
-  }
-  const { data, error } = await supabase
-    .from('homework_submissions')
-    .upsert(payload, { onConflict: 'homework_id,student_id' })
-    .select()
-    .single()
+// Submit (or re-submit) MCQ answers. The server reads the answer key,
+// auto-grades, and writes the row — the client never computes the score.
+// Returns { score, max_score, correct, total }.
+export async function submitHomework(homeworkId, responses) {
+  const { data, error } = await supabase.rpc('submit_homework', {
+    p_homework_id: homeworkId,
+    p_responses:   Array.isArray(responses) ? responses : [],
+  })
   if (error) throw error
-  return data
+  return Array.isArray(data) ? data[0] : data
 }
 
 // Admin: list all submissions for a homework (joins profile name/phone
 // so the grading screen doesn't have to join client-side).
 export async function listSubmissionsForHomework(homeworkId) {
   if (!homeworkId) return []
-  const { data, error } = await supabase
-    .from('homework_submissions')
-    .select(
-      'id, homework_id, student_id, submission_url, submission_key, ' +
-      'note, submitted_at, score, feedback, graded_at, graded_by, ' +
-      'profiles:student_id ( name, phone, grade, "group" )'
-    )
-    .eq('homework_id', homeworkId)
-    .order('submitted_at', { ascending: false })
-  if (error) throw error
-  return data || []
+  return cached(`hw_subs:${homeworkId}`, 60_000, async () => {
+    const { data, error } = await supabase
+      .from('homework_submissions')
+      .select(
+        'id, homework_id, student_id, submission_url, submission_key, ' +
+        'note, submitted_at, score, max_score, responses, ' +
+        'feedback, graded_at, graded_by, ' +
+        'profiles:student_id ( name, phone, grade, "group" )'
+      )
+      .eq('homework_id', homeworkId)
+      .order('submitted_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  })
 }
 
 // Admin: write a grade + feedback. Pass null to clear.
@@ -169,6 +225,9 @@ export async function gradeSubmission(submissionId, { score, feedback, graderId 
     .select()
     .single()
   if (error) throw error
+  // Wipe submission caches — we don't know which homework this was for
+  // without an extra round-trip, and there are very few such caches.
+  invalidatePrefix('hw_subs:')
   return data
 }
 

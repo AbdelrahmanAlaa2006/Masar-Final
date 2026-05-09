@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 /* access_overrides wrapper.
    Rows key = (scope, target_id, item_type, item_id) UNIQUE.
@@ -22,18 +23,30 @@ export function groupTargetId(grade, group) {
 const TABLE = 'access_overrides'
 
 /* Admin: fetch all overrides for a single target (the admin is editing one
-   target at a time). Returns a Map keyed by `${item_type}:${item_id}`. */
+   target at a time). Returns a Map keyed by `${item_type}:${item_id}`.
+   Cached per (scope, targetId, itemType) — invalidated by upsertOverride
+   and deleteOverride below so the admin always sees fresh data after edits. */
 export async function listOverridesForTarget(scope, targetId, itemType) {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('item_id, item_type, allowed, attempts, available_hours')
-    .eq('scope', scope)
-    .eq('target_id', String(targetId))
-    .eq('item_type', itemType)
-  if (error) throw error
-  const map = new Map()
-  for (const r of (data || [])) map.set(`${r.item_type}:${r.item_id}`, r)
-  return map
+  const key = `overrides:target:${scope}:${targetId}:${itemType}`
+  return cached(key, LIST_TTL, async () => {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('item_id, item_type, allowed, attempts, available_hours')
+      .eq('scope', scope)
+      .eq('target_id', String(targetId))
+      .eq('item_type', itemType)
+    if (error) throw error
+    const map = new Map()
+    for (const r of (data || [])) map.set(`${r.item_type}:${r.item_id}`, r)
+    return map
+  })
+}
+
+// Wipe every override-related cache entry after any write so the next
+// read sees fresh data. The keys we set start with `overrides:` so a
+// prefix invalidation catches them all.
+function invalidateOverrideCaches() {
+  invalidatePrefix('overrides:')
 }
 
 /* Admin: upsert one override row. Pass { allowed, attempts } — either may be
@@ -54,6 +67,7 @@ export async function upsertOverride({ scope, targetId, itemType, itemId, allowe
     .select()
     .single()
   if (error) throw error
+  invalidateOverrideCaches()
   return data
 }
 
@@ -67,6 +81,7 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
     .eq('item_type', itemType)
     .eq('item_id', itemId)
   if (error) throw error
+  invalidateOverrideCaches()
 }
 
 /* Student / admin-impersonation: list every override that applies to this
@@ -76,22 +91,25 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
    the same either way. The `group` arg is optional; when omitted no group
    filter is added to the OR clause. */
 export async function listEffectiveOverrides({ studentId, grade, group, itemType }) {
-  // Compose the OR clause dynamically so we don't ask the server for
-  // group rows we know can't match (e.g. the student isn't in a group).
-  const clauses = [
-    `and(scope.eq.student,target_id.eq.${studentId})`,
-    `and(scope.eq.prep,target_id.eq.${grade})`,
-  ]
-  if (group) {
-    clauses.push(`and(scope.eq.group,target_id.eq.${groupTargetId(grade, group)})`)
-  }
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('scope, target_id, item_type, item_id, allowed, attempts, available_hours, updated_at')
-    .eq('item_type', itemType)
-    .or(clauses.join(','))
-  if (error) throw error
-  return data || []
+  const key = `overrides:eff:${studentId}:${grade}:${group || ''}:${itemType}`
+  return cached(key, LIST_TTL, async () => {
+    // Compose the OR clause dynamically so we don't ask the server for
+    // group rows we know can't match (e.g. the student isn't in a group).
+    const clauses = [
+      `and(scope.eq.student,target_id.eq.${studentId})`,
+      `and(scope.eq.prep,target_id.eq.${grade})`,
+    ]
+    if (group) {
+      clauses.push(`and(scope.eq.group,target_id.eq.${groupTargetId(grade, group)})`)
+    }
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('scope, target_id, item_type, item_id, allowed, attempts, available_hours, updated_at')
+      .eq('item_type', itemType)
+      .or(clauses.join(','))
+    if (error) throw error
+    return data || []
+  })
 }
 
 /* Given the rows returned above, reduce to the effective setting per item.

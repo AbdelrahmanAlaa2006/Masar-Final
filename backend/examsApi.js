@@ -66,6 +66,27 @@ export async function createExam(input) {
   return data
 }
 
+// Patch exam metadata (title / number / grade / duration / max_attempts /
+// available_hours / total_points / reveal_grades). Editing the
+// `questions` array is NOT supported here — re-build the exam if you
+// need to change individual questions.
+export async function updateExam(id, input) {
+  const patch = {}
+  if (input.title           !== undefined) patch.title = String(input.title).trim()
+  if (input.number          !== undefined) patch.number = input.number || null
+  if (input.grade           !== undefined) patch.grade = input.grade
+  if (input.duration_minutes !== undefined) patch.duration_minutes = Math.max(1, parseInt(input.duration_minutes, 10) || 1)
+  if (input.max_attempts     !== undefined) patch.max_attempts = Math.max(1, parseInt(input.max_attempts, 10) || 1)
+  if (input.available_hours  !== undefined) patch.available_hours = Math.max(1, parseInt(input.available_hours, 10) || 1)
+  if (input.total_points     !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
+  if (input.reveal_grades    !== undefined) patch.reveal_grades = !!input.reveal_grades
+
+  const { data, error } = await supabase
+    .from('exams').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteExam(id) {
   const { error } = await supabase.from('exams').delete().eq('id', id)
   if (error) throw error

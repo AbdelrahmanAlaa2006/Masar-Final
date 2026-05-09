@@ -259,12 +259,13 @@ export default function VideoAdd() {
       const p = videoParts[i]
       if (p.source === 'bunny') {
         if (!p.bunnyVideoId || !p.bunnyVideoId.trim()) {
-          notify(`الجزء ${i + 1}: أدخل معرّف Bunny`, { type: 'warning' })
+          notify(`الجزء ${i + 1}: ارفع ملف الفيديو إلى Bunny قبل الحفظ`, { type: 'warning' })
           return
         }
-        // Bunny GUIDs are uuid v4
+        // Bunny GUIDs are uuid v4 — sanity check, the upload flow always
+        // produces this format so admins won't normally hit this branch.
         if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.bunnyVideoId.trim())) {
-          notify(`الجزء ${i + 1}: معرّف Bunny غير صالح (يجب أن يكون GUID)`, { type: 'warning' })
+          notify(`الجزء ${i + 1}: معرّف Bunny غير صالح`, { type: 'warning' })
           return
         }
       } else if (p.source === 'drive') {
@@ -587,44 +588,11 @@ export default function VideoAdd() {
                     </div>
 
                     {part.source === 'bunny' ? (
-                      <>
-                        <div className="form-group">
-                          <label>معرّف فيديو Bunny (GUID)</label>
-                          <input
-                            type="text"
-                            placeholder="مثال: 3f9c7d12-4b2a-4cf2-9e1b-72a0bfa0cbe4"
-                            value={part.bunnyVideoId}
-                            onChange={(e) => updatePart(part.id, 'bunnyVideoId', e.target.value.trim())}
-                            maxLength={64}
-                          />
-                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                            انسخ GUID الفيديو من لوحة Bunny Stream بعد رفعه.
-                          </small>
-                        </div>
-                        <div className="form-group">
-                          <label>معرّف المكتبة (Library ID) — اختياري</label>
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="اتركه فارغاً لاستخدام المكتبة الافتراضية"
-                            value={part.bunnyLibraryId}
-                            onChange={(e) => updatePart(part.id, 'bunnyLibraryId', e.target.value)}
-                          />
-                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                            استخدم هذا فقط إذا كان الفيديو في مكتبة Bunny مختلفة عن الافتراضية.
-                          </small>
-                        </div>
-                        <div className="form-group">
-                          <label>مدة الفيديو (بالدقائق) — اختياري</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={part.durationMinutes}
-                            onChange={(e) => updatePart(part.id, 'durationMinutes', e.target.value)}
-                          />
-                        </div>
-                      </>
+                      <BunnyUploader
+                        part={part}
+                        title={videoTitle ? `${videoTitle} — ${part.title || `الجزء ${part.id + 1}`}` : (part.title || 'video')}
+                        onChange={(patch) => Object.entries(patch).forEach(([k, v]) => updatePart(part.id, k, v))}
+                      />
                     ) : part.source === 'youtube' ? (
                       <div className="form-group">
                         <label>معرّف فيديو يوتيوب (Video ID)</label>
@@ -1094,5 +1062,161 @@ export default function VideoAdd() {
         )}
       </div>
     </div>
+  )
+}
+
+/* BunnyUploader — admin picks a video file → handshake with our edge
+   function (which creates a Bunny video record server-side) → TUS upload
+   directly to Bunny. The Bunny library API key never reaches the
+   browser. We persist the resulting GUID on the part.
+
+   States:
+     idle       — no file picked
+     ready      — file picked, waiting for the admin to click "ابدأ الرفع"
+     uploading  — TUS upload in progress (% via onProgress)
+     done       — upload finished; part.bunnyVideoId is set
+     error      — display the message + allow retry
+*/
+function BunnyUploader({ part, title, onChange }) {
+  const [file, setFile]      = useState(null)
+  const [pct, setPct]        = useState(0)
+  const [status, setStatus]  = useState(part.bunnyVideoId ? 'done' : 'idle')
+  const [error, setError]    = useState('')
+
+  const startUpload = async () => {
+    if (!file) return
+    setError('')
+    setStatus('uploading')
+    setPct(0)
+    try {
+      // Lazy-load to keep the Bunny code out of the main bundle until needed.
+      const { createBunnyUpload, uploadBunnyVideo } = await import('@backend/bunnyApi')
+      const params = await createBunnyUpload({ title })
+      onChange({ bunnyVideoId: params.guid, bunnyLibraryId: params.libraryId })
+      await uploadBunnyVideo(file, params, {
+        onProgress: (p) => setPct(p),
+      })
+      setStatus('done')
+    } catch (err) {
+      setError(err?.message || 'فشل رفع الفيديو')
+      setStatus('error')
+    }
+  }
+
+  const reset = () => {
+    setFile(null)
+    setPct(0)
+    setStatus('idle')
+    setError('')
+    onChange({ bunnyVideoId: '', bunnyLibraryId: '' })
+  }
+
+  return (
+    <>
+      <div className="form-group">
+        <label>ملف الفيديو</label>
+        {status === 'done' && part.bunnyVideoId ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+            border: '1px solid #16a34a', borderRadius: 10, background: '#f0fdf4',
+            color: '#15803d',
+          }}>
+            <i className="fas fa-circle-check"></i>
+            <span style={{ flex: 1 }}>تم رفع الفيديو بنجاح إلى Bunny.</span>
+            <button type="button" className="btn-link" onClick={reset}
+              style={{ background: 'none', border: 0, color: '#15803d', textDecoration: 'underline', cursor: 'pointer' }}>
+              استبدال
+            </button>
+          </div>
+        ) : (
+          <>
+            <label htmlFor={`bunny-file-${part.id}`} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+              border: '1px dashed #cbd5e0', borderRadius: 10, background: '#f8fafc',
+              cursor: status === 'uploading' ? 'not-allowed' : 'pointer',
+              opacity: status === 'uploading' ? 0.6 : 1,
+              color: '#2d3748', fontWeight: 500,
+            }}>
+              <i className="fas fa-cloud-arrow-up" style={{ color: '#f97316' }}></i>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {file ? file.name : 'اختر ملف الفيديو من جهازك'}
+              </span>
+              {file && (
+                <span style={{ fontSize: 12, color: '#718096' }}>
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+              )}
+            </label>
+            <input
+              id={`bunny-file-${part.id}`}
+              type="file"
+              accept="video/*"
+              style={{ display: 'none' }}
+              disabled={status === 'uploading'}
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null
+                setFile(f)
+                setStatus(f ? 'ready' : 'idle')
+                setPct(0)
+                setError('')
+                // Clear any prior GUID until a fresh upload completes.
+                onChange({ bunnyVideoId: '', bunnyLibraryId: '' })
+              }}
+            />
+            {status === 'ready' && (
+              <button type="button"
+                onClick={startUpload}
+                style={{
+                  marginTop: 8, padding: '8px 14px',
+                  background: '#f97316', color: '#fff',
+                  border: 0, borderRadius: 8, fontWeight: 600, cursor: 'pointer',
+                }}>
+                <i className="fas fa-cloud-arrow-up"></i> ابدأ الرفع إلى Bunny
+              </button>
+            )}
+            {status === 'uploading' && (
+              <>
+                <div style={{ marginTop: 8, height: 6, background: '#edf2f7', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${pct}%`, height: '100%',
+                    background: 'linear-gradient(90deg, #f59e0b, #f97316)',
+                    transition: 'width .15s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: 12, color: '#4a5568' }}>
+                  جاري الرفع... {pct}% — يمكنك متابعة تعبئة باقي الحقول.
+                </span>
+              </>
+            )}
+            {status === 'error' && (
+              <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13 }}>
+                <i className="fas fa-triangle-exclamation"></i> {error}
+                <button type="button" onClick={startUpload}
+                  style={{ marginInlineStart: 12, background: 'none', border: 0, color: '#991b1b', textDecoration: 'underline', cursor: 'pointer' }}>
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
+            <small style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 6, display: 'block' }}>
+              الفيديو يُرفع مباشرة إلى Bunny Stream من جهازك — لا يمر بخادمنا.
+            </small>
+          </>
+        )}
+      </div>
+
+      <div className="form-group">
+        <label>مدة الفيديو (بالدقائق) — اختياري</label>
+        <input
+          type="number"
+          min="0"
+          step="0.5"
+          value={part.durationMinutes}
+          onChange={(e) => onChange({ durationMinutes: e.target.value })}
+        />
+        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+          سيتم اكتشاف المدة تلقائياً عند تشغيل الفيديو لأول مرة إن تركتها فارغة.
+        </small>
+      </div>
+    </>
   )
 }

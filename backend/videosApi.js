@@ -111,6 +111,30 @@ export async function createVideo(input) {
   return video
 }
 
+// Patch a video's basic metadata (title / description / grade / activeHours).
+// Edits to the parts/quizzes arrays are NOT supported here — that needs
+// a full re-build. Callers can `deleteVideo` + recreate for that.
+export async function updateVideo(id, input) {
+  const patch = {}
+  if (input.title       !== undefined) patch.title = String(input.title).trim() || null
+  if (input.description !== undefined) patch.description = String(input.description || '').trim() || null
+  if (input.grade       !== undefined) patch.grade = input.grade
+  if (input.active_hours !== undefined) {
+    const h = Math.max(1, parseInt(input.active_hours, 10) || 1)
+    patch.active_hours = h
+    // Recompute expiry_at relative to created_at to stay consistent
+    // with how createVideo / updateVideoAvailability behave.
+    const { data: row, error: getErr } = await supabase
+      .from('videos').select('created_at').eq('id', id).single()
+    if (getErr) throw getErr
+    patch.expiry_at = new Date(new Date(row.created_at).getTime() + h * 3600 * 1000).toISOString()
+  }
+  const { data, error } = await supabase
+    .from('videos').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteVideo(id) {
   const { error } = await supabase.from('videos').delete().eq('id', id)
   if (error) throw error

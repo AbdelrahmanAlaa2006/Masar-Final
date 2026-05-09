@@ -6,20 +6,20 @@ import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import {
   listHomeworks,
   createHomework,
+  updateHomework,
   deleteHomework,
   getMySubmissionsBatch,
-  upsertSubmission,
+  submitHomework,
   listSubmissionsForHomework,
   gradeSubmission,
   uiToDbGrade,
   dbToUiGrade,
 } from '@backend/homeworksApi'
-import {
-  uploadHomeworkPdf,
-  uploadHomeworkSubmission,
-  deleteR2Object,
-} from '@backend/r2'
+import { uploadHomeworkPdf, deleteR2Object } from '@backend/r2'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+
+// Letters used to label MCQ options in Arabic.
+const OPT_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي']
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 
 /* ──────────────────────────────────────────────────────────────
@@ -70,7 +70,8 @@ function rowToCard(row) {
     pdf_url: row.pdf_url || null,
     grade: row.grade,
     due_at: row.due_at,
-    max_score: row.max_score ?? 100,
+    max_score: row.max_score ?? 0,
+    answer_key: Array.isArray(row.answer_key) ? row.answer_key : [],
   }
 }
 
@@ -87,9 +88,13 @@ export default function Homework() {
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
+  // Editing state: when set, the modal updates this homework instead of
+  // creating a new one. null = creating new.
+  const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({
-    title: '', desc: '', subject: '', teacher: '', week: '',
-    cover_url: '', grade: '', due_at: '', max_score: 100,
+    title: '', desc: '', week: '',
+    cover_url: '', grade: '', due_at: '', max_score: 0,
+    answer_key: [], // [{ options: 4, correct: 1 }, ...]
   })
   const [pdfFile, setPdfFile] = useState(null)
   const [uploadPct, setUploadPct] = useState(0)
@@ -129,8 +134,11 @@ export default function Homework() {
   useEffect(() => { refresh() }, [])
 
   // Load submission status for ALL homeworks the student can see, in one shot.
+  // Admins don't have submissions of their own — skip entirely.
   useEffect(() => {
-    if (!userId || userRole === 'admin' || rows.length === 0) return
+    if (!userId || userRole === 'admin' || rows.length === 0) {
+      setSubmissions(new Map()); return
+    }
     let cancelled = false
     ;(async () => {
       try {
@@ -161,7 +169,7 @@ export default function Homework() {
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter((l) =>
-      [l.title, l.desc, l.subject, l.teacher, l.week, l.id]
+      [l.title, l.desc, l.week, l.id]
         .join(' ').toLowerCase().includes(q)
     )
   }, [homeworks, grade, search])
@@ -172,10 +180,34 @@ export default function Homework() {
     setModalOpen(false)
   }
   const openAddModal = () => {
+    setEditingId(null)
     setForm({
-      title: '', desc: '', subject: '', teacher: '', week: '',
+      title: '', desc: '', week: '',
       cover_url: '', grade: grade || 'first',
-      due_at: '', max_score: 100,
+      due_at: '', max_score: 0,
+      answer_key: [{ options: 4, correct: 0 }],   // start with one question
+    })
+    setPdfFile(null)
+    setUploadPct(0)
+    setModalOpen(true)
+  }
+
+  // Pre-fill the form with an existing homework's data for editing.
+  // We don't load the PDF file (it's already on R2) — admin can replace
+  // it by picking a new one if they want.
+  const openEditModal = (hw) => {
+    setEditingId(hw.id)
+    // hw.due_at is ISO; datetime-local inputs need "YYYY-MM-DDTHH:MM"
+    const due = hw.due_at ? new Date(hw.due_at).toISOString().slice(0, 16) : ''
+    setForm({
+      title: hw.title || '',
+      desc: hw.desc || '',
+      week: hw.week || '',
+      cover_url: hw.cover || (hw.cover_url || ''),
+      grade: dbToUiGrade(hw.grade) || 'first',
+      due_at: due,
+      max_score: hw.max_score ?? 0,
+      answer_key: Array.isArray(hw.answer_key) ? hw.answer_key.map(q => ({ ...q })) : [],
     })
     setPdfFile(null)
     setUploadPct(0)
@@ -188,6 +220,16 @@ export default function Homework() {
     if (!form.title.trim()) return
     const dbGrade = uiToDbGrade(form.grade || grade)
     if (!dbGrade) { flash('يجب اختيار الصف الدراسي', 'warning'); return }
+
+    if (!Array.isArray(form.answer_key) || form.answer_key.length === 0) {
+      flash('أضف سؤالًا واحدًا على الأقل', 'warning'); return
+    }
+    for (let i = 0; i < form.answer_key.length; i++) {
+      const q = form.answer_key[i]
+      if (!q || q.options < 2 || q.correct < 0 || q.correct >= q.options) {
+        flash(`السؤال ${i + 1}: تأكد من اختيار الإجابة الصحيحة`, 'warning'); return
+      }
+    }
 
     setSubmitting(true)
     let uploadedKey = null
@@ -208,23 +250,32 @@ export default function Homework() {
       // Convert datetime-local input (no TZ) to ISO. Empty = no due date.
       const dueIso = form.due_at ? new Date(form.due_at).toISOString() : null
 
-      await createHomework({
+      const payload = {
         title: form.title.trim(),
         description: form.desc.trim() || null,
-        subject: form.subject.trim() || null,
-        teacher: form.teacher.trim() || null,
         week: form.week.trim() || null,
         grade: dbGrade,
         cover_url: form.cover_url.trim() || null,
-        pdf_url: uploadedUrl,
-        pdf_key: uploadedKey,
         due_at: dueIso,
-        max_score: form.max_score,
-        created_by: userId,
-      })
+        max_score: form.max_score || form.answer_key.length,
+        answer_key: form.answer_key,
+      }
+      // Only attach PDF fields when a new file was uploaded — otherwise
+      // leave the existing R2 reference untouched (edit case).
+      if (uploadedUrl) {
+        payload.pdf_url = uploadedUrl
+        payload.pdf_key = uploadedKey
+      }
+
+      if (editingId) {
+        await updateHomework(editingId, payload)
+      } else {
+        await createHomework({ ...payload, pdf_url: uploadedUrl, pdf_key: uploadedKey, created_by: userId })
+      }
       uploadedKey = null
       uploadedUrl = null
-      flash('تمت إضافة الواجب بنجاح')
+      flash(editingId ? 'تم تحديث الواجب' : 'تمت إضافة الواجب بنجاح')
+      setEditingId(null)
       setModalOpen(false)
       await refresh({ force: true })
     } catch (err) {
@@ -292,7 +343,7 @@ export default function Homework() {
                 <i className="fas fa-search"></i>
                 <input
                   type="text"
-                  placeholder="ابحث بعنوان الواجب، المادة، أو المعلم..."
+                  placeholder="ابحث بعنوان الواجب أو الأسبوع..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -337,6 +388,7 @@ export default function Homework() {
                     }}
                     onSubmit={() => setSubmitModal({ homework: hw })}
                     onGrade={() => setGradeModal({ homework: hw })}
+                    onEdit={() => openEditModal(hw)}
                     onDelete={() => requestDelete(hw)}
                   />
                 ))}
@@ -353,8 +405,10 @@ export default function Homework() {
             <div className="hw-modal-head">
               <div className="hw-modal-icon"><i className="fas fa-circle-plus"></i></div>
               <div>
-                <h3>إضافة واجب جديد</h3>
-                <p>املأ بيانات الواجب وارفع ملف الـ PDF من جهازك</p>
+                <h3>{editingId ? 'تعديل الواجب' : 'إضافة واجب جديد'}</h3>
+                <p>{editingId
+                  ? 'يمكنك تحديث الحقول. استبدال ملف الـ PDF اختياري.'
+                  : 'املأ بيانات الواجب وارفع ملف الـ PDF من جهازك'}</p>
               </div>
               <button type="button" className="hw-modal-close" onClick={() => closeAddModal()}>
                 <i className="fas fa-times"></i>
@@ -389,19 +443,6 @@ export default function Homework() {
               </Field>
 
               <div className="hw-form-row">
-                <Field label="المادة" icon="fa-book">
-                  <input type="text" value={form.subject}
-                    onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    placeholder="رياضيات / علوم / لغة..." />
-                </Field>
-                <Field label="المعلم" icon="fa-chalkboard-user">
-                  <input type="text" value={form.teacher}
-                    onChange={(e) => setForm({ ...form, teacher: e.target.value })}
-                    placeholder="اسم المدرس" />
-                </Field>
-              </div>
-
-              <div className="hw-form-row">
                 <Field label="آخر موعد للتسليم" icon="fa-clock">
                   <input type="datetime-local" value={form.due_at}
                     onChange={(e) => setForm({ ...form, due_at: e.target.value })} />
@@ -430,8 +471,25 @@ export default function Homework() {
                   label="ارفع صورة الغلاف من جهازك" />
               </Field>
 
-              <Field label="ملف الـ PDF (المطلوب)" icon="fa-file-pdf">
-                <PdfPicker file={pdfFile} setFile={setPdfFile} pct={uploadPct} disabled={submitting} inputId="hw-pdf-input" />
+              <Field label={editingId ? 'استبدال ملف الـ PDF (اختياري)' : 'ملف الـ PDF (المطلوب)'} icon="fa-file-pdf">
+                <PdfPicker
+                  file={pdfFile}
+                  setFile={setPdfFile}
+                  pct={uploadPct}
+                  disabled={submitting}
+                  inputId="hw-pdf-input"
+                  placeholder={editingId ? 'اختر ملف جديد للاستبدال (اختياري)' : 'اختر ملف PDF من جهازك'}
+                />
+              </Field>
+
+              <Field label="الأسئلة والإجابات الصحيحة" icon="fa-list-check" required>
+                <AnswerKeyBuilder
+                  value={form.answer_key}
+                  onChange={(next) => setForm((f) => ({ ...f, answer_key: next }))}
+                />
+                <small style={{ display: 'block', marginTop: 6, color: '#718096', fontSize: 12 }}>
+                  الأسئلة نفسها مكتوبة في ملف الـ PDF. هنا فقط حدد عدد الخيارات والإجابة الصحيحة لكل سؤال — وسيتم تصحيح إجابات الطلاب تلقائيًا.
+                </small>
               </Field>
             </div>
 
@@ -441,7 +499,7 @@ export default function Homework() {
                 <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>{' '}
                 {submitting
                   ? (uploadPct > 0 && uploadPct < 100 ? `جاري رفع الملف... ${uploadPct}%` : 'جاري الحفظ...')
-                  : 'حفظ الواجب'}
+                  : (editingId ? 'حفظ التعديلات' : 'حفظ الواجب')}
               </button>
             </div>
           </form>
@@ -454,12 +512,22 @@ export default function Homework() {
         <SubmitModal
           homework={submitModal.homework}
           existing={submissions.get(submitModal.homework.id) || null}
-          studentId={userId}
           onClose={() => setSubmitModal(null)}
-          onDone={(row) => {
-            setSubmissions((prev) => { const m = new Map(prev); m.set(submitModal.homework.id, row); return m })
+          onDone={(res) => {
+            const now = new Date().toISOString()
+            setSubmissions((prev) => {
+              const m = new Map(prev)
+              const existing = prev.get(submitModal.homework.id) || {}
+              m.set(submitModal.homework.id, {
+                ...existing,
+                ...res,
+                submitted_at: now,
+                graded_at: now,
+              })
+              return m
+            })
             setSubmitModal(null)
-            flash('تم تسليم الواجب بنجاح')
+            flash(`تم التسليم — ${res.correct ?? 0}/${res.total ?? 0} صحيحة (${res.score ?? 0}/${res.max_score ?? 0})`)
           }}
           onError={(msg) => flash(msg || 'تعذر تسليم الواجب', 'warning')}
         />,
@@ -504,18 +572,19 @@ export default function Homework() {
 
 /* ─────────────────────── sub-components ─────────────────────── */
 
-function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onDelete }) {
+function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEdit, onDelete }) {
   const now = Date.now()
   const due = hw.due_at ? new Date(hw.due_at).getTime() : null
   const overdue = due && now > due
 
-  // Status pill for the student
+  // Status pill for the student. submit_homework() auto-grades on submit,
+  // so a successful submission ALWAYS shows the score immediately.
   let status = null
   if (!isAdmin) {
-    if (submission?.graded_at) {
-      status = { label: `تم التصحيح: ${submission.score ?? 0}/${hw.max_score}`, cls: 'hw-status-graded', icon: 'fa-circle-check' }
-    } else if (submission?.submitted_at) {
-      status = { label: 'تم التسليم — بانتظار التصحيح', cls: 'hw-status-submitted', icon: 'fa-paper-plane' }
+    if (submission?.submitted_at) {
+      const sc = submission.score ?? 0
+      const mx = submission.max_score ?? hw.max_score
+      status = { label: `الدرجة: ${sc}/${mx}`, cls: 'hw-status-graded', icon: 'fa-circle-check' }
     } else if (overdue) {
       status = { label: 'فات موعد التسليم', cls: 'hw-status-overdue', icon: 'fa-triangle-exclamation' }
     } else {
@@ -539,13 +608,6 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onDe
       </div>
 
       <div className="hw-card-body">
-        {(hw.subject || hw.teacher) && (
-          <div className="hw-card-tags">
-            {hw.subject && <span className="hw-tag hw-tag-subject"><i className="fas fa-book"></i> {hw.subject}</span>}
-            {hw.teacher && <span className="hw-tag"><i className="fas fa-chalkboard-user"></i> {hw.teacher}</span>}
-          </div>
-        )}
-
         <h3 className="hw-card-title">{hw.title}</h3>
         {hw.desc && <p className="hw-card-desc">{hw.desc}</p>}
 
@@ -585,15 +647,17 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onDe
               <button className="hw-btn hw-btn-primary" onClick={onGrade}>
                 <i className="fas fa-list-check"></i> التسليمات
               </button>
+              <button className="hw-btn hw-btn-ghost hw-btn-icon" onClick={onEdit} title="تعديل">
+                <i className="fas fa-pen"></i>
+              </button>
               <button className="hw-btn hw-btn-danger hw-btn-icon" onClick={onDelete} title="حذف">
                 <i className="fas fa-trash"></i>
               </button>
             </>
           ) : (
-            <button className="hw-btn hw-btn-primary" onClick={onSubmit}
-              disabled={submission?.graded_at != null}>
+            <button className="hw-btn hw-btn-primary" onClick={onSubmit}>
               <i className="fas fa-cloud-arrow-up"></i>
-              {' '}{submission?.submitted_at ? 'تعديل التسليم' : 'تسليم الواجب'}
+              {' '}{submission?.submitted_at ? 'تعديل الإجابات' : 'حل الواجب'}
             </button>
           )}
         </div>
@@ -602,58 +666,57 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onDe
   )
 }
 
-function SubmitModal({ homework, existing, studentId, onClose, onDone, onError }) {
-  const [file, setFile] = useState(null)
-  const [pct, setPct] = useState(0)
-  const [note, setNote] = useState(existing?.note || '')
-  const [busy, setBusy] = useState(false)
+function SubmitModal({ homework, existing, onClose, onDone, onError }) {
+  // Render N radio groups derived from the answer key. Each entry stores
+  // the index the student picked (or null).
+  const key = Array.isArray(homework.answer_key) ? homework.answer_key : []
+  const initial = useMemo(() => {
+    const prev = Array.isArray(existing?.responses) ? existing.responses : []
+    return key.map((_, i) => (typeof prev[i] === 'number' ? prev[i] : null))
+  }, [key, existing])
+
+  const [picks, setPicks] = useState(initial)
+  const [busy, setBusy]   = useState(false)
+  const answeredCount = picks.filter((p) => p != null).length
+
+  const choose = (qIdx, optIdx) => {
+    setPicks((prev) => {
+      const next = prev.slice()
+      next[qIdx] = optIdx
+      return next
+    })
+  }
 
   const submit = async (e) => {
     e.preventDefault()
     if (busy) return
-    if (!file && !existing && !note.trim()) {
-      onError('أرفق ملف الإجابة أو اكتب ملاحظة على الأقل')
-      return
+    if (key.length === 0) { onError('لا توجد أسئلة في هذا الواجب'); return }
+    if (answeredCount < key.length) {
+      if (!window.confirm(`لم تجب على ${key.length - answeredCount} سؤال. هل تريد التسليم رغم ذلك؟`)) return
     }
     setBusy(true)
-    let newKey = null
-    let newUrl = null
     try {
-      if (file) {
-        setPct(1)
-        const { key, publicUrl } = await uploadHomeworkSubmission(file, {
-          onProgress: (p) => setPct(Math.max(1, p)),
-        })
-        newKey = key
-        newUrl = publicUrl
-      }
-      const row = await upsertSubmission({
-        homework_id: homework.id,
-        student_id: studentId,
-        submission_url: newUrl ?? existing?.submission_url ?? null,
-        submission_key: newKey ?? existing?.submission_key ?? null,
-        note: note.trim() || null,
-      })
-      // If we replaced an existing file, drop the old one in R2.
-      if (newKey && existing?.submission_key && existing.submission_key !== newKey) {
-        deleteR2Object({ key: existing.submission_key }).catch(() => {})
-      }
-      onDone(row)
+      const res = await submitHomework(homework.id, picks)
+      onDone({ ...res, responses: picks })
     } catch (err) {
-      if (newKey || newUrl) deleteR2Object({ key: newKey, url: newUrl }).catch(() => {})
-      onError(err.message)
+      // Surface the real error message — Postgres function errors carry
+      // useful info in `details` / `hint` / `message`. Without this the
+      // UI just shows a generic "تعذر التسليم" and the actual cause
+      // (missing column, missing migration, etc.) is invisible.
+      console.error('submitHomework failed:', err)
+      const detail = err?.message || err?.details || err?.code || 'تعذر التسليم'
+      onError(`تعذر التسليم — ${detail}`)
     } finally {
       setBusy(false)
-      setPct(0)
     }
   }
 
   return (
     <div className="hw-modal-overlay" onClick={onClose}>
-      <form className="hw-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+      <form className="hw-modal hw-modal-wide" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="hw-modal-head">
           <div className="hw-modal-icon"><i className="fas fa-paper-plane"></i></div>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h3>تسليم الواجب</h3>
             <p style={{ margin: 0, color: '#718096', fontSize: 13 }}>{homework.title}</p>
           </div>
@@ -663,35 +726,72 @@ function SubmitModal({ homework, existing, studentId, onClose, onDone, onError }
         </div>
 
         <div className="hw-modal-body">
-          {existing?.submission_url && (
+          {existing?.submitted_at && (
             <div className="hw-existing">
               <i className="fas fa-circle-check"></i>
-              <span>لديك تسليم سابق:</span>
-              <a href={existing.submission_url} target="_blank" rel="noreferrer">عرض الملف</a>
-              <small>— يمكنك استبداله أدناه إن أردت</small>
+              <span>لديك تسليم سابق</span>
+              {existing.score != null && (
+                <strong>— الدرجة: {existing.score}/{existing.max_score ?? homework.max_score}</strong>
+              )}
+              <small>— يمكنك تعديل إجاباتك وإعادة التسليم</small>
             </div>
           )}
 
-          <Field label="ملف الإجابة (PDF أو صورة)" icon="fa-file-arrow-up">
-            <PdfPicker
-              file={file} setFile={setFile} pct={pct} disabled={busy}
-              accept="application/pdf,image/*,.pdf"
-              inputId="hw-sub-input"
-              placeholder={existing?.submission_url ? 'اختر ملف للاستبدال (اختياري)' : 'اختر ملف PDF أو صورة'}
-            />
-          </Field>
+          <div className="hw-split">
+            {homework.pdf_url ? (
+              <div className="hw-split-pdf">
+                <PdfInline url={homework.pdf_url} title={homework.title} />
+              </div>
+            ) : (
+              <div className="hw-pdf-link" style={{ background: '#fef3c7', color: '#92400e' }}>
+                <i className="fas fa-triangle-exclamation"></i>
+                <span>هذا الواجب لا يحتوي على ملف PDF</span>
+              </div>
+            )}
 
-          <Field label="ملاحظة للمعلم (اختياري)" icon="fa-message">
-            <textarea rows="3" value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="أي توضيح أو سؤال تريد إيصاله..." />
-          </Field>
+            <div className="hw-split-form">
+              {key.length === 0 ? (
+                <div className="hw-empty"><i className="fas fa-circle-info"></i><p>لا توجد أسئلة لهذا الواجب بعد</p></div>
+              ) : (
+                <div className="hw-mcq-list">
+                  <div className="hw-mcq-progress">
+                    <strong>{answeredCount}</strong> / {key.length} أجوبت
+                  </div>
+                  {key.map((q, qi) => {
+                    const opts = Math.max(2, parseInt(q?.options, 10) || 4)
+                    return (
+                      <div key={qi} className="hw-mcq-row">
+                        <div className="hw-mcq-q">السؤال {qi + 1}</div>
+                        <div className="hw-mcq-opts">
+                          {Array.from({ length: opts }).map((_, oi) => {
+                            const isOn = picks[qi] === oi
+                            return (
+                              <label key={oi} className={`hw-mcq-opt ${isOn ? 'is-on' : ''}`}>
+                                <input
+                                  type="radio"
+                                  name={`q-${qi}`}
+                                  checked={isOn}
+                                  onChange={() => choose(qi, oi)}
+                                />
+                                <span className="hw-mcq-letter">{OPT_LETTERS[oi] || String.fromCharCode(65 + oi)}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="hw-modal-foot">
           <button type="button" className="hw-btn hw-btn-ghost" onClick={onClose} disabled={busy}>إلغاء</button>
-          <button type="submit" className="hw-btn hw-btn-primary" disabled={busy}>
+          <button type="submit" className="hw-btn hw-btn-primary" disabled={busy || key.length === 0}>
             <i className={`fas ${busy ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>{' '}
-            {busy ? (pct > 0 && pct < 100 ? `جاري الرفع... ${pct}%` : 'جاري التسليم...') : 'إرسال'}
+            {busy ? 'جاري التسليم...' : 'إرسال الإجابات'}
           </button>
         </div>
       </form>
@@ -769,12 +869,14 @@ function GradeModal({ homework, graderId, onClose, onFlash }) {
                     <span className="hw-sub-phone">{sub.profiles?.phone || ''}</span>
                     <span className="hw-sub-when">سُلِّم: {fmtDateTime(sub.submitted_at)}</span>
                     {sub.note && <p className="hw-sub-note">📝 {sub.note}</p>}
-                    {sub.submission_url ? (
-                      <a className="hw-btn hw-btn-ghost hw-sub-file" href={sub.submission_url} target="_blank" rel="noreferrer">
-                        <i className="fas fa-file"></i> فتح ملف الإجابة
-                      </a>
-                    ) : (
-                      <small className="hw-sub-nofile">— لا يوجد ملف، ملاحظة فقط</small>
+                    <ResponsesReview
+                      answerKey={homework.answer_key}
+                      responses={sub.responses}
+                    />
+                    {sub.score != null && (
+                      <small className="hw-sub-auto">
+                        التصحيح التلقائي: {sub.score}/{sub.max_score ?? homework.max_score}
+                      </small>
                     )}
                   </div>
                   <div className="hw-sub-grade">
@@ -838,6 +940,26 @@ function PdfPicker({ file, setFile, pct, disabled, accept = 'application/pdf,.pd
   )
 }
 
+/* Inline PDF viewer used inside the student SubmitModal so the questions
+   live next to the answer form (no new tab). On mobile we route through
+   gview because Chrome / Safari for Android+iOS won't render an
+   <iframe src=foo.pdf> directly — they show a "Download" prompt. */
+function PdfInline({ url, title }) {
+  const isMobile = typeof navigator !== 'undefined' &&
+    /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
+  const src = isMobile
+    ? `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
+    : url
+  return (
+    <iframe
+      src={src}
+      title={title}
+      className="hw-pdf-inline"
+      referrerPolicy="no-referrer"
+    />
+  )
+}
+
 function PdfViewerModal({ viewer, onClose }) {
   const isMobile = typeof navigator !== 'undefined' &&
     /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
@@ -893,6 +1015,118 @@ function Field({ label, icon, required, children }) {
         {required && <span className="hw-required">*</span>}
       </label>
       {children}
+    </div>
+  )
+}
+
+/* ── Admin MCQ key builder ──────────────────────────────────────
+   value: [{ options: 4, correct: 1 }, ...]
+   Admin enters question count, then sets options + correct answer per row. */
+function AnswerKeyBuilder({ value, onChange }) {
+  const list = Array.isArray(value) ? value : []
+  const setRow = (idx, patch) => {
+    const next = list.slice()
+    next[idx] = { ...next[idx], ...patch }
+    // Clamp `correct` if options shrank below it.
+    if (patch.options != null && next[idx].correct >= patch.options) {
+      next[idx].correct = 0
+    }
+    onChange(next)
+  }
+  const setCount = (n) => {
+    const target = Math.max(0, Math.min(100, parseInt(n, 10) || 0))
+    if (target === list.length) return
+    if (target > list.length) {
+      onChange([
+        ...list,
+        ...Array.from({ length: target - list.length }, () => ({ options: 4, correct: 0 })),
+      ])
+    } else {
+      onChange(list.slice(0, target))
+    }
+  }
+  return (
+    <div className="hw-mcq-builder">
+      <div className="hw-mcq-builder-head">
+        <label>عدد الأسئلة:</label>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          value={list.length}
+          onChange={(e) => setCount(e.target.value)}
+        />
+      </div>
+      {list.length === 0 && (
+        <div className="hw-mcq-empty">حدد عدد الأسئلة أولاً</div>
+      )}
+      {list.map((q, i) => {
+        const opts = q?.options ?? 4
+        const correct = q?.correct ?? 0
+        return (
+          <div key={i} className="hw-mcq-builder-row">
+            <div className="hw-mcq-q">س {i + 1}</div>
+            <label className="hw-mcq-mini">
+              عدد الخيارات
+              <select
+                value={opts}
+                onChange={(e) => setRow(i, { options: parseInt(e.target.value, 10) || 4 })}
+              >
+                {[2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <div className="hw-mcq-key">
+              <span className="hw-mcq-key-label">الإجابة الصحيحة:</span>
+              <div className="hw-mcq-opts">
+                {Array.from({ length: opts }).map((_, oi) => (
+                  <label key={oi} className={`hw-mcq-opt ${correct === oi ? 'is-on is-correct' : ''}`}>
+                    <input
+                      type="radio"
+                      name={`key-${i}`}
+                      checked={correct === oi}
+                      onChange={() => setRow(i, { correct: oi })}
+                    />
+                    <span className="hw-mcq-letter">{OPT_LETTERS[oi] || String.fromCharCode(65 + oi)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Admin: per-submission review (correct vs wrong indicators) ──
+   Renders one row per question showing what the student picked and
+   whether it matched the answer key. */
+function ResponsesReview({ answerKey, responses }) {
+  const key = Array.isArray(answerKey) ? answerKey : []
+  const picks = Array.isArray(responses) ? responses : []
+  if (key.length === 0) return null
+  return (
+    <div className="hw-review">
+      {key.map((q, i) => {
+        const correct = q?.correct
+        const pick = picks[i]
+        const ok = pick != null && pick === correct
+        const skipped = pick == null
+        return (
+          <span
+            key={i}
+            className={`hw-review-pill ${skipped ? 'is-skipped' : ok ? 'is-ok' : 'is-bad'}`}
+            title={`السؤال ${i + 1}: ${
+              skipped ? 'لم تُجَب' :
+              `أجاب ${OPT_LETTERS[pick] || pick} — الصواب ${OPT_LETTERS[correct] || correct}`
+            }`}
+          >
+            {i + 1}
+          </span>
+        )
+      })}
     </div>
   )
 }

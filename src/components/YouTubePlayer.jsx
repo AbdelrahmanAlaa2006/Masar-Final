@@ -235,14 +235,15 @@ export default function YouTubePlayer({
           }
           lastTickRef.current = { realMs: nowMs, videoSec: t }
 
-          // Throttled progress emission — every ~15s of wall clock.
-          // 5s was wasteful: a 5-min watch → 60 DB writes. 15s drops it
-          // to 20 writes for the same playback while still capturing
-          // useful checkpoints if the student closes the tab mid-video.
+          // Throttled progress emission — every ~30s of wall clock.
+          // For a 30-min video that's 60 writes total, vs 360 at 5s.
+          // The cleanup effect in Videos.jsx also calls this once on
+          // unmount, so the very last position is captured even between
+          // throttle windows.
           if (typeof onProgress === 'function') {
             const now = Date.now()
             if (
-              now - lastProgressRef.current.t >= 15000 &&
+              now - lastProgressRef.current.t >= 30000 &&
               Math.abs(t - lastProgressRef.current.secs) >= 1
             ) {
               lastProgressRef.current = { t: now, secs: t }

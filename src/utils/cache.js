@@ -4,11 +4,12 @@
 // (progress, attempts, notifications) — those must stay fresh.
 
 // Default TTL for shared list caches (videos, lectures, exams, students).
-// 5 minutes is safe because every admin write path explicitly invalidates
-// its cache key, and the worst case is a user seeing a slightly stale list
-// for up to 5 minutes — never a stale view of their own progress / attempts
-// (those are not cached at all).
-export const LIST_TTL = 5 * 60 * 1000
+// 30 minutes is safe because every admin write path explicitly invalidates
+// its cache key. The worst case is one user seeing a slightly stale list
+// for up to 30 minutes — never a stale view of their own progress /
+// attempts (those are not cached at all). For most sessions this means
+// the lists fetch ONCE per session instead of every 5 minutes of use.
+export const LIST_TTL = 30 * 60 * 1000
 
 // Stores the in-flight Promise (not the resolved value) so two concurrent
 // callers for the same key share a single network request — without this,
@@ -31,6 +32,14 @@ export async function cached(key, ttlMs, loader) {
 
 export function invalidate(key) {
   store.delete(key)
+}
+
+// Invalidate every key that starts with `prefix`. Useful when many cache
+// keys share a common namespace (e.g. all per-target override caches).
+export function invalidatePrefix(prefix) {
+  for (const k of Array.from(store.keys())) {
+    if (k.startsWith(prefix)) store.delete(k)
+  }
 }
 
 export function invalidateAll() {

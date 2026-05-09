@@ -1,16 +1,20 @@
 import { supabase } from './supabase'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 // ──────────── Quiz attempts (video gating) ────────────
 // One row per (student, video, quiz_local_id). Upserted on every submit.
 
 export async function listQuizAttemptsForVideo(videoId, studentId) {
-  const { data, error } = await supabase
-    .from('quiz_attempts')
-    .select('*')
-    .eq('video_id', videoId)
-    .eq('student_id', studentId)
-  if (error) throw error
-  return data || []
+  const key = `quiz_attempts:${videoId}:${studentId}`
+  return cached(key, 60_000, async () => {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .select('*')
+      .eq('video_id', videoId)
+      .eq('student_id', studentId)
+    if (error) throw error
+    return data || []
+  })
 }
 
 export async function recordQuizAttempt({
@@ -36,19 +40,23 @@ export async function recordQuizAttempt({
     .select()
     .single()
   if (error) throw error
+  invalidateCache(`quiz_attempts:${video_id}:${student_id}`)
   return data
 }
 
 // ──────────── Video progress (view limits per part) ────────────
 
 export async function listProgressForVideo(videoId, studentId) {
-  const { data, error } = await supabase
-    .from('video_progress')
-    .select('*')
-    .eq('video_id', videoId)
-    .eq('student_id', studentId)
-  if (error) throw error
-  return data || []
+  const key = `video_progress:${videoId}:${studentId}`
+  return cached(key, 60_000, async () => {
+    const { data, error } = await supabase
+      .from('video_progress')
+      .select('*')
+      .eq('video_id', videoId)
+      .eq('student_id', studentId)
+    if (error) throw error
+    return data || []
+  })
 }
 
 // Atomic — uses the increment_part_view() Postgres function so two
@@ -61,7 +69,10 @@ export async function incrementPartView({ video_id, part_id }) {
     p_part_id: part_id,
   })
   if (error) throw error
-  // RPC returns the upserted video_progress row
+  // Invalidate the per-video cache for this user — auth.uid is the
+  // canonical student_id but the cache key includes a uuid we don't
+  // reconstruct here. Wipe by prefix.
+  invalidatePrefix(`video_progress:${video_id}:`)
   return Array.isArray(data) ? data[0] : data
 }
 
@@ -137,5 +148,6 @@ export async function updatePartProgress({ student_id, video_id, part_id, second
     .select()
     .single()
   if (error) throw error
+  invalidateCache(`video_progress:${video_id}:${student_id}`)
   return data
 }

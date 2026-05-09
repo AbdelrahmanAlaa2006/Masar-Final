@@ -1147,3 +1147,217 @@ body.dark .hw-sub-when,
 body.dark .hw-sub-phone   { color: #9ca3af; }
 body.dark .hw-existing    { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
 body.dark .hw-due         { color: #cbd5e0; }
+
+/* ─── MCQ builder + form (homework-only) ─────────────────────── */
+
+/* Admin: PDF link inside the student submit modal */
+.hw-pdf-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(102, 126, 234, 0.10);
+  color: #4338ca;
+  font-size: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.hw-pdf-link a { font-weight: 700; text-decoration: underline; }
+body.dark .hw-pdf-link { background: rgba(102, 126, 234, 0.2); color: #c7d2fe; }
+
+/* Admin builder */
+.hw-mcq-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.hw-mcq-builder-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.hw-mcq-builder-head input {
+  width: 100px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+}
+.hw-mcq-empty {
+  text-align: center;
+  color: #718096;
+  font-size: 13px;
+  padding: 12px;
+}
+
+.hw-mcq-builder-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.hw-mcq-q {
+  font-weight: 700;
+  color: #2d3748;
+  min-width: 40px;
+}
+.hw-mcq-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4a5568;
+}
+.hw-mcq-mini select {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+}
+.hw-mcq-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hw-mcq-key-label { font-size: 12px; color: #4a5568; }
+.hw-mcq-opts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* The actual radio + letter pill (used by both builder and student form) */
+.hw-mcq-opt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+.hw-mcq-opt input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.hw-mcq-opt.is-on { background: #667eea; color: #fff; border-color: #667eea; box-shadow: 0 2px 8px rgba(102,126,234,0.35); }
+.hw-mcq-opt.is-correct { background: #16a34a; border-color: #16a34a; box-shadow: 0 2px 8px rgba(22,163,74,0.35); }
+.hw-mcq-letter { pointer-events: none; }
+
+body.dark .hw-mcq-builder { background: #111827; border-color: #374151; }
+body.dark .hw-mcq-builder-row { background: #1f2937; border-color: #374151; }
+body.dark .hw-mcq-q { color: #e5e7eb; }
+body.dark .hw-mcq-opt { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
+body.dark .hw-mcq-opt.is-on { background: #667eea; }
+body.dark .hw-mcq-opt.is-correct { background: #16a34a; }
+
+/* Student MCQ submission list */
+.hw-mcq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hw-mcq-progress {
+  position: sticky;
+  top: -16px;
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #2d3748;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  z-index: 1;
+}
+body.dark .hw-mcq-progress { background: #111827; color: #e5e7eb; }
+.hw-mcq-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+body.dark .hw-mcq-row { background: #1f2937; border-color: #374151; }
+
+@media (max-width: 600px) {
+  .hw-mcq-builder-row { grid-template-columns: 1fr; align-items: stretch; }
+  .hw-mcq-row { grid-template-columns: 1fr; }
+}
+
+/* Admin grading: per-question review pills */
+.hw-review {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.hw-review-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.hw-review-pill.is-ok      { background: rgba(22,163,74,0.15);  color: #15803d; border-color: rgba(22,163,74,0.25); }
+.hw-review-pill.is-bad     { background: rgba(220,38,38,0.12);  color: #b91c1c; border-color: rgba(220,38,38,0.25); }
+.hw-review-pill.is-skipped { background: rgba(107,114,128,0.12);color: #6b7280; border-color: rgba(107,114,128,0.25); }
+
+.hw-sub-auto {
+  font-size: 12px;
+  color: #4a5568;
+  margin-top: 4px;
+}
+body.dark .hw-sub-auto { color: #9ca3af; }
+
+/* ─── Split layout: PDF on one side, MCQ form on the other ─── */
+.hw-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: 14px;
+  align-items: start;
+}
+.hw-split-pdf {
+  position: sticky;
+  top: 0;
+  height: 70vh;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+body.dark .hw-split-pdf { background: #111827; border-color: #374151; }
+.hw-pdf-inline {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.hw-split-form {
+  min-width: 0;
+}
+
+/* Stack on smaller screens — PDF first (smaller), then form. */
+@media (max-width: 880px) {
+  .hw-split { grid-template-columns: 1fr; }
+  .hw-split-pdf { position: static; height: 50vh; }
+}
