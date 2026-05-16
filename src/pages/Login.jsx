@@ -167,11 +167,6 @@ export default function Login() {
     document.documentElement.dir = 'ltr'
   }
 
-  // Brute-force prevention: track failed attempts in localStorage with a
-  // sliding 60s window. After 5 failures the form locks for 60s with a
-  // visible cooldown. Real protection still lives at the server (Supabase
-  // auth has its own rate limits) — this just prevents accidentally
-  // hammering the endpoint and gives a clear "you're locked" UX.
   const ATTEMPT_KEY = 'masar-login-attempts'
   const MAX_FAILS = 5
   const WINDOW_MS = 60_000
@@ -230,28 +225,25 @@ export default function Login() {
 
       console.log('Login response:', response)
 
-      // Validate response has required fields
       if (!response.token || !response.user) {
         throw new Error('Invalid response from server')
       }
 
-      // Store token and user data
       tokenAPI.setToken(response.token)
       sessionStorage.setItem('masar-user', JSON.stringify(response.user))
-      clearFailures() // successful login resets the attempt counter
+      clearFailures() 
 
       console.log('Token stored:', response.token)
       console.log('User stored:', response.user)
 
       showSuccessMessage()
 
-      // Navigate after showing success message
       setTimeout(() => {
         navigate('/')
       }, 1500)
     } catch (err) {
       console.error('Login error:', err)
-      recordFailure() // count this failure toward the brute-force lockout
+      recordFailure() 
       const cd = getCooldownRemaining()
       if (cd > 0) {
         setError(lang === 'ar'
@@ -263,8 +255,6 @@ export default function Login() {
       setLoading(false)
     }
   }
-
-
 
   const showSuccessMessage = () => {
     const title = lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login Successful'
@@ -447,32 +437,56 @@ export default function Login() {
               <div className="instructor-decor-block instructor-decor-block--3"></div>
             </div>
 
-            {/* Instructor image with hover effect and stack animation */}
-            <div
-              className={`instructor-img-wrapper stack-wrapper ${imgHover ? 'is-hovered' : ''}`}
-              onMouseEnter={() => setImgHover(true)}
-              onMouseLeave={() => setImgHover(false)}
-              onClick={() => setActiveImg(prev => (prev === 0 ? 1 : 0))}
-            >
-              <img
-                src="/images/profile.jpg"
-                alt="Masaar Instructor"
-                className={`stack-img ${activeImg === 0 ? 'front' : 'back'}`}
-                draggable="false"
-              />
-              <img
-                src="/images/me.jpeg"
-                alt="Masaar Instructor 2"
-                className={`stack-img ${activeImg === 1 ? 'front' : 'back'}`}
-                draggable="false"
-              />
-            </div>
+            {/* ── صورة المدرس وبادج الـ Instructor الأصلي ── */}
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: '10px' }}>
+              
+              {/* صورة المدرس */}
+              <div style={{ position: 'relative', zIndex: 15, width: '420px', marginTop: '-100px', pointerEvents: 'none' }}>
+                <img 
+                  src="/images/me.png" 
+                  alt="Instructor" 
+                  style={{ width: '100%', height: 'auto', borderRadius: '20px', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.3))' }}
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+              </div>
 
-            {/* Instructor name badge */}
-            <div className="instructor-badge">
-              <span className="instructor-badge-dot"></span>
-              {lang === 'ar' ? 'المطورون' : 'Developers'}
+             {/* بادج الـ Instructor مع النقطة الخضراء (Online Status) */}
+              <div className="instructor-badge" style={{ 
+                position: 'relative', 
+                bottom: '30px', 
+                zIndex: 20, 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                background: 'var(--card-bg, #ffffff)',
+                padding: '8px 24px',
+                borderRadius: '30px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                border: '1px solid var(--card-border, rgba(255,255,255,0.1))'
+              }}>
+                
+                {/* النقطة الخضراء (Online Indicator) */}
+                <span style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: '#10b981', /* لون أخضر فاقع ومريح */
+                  borderRadius: '50%',
+                  boxShadow: '0 0 12px rgba(16, 185, 129, 0.8)' /* تأثير التوهج/النور */
+                }}></span>
+                
+                <span style={{ 
+                  fontWeight: '800', 
+                  color: 'var(--card-text, #333)',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.3px'
+                }}>
+                  {lang === 'ar' ? 'مُعلّم المادة' : 'Instructor'}
+                </span>
+
+              </div>
+
             </div>
+            {/* ──────────────────────────────────────────────── */}
 
             {/* Scroll down link */}
             <a
@@ -483,6 +497,7 @@ export default function Login() {
                 const target = document.getElementById('features')
                 if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
+              style={{ marginTop: '10px' }} 
             >
               {lang === 'ar' ? 'اكتشف المزيد' : 'Discover More'}
               <i className="fas fa-arrow-down"></i>
