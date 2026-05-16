@@ -1252,6 +1252,21 @@ body:not(.dark) .scroll-down-btn:hover {
   50% { transform: translateY(4px); }
 }
 
+/* Instructor image hover effect */
+.instructor-image-hover {
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.instructor-image-hover:hover {
+  transform: translateY(-30px) scale(1.1);
+  filter: drop-shadow(0 25px 50px rgba(124, 58, 237, 0.4));
+}
+
+.instructor-image-hover:hover img {
+  filter: drop-shadow(0 25px 50px rgba(124, 58, 237, 0.4)) brightness(1.05);
+}
+
 /* Features section */
 .login-features,
 .login-steps {

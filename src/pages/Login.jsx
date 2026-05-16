@@ -441,11 +441,11 @@ export default function Login() {
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: '10px' }}>
               
               {/* صورة المدرس */}
-              <div style={{ position: 'relative', zIndex: 15, width: '420px', marginTop: '-100px', pointerEvents: 'none' }}>
+              <div className="instructor-image-hover" style={{ position: 'relative', zIndex: 15, width: '420px', marginTop: '-100px' }}>
                 <img 
                   src="/images/me.png" 
                   alt="Instructor" 
-                  style={{ width: '100%', height: 'auto', borderRadius: '20px', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.3))' }}
+                  style={{ width: '100%', height: 'auto', borderRadius: '20px', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.3))', transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
                   onError={(e) => e.target.style.display = 'none'}
                 />
               </div>
