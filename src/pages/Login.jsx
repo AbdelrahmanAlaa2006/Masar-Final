@@ -443,7 +443,7 @@ export default function Login() {
               {/* صورة المدرس */}
               <div 
                 className="instructor-image-hover" 
-                style={{ position: 'relative', zIndex: 15, width: '420px', marginTop: '-100px' }}
+                style={{ position: 'relative', zIndex: 15, width: '460px', marginTop: '-65px' }}
                 onMouseEnter={() => setImgHover(true)}
                 onMouseLeave={() => setImgHover(false)}
               >
