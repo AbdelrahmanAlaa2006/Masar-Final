@@ -13,6 +13,16 @@ export default defineConfig({
       '@backend': path.resolve(__dirname, 'backend'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'supabase': ['@supabase/supabase-js'],
+          'tus': ['tus-js-client'],
+        }
+      }
+    }
+  },
   server: {
     port: 3000,
     open: true,

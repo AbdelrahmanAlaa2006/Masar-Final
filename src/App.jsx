@@ -1,29 +1,59 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Homework from './pages/Homework'
-import Exams from './pages/Exams'
-import Videos from './pages/Videos'
-import Report from './pages/Report'
-import VideosReport from './pages/VideosReport'
-import ExamsReport from './pages/ExamsReport'
-import VideosGroupReport from './pages/VideosGroupReport'
-import ExamsGroupReport from './pages/ExamsGroupReport'
-import ControlPanel from './pages/ControlPanel'
-import ExamTaking from './pages/ExamTaking'
-import ExamAdd from './pages/ExamAdd'
-import VideoAdd from './pages/VideoAdd'
-import Profile from './pages/Profile'
-import Help from './pages/Help'
-import Terms from './pages/Terms'
-import Privacy from './pages/Privacy'
+
+// Lazy-loaded pages for code splitting
+const Home = lazy(() => import('./pages/Home'))
+const Login = lazy(() => import('./pages/Login'))
+const Homework = lazy(() => import('./pages/Homework'))
+const Exams = lazy(() => import('./pages/Exams'))
+const Videos = lazy(() => import('./pages/Videos'))
+const Report = lazy(() => import('./pages/Report'))
+const VideosReport = lazy(() => import('./pages/VideosReport'))
+const ExamsReport = lazy(() => import('./pages/ExamsReport'))
+const VideosGroupReport = lazy(() => import('./pages/VideosGroupReport'))
+const ExamsGroupReport = lazy(() => import('./pages/ExamsGroupReport'))
+const ControlPanel = lazy(() => import('./pages/ControlPanel'))
+const ExamTaking = lazy(() => import('./pages/ExamTaking'))
+const ExamAdd = lazy(() => import('./pages/ExamAdd'))
+const VideoAdd = lazy(() => import('./pages/VideoAdd'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Help = lazy(() => import('./pages/Help'))
+const Terms = lazy(() => import('./pages/Terms'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+
 import { tokenAPI } from '@backend/authApi'
 import SeasonalDecor from './seasonal/SeasonalDecor'
 import './seasonal/seasonal.css'
 import './App.css'
+
+// Page loader component for Suspense fallback
+function PageLoader() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'var(--section-bg-1, #0f172a)',
+      color: '#fff'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(255,255,255,0.2)',
+          borderTop: '3px solid #a78bfa',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+          margin: '0 auto 16px'
+        }}></div>
+        <p>Loading...</p>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   return (
@@ -223,36 +253,38 @@ function AppContent() {
       {!isLoginPage && !isExamTaking && <Header />}
 
       <div className="page-container">
-        <Routes>
-          <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
-          <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
-          {/* Old /lectures URLs redirect to the new /homework page so
-              shared links / browser bookmarks keep working. */}
-          <Route path="/homework" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute>} />
-          <Route path="/lectures" element={<Navigate to="/homework" replace />} />
-          <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
-          <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
-          <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+            <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
+            <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
+            {/* Old /lectures URLs redirect to the new /homework page so
+                shared links / browser bookmarks keep working. */}
+            <Route path="/homework" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute>} />
+            <Route path="/lectures" element={<Navigate to="/homework" replace />} />
+            <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
+            <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
+            <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
 
-          {/* Student + Admin: solo reports */}
-          <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />
-          <Route path="/exams-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamsReport /></ProtectedRoute>} />
+            {/* Student + Admin: solo reports */}
+            <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />
+            <Route path="/exams-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamsReport /></ProtectedRoute>} />
 
-          {/* Admin only */}
-          <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideoAdd /></AdminRoute>} />
-          <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamAdd /></AdminRoute>} />
-          <Route path="/report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Report /></ProtectedRoute>} />
-          <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideosGroupReport /></AdminRoute>} />
-          <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamsGroupReport /></AdminRoute>} />
-          <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
+            {/* Admin only */}
+            <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideoAdd /></AdminRoute>} />
+            <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamAdd /></AdminRoute>} />
+            <Route path="/report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Report /></ProtectedRoute>} />
+            <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideosGroupReport /></AdminRoute>} />
+            <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamsGroupReport /></AdminRoute>} />
+            <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
           {/* Public-ish info pages — still gated by auth so non-students can't browse */}
           <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
           <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
           <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </div>
 
       {!isLoginPage && !isExamTaking && <Footer />}
