@@ -448,7 +448,7 @@ export default function Login() {
                 onMouseLeave={() => setImgHover(false)}
               >
                 <img 
-                  src={imgHover ? '/images/profile.png' : '/images/me.png'}
+                  src={imgHover ? '/images/me.png' : '/images/profile.png'}
                   alt="Instructor" 
                   style={{ width: '100%', height: 'auto', borderRadius: '20px', filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.3))', transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
                   onError={(e) => e.target.style.display = 'none'}
