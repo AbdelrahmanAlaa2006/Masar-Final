@@ -438,7 +438,7 @@ export default function Login() {
             </div>
 
             {/* ── صورة المدرس وبادج الـ Instructor الأصلي ── */}
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: '10px' }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: '25px' }}>
               
               {/* صورة المدرس */}
               <div 
