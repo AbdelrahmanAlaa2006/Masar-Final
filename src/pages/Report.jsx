@@ -132,6 +132,7 @@ export default function Report() {
     }).toString()
     if (type === 'videos') navigate(`/videos-report?${params}`)
     else if (type === 'exams') navigate(`/exams-report?${params}`)
+    else if (type === 'homework') navigate(`/homework-report?${params}`)
   }
 
   /* Student viewing their own report: go in with no URL params.
@@ -140,6 +141,7 @@ export default function Report() {
   const goToMyReport = (type) => {
     if (type === 'videos') navigate('/videos-report')
     else if (type === 'exams') navigate('/exams-report')
+    else if (type === 'homework') navigate('/homework-report')
   }
 
   const initials = (name) =>
@@ -204,6 +206,17 @@ export default function Report() {
               </div>
               <i className="fas fa-chevron-left report-card-arrow"></i>
             </div>
+
+            <div className="report-card" onClick={() => goToMyReport('homework')}>
+              <div className="report-card-icon report-card-icon--teal">
+                <i className="fas fa-book-open"></i>
+              </div>
+              <div className="report-card-body">
+                <h3>تقرير الواجبات</h3>
+                <p>درجاتك في الواجبات ومتابعة تسليماتك</p>
+              </div>
+              <i className="fas fa-chevron-left report-card-arrow"></i>
+            </div>
           </div>
         </div>
       </main>
@@ -246,6 +259,7 @@ export default function Report() {
   const goToGroupReport = (type) => {
     if (type === 'videos') navigate('/videos-group-report')
     else if (type === 'exams') navigate('/exams-group-report')
+    else if (type === 'homework') navigate('/homework-group-report')
   }
 
 
@@ -395,6 +409,17 @@ export default function Report() {
             </div>
             <i className="fas fa-chevron-left report-card-arrow"></i>
           </div>
+
+          <div className="report-card" onClick={() => goTo('homework')}>
+            <div className="report-card-icon report-card-icon--teal">
+              <i className="fas fa-book-open"></i>
+            </div>
+            <div className="report-card-body">
+              <h3>تقرير الواجبات</h3>
+              <p>متابعة تسليم الواجبات وتحليل أداء الطالب في كل واجب</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
+          </div>
         </div>
 
         <h2 className="report-section-label">
@@ -424,6 +449,17 @@ export default function Report() {
             </div>
             <i className="fas fa-chevron-left report-card-arrow"></i>
           </div>
+
+          <div className="report-card" onClick={() => goToGroupReport('homework')}>
+            <div className="report-card-icon report-card-icon--green">
+              <i className="fas fa-chart-bar"></i>
+            </div>
+            <div className="report-card-body">
+              <h3>تقرير جماعي للواجبات</h3>
+              <p>إحصائيات التسليم وتقرير الأداء العام لجميع الطلاب في الواجبات</p>
+            </div>
+            <i className="fas fa-chevron-left report-card-arrow"></i>
+          </div>
         </div>
 
       </div>
@@ -444,7 +480,7 @@ export default function Report() {
               <div className="rp-modal-title">
                 <h3>اختر الطالب</h3>
                 <p>
-                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : 'تقرير الامتحانات'} يرجى اختيار طالب من القائمة
+                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : pickerType === 'exams' ? 'تقرير الامتحانات' : 'تقرير الواجبات'} يرجى اختيار طالب من القائمة
                 </p>
               </div>
               <button

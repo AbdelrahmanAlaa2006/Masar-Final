@@ -14,6 +14,8 @@ const VideosReport = lazy(() => import('./pages/VideosReport'))
 const ExamsReport = lazy(() => import('./pages/ExamsReport'))
 const VideosGroupReport = lazy(() => import('./pages/VideosGroupReport'))
 const ExamsGroupReport = lazy(() => import('./pages/ExamsGroupReport'))
+const HomeworkReport = lazy(() => import('./pages/HomeworkReport'))
+const HomeworkGroupReport = lazy(() => import('./pages/HomeworkGroupReport'))
 const ControlPanel = lazy(() => import('./pages/ControlPanel'))
 const ExamTaking = lazy(() => import('./pages/ExamTaking'))
 const ExamAdd = lazy(() => import('./pages/ExamAdd'))
@@ -27,6 +29,12 @@ import { tokenAPI } from '@backend/authApi'
 import SeasonalDecor from './seasonal/SeasonalDecor'
 import './seasonal/seasonal.css'
 import './App.css'
+import DevToolsBlocker from './components/DevToolsBlocker'
+import { detectDevTools } from './utils/devtools'
+
+// TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
+// Change this back to false to re-enable security features.
+const DISABLE_DEVTOOLS_BLOCKER = false;
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -85,6 +93,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false)
 
   // Continuously tracked scrollY — read by the route-change tween
   // below. We need this because by the time the route-change effect
@@ -160,7 +169,7 @@ function AppContent() {
   }, [location.pathname])
 
   // Apply the saved theme app-wide so it survives routes that don't
-   //render the Header (e.g. /exam-taking, where the toggle is hidden).
+  //render the Header (e.g. /exam-taking, where the toggle is hidden).
   useEffect(() => {
     const isDark = localStorage.getItem('theme') === 'dark'
     document.body.classList.toggle('dark', isDark)
@@ -183,6 +192,10 @@ function AppContent() {
      right-click, view source, or open DevTools via shortcuts. Admins
      keep normal browser behavior so they can manage content. */
   useEffect(() => {
+    if (DISABLE_DEVTOOLS_BLOCKER) {
+      document.body.classList.remove('no-select')
+      return // temporarily disabled for testing
+    }
     const isAdmin = user?.role === 'admin'
     document.body.classList.toggle('no-select', !isAdmin)
     if (isAdmin) return  // admins: no event blockers
@@ -233,8 +246,33 @@ function AppContent() {
     }
   }, [user])
 
+  // DevTools detection loop for non-admins
+  useEffect(() => {
+    if (DISABLE_DEVTOOLS_BLOCKER) {
+      setIsDevToolsOpen(false)
+      return
+    }
+    // If the logged-in user is an admin, we bypass all detection!
+    if (user?.role === 'admin') {
+      setIsDevToolsOpen(false)
+      return
+    }
+
+    const cleanup = detectDevTools(() => {
+      setIsDevToolsOpen(true)
+    })
+
+    return () => {
+      cleanup()
+    }
+  }, [user])
+
   if (isLoading) {
     return <div className="app"><div className="page-container">Loading...</div></div>
+  }
+
+  if (isDevToolsOpen && !DISABLE_DEVTOOLS_BLOCKER) {
+    return <DevToolsBlocker />
   }
 
   // Use the hoisted ProtectedRoute / AdminRoute below directly — passing
@@ -270,6 +308,7 @@ function AppContent() {
             {/* Student + Admin: solo reports */}
             <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />
             <Route path="/exams-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamsReport /></ProtectedRoute>} />
+            <Route path="/homework-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><HomeworkReport /></ProtectedRoute>} />
 
             {/* Admin only */}
             <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideoAdd /></AdminRoute>} />
@@ -277,12 +316,13 @@ function AppContent() {
             <Route path="/report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Report /></ProtectedRoute>} />
             <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideosGroupReport /></AdminRoute>} />
             <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamsGroupReport /></AdminRoute>} />
+            <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><HomeworkGroupReport /></AdminRoute>} />
             <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
-          {/* Public-ish info pages — still gated by auth so non-students can't browse */}
-          <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
-          <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
-          <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
+            {/* Public-ish info pages — still gated by auth so non-students can't browse */}
+            <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
+            <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
+            <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </div>

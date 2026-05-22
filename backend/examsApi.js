@@ -80,6 +80,7 @@ export async function updateExam(id, input) {
   if (input.available_hours  !== undefined) patch.available_hours = Math.max(1, parseInt(input.available_hours, 10) || 1)
   if (input.total_points     !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
   if (input.reveal_grades    !== undefined) patch.reveal_grades = !!input.reveal_grades
+  if (input.questions        !== undefined) patch.questions = input.questions || []
 
   const { data, error } = await supabase
     .from('exams').update(patch).eq('id', id).select().single()

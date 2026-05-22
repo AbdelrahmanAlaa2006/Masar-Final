@@ -219,6 +219,11 @@
   border-color: #48bb78;
 }
 
+.vgr-select option {
+  background: var(--card-bg, #fff);
+  color: var(--text-color, #1a202c);
+}
+
 /* ── Summary Stats ── */
 .vgr-summary {
   display: grid;

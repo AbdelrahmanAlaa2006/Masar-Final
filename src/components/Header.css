@@ -784,6 +784,8 @@ body.dark .mh__user {
   .mh__nav { padding: 5px; gap: 3px; }
   .mh__user { max-width: 260px; padding-inline-end: 12px; }
   .mh__user-name { max-width: 220px; }
+  .mh__logout span { display: none; }
+  .mh__logout { padding: 0 12px; }
 }
 
 /* Drop wordmark tagline + shrink user chip further */
@@ -795,10 +797,9 @@ body.dark .mh__user {
   .mh__link i { font-size: 12.5px; }
   .mh__actions { gap: 8px; }
   .mh__icon-btn { width: 40px; height: 40px; }
-  .mh__logout { height: 40px; padding: 0 14px; font-size: 13px; }
-  .mh__user { max-width: 220px; }
-  .mh__user-name { max-width: 180px; font-size: 12.5px; }
-  .mh__user-hi { font-size: 10px; }
+  .mh__logout { height: 40px; padding: 0 12px; font-size: 13px; }
+  .mh__user { padding-inline-end: 4px; padding: 3px; }
+  .mh__user-meta { display: none; }
   .mh__avatar { width: 32px; height: 32px; font-size: 13px; }
 }
 
@@ -810,10 +811,6 @@ body.dark .mh__user {
   .mh__link span { display: none; }
   .mh__link i { font-size: 15px; opacity: 1; }
   .mh__link.is-active::after { display: none; }
-  .mh__user-meta { display: none; }
-  .mh__user { padding-inline-end: 4px; padding: 3px; }
-  .mh__logout span { display: none; }
-  .mh__logout { padding: 0 12px; }
 }
 
 /* Hide user chip entirely when space gets really tight */

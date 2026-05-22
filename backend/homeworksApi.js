@@ -24,7 +24,7 @@ export async function listHomeworks() {
     .from('homeworks')
     .select(
       'id, title, description, subject, teacher, week, grade, ' +
-      'cover_url, pdf_url, pdf_key, due_at, max_score, answer_key, created_at'
+      'cover_url, pdf_url, pdf_key, due_at, max_score, answer_key, reveal_grades, created_at'
     )
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -74,7 +74,7 @@ export async function updateHomework(id, input) {
   const copy = (k) => { if (input[k] !== undefined) patch[k] = input[k] }
   copy('title'); copy('description'); copy('subject'); copy('teacher')
   copy('week'); copy('grade'); copy('cover_url')
-  copy('pdf_url'); copy('pdf_key'); copy('due_at')
+  copy('pdf_url'); copy('pdf_key'); copy('due_at'); copy('reveal_grades')
 
   if (input.max_score !== undefined) {
     patch.max_score = Math.max(0, parseInt(input.max_score, 10) || 0)

@@ -50,7 +50,6 @@ body.dark {
 
 .videos-page {
   position: relative;
-  z-index: 0;
   padding-top: 40px;
   color: var(--text-primary);
   transition: all 0.3s ease;
@@ -503,7 +502,7 @@ body.dark .vc-stat-value {
 .modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 2000;
   left: 0;
   top: 0;
   width: 100%;
@@ -805,7 +804,6 @@ body.dark .modal-content {
 
 body.dark .videos-page{
   position: relative;
-  z-index: 1;
 }
 
 body.dark .videos-page::before{
@@ -817,7 +815,6 @@ body.dark::before{
 }
 .videos-page{
   position: relative;
-  z-index: 10;
 }
 
 /* ───── Prep picker (shared design with Lectures page) ───── */

@@ -1122,9 +1122,30 @@ body.dark .hw-grade-opt-en   { color: #94a3b8; }
 
 .hw-sub-grade {
   display: grid;
-  grid-template-columns: 90px 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 8px;
   align-items: center;
+}
+.hw-grade-static-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+  direction: rtl;
+  gap: 6px;
+  height: 38px;
+  white-space: nowrap;
+}
+body.dark .hw-grade-static-badge {
+  background: #2d3748;
+  border-color: #4b5563;
+  color: #e2e8f0;
 }
 .hw-sub-grade input { padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 8px; }
 .hw-sub-graded-at {

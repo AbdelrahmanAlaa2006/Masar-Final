@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
-import { getExam, startAttempt, submitAttempt } from '@backend/examsApi'
+import { getExam, startAttempt, submitAttempt, listAttemptsForStudent } from '@backend/examsApi'
+import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard from '../hooks/useExitGuard'
+import ConfirmExitDialog from '../components/ConfirmExitDialog'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
@@ -32,6 +34,18 @@ export default function ExamTaking() {
   // we don't create two attempt rows for the same load. In production
   // this just no-ops on the second pass.
   const startedRef = useRef(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+
+  // Extract user parameters and role once per component lifecycle
+  const { guardLabel, isAdmin } = useMemo(() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      return {
+        guardLabel: u ? `${u.name || ''} · ${u.phone || ''}` : '',
+        isAdmin: u?.role === 'admin',
+      }
+    } catch { return { guardLabel: '', isAdmin: false } }
+  }, [])
 
   // ── Load the exam + start an attempt ──────────────────────────
   useEffect(() => {
@@ -51,11 +65,52 @@ export default function ExamTaking() {
         setUserId(sid)
 
         const e = await getExam(examId)
+
+        // Safety Check for Students: verify remaining attempts on refresh or direct URL access
+        const role = u?.role || 'student'
+        if (role !== 'admin') {
+          // Fetch student's submitted attempts
+          const attempts = await listAttemptsForStudent(sid)
+          const submittedCount = attempts.filter(
+            (a) => a.exam_id === examId && a.submitted_at !== null
+          ).length
+
+          // Fetch overrides
+          let maxAttempts = e.max_attempts || 1
+          try {
+            const overrides = await listEffectiveOverrides({
+              studentId: sid,
+              grade: u.grade,
+              group: u.group || null,
+              itemType: 'exam',
+            })
+            const overridesMap = reduceEffective(overrides)
+            const o = overridesMap.get(examId)
+            
+            // Check if blocked by admin
+            if (o && o.allowed === false) {
+              setLoadError('تم تقييد هذا الامتحان من قِبَل الإدارة.')
+              return
+            }
+            
+            const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
+            maxAttempts = maxAttempts + extra
+          } catch (oErr) {
+            console.error('Failed to load overrides', oErr)
+          }
+
+          if (submittedCount >= maxAttempts) {
+            setLoadError('لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.')
+            return
+          }
+        }
+
         setExam(e)
         // Restore prior in-flight progress (answers, current question,
         // remaining time) so a refresh mid-exam doesn't reset everything.
+        // Bypassed for admins so they always start fresh.
         let resumedTime = null
-        if (storageKey) {
+        if (storageKey && !isAdmin) {
           try {
             const saved = JSON.parse(localStorage.getItem(storageKey))
             if (saved && saved.answers) {
@@ -103,20 +158,19 @@ export default function ExamTaking() {
   // Block accidental navigation while the exam is in progress. Disabled
   // for admins (so they can preview/leave freely) and once the exam is
   // finished (so the "العودة إلى الامتحانات" button works without prompt).
-  const guardActive = !!exam && !examFinished && !((() => {
-    try { return JSON.parse(sessionStorage.getItem('masar-user'))?.role === 'admin' }
-    catch { return false }
-  })())
-  useExitGuard({
+  const guardActive = !!exam && !examFinished && !isAdmin
+  const exitGuard = useExitGuard({
     active: guardActive,
     message: 'الامتحان ما زال جارياً. الخروج الآن قد يضيع إجاباتك. هل أنت متأكد؟',
+    onExitAttempt: () => setShowExitConfirm(true),
   })
 
   // ── Persist progress on every change so a refresh resumes mid-exam.
   // We store the absolute deadline (not the remaining seconds) so the
   // clock keeps ticking even while the page is closed. Cleared on submit.
+  // Bypassed for admins.
   useEffect(() => {
-    if (!storageKey || !exam || examFinished) return
+    if (!storageKey || !exam || examFinished || isAdmin) return
     try {
       const serialAnswers = {}
       for (const [k, v] of Object.entries(answers)) {
@@ -129,11 +183,12 @@ export default function ExamTaking() {
         deadline,
       }))
     } catch {}
-  }, [answers, currentQuestion, timeLeft, storageKey, exam, examFinished])
+  }, [answers, currentQuestion, timeLeft, storageKey, exam, examFinished, isAdmin])
 
   // ── Timer ─────────────────────────────────────────────────────
+  // Bypassed for admins.
   useEffect(() => {
-    if (examFinished || !exam) return
+    if (examFinished || !exam || isAdmin) return
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -145,7 +200,9 @@ export default function ExamTaking() {
       })
     }, 1000)
     return () => clearInterval(timer)
-  }, [examFinished, exam])
+  }, [examFinished, exam, isAdmin])
+
+
 
   const formatTime = seconds => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -217,6 +274,35 @@ export default function ExamTaking() {
     }
   }
 
+  const handleAbandonExam = () => {
+    if (submittedRef.current) return
+    submittedRef.current = true
+
+    // Synchronously disable exit guard warnings to prevent native browser alerts
+    exitGuard.disable()
+
+    // Clear the progress from localStorage immediately so it is not restored
+    if (storageKey) {
+      try { localStorage.removeItem(storageKey) } catch {}
+    }
+
+    if (attemptId) {
+      // Submit empty responses in the background to avoid blocking transition
+      submitAttempt(attemptId, { responses: [] }).catch(err => {
+        console.error('Failed to submit blank attempt on exit', err)
+      })
+    }
+
+    setExamFinished(true)
+    
+    if (exitGuard.isPopState()) {
+      exitGuard.clearPopState()
+      window.history.go(-2) // Go back past sentinel and ExamTaking page to Exams page
+    } else {
+      navigate('/exams', { replace: true }) // Replace the sentinel with /exams route
+    }
+  }
+
   if (loadError) {
     return (
       <div className="et-wrapper">
@@ -257,19 +343,7 @@ export default function ExamTaking() {
   const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
   const progress = ((currentQuestion + 1) / questions.length) * 100
 
-  // Watermark text — student name + phone, pulled from sessionStorage so
-  // the guard can identify the test-taker on any leaked screenshot. We
-  // also disable the guard for admins so they can debug exam content
-  // freely without the blackout fighting their dev workflow.
-  const { guardLabel, isAdmin } = (() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      return {
-        guardLabel: u ? `${u.name || ''} · ${u.phone || ''}` : '',
-        isAdmin: u?.role === 'admin',
-      }
-    } catch { return { guardLabel: '', isAdmin: false } }
-  })()
+  // Watermark text parameters (guardLabel/isAdmin extracted at top-level)
 
   return (
     <div className="et-wrapper">
@@ -469,6 +543,19 @@ export default function ExamTaking() {
             </button>
           </div>
         </div>
+      )}
+      {showExitConfirm && (
+        <ConfirmExitDialog
+          title="هل تريد الخروج من الامتحان؟"
+          message="الامتحان ما زال جارياً. خروجك الآن قد يؤدي لضياع إجاباتك أو تسجيل محاولتك كمنتهية. هل أنت متأكد؟"
+          confirmText="نعم، خروج"
+          cancelText="إلغاء"
+          onConfirm={() => {
+            setShowExitConfirm(false)
+            handleAbandonExam()
+          }}
+          onCancel={() => setShowExitConfirm(false)}
+        />
       )}
     </div>
   )

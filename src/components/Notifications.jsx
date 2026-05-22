@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Notifications.css'
 import {
   listNotifications,
@@ -36,6 +37,7 @@ const GRADE_LABELS = {
 }
 
 export default function Notifications() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [list, setList] = useState([])
   const [readIds, setReadIds] = useState(new Set())
@@ -119,6 +121,27 @@ export default function Notifications() {
       await apiMarkRead(id, userId)
       invalidateCache(`reads:${userId}`)
     } catch { /* ignore */ }
+  }
+
+  // Click a notification: mark read, close panel, navigate to the right page
+  const handleNotifClick = (n) => {
+    markOneRead(n.id)
+
+    const meta = n.meta || {}
+    let target = null
+
+    if (meta.kind === 'reveal' && meta.examId) {
+      // Exam grades revealed → go to exam report
+      target = '/exams-report'
+    } else if (meta.kind === 'reveal_hw' && meta.homeworkId) {
+      // Homework grades revealed → go to homework report
+      target = '/homework-report'
+    }
+
+    if (target) {
+      setOpen(false)
+      navigate(target)
+    }
   }
 
   const deleteOne = async (id) => {
@@ -256,7 +279,7 @@ export default function Notifications() {
                 <div
                   key={n.id}
                   className={`notif-item notif-${n.level || 'info'} ${isRead ? '' : 'notif-unread'}`}
-                  onClick={() => markOneRead(n.id)}
+                  onClick={() => handleNotifClick(n)}
                 >
                   <div className="notif-icon">
                     <i className={`fas ${
@@ -277,6 +300,12 @@ export default function Notifications() {
                         <i className="fas fa-users"></i>
                         {targetLabel(n)}
                       </span>
+                    )}
+                    {userRole !== 'admin' && n.meta && (n.meta.kind === 'reveal' || n.meta.kind === 'reveal_hw') && (
+                      <div className="notif-nav-hint">
+                        <i className="fas fa-external-link-alt"></i>
+                        اضغط للعرض في التقارير
+                      </div>
                     )}
                   </div>
                   {userRole === 'admin' && (

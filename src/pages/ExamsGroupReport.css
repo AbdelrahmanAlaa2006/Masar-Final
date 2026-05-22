@@ -219,6 +219,11 @@
   border-color: #ed8936;
 }
 
+.egr-select option {
+  background: var(--card-bg, #fff);
+  color: var(--text-color, #1a202c);
+}
+
 /* ── Summary Stats ── */
 .egr-summary {
   display: grid;

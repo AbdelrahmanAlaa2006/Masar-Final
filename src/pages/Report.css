@@ -421,6 +421,10 @@
   background: linear-gradient(135deg, #f6d365, #fda085);
 }
 
+.report-card-icon--green {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
 .report-card-body {
   flex: 1;
   min-width: 0;

@@ -72,6 +72,7 @@ function rowToCard(row) {
     due_at: row.due_at,
     max_score: row.max_score ?? 0,
     answer_key: Array.isArray(row.answer_key) ? row.answer_key : [],
+    reveal_grades: !!row.reveal_grades,
   }
 }
 
@@ -527,7 +528,11 @@ export default function Homework() {
               return m
             })
             setSubmitModal(null)
-            flash(`تم التسليم — ${res.correct ?? 0}/${res.total ?? 0} صحيحة (${res.score ?? 0}/${res.max_score ?? 0})`)
+            if (submitModal.homework.reveal_grades === true) {
+              flash(`تم التسليم — ${res.correct ?? 0}/${res.total ?? 0} صحيحة (${res.score ?? 0}/${res.max_score ?? 0})`)
+            } else {
+              flash('تم تسليم الواجب بنجاح')
+            }
           }}
           onError={(msg) => flash(msg || 'تعذر تسليم الواجب', 'warning')}
         />,
@@ -584,7 +589,9 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEd
     if (submission?.submitted_at) {
       const sc = submission.score ?? 0
       const mx = submission.max_score ?? hw.max_score
-      status = { label: `الدرجة: ${sc}/${mx}`, cls: 'hw-status-graded', icon: 'fa-circle-check' }
+      status = hw.reveal_grades === true
+        ? { label: `الدرجة: ${sc}/${mx}`, cls: 'hw-status-graded', icon: 'fa-circle-check' }
+        : { label: 'تم التسليم بنجاح', cls: 'hw-status-graded', icon: 'fa-circle-check' }
     } else if (overdue) {
       status = { label: 'فات موعد التسليم', cls: 'hw-status-overdue', icon: 'fa-triangle-exclamation' }
     } else {
@@ -622,11 +629,20 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEd
           <div className={`hw-status ${status.cls}`}>
             <i className={`fas ${status.icon}`}></i>
             <span>{status.label}</span>
-            {submission?.feedback && (
+            {submission?.feedback && hw.reveal_grades === true && (
               <small className="hw-feedback" title={submission.feedback}>
                 — {submission.feedback}
               </small>
             )}
+          </div>
+        )}
+
+        {!isAdmin && submission?.submitted_at && hw.reveal_grades === true && (
+          <div style={{ marginTop: 10 }}>
+            <ResponsesReview
+              answerKey={hw.answer_key}
+              responses={submission.responses}
+            />
           </div>
         )}
 
@@ -730,7 +746,7 @@ function SubmitModal({ homework, existing, onClose, onDone, onError }) {
             <div className="hw-existing">
               <i className="fas fa-circle-check"></i>
               <span>لديك تسليم سابق</span>
-              {existing.score != null && (
+              {existing.score != null && homework.reveal_grades === true && (
                 <strong>— الدرجة: {existing.score}/{existing.max_score ?? homework.max_score}</strong>
               )}
               <small>— يمكنك تعديل إجاباتك وإعادة التسليم</small>
@@ -829,12 +845,12 @@ function GradeModal({ homework, graderId, onClose, onFlash }) {
     setSavingId(sub.id)
     try {
       const row = await gradeSubmission(sub.id, {
-        score: d.score === '' ? null : d.score,
+        score: sub.score,
         feedback: d.feedback,
         graderId,
       })
       setSubs(prev => prev.map(s => s.id === row.id ? { ...s, ...row } : s))
-      onFlash('تم حفظ الدرجة')
+      onFlash('تم حفظ الملاحظات')
     } catch (e) {
       onFlash(e.message || 'تعذر الحفظ', 'warning')
     } finally {
@@ -880,10 +896,12 @@ function GradeModal({ homework, graderId, onClose, onFlash }) {
                     )}
                   </div>
                   <div className="hw-sub-grade">
-                    <input type="number" min="0" max={homework.max_score}
-                      placeholder="الدرجة"
-                      value={draft[sub.id]?.score ?? ''}
-                      onChange={(e) => setDraft(d => ({ ...d, [sub.id]: { ...(d[sub.id] || {}), score: e.target.value } }))} />
+                    {sub.score != null && (
+                      <div className="hw-grade-static-badge">
+                        <i className="fas fa-star" style={{ color: '#ecc94b' }}></i>
+                        <span>الدرجة: {sub.score} / {sub.max_score ?? homework.max_score}</span>
+                      </div>
+                    )}
                     <input type="text" placeholder="ملاحظات (اختياري)"
                       value={draft[sub.id]?.feedback ?? ''}
                       onChange={(e) => setDraft(d => ({ ...d, [sub.id]: { ...(d[sub.id] || {}), feedback: e.target.value } }))} />

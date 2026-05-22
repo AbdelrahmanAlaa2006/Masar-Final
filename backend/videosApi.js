@@ -119,6 +119,7 @@ export async function updateVideo(id, input) {
   if (input.title       !== undefined) patch.title = String(input.title).trim() || null
   if (input.description !== undefined) patch.description = String(input.description || '').trim() || null
   if (input.grade       !== undefined) patch.grade = input.grade
+  if (input.quizzes     !== undefined) patch.quizzes = input.quizzes || []
   if (input.active_hours !== undefined) {
     const h = Math.max(1, parseInt(input.active_hours, 10) || 1)
     patch.active_hours = h
@@ -129,10 +130,94 @@ export async function updateVideo(id, input) {
     if (getErr) throw getErr
     patch.expiry_at = new Date(new Date(row.created_at).getTime() + h * 3600 * 1000).toISOString()
   }
-  const { data, error } = await supabase
+  const { data: video, error } = await supabase
     .from('videos').update(patch).eq('id', id).select().single()
   if (error) throw error
-  return data
+
+  // If input.parts is provided, sync parts
+  if (Array.isArray(input.parts)) {
+    // 1. Fetch current parts from database for this video
+    const { data: oldParts, error: fetchErr } = await supabase
+      .from('video_parts')
+      .select('id')
+      .eq('video_id', id)
+    if (fetchErr) throw fetchErr
+
+    const oldPartIds = (oldParts || []).map(p => p.id)
+    const newParts = input.parts
+
+    // Identify which parts to delete, insert, or update
+    const partsToKeepOrUpdate = newParts.filter(p => p.id && oldPartIds.includes(p.id))
+    const partsToInsert = newParts.filter(p => !p.id || !oldPartIds.includes(p.id))
+    const keepIds = partsToKeepOrUpdate.map(p => p.id)
+    const partsToDelete = oldPartIds.filter(oid => !keepIds.includes(oid))
+
+    // A. Delete obsolete parts
+    if (partsToDelete.length > 0) {
+      const { error: delErr } = await supabase
+        .from('video_parts')
+        .delete()
+        .in('id', partsToDelete)
+      if (delErr) throw delErr
+    }
+
+    // Helper to format part row
+    const formatPartRow = (p, idx) => {
+      const source = p.source === 'drive' ? 'drive'
+                  : p.source === 'bunny' ? 'bunny'
+                  : 'youtube'
+      return {
+        video_id: id,
+        part_index: idx,
+        title: p.title,
+        source,
+        youtube_id: source === 'youtube'
+          ? (p.youtube_id || p.youtubeId || extractYouTubeId(p.youtube_url || ''))
+          : null,
+        drive_id: source === 'drive' ? (p.drive_id || p.driveId || null) : null,
+        bunny_video_id:   source === 'bunny' ? (p.bunny_video_id   || p.bunnyVideoId   || null) : null,
+        bunny_library_id: source === 'bunny' ? (p.bunny_library_id || p.bunnyLibraryId || null) : null,
+        duration_seconds:
+          (source === 'drive' || source === 'bunny') && (p.duration_seconds || p.durationSeconds || p.durationMinutes)
+            ? Math.max(1, parseInt(p.duration_seconds || p.durationSeconds || (p.durationMinutes * 60), 10) || 0) || null
+            : null,
+        view_limit: p.view_limit !== undefined
+          ? (p.view_limit == null || p.view_limit === '' ? null : Math.max(1, Math.min(99, parseInt(p.view_limit, 10) || 1)))
+          : (p.viewLimit == null || p.viewLimit === '' ? null : Math.max(1, Math.min(99, parseInt(p.viewLimit, 10) || 1))),
+      }
+    }
+
+    // B. Update existing parts
+    for (let i = 0; i < newParts.length; i++) {
+      const p = newParts[i]
+      if (p.id && oldPartIds.includes(p.id)) {
+        const row = formatPartRow(p, i)
+        const { error: updErr } = await supabase
+          .from('video_parts')
+          .update(row)
+          .eq('id', p.id)
+        if (updErr) throw updErr
+      }
+    }
+
+    // C. Insert new parts
+    const rowsToInsert = []
+    for (let i = 0; i < newParts.length; i++) {
+      const p = newParts[i]
+      if (!p.id || !oldPartIds.includes(p.id)) {
+        rowsToInsert.push(formatPartRow(p, i))
+      }
+    }
+
+    if (rowsToInsert.length > 0) {
+      const { error: insErr } = await supabase
+        .from('video_parts')
+        .insert(rowsToInsert)
+      if (insErr) throw insErr
+    }
+  }
+
+  return video
 }
 
 export async function deleteVideo(id) {

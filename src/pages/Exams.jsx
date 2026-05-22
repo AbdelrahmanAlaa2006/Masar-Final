@@ -6,6 +6,8 @@ import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import QuestionImagePicker from '../components/QuestionImagePicker'
+import { notify } from '../utils/notify'
 
 const PREP_META = {
   first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -406,75 +408,688 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const [duration, setDur]   = useState(exam.duration_minutes || 30)
   const [maxAtt, setMaxAtt]  = useState(exam.max_attempts || 1)
   const [hours, setHours]    = useState(exam.available_hours || 72)
-  const [points, setPoints]  = useState(exam.total_points || 0)
   const [reveal, setReveal]  = useState(!!exam.reveal_grades)
   const [busy, setBusy]      = useState(false)
 
+  // Initialize questions with a local id field for list rendering keys.
+  const [questions, setQuestions] = useState(() => {
+    if (Array.isArray(exam.questions)) {
+      return exam.questions.map((q, idx) => ({
+        id: idx,
+        question: q.question || '',
+        image: q.image || '',
+        options: Array.isArray(q.options) ? [...q.options] : ['', ''],
+        answers: Array.isArray(q.answers) ? [...q.answers] : [0],
+        points: typeof q.points === 'number' ? q.points : 1,
+        isMultiple: !!q.isMultiple || (Array.isArray(q.answers) && q.answers.length > 1)
+      }))
+    }
+    return []
+  })
+
+  const [questionsCopy, setQuestionsCopy] = useState('')
+  const [showCopySection, setShowCopySection] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewData, setPreviewData] = useState(null)
+
+  // Recalculate total points dynamically when questions or their points change.
+  const totalPoints = useMemo(() => {
+    return questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 1), 0)
+  }, [questions])
+
+  const addSingleQuestion = () => {
+    const nextId = questions.length === 0
+      ? 0
+      : Math.max(...questions.map(q => q.id)) + 1
+    setQuestions(prev => [
+      ...prev,
+      { id: nextId, question: '', image: '', options: ['', ''], answers: [0], points: 1, isMultiple: false },
+    ])
+  }
+
+  const removeQuestion = (id) => {
+    setQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
+  const updateQuestion = (id, field, value) => {
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q))
+  }
+
+  const addOption = (id) => {
+    setQuestions(prev => prev.map(q => 
+      q.id === id ? { ...q, options: [...q.options, ''] } : q
+    ))
+  }
+
+  const removeOption = (id) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === id && q.options.length > 2) {
+        const newOptions = q.options.slice(0, -1)
+        // Adjust answers if they refer to the deleted option index
+        const maxIndex = newOptions.length - 1
+        const newAnswers = q.answers.filter(a => a <= maxIndex)
+        return {
+          ...q,
+          options: newOptions,
+          answers: newAnswers.length > 0 ? newAnswers : [0]
+        }
+      }
+      return q
+    }))
+  }
+
+  const updateOption = (id, optionIndex, value) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === id) {
+        const newOptions = [...q.options]
+        newOptions[optionIndex] = value
+        return { ...q, options: newOptions }
+      }
+      return q
+    }))
+  }
+
+  const toggleMultipleAnswers = (id) => {
+    setQuestions(prev => prev.map(q => 
+      q.id === id ? { ...q, isMultiple: !q.isMultiple, answers: q.isMultiple ? [0] : q.answers } : q
+    ))
+  }
+
+  const updateAnswer = (id, answerIndex, isChecked) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === id) {
+        let newAnswers
+        if (q.isMultiple) {
+          newAnswers = isChecked 
+            ? [...q.answers, answerIndex] 
+            : q.answers.filter(a => a !== answerIndex)
+        } else {
+          newAnswers = [answerIndex]
+        }
+        return { ...q, answers: newAnswers }
+      }
+      return q
+    }))
+  }
+
+  const parseCopiedQuestions = () => {
+    const text = questionsCopy.trim()
+    if (!text) {
+      notify('يرجى إدخال الأسئلة أولاً لتجزيئها', { type: 'warning' })
+      return
+    }
+    const parsedQuestions = parseNaturalFormat(text)
+    if (parsedQuestions.length === 0) {
+      notify('لم يتم العثور على أسئلة — تأكد من التنسيق والسطور الفارغة بين الأسئلة', { type: 'warning' })
+      return
+    }
+    
+    // Merge or replace? We'll append them to the existing questions list
+    const startId = questions.length === 0 ? 0 : Math.max(...questions.map(q => q.id)) + 1
+    const withIds = parsedQuestions.map((q, idx) => ({ ...q, id: startId + idx }))
+    
+    setQuestions(prev => [...prev, ...withIds])
+    setQuestionsCopy('')
+    setShowCopySection(false)
+    notify(`تم استيراد ${parsedQuestions.length} سؤال بنجاح!`, { type: 'success' })
+  }
+
+  const parseNaturalFormat = (text) => {
+    const blocks = text
+      .split(/\n\s*\n+/) // blank-line separator
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0)
+    return blocks.map((block, i) => {
+      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
+      let points = 1
+      // Trailing "!2" line sets points
+      if (lines.length > 1 && /^!\s*\d+/.test(lines[lines.length - 1])) {
+        const m = lines.pop().match(/\d+/)
+        if (m) points = Math.max(1, parseInt(m[0], 10))
+      }
+      // Inline "[2]" right after the question text
+      let questionLine = lines[0] || ''
+      const inlinePts = questionLine.match(/[\[\(](\d+)[\]\)]\s*$/)
+      if (inlinePts) {
+        points = Math.max(1, parseInt(inlinePts[1], 10))
+        questionLine = questionLine.replace(/[\[\(](\d+)[\]\)]\s*$/, '').trim()
+      }
+      const options = []
+      const correctAnswers = []
+      for (let j = 1; j < lines.length; j++) {
+        let opt = lines[j]
+        // Strip optional bullet markers like "- ", "1. ", "أ) "
+        opt = opt.replace(/^[-•·]\s+/, '')
+                 .replace(/^[٠-٩\d]+[\.\)\-]\s*/, '')
+                 .replace(/^[a-zA-Zء-ي][\.\)\-]\s*/, '')
+        const isCorrect = /^[\*★✓✔]\s*/.test(opt)
+        if (isCorrect) opt = opt.replace(/^[\*★✓✔]\s*/, '').trim()
+        if (!opt) continue
+        options.push(opt)
+        if (isCorrect) correctAnswers.push(options.length - 1)
+      }
+      return {
+        question: questionLine,
+        options: options.length >= 2 ? options : (options.length ? [...options, ''] : ['', '']),
+        answers: correctAnswers.length > 0 ? correctAnswers : [0],
+        points,
+        isMultiple: correctAnswers.length > 1,
+      }
+    })
+  }
+
+  const buildPayload = () => {
+    if (!title.trim()) {
+      notify('يرجى كتابة عنوان الامتحان', { type: 'warning' })
+      return null
+    }
+    if (!duration || parseInt(duration, 10) <= 0) {
+      notify('يرجى تحديد مدة صالحة للامتحان', { type: 'warning' })
+      return null
+    }
+    if (questions.length === 0) {
+      notify('يرجى إضافة سؤال واحد على الأقل للامتحان', { type: 'warning' })
+      return null
+    }
+    const isValid = questions.every(q =>
+      q.question.trim() &&
+      q.options.every(opt => opt.trim()) &&
+      q.answers.length > 0
+    )
+    if (!isValid) {
+      notify('يرجى التأكد من ملء نصوص كافة الأسئلة والخيارات وتحديد إجابة صحيحة واحدة على الأقل لكل سؤال', { type: 'warning' })
+      return null
+    }
+
+    const cleanQuestions = questions.map(q => ({
+      question: q.question.trim(),
+      image: q.image || null,
+      options: q.options.map(o => o.trim()),
+      answers: q.answers,
+      points: parseInt(q.points, 10) || 1,
+      isMultiple: !!q.isMultiple,
+    }))
+
+    return {
+      title: title.trim(),
+      number: number || null,
+      grade,
+      duration_minutes: parseInt(duration, 10),
+      max_attempts: parseInt(maxAtt, 10),
+      available_hours: parseInt(hours, 10),
+      total_points: totalPoints,
+      reveal_grades: reveal,
+      questions: cleanQuestions
+    }
+  }
+
+  const previewExam = () => {
+    const payload = buildPayload()
+    if (!payload) return
+    setPreviewData(payload)
+    setShowPreview(true)
+    setTimeout(() => {
+      document.querySelector('.edit-preview-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+  }
+
   const submit = async (e) => {
     e.preventDefault()
-    if (busy || !title.trim()) return
+    if (busy) return
+    const payload = buildPayload()
+    if (!payload) return
+    
     setBusy(true)
     try {
-      await onSave({
-        title: title.trim(),
-        number: number || null,
-        grade,
-        duration_minutes: duration,
-        max_attempts: maxAtt,
-        available_hours: hours,
-        total_points: points,
-        reveal_grades: reveal,
-      })
+      await onSave(payload)
+      notify('تم تعديل الامتحان بنجاح!', { type: 'success' })
+    } catch (err) {
+      notify(err.message || 'حدث خطأ أثناء تعديل الامتحان', { type: 'warning' })
     } finally {
       setBusy(false)
     }
   }
 
-  const inp = { width: '100%', padding: '10px 12px', border: '1px solid #cbd5e0', borderRadius: 8 }
-  const lbl = { display: 'block', marginBottom: 4, fontWeight: 600 }
-
   return (
-    <div className="modal show" onClick={onCancel}>
-      <div className="modal-content" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={onCancel}>&times;</button>
-        <h3 className="title-card mb-4">تعديل الامتحان</h3>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label><span style={lbl}>العنوان</span>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required style={inp} /></label>
-          <label><span style={lbl}>رقم الامتحان</span>
-            <input type="text" value={number} onChange={(e) => setNumber(e.target.value)} style={inp} /></label>
-          <label><span style={lbl}>الصف الدراسي</span>
-            <select value={grade} onChange={(e) => setGrade(e.target.value)} style={inp}>
-              <option value="first-prep">الصف الأول الإعدادي</option>
-              <option value="second-prep">الصف الثاني الإعدادي</option>
-              <option value="third-prep">الصف الثالث الإعدادي</option>
-            </select></label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label><span style={lbl}>المدة (دقيقة)</span>
-              <input type="number" min="1" value={duration} onChange={(e) => setDur(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
-            <label><span style={lbl}>عدد المحاولات</span>
-              <input type="number" min="1" value={maxAtt} onChange={(e) => setMaxAtt(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
+    <div className="modal show active" onClick={onCancel} style={{ display: 'flex', overflowY: 'auto', padding: '20px 10px', alignItems: 'flex-start', justifyContent: 'center' }}>
+      <style>{`
+        .edit-exam-modal-content {
+          background-color: var(--card-bg, #1a1f2e);
+          padding: 30px;
+          border-radius: 20px;
+          max-width: 960px;
+          width: 95%;
+          box-shadow: var(--shadow-hover);
+          margin: auto;
+          position: relative;
+          direction: rtl;
+          border: 1px solid rgba(167, 139, 250, 0.18);
+          animation: fadeInUp 0.4s ease;
+          color: var(--text-color, #f7fafc);
+        }
+        body.dark .edit-exam-modal-content {
+          background-color: #1a1f2e;
+          border-color: rgba(167, 139, 250, 0.18);
+        }
+        .edit-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid rgba(167, 139, 250, 0.15);
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .edit-modal-header h3 {
+          margin: 0;
+          font-size: 1.6rem;
+          font-weight: 700;
+          background: linear-gradient(45deg, #6366f1, #8b5cf6, #06b6d4);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .edit-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-secondary, #a0aec0);
+          font-size: 2rem;
+          cursor: pointer;
+          line-height: 1;
+          transition: color 0.2s;
+        }
+        .edit-close-btn:hover {
+          color: #f56565;
+        }
+        .edit-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 768px) {
+          .edit-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .edit-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .edit-field label {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--text-color, #e2e8f0);
+        }
+        .edit-input, .edit-select, .edit-textarea {
+          width: 100%;
+          padding: 12px 14px;
+          font-size: 0.95rem;
+          border-radius: 10px;
+          border: 1.5px solid rgba(99, 102, 241, 0.18);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-color, #f7fafc);
+          font-family: 'Cairo', sans-serif;
+          transition: all 0.2s;
+        }
+        body.dark .edit-input, body.dark .edit-select, body.dark .edit-textarea {
+          background: #0f172a;
+          border-color: rgba(167, 139, 250, 0.22);
+          color: #e2e8f0;
+        }
+        .edit-input:focus, .edit-select:focus, .edit-textarea:focus {
+          outline: none;
+          border-color: #8b5cf6;
+          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        }
+        .edit-textarea {
+          height: 70px;
+          resize: vertical;
+        }
+        .edit-questions-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin: 30px 0 15px;
+          color: #8b5cf6;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+          padding-bottom: 8px;
+        }
+        .edit-q-block {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 14px;
+          padding: 20px;
+          margin-bottom: 20px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+          position: relative;
+        }
+        body.dark .edit-q-block {
+          background: #1e2538;
+          border-color: rgba(167, 139, 250, 0.1);
+        }
+        .edit-q-block:hover {
+          border-color: rgba(139, 92, 246, 0.4);
+        }
+        .edit-q-controls {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 15px;
+          border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+          padding-bottom: 10px;
+        }
+        .edit-btn-sm {
+          padding: 6px 12px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.05);
+          color: var(--text-color, #e2e8f0);
+          cursor: pointer;
+          font-family: 'Cairo', sans-serif;
+          transition: all 0.2s;
+        }
+        .edit-btn-sm:hover {
+          background: #6366f1;
+          color: white;
+        }
+        .edit-btn-sm.active {
+          background: #10b981;
+          color: white;
+          border-color: #10b981;
+        }
+        .edit-btn-delete {
+          margin-right: auto;
+          color: #f87171;
+          border-color: rgba(248, 113, 113, 0.2);
+        }
+        .edit-btn-delete:hover {
+          background: #f87171;
+          color: white;
+          border-color: #f87171;
+        }
+        .edit-opts-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin: 12px 0;
+        }
+        .edit-opt-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .edit-ans-wrapper {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          margin-top: 10px;
+          background: rgba(255, 255, 255, 0.02);
+          padding: 10px;
+          border-radius: 8px;
+        }
+        .edit-ans-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+        }
+        .edit-action-row {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 30px;
+          border-top: 1px solid rgba(255,255,255,0.1);
+          padding-top: 20px;
+        }
+        @media (max-width: 480px) {
+          .edit-exam-modal-content {
+            padding: 16px 12px;
+            width: 98%;
+          }
+          .edit-modal-header h3 {
+            font-size: 1.25rem;
+          }
+          .edit-q-block {
+            padding: 12px;
+          }
+          .edit-grid {
+            gap: 10px;
+          }
+        }
+      `}</style>
+      <div className="edit-exam-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="edit-modal-header">
+          <h3>تعديل الامتحان: {exam.title}</h3>
+          <button className="edit-close-btn" onClick={onCancel}>&times;</button>
+        </div>
+
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Metadata Section */}
+          <div className="edit-grid">
+            <div className="edit-field">
+              <label>العنوان</label>
+              <input type="text" className="edit-input" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </div>
+            <div className="edit-field">
+              <label>رقم الامتحان (مثال: 5)</label>
+              <input type="text" className="edit-input" value={number} onChange={(e) => setNumber(e.target.value)} />
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label><span style={lbl}>الإتاحة (ساعة)</span>
-              <input type="number" min="1" value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} style={inp} /></label>
-            <label><span style={lbl}>الدرجة الكاملة</span>
-              <input type="number" min="0" value={points} onChange={(e) => setPoints(parseInt(e.target.value, 10) || 0)} style={inp} /></label>
+
+          <div className="edit-grid">
+            <div className="edit-field">
+              <label>الصف الدراسي</label>
+              <select className="edit-select" value={grade} onChange={(e) => setGrade(e.target.value)}>
+                <option value="first-prep">الصف الأول الإعدادي</option>
+                <option value="second-prep">الصف الثاني الإعدادي</option>
+                <option value="third-prep">الصف الثالث الإعدادي</option>
+              </select>
+            </div>
+            <div className="edit-field">
+              <label>الدرجة الكلية (تُحسب تلقائياً)</label>
+              <input type="number" className="edit-input" value={totalPoints} disabled style={{ opacity: 0.7, background: 'rgba(255,255,255,0.05)' }} />
+            </div>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={reveal} onChange={(e) => setReveal(e.target.checked)} />
-            <span>إظهار الدرجات للطلاب</span>
-          </label>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start', marginTop: 8 }}>
-            <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>إلغاء</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy ? '⏳ جاري الحفظ...' : '✓ حفظ التعديلات'}
+
+          <div className="edit-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="edit-field">
+              <label>المدة (بالدقائق)</label>
+              <input type="number" min="1" className="edit-input" value={duration} onChange={(e) => setDur(parseInt(e.target.value, 10) || 1)} required />
+            </div>
+            <div className="edit-field">
+              <label>المحاولات المتاحة</label>
+              <input type="number" min="1" className="edit-input" value={maxAtt} onChange={(e) => setMaxAtt(parseInt(e.target.value, 10) || 1)} required />
+            </div>
+            <div className="edit-field">
+              <label>مدة توفر الامتحان (ساعة)</label>
+              <input type="number" min="1" className="edit-input" value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} required />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
+            <input type="checkbox" id="edit-reveal" checked={reveal} onChange={(e) => setReveal(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#8b5cf6' }} />
+            <label htmlFor="edit-reveal" style={{ userSelect: 'none', cursor: 'pointer', fontWeight: 600 }}>إظهار الدرجات للطلاب فور التسليم</label>
+          </div>
+
+          {/* Bulk Import */}
+          <div className="edit-questions-title">
+            <i className="fas fa-file-invoice"></i>
+            <span>أسئلة الامتحان ({questions.length})</span>
+          </div>
+
+          <div style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px dashed rgba(139, 92, 246, 0.25)', borderRadius: 12, padding: 15 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#a78bfa' }}>📋 إستيراد سريع (لصق أسئلة متعددة دفعة واحدة)</span>
+              <button type="button" className="edit-btn-sm" onClick={() => setShowCopySection(!showCopySection)}>
+                {showCopySection ? 'إخفاء لوحة اللصق' : 'عرض لوحة اللصق'}
+              </button>
+            </div>
+            
+            {showCopySection && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <textarea
+                  className="edit-textarea"
+                  style={{ height: 120, fontSize: '0.85rem' }}
+                  value={questionsCopy}
+                  onChange={(e) => setQuestionsCopy(e.target.value)}
+                  placeholder="ما عاصمة مصر؟&#10;*القاهرة&#10;الإسكندرية&#10;الجيزة&#10;&#10;ما ناتج 3 + 2؟&#10;2&#10;3&#10;*5&#10;4&#10;!2"
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-outline" style={{ padding: '8px 16px', fontSize: 13, minWidth: 0, marginTop: 0 }} onClick={parseCopiedQuestions}>📥 استيراد الأسئلة ولصقها بالأسفل</button>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', alignSelf: 'center' }}>سيتم استخراج الأسئلة وإضافتها في نهاية قائمتك الحالية.</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Questions List */}
+          <div className="edit-questions-list">
+            {questions.map((q, idx) => (
+              <div className="edit-q-block" key={q.id}>
+                <div className="edit-q-controls">
+                  <span style={{ fontWeight: 800, fontSize: '1rem', color: '#8b5cf6', marginInlineEnd: 10 }}>السؤال {idx + 1}</span>
+                  <button type="button" className="edit-btn-sm" onClick={() => addOption(q.id)}>
+                    <i className="fas fa-plus"></i> إضافة خيار
+                  </button>
+                  <button type="button" className="edit-btn-sm" onClick={() => removeOption(q.id)} disabled={q.options.length <= 2}>
+                    <i className="fas fa-minus"></i> حذف خيار
+                  </button>
+                  <button
+                    type="button"
+                    className={`edit-btn-sm ${q.isMultiple ? 'active' : ''}`}
+                    onClick={() => toggleMultipleAnswers(q.id)}
+                  >
+                    <i className="fas fa-check-double"></i> {q.isMultiple ? 'متعدد الإجابات' : 'إجابة واحدة'}
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginInlineStart: 10 }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>النقاط:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      className="edit-input"
+                      style={{ width: 60, padding: '4px 8px', fontSize: '0.85rem' }}
+                      value={q.points}
+                      onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value, 10) || 1)}
+                    />
+                  </div>
+                  <button type="button" className="edit-btn-sm edit-btn-delete" onClick={() => removeQuestion(q.id)}>
+                    <i className="fas fa-trash"></i> حذف
+                  </button>
+                </div>
+
+                <div className="edit-field" style={{ marginBottom: 12 }}>
+                  <textarea
+                    className="edit-textarea"
+                    value={q.question}
+                    onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
+                    placeholder="اكتب صيغة السؤال هنا..."
+                    required
+                  />
+                </div>
+
+                {/* Optional Image Picker */}
+                <div style={{ marginBottom: 15 }}>
+                  <QuestionImagePicker
+                    value={q.image}
+                    onChange={(url) => updateQuestion(q.id, 'image', url)}
+                  />
+                </div>
+
+                {/* Options Input */}
+                <div className="edit-opts-wrapper">
+                  {q.options.map((opt, oIdx) => (
+                    <div className="edit-opt-item" key={oIdx}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700 }}>{String.fromCharCode(65 + oIdx)}</span>
+                      <input
+                        type="text"
+                        className="edit-input"
+                        style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)' }}
+                        value={opt}
+                        onChange={(e) => updateOption(q.id, oIdx, e.target.value)}
+                        placeholder={`الخيار الفرعي ${oIdx + 1}`}
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Correct Answer Selection */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#10b981', marginTop: 10 }}>✓ حدد الإجابة (أو الإجابات) الصحيحة:</div>
+                <div className="edit-ans-wrapper">
+                  {q.options.map((opt, oIdx) => (
+                    <label className="edit-ans-item" key={oIdx}>
+                      <input
+                        type={q.isMultiple ? 'checkbox' : 'radio'}
+                        name={`edit-correct-${q.id}`}
+                        checked={q.answers.includes(oIdx)}
+                        onChange={(e) => {
+                          if (q.isMultiple) {
+                            updateAnswer(q.id, oIdx, e.target.checked)
+                          } else {
+                            if (e.target.checked) updateAnswer(q.id, oIdx, true)
+                          }
+                        }}
+                        style={{ width: 16, height: 16, accentColor: '#10b981' }}
+                      />
+                      <span>{opt.trim() || `الخيار ${String.fromCharCode(65 + oIdx)}`}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add single question button */}
+          <button type="button" className="exam-add-q-btn" onClick={addSingleQuestion} style={{ marginTop: 0 }}>
+            <i className="fas fa-plus"></i>
+            <span>إضافة سؤال جديد يدوياً</span>
+          </button>
+
+          {/* Action Row */}
+          <div className="edit-action-row">
+            <button type="button" className="btn btn-outline" style={{ marginTop: 0, padding: '10px 20px', fontSize: 14 }} onClick={onCancel} disabled={busy}>إلغاء</button>
+            <button type="button" className="btn btn-preview" style={{ marginTop: 0, padding: '10px 20px', fontSize: 14 }} onClick={previewExam} disabled={busy}>🔍 معاينة التعديلات</button>
+            <button type="submit" className="btn btn-primary" style={{ marginTop: 0, padding: '10px 20px', fontSize: 14 }} disabled={busy}>
+              {busy ? '⏳ جاري الحفظ...' : '✓ حفظ التغييرات'}
             </button>
           </div>
         </form>
-        <p style={{ marginTop: 12, fontSize: 12, color: '#718096' }}>
-          ملاحظة: لتعديل الأسئلة، احذف الامتحان وأعد إنشاءه.
-        </p>
+
+        {/* Preview Block */}
+        {showPreview && previewData && (
+          <div className="preview edit-preview-block" style={{ marginTop: 30 }}>
+            <h2><i className="fas fa-magnifying-glass" style={{ color: '#f59e0b', marginInlineEnd: 8 }}></i> معاينة ورقة التعديل</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 15, marginBottom: 20 }}>
+              <div><strong>العنوان:</strong> {previewData.title}</div>
+              <div><strong>المدة:</strong> {previewData.duration_minutes} دقيقة</div>
+              <div><strong>عدد المحاولات:</strong> {previewData.max_attempts}</div>
+              <div><strong>مدة توفر الامتحان:</strong> {previewData.available_hours} ساعة</div>
+              <div><strong>الدرجة الإجمالية المحتسبة:</strong> {previewData.total_points} درجة</div>
+            </div>
+            {previewData.questions.map((q, idx) => (
+              <div key={idx} className="question-block" style={{ borderLeft: '4px solid #8b5cf6', background: 'rgba(255,255,255,0.01)', padding: 15, marginBottom: 15 }}>
+                <strong>س{idx + 1} ({q.points} نقطة): {q.question}</strong>
+                {q.image && <div style={{ marginTop: 10 }}><img src={q.image} alt="" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} /></div>}
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {q.options.map((opt, oIdx) => (
+                    <div 
+                      key={oIdx}
+                      className={`preview-option ${q.answers.includes(oIdx) ? 'correct' : ''}`}
+                      style={{ margin: 0 }}
+                    >
+                      {String.fromCharCode(65 + oIdx)}. {opt} {q.answers.includes(oIdx) ? '✅ (إجابة صحيحة)' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

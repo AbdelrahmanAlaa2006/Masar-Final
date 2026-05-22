@@ -223,8 +223,6 @@ export default function Login() {
     try {
       const response = await authAPI.login(phone.trim(), password)
 
-      console.log('Login response:', response)
-
       if (!response.token || !response.user) {
         throw new Error('Invalid response from server')
       }
@@ -232,9 +230,6 @@ export default function Login() {
       tokenAPI.setToken(response.token)
       sessionStorage.setItem('masar-user', JSON.stringify(response.user))
       clearFailures() 
-
-      console.log('Token stored:', response.token)
-      console.log('User stored:', response.user)
 
       showSuccessMessage()
 
