@@ -127,7 +127,7 @@ serve(async (req) => {
 
     const { error: upErr } = await admin
       .from('profiles')
-      .update({ name, phone, grade, group, role: 'student' })
+      .update({ name, phone, password, grade, group, role: 'student' })
       .eq('id', userId)
     if (upErr) { logs.push(`grade fail ${phone}: ${upErr.message}`); failed++; continue }
     logs.push(`ok: ${name} (${phone}) → ${grade} [${group}]`); ok++

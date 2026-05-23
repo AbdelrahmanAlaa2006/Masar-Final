@@ -129,18 +129,34 @@ export default function Notifications() {
 
     const meta = n.meta || {}
     let target = null
+    let state = null
 
     if (meta.kind === 'reveal' && meta.examId) {
-      // Exam grades revealed → go to exam report
-      target = '/exams-report'
+      // Exam grades revealed
+      if (userRole === 'admin') {
+        target = '/exams-group-report'
+        state = { examId: meta.examId }
+      } else {
+        target = '/exams-report'
+      }
     } else if (meta.kind === 'reveal_hw' && meta.homeworkId) {
-      // Homework grades revealed → go to homework report
-      target = '/homework-report'
+      // Homework grades revealed
+      if (userRole === 'admin') {
+        target = '/homework-group-report'
+        state = { homeworkId: meta.homeworkId }
+      } else {
+        target = '/homework-report'
+      }
+    } else if (meta.kind === 'password_reset_request') {
+      if (userRole === 'admin') {
+        target = '/control-panel'
+        state = { section: 'resets' }
+      }
     }
 
     if (target) {
       setOpen(false)
-      navigate(target)
+      navigate(target, { state })
     }
   }
 

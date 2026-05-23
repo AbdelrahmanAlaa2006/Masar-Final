@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import './HomeworkGroupReport.css'
 import { listStudents } from '@backend/profilesApi'
 import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi'
@@ -14,6 +14,7 @@ const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
 export default function HomeworkGroupReport() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [students, setStudents] = useState([])
   const [homeworks, setHomeworks] = useState([])
@@ -95,9 +96,32 @@ export default function HomeworkGroupReport() {
 
   const handleHomeworkChange = (hwId) => {
     setCurrentHomework(hwId)
-    if (hwId) loadReport(hwId)
-    else { setAllStudentsData([]); setDisplayedStudents([]) }
   }
+
+  // Centralized effect to trigger report loading when selections change
+  useEffect(() => {
+    if (currentHomework && currentGrade) {
+      loadReport(currentHomework)
+    } else {
+      setAllStudentsData([])
+      setDisplayedStudents([])
+    }
+  }, [currentHomework, currentGrade, currentGroup])
+
+  // Handle auto-preselection from router state (e.g. clicked notification)
+  const initialLoadRef = useRef(false)
+  useEffect(() => {
+    if (loading || homeworks.length === 0 || students.length === 0 || initialLoadRef.current) return
+    const targetHwId = location.state?.homeworkId
+    if (targetHwId) {
+      const hw = homeworks.find(h => h.id === targetHwId)
+      if (hw) {
+        initialLoadRef.current = true
+        setCurrentGrade(hw.grade)
+        setCurrentHomework(hw.id)
+      }
+    }
+  }, [loading, homeworks, students, location.state])
 
   const loadReport = async (hwId) => {
     const hw = homeworks.find(h => h.id === hwId)

@@ -6,7 +6,7 @@ import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/ca
 export async function listStudents() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, "group", avatar_url, created_at')
+    .select('id, name, phone, grade, "group", password, avatar_url, created_at')
     .eq('role', 'student')
     .order('name', { ascending: true })
   if (error) throw error

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { listExams, setExamRevealGrades, updateExamAvailability } from '@backend/examsApi'
 import { listVideos, updateVideoAvailability } from '@backend/videosApi'
 import { listHomeworks, updateHomework } from '@backend/homeworksApi'
@@ -12,6 +13,7 @@ import {
   groupTargetId,
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
+import { supabase } from '@backend/supabase'
 import {
   SEASONAL_THEMES,
   setSeasonOverride,
@@ -46,14 +48,28 @@ const fmtDate = (iso) => {
    Component
    ────────────────────────────────────────────────────────────── */
 export default function ControlPanel() {
+  const location = useLocation()
+
   /* navigation */
-  const [section, setSection] = useState('home') // 'home' | 'videos' | 'exams' | 'students' | 'seasons'
+  const [section, setSection] = useState(() => {
+    if (location.state && location.state.section) {
+      return location.state.section
+    }
+    return 'home'
+  })
   // Which sub-panel is active inside a section. Videos has: attempts, availability.
   // Exams adds: reveal. Only meaningful when section !== 'home'.
   const [subtab, setSubtab] = useState('attempts') // 'attempts' | 'availability' | 'reveal'
   const [scope, setScope] = useState(null) // 'prep' | 'student'
   const [target, setTarget] = useState(null) // { kind, id, name, prep?, ... }
   const [pickerQuery, setPickerQuery] = useState('')
+
+  // Handle in-app notification navigations
+  useEffect(() => {
+    if (location.state && location.state.section) {
+      setSection(location.state.section)
+    }
+  }, [location.state])
 
   /* real data from Supabase */
   const [students, setStudents] = useState([])
@@ -423,12 +439,20 @@ export default function ControlPanel() {
               desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي حسب التاريخ"
               onClick={() => enterSection('seasons')}
             />
+            <SectionCard
+              icon="fa-key"
+              accent="red"
+              title="طلبات استعادة الحساب"
+              desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب وقم بتلبيتها"
+              onClick={() => enterSection('resets')}
+            />
           </div>
         )}
 
         {section === 'students' && <StudentsSyncPanel />}
         {section === 'seasons'  && <SeasonalThemePanel />}
         {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
+        {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
 
         {/* SUB-TAB BAR — videos: attempts/availability. exams: + reveal. */}
         {(section === 'videos' || section === 'exams') && (
@@ -1090,12 +1114,41 @@ function RevealPanel({ onBack, flash }) {
 
   // Post a notification to match the audience so students see a real entry
   // in their notification bell the moment the exam is revealed.
+  // Post a notification to match the audience so students see a real entry
+  // in their notification bell the moment the exam is revealed.
   const notify = async (exam) => {
     const title = `تم إعلان نتيجة: ${exam.title}`
     const message = `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.`
     try {
       const me = JSON.parse(sessionStorage.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
+
+      // Check if a notification for this exam reveal and target audience already exists
+      let checkQuery = supabase
+        .from('notifications')
+        .select('id')
+        .eq('scope', audience)
+        .contains('meta', { examId: exam.id, kind: 'reveal' })
+
+      if (audience === 'grade') {
+        checkQuery = checkQuery.eq('target_grade', grade)
+      } else if (audience === 'group' && grade && groupValue) {
+        checkQuery = checkQuery.eq('target_group', groupTargetId(grade, groupValue))
+      } else if (audience === 'student' && studentId) {
+        checkQuery = checkQuery.eq('target_student', studentId)
+      }
+
+      const { data: existing } = await checkQuery.limit(1)
+
+      if (existing && existing.length > 0) {
+        // Already notified! Just bump the timestamp to move it to the top
+        await supabase
+          .from('notifications')
+          .update({ created_at: new Date().toISOString() })
+          .eq('id', existing[0].id)
+        return
+      }
+
       if (audience === 'all') {
         await createNotification({ title, message, level: 'success', scope: 'all',
           meta: { examId: exam.id, kind: 'reveal' }, createdBy })
@@ -1147,7 +1200,26 @@ function RevealPanel({ onBack, flash }) {
         }
       }
 
-      if (next) await notify(exam)
+      if (next) {
+        await notify(exam)
+      } else {
+        // Clean up: delete active reveal notification when results are hidden
+        let deleteQuery = supabase
+          .from('notifications')
+          .delete()
+          .eq('scope', audience)
+          .contains('meta', { examId: exam.id, kind: 'reveal' })
+
+        if (audience === 'grade') {
+          deleteQuery = deleteQuery.eq('target_grade', grade)
+        } else if (audience === 'group' && grade && groupValue) {
+          deleteQuery = deleteQuery.eq('target_group', groupTargetId(grade, groupValue))
+        } else if (audience === 'student' && studentId) {
+          deleteQuery = deleteQuery.eq('target_student', studentId)
+        }
+
+        await deleteQuery
+      }
 
       flash(
         next
@@ -2933,6 +3005,25 @@ function HomeworkRevealPanel({ onBack, flash }) {
     try {
       const me = JSON.parse(sessionStorage.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
+
+      // Check if a notification for this homework reveal already exists
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('scope', 'grade')
+        .eq('target_grade', hw.grade)
+        .contains('meta', { homeworkId: hw.id, kind: 'reveal_hw' })
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        // Already notified! Just bump the timestamp to move it to the top
+        await supabase
+          .from('notifications')
+          .update({ created_at: new Date().toISOString() })
+          .eq('id', existing[0].id)
+        return
+      }
+
       await createNotification({
         title,
         message,
@@ -2956,6 +3047,14 @@ function HomeworkRevealPanel({ onBack, flash }) {
       
       if (next) {
         await notify(hw)
+      } else {
+        // Clean up: delete active reveal notification when results are hidden
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('scope', 'grade')
+          .eq('target_grade', hw.grade)
+          .contains('meta', { homeworkId: hw.id, kind: 'reveal_hw' })
       }
 
       flash(
@@ -3114,6 +3213,259 @@ function HomeworkRevealPanel({ onBack, flash }) {
                     <span className="cp-switch-slider"></span>
                   </label>
                   {isBusy && <i className="fas fa-spinner fa-spin" style={{ color: 'var(--season-accent, #6366f1)' }}></i>}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ResetRequestsPanel — admin manages student password reset requests.
+   ────────────────────────────────────────────────────────────── */
+function ResetRequestsPanel({ onBack, flash, students }) {
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+  const [query, setQuery] = useState('')
+  const [copiedId, setCopiedId] = useState(null)
+  const [copiedEmailId, setCopiedEmailId] = useState(null)
+  const [copiedPassId, setCopiedPassId] = useState(null)
+  const [showGuide, setShowGuide] = useState(true)
+
+  // Load pending password reset requests
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        setLoading(true)
+        const { data, error: fetchError } = await supabase
+          .from('password_reset_requests')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+
+        if (fetchError) throw fetchError
+        if (!cancelled) setRequests(data || [])
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // Filter requests by search query
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return requests
+    return requests.filter((r) =>
+      [r.full_name, r.phone].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [requests, query])
+
+  const copyToClipboard = (text, id, type = 'phone') => {
+    navigator.clipboard.writeText(text)
+    if (type === 'email') {
+      setCopiedEmailId(id)
+      setTimeout(() => setCopiedEmailId(null), 2000)
+    } else if (type === 'password') {
+      setCopiedPassId(id)
+      setTimeout(() => setCopiedPassId(null), 2000)
+    } else {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    }
+  }
+
+  const handleResolve = async (req) => {
+    if (busyId) return
+    setBusyId(req.id)
+    try {
+      const { error: updateError } = await supabase
+        .from('password_reset_requests')
+        .update({ status: 'resolved' })
+        .eq('id', req.id)
+
+      if (updateError) throw updateError
+
+      setRequests((prev) => prev.filter((r) => r.id !== req.id))
+      flash(`تم وضع علامة "تم الحل" على طلب الطالب: ${req.full_name}`, 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر تحديث حالة الطلب', 'warning')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleReject = async (req) => {
+    if (busyId) return
+    setBusyId(req.id)
+    try {
+      const { error: updateError } = await supabase
+        .from('password_reset_requests')
+        .update({ status: 'rejected' })
+        .eq('id', req.id)
+
+      if (updateError) throw updateError
+
+      setRequests((prev) => prev.filter((r) => r.id !== req.id))
+      flash(`تم رفض طلب الطالب: ${req.full_name}`, 'warning')
+    } catch (e) {
+      flash(e.message || 'تعذّر تحديث حالة الطلب', 'warning')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <section className="cp-panel">
+      <button className="cp-back" onClick={onBack}>
+        <i className="fas fa-arrow-right"></i> رجوع
+      </button>
+
+      <div className="cp-panel-header">
+        <h2><i className="fas fa-key"></i> طلبات استعادة الحساب</h2>
+        <p>استعرض طلبات الطلاب لاستعادة حساباتهم واكشف كلمتهم المرورية الأصلية دون الحاجة لإعادة تعيينها.</p>
+      </div>
+
+      {/* Stats row */}
+      <div className="cp-stats-row" style={{ marginBottom: 20 }}>
+        <div className="cp-stat cp-stat-bad">
+          <i className="fas fa-hourglass-half"></i>
+          <div>
+            <div className="cp-stat-val">{requests.length}</div>
+            <div className="cp-stat-lbl">طلبات معلقة</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Guide instructions */}
+      <div className="reset-guide-card">
+        <button className="reset-guide-header" onClick={() => setShowGuide(!showGuide)}>
+          <span>
+            <i className="fas fa-circle-info"></i>
+            دليل إرشادي سريع: كيف تقوم بتسليم كلمة المرور للطالب؟
+          </span>
+          <i className={`fas ${showGuide ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+        </button>
+        {showGuide && (
+          <div className="reset-guide-body">
+            <ol>
+              <li>تصفح الطلبات المعلقة بالأسفل لمشاهدة كلمة المرور الخاصة بكل طالب مباشرة.</li>
+              <li>اضغط على زر <strong>"نسخ كلمة المرور"</strong> لنسخ كلمة المرور الأصلية المستوردة من ملف الـ CSV.</li>
+              <li>قم بإرسال كلمة المرور المنسوخة للطالب عبر الواتساب أو وسيلة التواصل المناسبة.</li>
+              <li>بعد تسليم كلمة المرور بنجاح للطالب، اضغط على زر <strong>"تم حل الطلب"</strong> لأرشفة الطلب تلقائيًا وحذف الإشعار.</li>
+            </ol>
+          </div>
+        )}
+      </div>
+
+      {/* Search Input */}
+      <div className="cp-search">
+        <i className="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="ابحث باسم الطالب أو رقم الهاتف..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {query && (
+          <button className="cp-search-clear" onClick={() => setQuery('')}>
+            <i className="fas fa-times"></i>
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="cp-empty">
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>جارٍ تحميل الطلبات...</p>
+        </div>
+      ) : error ? (
+        <div className="cp-empty" style={{ color: '#c53030' }}>
+          <i className="fas fa-circle-exclamation"></i>
+          <p>{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="cp-empty">
+          <i className="fas fa-envelope-open"></i>
+          <p>لا توجد طلبات استعادة معلقة حالياً.</p>
+        </div>
+      ) : (
+        <ul className="cp-items" style={{ marginTop: 15 }}>
+          {filtered.map((req) => {
+            const isBusy = busyId === req.id
+            const studentEmail = `${req.phone.trim()}@masaar.app`
+            
+            // Find student matching phone (ignoring format variances)
+            const getCleanPhone = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
+            const reqPhoneClean = getCleanPhone(req.phone)
+            const studentMatch = students.find((s) => getCleanPhone(s.phone) === reqPhoneClean)
+            const currentPassword = studentMatch?.password || 'غير مسجلة (تمت إضافته يدويًا)'
+
+            return (
+              <li key={req.id} className="cp-item">
+                <div className="cp-item-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                  <i className="fas fa-user-lock"></i>
+                </div>
+
+                <div className="cp-item-body">
+                  <div className="cp-item-title">
+                    <span style={{ fontWeight: 600 }}>{req.full_name}</span>
+                  </div>
+                  <div className="cp-item-meta">
+                    <span><i className="fas fa-phone"></i> {req.phone}</span>
+                    <span><i className="fas fa-key" style={{ color: 'var(--season-accent, #6366f1)' }}></i> كلمة المرور: <strong style={{ color: '#f59e0b', fontSize: '1.05rem', letterSpacing: '0.5px' }}>{currentPassword}</strong></span>
+                    <span><i className="fas fa-clock"></i> {new Date(req.created_at).toLocaleString('ar-EG')}</span>
+                  </div>
+                </div>
+
+                <div className="cp-item-controls" style={{ gap: 8 }}>
+                  <button
+                    className="cp-btn cp-btn-info cp-btn-sm"
+                    onClick={() => copyToClipboard(currentPassword, req.id, 'password')}
+                    title="نسخ كلمة مرور الطالب"
+                  >
+                    <i className={`fas ${copiedPassId === req.id ? 'fa-check' : 'fa-copy'}`}></i>
+                    {copiedPassId === req.id ? 'تم النسخ' : 'نسخ كلمة المرور'}
+                  </button>
+
+                  <button
+                    className="cp-btn cp-btn-ghost cp-btn-sm"
+                    onClick={() => copyToClipboard(req.phone, req.id, 'phone')}
+                    title="نسخ رقم جوال الطالب"
+                  >
+                    <i className={`fas ${copiedId === req.id ? 'fa-check' : 'fa-copy'}`}></i>
+                    {copiedId === req.id ? 'تم النسخ' : 'نسخ الجوال'}
+                  </button>
+
+                  <button
+                    className="cp-btn cp-btn-success cp-btn-sm"
+                    disabled={isBusy}
+                    onClick={() => handleResolve(req)}
+                  >
+                    {isBusy && busyId === req.id ? (
+                      <i className="fas fa-spinner fa-spin"></i>
+                    ) : (
+                      <i className="fas fa-check-double"></i>
+                    )}
+                    تم حل الطلب
+                  </button>
+
+                  <button
+                    className="cp-btn cp-btn-danger cp-btn-sm"
+                    disabled={isBusy}
+                    onClick={() => handleReject(req)}
+                  >
+                    <i className="fas fa-ban"></i>
+                    رفض الطلب
+                  </button>
                 </div>
               </li>
             )

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
+import { supabase } from '@backend/supabase'
 import './Login.css'
 
 const translations = {
@@ -38,6 +39,14 @@ export default function Login() {
   const navigate = useNavigate()
   const canvasRef = useRef(null)
 
+  // Forgot Password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotPhone, setForgotPhone] = useState('')
+  const [forgotName, setForgotName] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState('')
+  const [forgotSuccess, setForgotSuccess] = useState(false)
+
   const t = translations[lang]
 
   useEffect(() => {
@@ -50,6 +59,15 @@ export default function Login() {
     document.documentElement.dir = 'ltr'
     return () => {
       document.documentElement.dir = prevDir
+    }
+  }, [])
+
+  // Remember Me: check local storage on mount
+  useEffect(() => {
+    const remembered = localStorage.getItem('masaar-remembered-phone')
+    if (remembered) {
+      setPhone(remembered)
+      setRememberMe(true)
     }
   }, [])
 
@@ -75,8 +93,8 @@ export default function Login() {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.06,
-        vy: (Math.random() - 0.5) * 0.06,
+        vx: 0,
+        vy: 0,
         r: 1.8 + Math.random() * 2.2,
         c: COLORS[Math.floor(Math.random() * COLORS.length)],
       })
@@ -90,16 +108,16 @@ export default function Login() {
           const dx = mouse.x - p.x
           const dy = mouse.y - p.y
           const d2 = dx * dx + dy * dy
-          if (d2 < 200 * 200) {
+          if (d2 < 220 * 220) {
             const d = Math.sqrt(d2) || 1
-            const f = (1 - d / 200) * 0.12
+            const f = (1 - d / 220) * 0.22
             p.vx += (dx / d) * f
             p.vy += (dy / d) * f
           }
         }
 
-        p.vx *= 0.9
-        p.vy *= 0.9
+        p.vx *= 0.89
+        p.vy *= 0.89
         p.x += p.vx
         p.y += p.vy
 
@@ -231,6 +249,13 @@ export default function Login() {
       sessionStorage.setItem('masar-user', JSON.stringify(response.user))
       clearFailures() 
 
+      // Remember Me: handle setting/removing local storage value
+      if (rememberMe) {
+        localStorage.setItem('masaar-remembered-phone', phone.trim())
+      } else {
+        localStorage.removeItem('masaar-remembered-phone')
+      }
+
       showSuccessMessage()
 
       setTimeout(() => {
@@ -282,33 +307,71 @@ export default function Login() {
     }, 1400)
   }
 
+  // Forgot password ticketing submit
+  const handleForgotSubmit = async e => {
+    e.preventDefault()
+    setForgotError('')
+    
+    if (forgotPhone.trim().length < 8) {
+      setForgotError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number')
+      return
+    }
+
+    if (forgotName.trim().length < 3) {
+      setForgotError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters')
+      return
+    }
+
+    setForgotLoading(true)
+    try {
+      const { error: insertError } = await supabase
+        .from('password_reset_requests')
+        .insert({
+          phone: forgotPhone.trim(),
+          full_name: forgotName.trim(),
+          status: 'pending'
+        })
+
+      if (insertError) throw insertError
+
+      setForgotSuccess(true)
+    } catch (err) {
+      console.error('Password reset request error:', err)
+      setForgotError(lang === 'ar' 
+        ? 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' 
+        : 'An error occurred while sending your request. Please try again.')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
   const [imgHover, setImgHover] = useState(false)
   const [activeImg, setActiveImg] = useState(0)
 
   const features = lang === 'ar' ? [
-    { icon: 'fa-book-open', title: 'دروس تفاعلية', desc: 'محتوى تعليمي غني بالشرح والأمثلة لتثبيت المعلومة.' },
-    { icon: 'fa-video', title: 'فيديوهات عالية الجودة', desc: 'شاهد الدروس في أي وقت ومن أي مكان بسهولة.' },
-    { icon: 'fa-file-alt', title: 'اختبارات إلكترونية', desc: 'قس مستواك من خلال امتحانات متنوعة ونتائج فورية.' },
-    { icon: 'fa-chart-line', title: 'تقارير الأداء', desc: 'تابع تقدمك خطوة بخطوة عبر تقارير تفصيلية.' },
-    { icon: 'fa-users', title: 'مجتمع الطلاب', desc: 'تواصل مع زملائك وشارك الخبرات والأسئلة.' },
-    { icon: 'fa-mobile-alt', title: 'متاح على كل الأجهزة', desc: 'تجربة سلسة على الهاتف والتابلت والحاسوب.' },
+    { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
+    { icon: 'fa-video', title: 'فيديوهات بجودة عالية', desc: 'شرح مسجل للمحاضرات بجودة HD مع إمكانية التشغيل والاستئناف في أي وقت ومن أي جهاز.' },
+    { icon: 'fa-file-signature', title: 'واجبات ومتابعة دورية', desc: 'حل الواجبات ورفع الإجابات إلكترونيًا للمعلم مع تصحيح وملاحظات تفصيلية لضمان الاستفادة.' },
+    { icon: 'fa-file-alt', title: 'امتحانات إلكترونية', desc: 'اختبارات دورية لقياس المستوى بمختلف درجات الصعوبة وتوفير نتائج ونماذج إجابة فورية.' },
+    { icon: 'fa-chart-line', title: 'تقارير أداء شاملة', desc: 'رصد دقيق لمستوى الطالب بالامتحانات والواجبات والمشاهدات، ومشاركتها مع ولي الأمر.' },
+    { icon: 'fa-comments', title: 'دعم وتواصل مستمر', desc: 'تواصل وتفاعل مباشر مع المعلم لحل المشكلات والإجابة عن جميع الاستفسارات التعليمية.' },
   ] : [
-    { icon: 'fa-book-open', title: 'Interactive Lessons', desc: 'Rich educational content with clear explanations and examples.' },
-    { icon: 'fa-video', title: 'High-Quality Videos', desc: 'Watch lessons anytime, anywhere with ease.' },
-    { icon: 'fa-file-alt', title: 'Online Exams', desc: 'Test yourself with varied exams and get instant results.' },
-    { icon: 'fa-chart-line', title: 'Progress Reports', desc: 'Track your growth step by step with detailed reports.' },
-    { icon: 'fa-users', title: 'Student Community', desc: 'Connect with peers and share questions and experiences.' },
-    { icon: 'fa-mobile-alt', title: 'Works on Any Device', desc: 'Seamless experience on phone, tablet, and desktop.' },
+    { icon: 'fa-book-open', title: 'Interactive Lectures', desc: 'Detailed and simplified explanations of the curriculum using modern visual aids.' },
+    { icon: 'fa-video', title: 'High-Definition Videos', desc: 'Recorded lectures available in HD to play, pause, and resume anytime on any device.' },
+    { icon: 'fa-file-signature', title: 'Periodic Homework', desc: 'Submit assignments online to receive detailed corrections and teacher feedback.' },
+    { icon: 'fa-file-alt', title: 'Electronic Exams', desc: 'Periodic tests of varying difficulty levels with instant grading and detailed model answers.' },
+    { icon: 'fa-chart-line', title: 'Performance Reports', desc: 'Comprehensive tracking of student progress in exams and lectures, visible to parents.' },
+    { icon: 'fa-comments', title: 'Direct Student Support', desc: 'Engage with your teacher to ask questions, clarify concepts, and receive academic support.' },
   ]
 
   const steps = lang === 'ar' ? [
-    { n: '1', title: 'أنشئ حسابك', desc: 'سجّل بسهولة برقم هاتفك وكلمة مرور آمنة.' },
-    { n: '2', title: 'اختر مسارك', desc: 'تصفح المراحل والدروس المتاحة واختر ما يناسبك.' },
-    { n: '3', title: 'ابدأ التعلم', desc: 'شاهد الدروس، حلّ الاختبارات، وتابع تقدمك.' },
+    { n: '1', title: 'احصل على حسابك', desc: 'تواصل مع المعلم أو إدارة المنصة لتسجيل حسابك واستلام بيانات الدخول الخاصة بك.' },
+    { n: '2', title: 'سجّل دخولك', desc: 'أدخل رقم هاتفك وكلمة المرور الخاصة بك في النموذج بالأعلى للدخول الآمن إلى حسابك.' },
+    { n: '3', title: 'انطلق في مسارك', desc: 'شاهد المحاضرات والملخصات، حلّ واجباتك واختباراتك، وتابع أداءك خطوة بخطوة للتميز.' },
   ] : [
-    { n: '1', title: 'Create Account', desc: 'Sign up easily with your phone number and a secure password.' },
-    { n: '2', title: 'Choose Your Path', desc: 'Browse available levels and lessons that fit you.' },
-    { n: '3', title: 'Start Learning', desc: 'Watch lessons, take exams, and track your progress.' },
+    { n: '1', title: 'Get Your Account', desc: 'Contact your teacher or the platform administration to register and receive your credentials.' },
+    { n: '2', title: 'Log In Securely', desc: 'Enter your assigned phone number and password in the login form above to access your portal.' },
+    { n: '3', title: 'Start Your Path', desc: 'Watch video lectures, submit homework assignments, complete exams, and track your achievements.' },
   ]
 
   return (
@@ -393,9 +456,19 @@ export default function Login() {
                     <span className="slider"></span>
                   </label>
                   <span className="remember-text">{t.remember}</span>
-                  <a href="#" className="forgot">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPhone(phone)
+                      setForgotName('')
+                      setForgotError('')
+                      setForgotSuccess(false)
+                      setShowForgotModal(true)
+                    }}
+                    className="forgot-btn"
+                  >
                     {t.forgot}
-                  </a>
+                  </button>
                 </div>
 
                 <button type="submit" className="modern-btn" disabled={loading}>
@@ -632,6 +705,85 @@ export default function Login() {
           <p className="footer-copy">{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة' : '© 2026 Masar Educational Platform. All rights reserved'}</p>
         </div>
       </footer>
+
+      {showForgotModal && (
+        <div className="auth-modal-overlay" onClick={() => setShowForgotModal(false)}>
+          <div className="auth-modal" onClick={e => e.stopPropagation()} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            <button className="auth-modal-close" onClick={() => setShowForgotModal(false)} aria-label="Close">
+              <i className="fas fa-times"></i>
+            </button>
+            
+            {!forgotSuccess ? (
+              <>
+                <div className="auth-modal-header">
+                  <div className="auth-modal-icon">
+                    <i className="fas fa-key"></i>
+                  </div>
+                  <h3>{lang === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password'}</h3>
+                  <p>
+                    {lang === 'ar'
+                      ? 'أدخل رقم هاتفك واسمك بالكامل لتقديم طلب استعادة كلمة المرور.'
+                      : 'Enter your phone number and full name to request a password reset.'}
+                  </p>
+                </div>
+
+                {forgotError && <div className="error-message show">{forgotError}</div>}
+
+                <form onSubmit={handleForgotSubmit} className="auth-modal-form">
+                  <div className="input-wrapper">
+                    <i className="fas fa-phone"></i>
+                    <input
+                      type="tel"
+                      value={forgotPhone}
+                      onChange={e => setForgotPhone(e.target.value)}
+                      required
+                      placeholder={t.phone}
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="input-wrapper">
+                    <i className="fas fa-user"></i>
+                    <input
+                      type="text"
+                      value={forgotName}
+                      onChange={e => setForgotName(e.target.value)}
+                      required
+                      placeholder={t.name}
+                    />
+                  </div>
+
+                  <button type="submit" className="modern-btn" disabled={forgotLoading}>
+                    <span className="btn-text">
+                      {lang === 'ar' ? 'إرسال الطلب' : 'Submit Request'}
+                    </span>
+                    {forgotLoading && (
+                      <span className="btn-loader">
+                        <span className="spinner"></span>
+                      </span>
+                    )}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="auth-modal-success">
+                <div className="auth-modal-check">
+                  <i className="fas fa-circle-check"></i>
+                </div>
+                <h3>{lang === 'ar' ? 'تم إرسال طلبك بنجاح!' : 'Request Sent Successfully!'}</h3>
+                <p>
+                  {lang === 'ar'
+                    ? 'لقد تم تسجيل طلب استعادة كلمة المرور الخاص بك. يرجى مراجعة معلمك أو مسؤول المنصة لتأكيد هويتك واستلام كلمة المرور الجديدة الخاصة بك.'
+                    : 'Your password reset request has been registered. Please check with your teacher or platform administrator to verify your identity and receive your new password.'}
+                </p>
+                <button className="modern-btn" onClick={() => setShowForgotModal(false)}>
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

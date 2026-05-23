@@ -387,3 +387,205 @@
   .hr-filter-group { justify-content: center; }
   .hr-modal { padding: 18px; max-height: 90vh; }
 }
+
+/* ── Light Mode Overrides for HomeworkReport ── */
+body:not(.dark) .hr-page {
+  background: #f0f2f8;
+}
+body:not(.dark) .hr-header h1 {
+  color: #0f172a;
+}
+body:not(.dark) .hr-header p {
+  color: #475569;
+}
+body:not(.dark) .hr-back-btn {
+  background: #ffffff;
+  color: #334155;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-back-btn:hover {
+  background: #f8fafc;
+}
+body:not(.dark) .hr-student-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+body:not(.dark) .hr-student-table td {
+  color: #1e293b;
+}
+body:not(.dark) .hr-info-label {
+  color: #64748b;
+}
+body:not(.dark) .hr-stat-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-stat-label {
+  color: #64748b;
+}
+body:not(.dark) .hr-filter-btn,
+body:not(.dark) .hr-view-btn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-filter-btn.active,
+body:not(.dark) .hr-filter-btn:hover {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border-color: transparent;
+}
+body:not(.dark) .hr-view-btn.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: #10b981;
+}
+body:not(.dark) .hr-results-count {
+  color: #475569;
+}
+body:not(.dark) .hr-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-table-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .hr-card-title {
+  color: #0f172a;
+}
+body:not(.dark) .hr-table th {
+  background: #f8fafc;
+  color: #475569;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .hr-table td {
+  color: #1e293b;
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-tr:hover {
+  background: #f1f5f9;
+}
+body:not(.dark) .hr-td-num {
+  color: #64748b;
+}
+body:not(.dark) .hr-attempts {
+  color: #475569;
+}
+body:not(.dark) .hr-hw-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+body:not(.dark) .hr-hw-card:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .hr-card-name {
+  color: #0f172a;
+}
+body:not(.dark) .hr-card-subject {
+  color: #475569;
+}
+body:not(.dark) .hr-ring-inner {
+  background: #ffffff;
+}
+body:not(.dark) .hr-ring-num {
+  color: #0f172a;
+}
+body:not(.dark) .hr-ring-max {
+  color: #64748b;
+}
+body:not(.dark) .hr-card-meta {
+  color: #64748b;
+}
+body:not(.dark) .hr-modal {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .hr-modal-title {
+  color: #0f172a;
+}
+body:not(.dark) .hr-modal-subject {
+  color: #475569;
+}
+body:not(.dark) .hr-modal-row {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+  color: #1e293b;
+}
+body:not(.dark) .hr-modal-label {
+  color: #64748b;
+}
+body:not(.dark) .hr-ring-inner-lg {
+  background: #ffffff;
+}
+body:not(.dark) .hr-ring-num-lg {
+  color: #0f172a;
+}
+body:not(.dark) .hr-ring-max-lg {
+  color: #64748b;
+}
+body:not(.dark) .hr-close-review-btn {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+body:not(.dark) .hr-close-review-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+body:not(.dark) .hr-review-title {
+  color: #0f172a;
+}
+body:not(.dark) .hr-review-exam-name {
+  color: #475569;
+}
+body:not(.dark) .hr-review-summary {
+  background: #f1f5f9;
+}
+body:not(.dark) .hr-sum-lbl {
+  color: #475569;
+}
+body:not(.dark) .hr-sum-divider {
+  background: rgba(0, 0, 0, 0.08);
+}
+body:not(.dark) .hr-review-q {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+body:not(.dark) .hr-q-correct {
+  border-color: rgba(72, 187, 120, 0.3);
+}
+body:not(.dark) .hr-q-wrong {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+body:not(.dark) .hr-q-num {
+  background: #e2e8f0;
+  color: #475569;
+}
+body:not(.dark) .hr-q-text {
+  color: #0f172a;
+}
+body:not(.dark) .hr-opt {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+body:not(.dark) .hr-opt-letter {
+  background: rgba(0, 0, 0, 0.05);
+  color: #475569;
+}
+body:not(.dark) .hr-opt-correct {
+  background: rgba(72, 187, 120, 0.1);
+  border-color: rgba(72, 187, 120, 0.3);
+  color: #276749;
+}
+body:not(.dark) .hr-opt-wrong {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #9b1c1c;
+}

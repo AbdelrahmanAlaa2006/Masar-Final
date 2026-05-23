@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import './ExamsGroupReport.css'
 import { listStudents } from '@backend/profilesApi'
 import { listExams } from '@backend/examsApi'
@@ -15,6 +15,7 @@ const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
 
 export default function ExamsGroupReport() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [students, setStudents] = useState([])
   const [exams, setExams]       = useState([])
@@ -99,9 +100,32 @@ export default function ExamsGroupReport() {
 
   const handleExamChange = (examId) => {
     setCurrentExam(examId)
-    if (examId) loadReport(examId)
-    else { setAllStudentsData([]); setDisplayedStudents([]) }
   }
+
+  // Centralized effect to trigger report loading when selections change
+  useEffect(() => {
+    if (currentExam && currentGrade) {
+      loadReport(currentExam)
+    } else {
+      setAllStudentsData([])
+      setDisplayedStudents([])
+    }
+  }, [currentExam, currentGrade, currentGroup])
+
+  // Handle auto-preselection from router state (e.g. clicked notification)
+  const initialLoadRef = useRef(false)
+  useEffect(() => {
+    if (loading || exams.length === 0 || students.length === 0 || initialLoadRef.current) return
+    const targetExamId = location.state?.examId
+    if (targetExamId) {
+      const exam = exams.find(e => e.id === targetExamId)
+      if (exam) {
+        initialLoadRef.current = true
+        setCurrentGrade(exam.grade)
+        setCurrentExam(exam.id)
+      }
+    }
+  }, [loading, exams, students, location.state])
 
   const loadReport = async (examId) => {
     const exam = exams.find(ex => ex.id === examId)

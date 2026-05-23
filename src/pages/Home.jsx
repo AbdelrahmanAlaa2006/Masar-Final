@@ -56,8 +56,8 @@ export default function Home() {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.06,
-        vy: (Math.random() - 0.5) * 0.06,
+        vx: 0,
+        vy: 0,
         r: 1.8 + Math.random() * 2.2,
         c: COLORS[Math.floor(Math.random() * COLORS.length)],
       })
@@ -71,16 +71,16 @@ export default function Home() {
           const dx = mouse.x - p.x
           const dy = mouse.y - p.y
           const d2 = dx * dx + dy * dy
-          if (d2 < 200 * 200) {
+          if (d2 < 220 * 220) {
             const d = Math.sqrt(d2) || 1
-            const f = (1 - d / 200) * 0.12
+            const f = (1 - d / 220) * 0.22
             p.vx += (dx / d) * f
             p.vy += (dy / d) * f
           }
         }
 
-        p.vx *= 0.9
-        p.vy *= 0.9
+        p.vx *= 0.89
+        p.vy *= 0.89
         p.x += p.vx
         p.y += p.vy
 
