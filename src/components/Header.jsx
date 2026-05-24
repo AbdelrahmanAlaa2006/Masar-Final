@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '@backend/authApi'
+import { useAuth } from '../contexts/AuthContext'
 import Notifications from './Notifications'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'
@@ -29,36 +30,11 @@ export default function Header() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [userRole, setUserRole] = useState(null)
-  const [userName, setUserName] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState(null)
+  const { user, role: userRole, logout } = useAuth()
+  const userName = user?.name || ''
+  const avatarUrl = user?.avatar_url || null
   const navigate = useNavigate()
   const location = useLocation()
-
-  // Read user. We re-read on route change AND on a custom 'masar-user-updated'
-  // event so Profile.jsx's avatar upload reflects in the navbar without a
-  // full page reload.
-  useEffect(() => {
-    const read = () => {
-      try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user'))
-        setUserRole(u?.role || null)
-        setUserName(u?.name || '')
-        setAvatarUrl(u?.avatar_url || null)
-      } catch {
-        setUserRole(null)
-        setUserName('')
-        setAvatarUrl(null)
-      }
-    }
-    read()
-    window.addEventListener('masar-user-updated', read)
-    window.addEventListener('storage', read)
-    return () => {
-      window.removeEventListener('masar-user-updated', read)
-      window.removeEventListener('storage', read)
-    }
-  }, [location.pathname])
 
   // Close drawer on nav
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
@@ -99,7 +75,7 @@ export default function Header() {
   }
 
   const handleLogout = () => {
-    authAPI.logout()
+    logout()
     const overlay = document.createElement('div')
     overlay.className = 'auth-overlay'
     overlay.innerHTML = `

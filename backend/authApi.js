@@ -17,7 +17,7 @@ export const authAPI = {
     // Fetch profile (name, role, level)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, name, phone, grade, "group", role, avatar_url')
       .eq('id', data.user.id)
       .single()
 
@@ -59,7 +59,7 @@ export const authAPI = {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, name, phone, grade, "group", role, avatar_url')
       .eq('id', data.user.id)
       .single()
 

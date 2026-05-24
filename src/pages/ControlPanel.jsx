@@ -22,6 +22,8 @@ import {
 } from '../seasonal/useSeasonalTheme'
 import { findThemeForDate, todayIso } from '../seasonal/themes'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { useAuth } from '../contexts/AuthContext'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import './ControlPanel.css'
 
 const GRADE_LABEL = {
@@ -446,6 +448,13 @@ export default function ControlPanel() {
               desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب وقم بتلبيتها"
               onClick={() => enterSection('resets')}
             />
+            <SectionCard
+              icon="fa-shield-halved"
+              accent="red"
+              title="سجلات الحماية الأمنية"
+              desc="عرض وإدارة سجلات محاولات اختراق أدوات المطور (DevTools)"
+              onClick={() => enterSection('violations')}
+            />
           </div>
         )}
 
@@ -453,6 +462,7 @@ export default function ControlPanel() {
         {section === 'seasons'  && <SeasonalThemePanel />}
         {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
         {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
+        {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
 
         {/* SUB-TAB BAR — videos: attempts/availability. exams: + reveal. */}
         {(section === 'videos' || section === 'exams') && (
@@ -2959,6 +2969,7 @@ function StudentsSyncPanel() {
    Updates homeworks.reveal_grades and posts a notification.
    ────────────────────────────────────────────────────────────── */
 function HomeworkRevealPanel({ onBack, flash }) {
+  const { user: me } = useAuth()
   const [homeworks, setHomeworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -2973,7 +2984,7 @@ function HomeworkRevealPanel({ onBack, flash }) {
     ;(async () => {
       try {
         setLoading(true)
-        const hw = await listHomeworks()
+        const hw = await cached('homeworks', LIST_TTL, listHomeworks)
         if (!cancelled) {
           setHomeworks(hw)
         }
@@ -3003,7 +3014,6 @@ function HomeworkRevealPanel({ onBack, flash }) {
     const title = `تم إعلان نتيجة: ${hw.title}`
     const message = `أصبحت نتيجة الواجب متاحة الآن في صفحة تقاريرك.`
     try {
-      const me = JSON.parse(sessionStorage.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
 
       // Check if a notification for this homework reveal already exists
@@ -3043,6 +3053,7 @@ function HomeworkRevealPanel({ onBack, flash }) {
     setBusyId(hw.id)
     try {
       await updateHomework(hw.id, { reveal_grades: next })
+      invalidateCache('homeworks')
       setHomeworks((prev) => prev.map((r) => r.id === hw.id ? { ...r, reveal_grades: next } : r))
       
       if (next) {
@@ -3243,13 +3254,16 @@ function ResetRequestsPanel({ onBack, flash, students }) {
     ;(async () => {
       try {
         setLoading(true)
-        const { data, error: fetchError } = await supabase
-          .from('password_reset_requests')
-          .select('*')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-
-        if (fetchError) throw fetchError
+        const fetchRequests = async () => {
+          const { data, error: fetchError } = await supabase
+            .from('password_reset_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+          if (fetchError) throw fetchError
+          return data || []
+        }
+        const data = await cached('password_reset_requests', LIST_TTL, fetchRequests)
         if (!cancelled) setRequests(data || [])
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
@@ -3294,6 +3308,7 @@ function ResetRequestsPanel({ onBack, flash, students }) {
 
       if (updateError) throw updateError
 
+      invalidateCache('password_reset_requests')
       setRequests((prev) => prev.filter((r) => r.id !== req.id))
       flash(`تم وضع علامة "تم الحل" على طلب الطالب: ${req.full_name}`, 'success')
     } catch (e) {
@@ -3314,6 +3329,7 @@ function ResetRequestsPanel({ onBack, flash, students }) {
 
       if (updateError) throw updateError
 
+      invalidateCache('password_reset_requests')
       setRequests((prev) => prev.filter((r) => r.id !== req.id))
       flash(`تم رفض طلب الطالب: ${req.full_name}`, 'warning')
     } catch (e) {
@@ -3465,6 +3481,221 @@ function ResetRequestsPanel({ onBack, flash, students }) {
                   >
                     <i className="fas fa-ban"></i>
                     رفض الطلب
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   DevToolsViolationsPanel — admin views security violations.
+   ────────────────────────────────────────────────────────────── */
+function DevToolsViolationsPanel({ onBack, flash }) {
+  const [violations, setViolations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+  const [clearing, setClearing] = useState(false)
+  const [query, setQuery] = useState('')
+  const [copiedId, setCopiedId] = useState(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  const loadViolations = async () => {
+    try {
+      setLoading(true)
+      const fetchViolations = async () => {
+        const { data, error: fetchError } = await supabase
+          .from('devtools_violations')
+          .select('*')
+          .order('created_at', { ascending: false })
+        if (fetchError) throw fetchError
+        return data || []
+      }
+      const data = await cached('devtools_violations', LIST_TTL, fetchViolations)
+      setViolations(data || [])
+    } catch (e) {
+      setError(e.message || 'تعذّر تحميل سجلات الحماية')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadViolations()
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return violations
+    return violations.filter((v) =>
+      [v.username, v.ip_address, v.page].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [violations, query])
+
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleDelete = async (id) => {
+    if (busyId) return
+    setBusyId(id)
+    try {
+      const { error: deleteError } = await supabase
+        .from('devtools_violations')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+
+      invalidateCache('devtools_violations')
+      setViolations((prev) => prev.filter((v) => v.id !== id))
+      flash('تم حذف سجل الانتهاك بنجاح', 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر حذف السجل', 'warning')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleClearAll = async () => {
+    setClearing(true)
+    try {
+      const { error: deleteError } = await supabase
+        .from('devtools_violations')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // delete everything
+
+      if (deleteError) throw deleteError
+
+      invalidateCache('devtools_violations')
+      setViolations([])
+      flash('تم مسح جميع سجلات الانتهاكات الأمنية بنجاح', 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر مسح السجلات', 'warning')
+    } finally {
+      setClearing(false)
+      setShowClearConfirm(false)
+    }
+  }
+
+  return (
+    <section className="cp-panel">
+      {showClearConfirm && (
+        <ConfirmDeleteDialog
+          title="تأكيد مسح جميع السجلات"
+          itemLabel="جميع سجلات محاولات اختراق أدوات المطور"
+          message="هل أنت متأكد من رغبتك في حذف جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء."
+          confirmText="نعم، امسح الكل"
+          cancelText="إلغاء"
+          onConfirm={handleClearAll}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <button className="cp-back" onClick={onBack} style={{ margin: 0 }}>
+          <i className="fas fa-arrow-right"></i> رجوع
+        </button>
+
+        {violations.length > 0 && (
+          <button 
+            className="cp-btn cp-btn-danger" 
+            disabled={clearing} 
+            onClick={() => setShowClearConfirm(true)}
+          >
+            {clearing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
+            <span>مسح جميع السجلات</span>
+          </button>
+        )}
+      </div>
+
+      <header className="cp-panel-header" style={{ marginTop: 20 }}>
+        <h2>سجل محاولات اختراق أدوات المطور (DevTools Log)</h2>
+        <p>عرض تفصيلي لجميع محاولات فتح أدوات المطور غير المصرح بها لحماية محتوى المنصة</p>
+      </header>
+
+      <div className="cp-search">
+        <i className="fas fa-search"></i>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="ابحث بالاسم أو عنوان IP أو اسم الصفحة..."
+        />
+        {query && (
+          <button className="cp-search-clear" onClick={() => setQuery('')}>
+            <i className="fas fa-times"></i>
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="cp-empty">
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>جارٍ تحميل سجلات الحماية...</p>
+        </div>
+      ) : error ? (
+        <div className="cp-empty" style={{ color: '#c53030' }}>
+          <i className="fas fa-circle-exclamation"></i>
+          <p>{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="cp-empty">
+          <i className="fas fa-shield-alt" style={{ color: '#16a34a' }}></i>
+          <p>لا توجد انتهاكات أمنية مسجلة حالياً. النظام آمن بالكامل!</p>
+        </div>
+      ) : (
+        <ul className="cp-items" style={{ marginTop: 15 }}>
+          {filtered.map((v) => {
+            const isBusy = busyId === v.id
+            return (
+              <li key={v.id} className="cp-item">
+                <div className="cp-item-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                  <i className="fas fa-shield-halved"></i>
+                </div>
+
+                <div className="cp-item-body">
+                  <div className="cp-item-title">
+                    <span style={{ fontWeight: 800, color: '#1e293b' }}>{v.username}</span>
+                    <span className="cp-id-pill" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.12)' }}>
+                      <i className="fas fa-triangle-exclamation"></i> انتهاك أمني
+                    </span>
+                  </div>
+                  <div className="cp-item-meta" style={{ gap: '8px 16px' }}>
+                    <span><i className="fas fa-globe"></i> IP: <strong style={{ color: '#4f46e5' }}>{v.ip_address}</strong></span>
+                    <span><i className="fas fa-link"></i> الصفحة: <strong style={{ color: '#0ea5e9' }}>{v.page}</strong></span>
+                    <span><i className="fas fa-clock"></i> {new Date(v.created_at).toLocaleString('ar-EG')}</span>
+                  </div>
+                  {v.user_agent && (
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                      <i className="fas fa-laptop-code"></i> {v.user_agent}
+                    </div>
+                  )}
+                </div>
+
+                <div className="cp-item-controls" style={{ gap: 8 }}>
+                  <button
+                    className="cp-btn cp-btn-ghost cp-btn-sm"
+                    onClick={() => copyToClipboard(v.ip_address, v.id)}
+                    title="نسخ عنوان IP"
+                  >
+                    <i className={`fas ${copiedId === v.id ? 'fa-check' : 'fa-copy'}`}></i>
+                    {copiedId === v.id ? 'تم النسخ' : 'نسخ IP'}
+                  </button>
+
+                  <button
+                    className="cp-btn cp-btn-danger cp-btn-sm"
+                    disabled={isBusy}
+                    onClick={() => handleDelete(v.id)}
+                  >
+                    {isBusy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
+                    حذف السجل
                   </button>
                 </div>
               </li>

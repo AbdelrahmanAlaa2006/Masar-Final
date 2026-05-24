@@ -37,16 +37,6 @@ export default function SeasonalDecor({ suppress = false }) {
 
 /* ── Ramadan ── big crescent + many lanterns + sky stars ─── */
 function RamadanDecor() {
-  // 6 lanterns at varied positions and durations — non-synced.
-  const lanterns = useMemo(() => ([
-    { left:  '6%', delay:  '0s',  duration: '15s', scale: 1.10, swing: 'lantern-swing-a' },
-    { left: '22%', delay:  '6s',  duration: '18s', scale: 0.85, swing: 'lantern-swing-b' },
-    { left: '40%', delay:  '2s',  duration: '20s', scale: 1.00, swing: 'lantern-swing-a' },
-    { left: '58%', delay:  '9s',  duration: '17s', scale: 0.92, swing: 'lantern-swing-b' },
-    { left: '76%', delay:  '4s',  duration: '19s', scale: 1.05, swing: 'lantern-swing-a' },
-    { left: '90%', delay: '11s',  duration: '16s', scale: 0.80, swing: 'lantern-swing-b' },
-  ]), [])
-
   // ~14 twinkling stars in the upper third — gives the "Ramadan
   // night sky" feel even without a heavy backdrop.
   const stars = useMemo(() => {
@@ -67,8 +57,50 @@ function RamadanDecor() {
       <div className="season-night-tint" />
       <Crescent />
       {stars.map((s, i) => <Star key={i} {...s} />)}
-      {lanterns.map((l, i) => <Lantern key={i} {...l} />)}
+      <RamadanGarland />
     </>
+  )
+}
+
+function RamadanGarland() {
+  // 5 lanterns positioned symmetrically across the rope peaks/anchors under the navbar.
+  const lanterns = useMemo(() => ([
+    { left: '10%', delay: '0s',    duration: '4s',   scale: 0.70, swing: 'lantern-swing-a' },
+    { left: '30%', delay: '0.8s',  duration: '5s',   scale: 0.60, swing: 'lantern-swing-b' },
+    { left: '50%', delay: '0.4s',  duration: '4.5s', scale: 0.70, swing: 'lantern-swing-a' },
+    { left: '70%', delay: '1.2s',  duration: '5.2s', scale: 0.60, swing: 'lantern-swing-b' },
+    { left: '90%', delay: '0.6s',  duration: '4.8s', scale: 0.70, swing: 'lantern-swing-a' },
+  ]), [])
+
+  return (
+    <div className="season-ramadan-garland">
+      {/* Decorative golden rope SVG connecting the top points under the navbar */}
+      <svg className="season-garland-svg" viewBox="0 0 1000 50" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="garland-rope-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#8a6422" />
+            <stop offset="50%" stopColor="#c9a45a" />
+            <stop offset="100%" stopColor="#8a6422" />
+          </linearGradient>
+        </defs>
+        {/* Curved hanging rope */}
+        <path
+          d="M 0 10 Q 100 40 200 10 Q 300 40 400 10 Q 500 40 600 10 Q 700 40 800 10 Q 900 40 1000 10"
+          fill="none"
+          stroke="url(#garland-rope-grad)"
+          strokeWidth="2.5"
+          strokeDasharray="5,5"
+        />
+        {/* Small decorative gold stars hanging from the valleys of the rope */}
+        {[100, 300, 500, 700, 900].map((x, idx) => (
+          <g key={idx} transform={`translate(${x}, 40)`} fill="#c9a45a" opacity="0.8">
+            <line x1="0" y1="-15" x2="0" y2="0" stroke="#8a6422" strokeWidth="1" />
+            <polygon points="0,-4 1.2,-1.2 4,-1.2 1.6,0.6 2.6,3.4 0,1.6 -2.6,3.4 -1.6,0.6 -4,-1.2 -1.2,-1.2" />
+          </g>
+        ))}
+      </svg>
+      {lanterns.map((l, i) => <Lantern key={i} {...l} />)}
+    </div>
   )
 }
 

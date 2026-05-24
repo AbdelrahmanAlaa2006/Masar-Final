@@ -30,14 +30,27 @@
 
 .season-crescent {
   position: absolute;
-  top: 32px;
-  inset-inline-start: 32px;
-  filter: drop-shadow(0 0 30px rgba(201, 164, 90, 0.65));
+  top: 120px; /* Positioned below header height */
+  inset-inline-start: 40px;
+  filter: drop-shadow(0 0 35px rgba(201, 164, 90, 0.5));
   animation: crescent-shimmer 6s ease-in-out infinite;
+  z-index: -1; /* Layer behind main card layouts to prevent overlap */
+  pointer-events: none;
 }
 @keyframes crescent-shimmer {
-  0%, 100% { opacity: 0.92; transform: rotate(-6deg); }
-  50%      { opacity: 1;    transform: rotate(-2deg); }
+  0%, 100% { opacity: 0.8; transform: rotate(-8deg); }
+  50%      { opacity: 0.95; transform: rotate(-3deg); }
+}
+
+/* Prevent crescent moon from overlapping content card by scaling it down and lowering opacity on smaller viewports */
+@media (max-width: 1250px) {
+  .season-crescent {
+    width: 130px !important;
+    height: 130px !important;
+    top: 100px;
+    inset-inline-start: 24px;
+    opacity: 0.7;
+  }
 }
 
 .season-star {
@@ -46,26 +59,37 @@
   background: #fff7d8;
   box-shadow: 0 0 8px rgba(255, 247, 216, 0.95);
   animation: star-twinkle 3.4s ease-in-out infinite;
+  z-index: -1; /* Keep background elements in the background */
 }
 @keyframes star-twinkle {
   0%, 100% { opacity: 0.25; transform: scale(0.7); }
   50%      { opacity: 1;    transform: scale(1); }
 }
 
+/* Ramadan Hanging Garland container connected under the 84px navbar */
+.season-ramadan-garland {
+  position: fixed;
+  top: 84px; /* Connected directly under app navbar */
+  left: 0;
+  width: 100%;
+  height: 150px;
+  pointer-events: none;
+  z-index: 99; /* Below navbar's 1000, above page content's 1 */
+}
+
+.season-garland-svg {
+  width: 100%;
+  height: 40px;
+  display: block;
+  filter: drop-shadow(0 4px 6px rgba(138, 100, 34, 0.25));
+}
+
 .season-lantern {
   position: absolute;
-  bottom: -110px;
-  filter: drop-shadow(0 0 22px rgba(201, 164, 90, 0.75));
-  animation-name: lantern-rise;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-  will-change: transform, opacity;
-}
-@keyframes lantern-rise {
-  0%   { transform: translateY(0)         scale(var(--scale, 1)); opacity: 0; }
-  10%  { opacity: 0.95; }
-  90%  { opacity: 0.95; }
-  100% { transform: translateY(-115vh)    scale(var(--scale, 1)); opacity: 0; }
+  top: 6px; /* Hang exactly from the peak coordinates of the rope */
+  filter: drop-shadow(0 6px 14px rgba(201, 164, 90, 0.55));
+  transform-origin: top center;
+  transform: scale(var(--scale, 1));
 }
 .season-lantern-swing {
   display: inline-block;
@@ -277,8 +301,8 @@ body:not(.dark).season-christmas .season-snowflake {
 
 /* ╔═══ Mobile scaling ════════════════════════════════════════ */
 @media (max-width: 640px) {
-  /* Ramadan: shrink the crescent + lanterns; keep stars. */
-  .season-crescent { width: 110px !important; height: 110px !important; top: 20px; inset-inline-start: 16px; }
+  /* Ramadan: shrink the crescent + lanterns; keep stars. Position below mobile header. */
+  .season-crescent { width: 85px !important; height: 85px !important; top: 90px; inset-inline-start: 12px; opacity: 0.55; }
   .season-lantern svg { width: 44px !important; height: 76px !important; }
 
   /* Eid al-Fitr: shrink the warm blob, scale crescents/petals

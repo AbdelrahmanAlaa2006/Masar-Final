@@ -6,6 +6,7 @@ import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { useAuth } from '../contexts/AuthContext'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 
@@ -19,29 +20,22 @@ export default function Exams() {
   const navigate = useNavigate()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
-  const [currentLevel, setCurrentLevel] = useState(null)
+  const { user, role: userRole } = useAuth()
+  const userId = user?.id || null
+
+  const [currentLevel, setCurrentLevel] = useState(() => {
+    if (user && user.role !== 'admin' && user.grade) {
+      return dbToUiGrade(user.grade)
+    }
+    return null
+  })
+
   const [showModal, setShowModal] = useState(false)
-  const [userRole, setUserRole] = useState(null)
-  const [userId, setUserId] = useState(null)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
   const [overridesMap, setOverridesMap] = useState(new Map()) // examId -> {allowed, attempts}
-
-  useEffect(() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      setUserRole(u?.role || null)
-      setUserId(u?.id || null)
-      // students auto-land on their own grade
-      if (u?.role !== 'admin' && u?.grade) {
-        setCurrentLevel(dbToUiGrade(u.grade))
-      }
-    } catch {
-      setUserRole(null)
-    }
-  }, [])
 
   const refresh = async () => {
     setLoading(true)
@@ -58,24 +52,21 @@ export default function Exams() {
 
   useEffect(() => { refresh() }, [])
 
-  // Pull effective overrides — STUDENTS ONLY. Admins manage overrides via
-  // ControlPanel; the Exams page renders the raw list for them.
   useEffect(() => {
     if (!userId || userRole === 'admin') { setOverridesMap(new Map()); return }
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user')) || {}
-        const grade = u.grade
+        const grade = user?.grade
         if (!grade) return
         const rows = await listEffectiveOverrides({
-          studentId: userId, grade, group: u.group || null, itemType: 'exam',
+          studentId: userId, grade, group: user?.group || null, itemType: 'exam',
         })
         if (!cancelled) setOverridesMap(reduceEffective(rows))
       } catch { /* ignore — defaults apply */ }
     })()
     return () => { cancelled = true }
-  }, [userId, userRole])
+  }, [userId, userRole, user?.grade, user?.group])
 
   // Fetch submitted-attempt counts for the currently displayed exams.
   // If an admin override exists for this exam, we only count attempts

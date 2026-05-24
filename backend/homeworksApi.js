@@ -167,15 +167,18 @@ export async function getMySubmission(homeworkId, studentId) {
 // Returns Map<homeworkId, submissionRow>. One round-trip.
 export async function getMySubmissionsBatch(homeworkIds, studentId) {
   if (!homeworkIds?.length || !studentId) return new Map()
-  const { data, error } = await supabase
-    .from('homework_submissions')
-    .select('*')
-    .eq('student_id', studentId)
-    .in('homework_id', homeworkIds)
-  if (error) throw error
-  const out = new Map()
-  for (const row of data || []) out.set(row.homework_id, row)
-  return out
+  const key = `student-hw-subs-batch:${studentId}`
+  return cached(key, 5000, async () => {
+    const { data, error } = await supabase
+      .from('homework_submissions')
+      .select('*')
+      .eq('student_id', studentId)
+      .in('homework_id', homeworkIds)
+    if (error) throw error
+    const out = new Map()
+    for (const row of data || []) out.set(row.homework_id, row)
+    return out
+  })
 }
 
 // Submit (or re-submit) MCQ answers. The server reads the answer key,

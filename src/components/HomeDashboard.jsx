@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
+import { useAuth } from '../contexts/AuthContext'
 import { cached, LIST_TTL } from '../utils/cache'
 import { listStudents } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
@@ -141,14 +142,29 @@ const TYPE_LABEL = {
 function StudentDashboard() {
   const navigate = useNavigate()
   const [recentNav, setRecentNav] = useState(() => safeParse('masar-recent', []))
-  const [progress, setProgress] = useState({
-    homeworks: { done: 0, total: 0 },
-    videos:    { done: 0, total: 0 },
-    exams:     { done: 0, total: 0 },
+  
+  const { user } = useAuth()
+  const userId = user?.id || null
+  const userGrade = user?.grade || null
+
+  const [completedIds, setCompletedIds] = useState({
+    homeworks: new Set(),
+    videos: new Set(),
+    exams: new Set(),
   })
+  
   const [upcoming, setUpcoming] = useState(null)
+  
   // Live content for THIS student's grade (RLS does the filtering).
   const { stats, recent, loading, error, refresh } = useContentStats({ role: 'student' })
+
+  const progress = useMemo(() => {
+    return {
+      homeworks: { done: completedIds.homeworks.size, total: stats.homeworks },
+      videos:    { done: completedIds.videos.size, total: stats.videos },
+      exams:     { done: completedIds.exams.size, total: stats.exams },
+    }
+  }, [completedIds, stats.homeworks, stats.videos, stats.exams])
 
   const routeLabels = {
     homeworks: 'الواجبات',
@@ -173,55 +189,64 @@ function StudentDashboard() {
 
   // Load student dynamic progress statistics & upcoming exams
   useEffect(() => {
-    let cancelled = false
-    const u = safeParse('masar-user', null) || (typeof window !== 'undefined' ? JSON.parse(sessionStorage.getItem('masar-user')) : null)
-    const userId = u?.id
     if (!userId) return
+    let cancelled = false
 
     ;(async () => {
       try {
         // 1. Fetch live student progress statistics in parallel
         const [subs, prog, attempts] = await Promise.all([
-          supabase
-            .from('homework_submissions')
-            .select('homework_id')
-            .eq('student_id', userId),
-          supabase
-            .from('video_progress')
-            .select('video_id')
-            .eq('student_id', userId),
-          supabase
-            .from('exam_attempts')
-            .select('exam_id')
-            .eq('student_id', userId)
-            .not('submitted_at', 'is', null)
+          cached(`student-hws-${userId}`, 5000, () =>
+            supabase
+              .from('homework_submissions')
+              .select('homework_id')
+              .eq('student_id', userId)
+              .then((r) => { if (r.error) throw r.error; return r.data || [] })
+          ),
+          cached(`student-vids-${userId}`, 5000, () =>
+            supabase
+              .from('video_progress')
+              .select('video_id')
+              .eq('student_id', userId)
+              .then((r) => { if (r.error) throw r.error; return r.data || [] })
+          ),
+          cached(`student-exams-${userId}`, 5000, () =>
+            supabase
+              .from('exam_attempts')
+              .select('exam_id')
+              .eq('student_id', userId)
+              .not('submitted_at', 'is', null)
+              .then((r) => { if (r.error) throw r.error; return r.data || [] })
+          ),
         ])
 
         if (cancelled) return
 
-        const completedHwCount = new Set((subs.data || []).map(s => s.homework_id)).size
-        const completedVideoCount = new Set((prog.data || []).map(p => p.video_id)).size
-        const completedExamCount = new Set((attempts.data || []).map(a => a.exam_id)).size
+        const completedHws = new Set((subs || []).map(s => s.homework_id))
+        const completedVids = new Set((prog || []).map(p => p.video_id))
+        const completedExs = new Set((attempts || []).map(a => a.exam_id))
 
-        setProgress({
-          homeworks: { done: completedHwCount, total: stats.homeworks },
-          videos:    { done: completedVideoCount, total: stats.videos },
-          exams:     { done: completedExamCount, total: stats.exams },
+        setCompletedIds({
+          homeworks: completedHws,
+          videos: completedVids,
+          exams: completedExs,
         })
 
         // 2. Resolve "Next/Upcoming Exam"
         // Find the newest exam available for this student's grade that they have NOT completed yet
-        const attemptedExamIds = new Set((attempts.data || []).map(a => a.exam_id))
-        const { data: dbExams } = await supabase
-          .from('exams')
-          .select('id, title, created_at, available_hours')
-          .eq('grade', u.grade)
-          .order('created_at', { ascending: false })
+        const dbExams = await cached(`upcoming-exam-${userGrade}`, 5000, () =>
+          supabase
+            .from('exams')
+            .select('id, title, created_at, available_hours')
+            .eq('grade', userGrade)
+            .order('created_at', { ascending: false })
+            .then((r) => { if (r.error) throw r.error; return r.data || [] })
+        )
 
         if (cancelled) return
 
         if (dbExams && dbExams.length > 0) {
-          const nextExam = dbExams.find(e => !attemptedExamIds.has(e.id))
+          const nextExam = dbExams.find(e => !completedExs.has(e.id))
           if (nextExam) {
             const createdTime = new Date(nextExam.created_at).getTime()
             const availableHours = nextExam.available_hours || 72
@@ -248,7 +273,7 @@ function StudentDashboard() {
     })()
 
     return () => { cancelled = true }
-  }, [stats.homeworks, stats.videos, stats.exams])
+  }, [userId, userGrade])
 
   const lastItem = recentNav[0]
   const countdown = useCountdown(upcoming?.at)

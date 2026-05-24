@@ -21,6 +21,7 @@ import QuestionImagePicker from '../components/QuestionImagePicker'
 // Letters used to label MCQ options in Arabic.
 const OPT_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي']
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { useAuth } from '../contexts/AuthContext'
 
 /* ──────────────────────────────────────────────────────────────
    Homework page — replaces the old Lectures page.
@@ -79,9 +80,15 @@ function rowToCard(row) {
 export default function Homework() {
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('homeworks')) }, [])
 
-  const [grade, setGrade] = useState(null)
-  const [userRole, setUserRole] = useState(null)
-  const [userId, setUserId] = useState(null)
+  const { user, role: userRole } = useAuth()
+  const userId = user?.id || null
+
+  const [grade, setGrade] = useState(() => {
+    if (user && user.role !== 'admin' && user.grade) {
+      return dbToUiGrade(user.grade)
+    }
+    return null
+  })
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -110,14 +117,6 @@ export default function Homework() {
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState(null)
 
-  useEffect(() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      setUserRole(u?.role || null)
-      setUserId(u?.id || null)
-      if (u?.role !== 'admin' && u?.grade) setGrade(dbToUiGrade(u.grade))
-    } catch { setUserRole(null) }
-  }, [])
 
   const refresh = async ({ force = false } = {}) => {
     setLoading(true)

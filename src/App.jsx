@@ -26,6 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 
 import { tokenAPI } from '@backend/authApi'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import SeasonalDecor from './seasonal/SeasonalDecor'
 import './seasonal/seasonal.css'
 import './App.css'
@@ -34,7 +35,7 @@ import { detectDevTools } from './utils/devtools'
 
 // TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
 // Change this back to false to re-enable security features.
-const DISABLE_DEVTOOLS_BLOCKER = false;
+const DISABLE_DEVTOOLS_BLOCKER = true;
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -66,7 +67,9 @@ function PageLoader() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   )
 }
@@ -90,9 +93,7 @@ function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isExamTaking = location.pathname === '/exam-taking'
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { user, isLoggedIn, loading } = useAuth()
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false)
 
   // Continuously tracked scrollY — read by the route-change tween
@@ -175,18 +176,6 @@ function AppContent() {
     document.body.classList.toggle('dark', isDark)
   }, [location])
 
-  useEffect(() => {
-    const token = tokenAPI.getToken()
-    const stored = sessionStorage.getItem('masar-user')
-    if (token && stored) {
-      setIsLoggedIn(true)
-      setUser(JSON.parse(stored))
-    } else {
-      setIsLoggedIn(false)
-      setUser(null)
-    }
-    setIsLoading(false)
-  }, [location])
 
   /* Anti-cheating + anti-tampering: students can't select/copy text,
      right-click, view source, or open DevTools via shortcuts. Admins
@@ -267,8 +256,8 @@ function AppContent() {
     }
   }, [user])
 
-  if (isLoading) {
-    return <div className="app"><div className="page-container">Loading...</div></div>
+  if (loading) {
+    return <PageLoader />
   }
 
   if (isDevToolsOpen && !DISABLE_DEVTOOLS_BLOCKER) {

@@ -332,28 +332,39 @@ body.dark .home-constellation { opacity: 0.9; }
   gap: 22px;
   margin: 32px auto 0;
   max-width: 1100px;
-  padding: 22px 36px;
+  padding: 24px 38px;
   border-radius: 24px;
   position: relative;
   font-family: 'Cairo', sans-serif;
   text-align: center;
-  background:
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.65),
-      rgba(255, 255, 255, 0.40));
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  
+  /* Highly premium gold/accent gradient border using CSS background-clip */
+  background: 
+    linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.70)) padding-box,
+    var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff)) border-box;
+  border: 2px solid transparent;
+  
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+    0 24px 60px rgba(0, 0, 0, 0.14),
+    0 0 30px rgba(201, 164, 90, 0.15) inset, /* warm gold inner ambient glow */
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
   isolation: isolate;
   color: var(--primary, #7c5cff);
   animation: home-seasonal-enter 700ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.home-seasonal:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow:
+    0 32px 70px rgba(0, 0, 0, 0.20),
+    0 0 45px rgba(201, 164, 90, 0.22) inset;
 }
 @keyframes home-seasonal-enter {
-  0%   { opacity: 0; transform: translateY(14px) scale(0.98); }
+  0%   { opacity: 0; transform: translateY(20px) scale(0.97); }
   100% { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
@@ -362,17 +373,17 @@ body.dark .home-constellation { opacity: 0.9; }
 .home-seasonal::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -4px;
   z-index: -2;
   border-radius: inherit;
   background: var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff));
-  filter: blur(20px);
-  opacity: 0.55;
+  filter: blur(25px);
+  opacity: 0.65;
   animation: home-seasonal-glow 6s ease-in-out infinite;
 }
 @keyframes home-seasonal-glow {
-  0%, 100% { opacity: 0.40; transform: scale(1);    }
-  50%      { opacity: 0.75; transform: scale(1.02); }
+  0%, 100% { opacity: 0.50; transform: scale(1);    }
+  50%      { opacity: 0.85; transform: scale(1.03); }
 }
 
 /* Slow horizontal sheen sweeping across the card. */
@@ -384,29 +395,32 @@ body.dark .home-constellation { opacity: 0.9; }
   border-radius: inherit;
   background: linear-gradient(
     100deg,
-    transparent 35%,
-    rgba(255, 255, 255, 0.45) 50%,
-    transparent 65%
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 70%
   );
   transform: translateX(-100%);
-  animation: home-seasonal-sheen 5s ease-in-out infinite;
+  animation: home-seasonal-sheen 5.5s ease-in-out infinite;
   pointer-events: none;
   mix-blend-mode: overlay;
 }
 @keyframes home-seasonal-sheen {
   0%   { transform: translateX(-110%); }
-  60%  { transform: translateX(110%);  }
+  55%  { transform: translateX(110%);  }
   100% { transform: translateX(110%);  }
 }
 
 body.dark .home-seasonal {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.08),
-    rgba(255, 255, 255, 0.04));
-  border-color: rgba(255, 255, 255, 0.14);
+  /* Rich deep dark-glass plaque with luxury glowing border */
+  background: 
+    linear-gradient(rgba(20, 18, 33, 0.72), rgba(15, 12, 30, 0.62)) padding-box,
+    var(--primary-gradient, linear-gradient(135deg, #c9a45a, #7c5cff)) border-box;
+  border: 2px solid transparent;
+  
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    0 32px 70px rgba(0, 0, 0, 0.55),
+    0 0 35px rgba(201, 164, 90, 0.08) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* ── Side flourishes ────────────────────────────────────── */

@@ -62,8 +62,8 @@ export default function HomeworkReport() {
           if (p?.phone) setStudentId(p.phone)
         }
 
-        // Always fetch fresh — reveal_grades must be live, not cached
-        const allHw = await listHomeworks()
+        // Cache homeworks list with a short 5-second TTL to avoid duplicate fetches on load
+        const allHw = await cached('homeworks', 5000, listHomeworks)
         const hw = targetGrade ? allHw.filter((h) => h.grade === targetGrade) : allHw
 
         // Get submissions
@@ -81,8 +81,10 @@ export default function HomeworkReport() {
             if (sub) subsMap.set(hwIds[i], sub)
           }
         } else {
-          // Student viewing their own
-          subsMap = await getMySubmissionsBatch(hwIds, targetId)
+          // Student viewing their own — cached with 5-second TTL
+          subsMap = await cached(`student-hw-subs-batch:${targetId}`, 5000, () =>
+            getMySubmissionsBatch(hwIds, targetId)
+          )
         }
 
         const rows = hw.map((h) => {

@@ -152,6 +152,11 @@ export default function Notifications() {
         target = '/control-panel'
         state = { section: 'resets' }
       }
+    } else if (meta.kind === 'devtools_violation') {
+      if (userRole === 'admin') {
+        target = '/control-panel'
+        state = { section: 'violations' }
+      }
     }
 
     if (target) {

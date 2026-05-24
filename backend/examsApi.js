@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { cached } from '../src/utils/cache'
 
 // UI grade id ↔ DB enum, same mapping as lectures.
 const UI_TO_DB = { first: 'first-prep', second: 'second-prep', third: 'third-prep' }
@@ -140,20 +141,23 @@ export async function countSubmittedAttempts(examId, studentId, sinceIso = null)
 // query per exam.
 export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap = {}) {
   if (!examIds?.length || !studentId) return new Map()
-  const { data, error } = await supabase
-    .from('exam_attempts')
-    .select('exam_id, submitted_at')
-    .eq('student_id', studentId)
-    .in('exam_id', examIds)
-    .not('submitted_at', 'is', null)
-  if (error) throw error
-  const out = new Map(examIds.map((id) => [id, 0]))
-  for (const r of data || []) {
-    const cutoff = sinceMap[r.exam_id]
-    if (cutoff && r.submitted_at < cutoff) continue
-    out.set(r.exam_id, (out.get(r.exam_id) || 0) + 1)
-  }
-  return out
+  const key = `student-exam-attempts-batch:${studentId}`
+  return cached(key, 5000, async () => {
+    const { data, error } = await supabase
+      .from('exam_attempts')
+      .select('exam_id, submitted_at')
+      .eq('student_id', studentId)
+      .in('exam_id', examIds)
+      .not('submitted_at', 'is', null)
+    if (error) throw error
+    const out = new Map(examIds.map((id) => [id, 0]))
+    for (const r of data || []) {
+      const cutoff = sinceMap[r.exam_id]
+      if (cutoff && r.submitted_at < cutoff) continue
+      out.set(r.exam_id, (out.get(r.exam_id) || 0) + 1)
+    }
+    return out
+  })
 }
 
 // Create an in-flight attempt row. Returns the row id to update on submit.

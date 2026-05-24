@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
+import { useAuth } from '../contexts/AuthContext'
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
 // old assets are kept on disk in case anywhere else still loads
@@ -12,8 +13,8 @@ import {
 
 export default function Home() {
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
-  const [role, setRole] = useState(null)
+  const { user, role } = useAuth()
+  const username = user?.name || ''
   const canvasRef = useRef(null)
 
   const handleHeroClick = (e) => {
@@ -136,16 +137,6 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(sessionStorage.getItem('masar-user'))
-      if (user && user.name) {
-        setUsername(user.name)
-      }
-      setRole(user?.role || null)
-    } catch (err) {
-      console.error('Error reading user from localStorage:', err)
-    }
-
     // Show cards on mount with animation
     const cards = document.querySelectorAll('.card')
     setTimeout(() => {
@@ -174,41 +165,15 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => {
-    // Create particle effects (Home page only)
-    const createParticle = () => {
-      const particle = document.createElement('div')
-      particle.style.cssText = `
-        position: fixed;
-        width: 4px;
-        height: 4px;
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: -1;
-        animation: particleFloat 6s linear infinite;
-      `
-
-      particle.style.left = Math.random() * 100 + 'vw'
-      particle.style.animationDelay = Math.random() * 6 + 's'
-
-      document.body.appendChild(particle)
-
-      setTimeout(() => particle.remove(), 6000)
-    }
-
-    const particleInterval = setInterval(createParticle, 800)
-    return () => clearInterval(particleInterval)
-  }, [])
 
   // Per-season greeting copy. Christmas deliberately stays null —
   // the user wants only the three islamic occasions to render a
   // banner on the home page.
   const seasonalTheme = useSeasonalTheme()
   const seasonalGreeting = seasonalTheme && {
-    'ramadan':  { en: 'Ramadan Kareem',   ar: 'رمضان كريم',          emoji: '🌙' },
-    'eid-fitr': { en: 'Eid Fitr Mubarak', ar: 'عيد الفطر المبارك',   emoji: '✨' },
-    'eid-adha': { en: 'Eid Adha Mubarak', ar: 'عيد الأضحى المبارك',  emoji: '🕌' },
+    'ramadan':  { en: 'Ramadan Mubarak • A Month of Grace & Blessings',  ar: 'رمضان مبارك • مبارك عليكم الشهر الفضيل وسدد الله خطاكم', emoji: '' },
+    'eid-fitr': { en: 'Eid Mubarak • Wishing You Joy, Peace & Prosperity', ar: 'عيد فطر مبارك • تقبل الله منا ومنكم صالح الأعمال وكل عام وأنتم بخير', emoji: '✨' },
+    'eid-adha': { en: 'Blessed Eid • Wishing You a Beautiful Celebration', ar: 'عيد أضحى مبارك • أعاده الله عليكم وعلى أحبابكم باليُمن والبركات', emoji: '🕌' },
   }[seasonalTheme.id] || null
 
   const marqueeItems = [
@@ -245,9 +210,11 @@ export default function Home() {
           </span>
 
           {/* Big emoji "monogram" inside a gradient ring */}
-          <span className="home-seasonal-mono" aria-hidden="true">
-            <span className="home-seasonal-mono-inner">{seasonalGreeting.emoji}</span>
-          </span>
+          {seasonalGreeting.emoji && (
+            <span className="home-seasonal-mono" aria-hidden="true">
+              <span className="home-seasonal-mono-inner">{seasonalGreeting.emoji}</span>
+            </span>
+          )}
 
           {/* Stacked text: English on top, Arabic below — both gradient-filled,
               both animated (shimmer for the English, scale-pulse for the Arabic) */}

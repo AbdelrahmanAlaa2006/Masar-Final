@@ -12,6 +12,7 @@ import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { useAuth } from '../contexts/AuthContext'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 import {
@@ -63,13 +64,22 @@ function shapeVideo(row) {
 }
 
 
-  const [userRole, setUserRole] = useState(null)
-  const [currentUser, setCurrentUser] = useState(null)
+  const { user: currentUser, role: userRole } = useAuth()
 
-  const [currentGrade, setCurrentGrade] = useState('')
+  const [currentGrade, setCurrentGrade] = useState(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
+      return currentUser.grade
+    }
+    return ''
+  })
   const [currentVideo, setCurrentVideo] = useState(null)
   const [selectedPart, setSelectedPart] = useState(null)
-  const [view, setView] = useState('grades')
+  const [view, setView] = useState(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
+      return 'videos'
+    }
+    return 'grades'
+  })
 
   const [allVideos, setAllVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -92,24 +102,6 @@ function shapeVideo(row) {
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
   const [showExitConfirm, setShowExitConfirm] = useState(false)
-
-  // ── Load current user ────────────────────────────────────────
-  useEffect(() => {
-    try {
-      const user = JSON.parse(sessionStorage.getItem('masar-user'))
-      if (user) {
-        setCurrentUser(user)
-        setUserRole(user.role || null)
-        // Students auto-land on their own grade
-        if (user.role !== 'admin' && user.grade) {
-          setCurrentGrade(user.grade)
-          setView('videos')
-        }
-      }
-    } catch (err) {
-      console.error('Error loading user:', err)
-    }
-  }, [])
 
   // ── Load videos from Supabase ────────────────────────────────
   // 60s cache: videos rarely change between navigations. Admins who just
@@ -151,7 +143,7 @@ function shapeVideo(row) {
       } catch { /* defaults apply */ }
     })()
     return () => { cancelled = true }
-  }, [currentUser])
+  }, [currentUser?.id, currentUser?.grade, currentUser?.group, currentUser?.role])
 
   // ── Group by grade for the grid ──────────────────────────────
   const videosByGrade = useMemo(() => {
@@ -195,7 +187,7 @@ function shapeVideo(row) {
     }
     run()
     return () => { cancelled = true }
-  }, [currentVideo, currentUser, quizTick])
+  }, [currentVideo?.id, currentUser?.id, quizTick])
 
   // ── Helpers ──────────────────────────────────────────────────
   const findBlockingQuiz = (video, part) => {
@@ -422,7 +414,7 @@ function shapeVideo(row) {
         })
         .catch((err) => console.error('exit-time view increment failed', err))
     }
-  }, [selectedPart, currentUser, currentVideo, userRole])
+  }, [selectedPart?.id, currentUser?.id, currentVideo?.id, userRole])
 
   const handleQuizPass = () => {
     // Remember the pass synchronously — findBlockingQuiz reads this ref so
