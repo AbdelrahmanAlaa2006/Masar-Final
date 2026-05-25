@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@backend/supabase'
 import './DevToolsBlocker.css'
+import { checkIsDevToolsOpen } from '../utils/devtools'
 
 export default function DevToolsBlocker() {
   const [ip, setIp] = useState('جلب IP...')
@@ -10,6 +11,9 @@ export default function DevToolsBlocker() {
   const [logged, setLogged] = useState(false)
 
   useEffect(() => {
+    // Lock the session instantly as blocked
+    sessionStorage.setItem('masar-devtools-blocked', 'true')
+
     // 1. Get current time in the user's preferred format: HH:MM:SS YYYY-MM-DD
     const now = new Date()
     const timeStr = now.toTimeString().split(' ')[0]
@@ -66,11 +70,23 @@ export default function DevToolsBlocker() {
     }
   }
 
-  const handleGoHome = () => {
+  const handleGoHome = (e) => {
+    e?.preventDefault()
+    if (checkIsDevToolsOpen()) {
+      sessionStorage.setItem('masar-devtools-blocked', 'true')
+      return
+    }
+    sessionStorage.removeItem('masar-devtools-blocked')
     window.location.href = '/'
   }
 
-  const handleGoBack = () => {
+  const handleGoBack = (e) => {
+    e?.preventDefault()
+    if (checkIsDevToolsOpen()) {
+      sessionStorage.setItem('masar-devtools-blocked', 'true')
+      return
+    }
+    sessionStorage.removeItem('masar-devtools-blocked')
     if (document.referrer) {
       window.location.href = document.referrer
     } else {

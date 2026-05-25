@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { invalidateAll } from '../utils/cache'
 
 const AuthContext = createContext(null)
 
@@ -52,6 +53,7 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('masar-user')
     setUser(null)
     setIsLoggedIn(false)
+    invalidateAll()
     window.dispatchEvent(new Event('masar-user-updated'))
   }
 

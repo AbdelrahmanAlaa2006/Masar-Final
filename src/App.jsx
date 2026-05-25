@@ -95,7 +95,9 @@ function AppContent() {
   const isLoginPage = location.pathname === '/login'
   const isExamTaking = location.pathname === '/exam-taking'
   const { user, isLoggedIn, loading } = useAuth()
-  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false)
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
+    return sessionStorage.getItem('masar-devtools-blocked') === 'true'
+  })
 
   // Continuously tracked scrollY — read by the route-change tween
   // below. We need this because by the time the route-change effect
@@ -239,17 +241,25 @@ function AppContent() {
   // DevTools detection loop for non-admins
   useEffect(() => {
     if (DISABLE_DEVTOOLS_BLOCKER) {
+      sessionStorage.removeItem('masar-devtools-blocked')
       setIsDevToolsOpen(false)
       return
     }
     // If the logged-in user is an admin, we bypass all detection!
     if (user?.role === 'admin') {
+      sessionStorage.removeItem('masar-devtools-blocked')
       setIsDevToolsOpen(false)
       return
     }
 
-    const cleanup = detectDevTools(() => {
-      setIsDevToolsOpen(true)
+    const cleanup = detectDevTools((isOpen) => {
+      if (isOpen) {
+        sessionStorage.setItem('masar-devtools-blocked', 'true')
+        setIsDevToolsOpen(true)
+      } else {
+        sessionStorage.removeItem('masar-devtools-blocked')
+        setIsDevToolsOpen(false)
+      }
     })
 
     return () => {

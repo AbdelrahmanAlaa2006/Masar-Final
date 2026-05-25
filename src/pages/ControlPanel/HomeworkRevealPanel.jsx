@@ -3,7 +3,7 @@ import { listHomeworks, updateHomework } from '@backend/homeworksApi'
 import { createNotification } from '@backend/notificationsApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../../utils/cache'
 import {
   GRADE_LABEL,
   GRADE_ORDER,
@@ -72,6 +72,7 @@ export default function HomeworkRevealPanel({ onBack, flash }) {
           .from('notifications')
           .update({ created_at: new Date().toISOString() })
           .eq('id', existing[0].id)
+        invalidatePrefix('notifications')
         return
       }
 
@@ -107,6 +108,7 @@ export default function HomeworkRevealPanel({ onBack, flash }) {
           .eq('scope', 'grade')
           .eq('target_grade', hw.grade)
           .contains('meta', { homeworkId: hw.id, kind: 'reveal_hw' })
+        invalidatePrefix('notifications')
       }
 
       flash(

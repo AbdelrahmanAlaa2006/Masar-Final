@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { invalidate, invalidatePrefix } from '../src/utils/cache'
 
 /* DB-backed notifications (replaces the old localStorage version).
    RLS filters rows for students automatically, so students only ever see
@@ -35,6 +36,7 @@ export async function markRead(notificationId, userId) {
       { onConflict: 'notification_id,user_id', ignoreDuplicates: true }
     )
   if (error && error.code !== '23505') throw error
+  invalidate(`reads:${userId}`)
 }
 
 export async function markAllRead(notificationIds, userId) {
@@ -44,6 +46,7 @@ export async function markAllRead(notificationIds, userId) {
     .from('notification_reads')
     .upsert(rows, { onConflict: 'notification_id,user_id', ignoreDuplicates: true })
   if (error && error.code !== '23505') throw error
+  invalidate(`reads:${userId}`)
 }
 
 /* Admin-only: create a notification targeted at one of {all, one grade,
@@ -78,10 +81,12 @@ export async function createNotification({
     .select()
     .single()
   if (error) throw error
+  invalidatePrefix('notifications')
   return data
 }
 
 export async function deleteNotification(id) {
   const { error } = await supabase.from('notifications').delete().eq('id', id)
   if (error) throw error
+  invalidatePrefix('notifications')
 }

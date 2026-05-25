@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { cached, invalidatePrefix } from '../src/utils/cache'
+import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
 
 // ────────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ import { createNotification } from './notificationsApi'
 // Admin only: list all payments joined with student profile info
 export async function listPayments() {
   const key = 'admin-payments'
-  return cached(key, 60000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('payments')
       .select(`
@@ -26,7 +26,7 @@ export async function listPayments() {
 export async function listMyPayments(studentId) {
   if (!studentId) return []
   const key = `student-payments-${studentId}`
-  return cached(key, 30000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('payments')
       .select('*')
@@ -137,7 +137,7 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
 // Fetch all payment settings from dynamic DB table
 export async function getPaymentSettings() {
   const key = 'payment-settings'
-  return cached(key, 30000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('payment_settings')
       .select('*')

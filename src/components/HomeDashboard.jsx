@@ -57,6 +57,7 @@ function useContentStats({ role }) {
   const refresh = () => setTick(t => t + 1)
 
   useEffect(() => {
+    if (!role) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -204,21 +205,21 @@ function StudentDashboard() {
       try {
         // 1. Fetch live student progress statistics in parallel
         const [subs, prog, attempts] = await Promise.all([
-          cached(`student-hws-${userId}`, 30000, () =>
+          cached(`student-hws-${userId}`, LIST_TTL, () =>
             supabase
               .from('homework_submissions')
               .select('homework_id')
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
-          cached(`student-vids-${userId}`, 30000, () =>
+          cached(`student-vids-${userId}`, LIST_TTL, () =>
             supabase
               .from('video_progress')
               .select('video_id')
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
-          cached(`student-exams-${userId}`, 30000, () =>
+          cached(`student-exams-${userId}`, LIST_TTL, () =>
             supabase
               .from('exam_attempts')
               .select('exam_id')
@@ -242,7 +243,7 @@ function StudentDashboard() {
 
         // 2. Resolve "Next/Upcoming Exam"
         // Find the newest exam available for this student's grade that they have NOT completed yet
-        const dbExams = await cached(`upcoming-exam-${userGrade}`, 30000, () =>
+        const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
           supabase
             .from('exams')
             .select('id, title, created_at, available_hours')

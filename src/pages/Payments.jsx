@@ -49,6 +49,7 @@ export default function Payments() {
   const [showVodaQr, setShowVodaQr] = useState(false)
 
   const loadConfig = async () => {
+    if (window.location.pathname !== '/payments') return
     try {
       const dbConfig = await getPaymentSettings()
       if (dbConfig && Object.keys(dbConfig).length > 0) {
@@ -76,6 +77,7 @@ export default function Payments() {
   }, [])
 
   const loadHistory = async () => {
+    if (window.location.pathname !== '/payments') return
     if (!userId) return
     try {
       setLoadingHistory(true)
@@ -175,23 +177,20 @@ export default function Payments() {
     return activeConfig.vodafoneCash.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${activeConfig.vodafoneCash.number}`)}`
   }, [activeConfig.vodafoneCash.number, activeConfig.vodafoneCash.qrOverride])
 
-  if (user?.role === 'admin') {
-    return (
-      <AdminPaymentsReport 
-        payments={payments} 
-        loading={loadingHistory} 
-        onRefresh={loadHistory} 
-        config={activeConfig}
-        onConfigChange={loadConfig}
-        setPreviewUrl={setPreviewUrl}
-        setRotateDeg={setRotateDeg}
-      />
-    )
-  }
-
   return (
     <>
-      <div className="paypg" dir="rtl">
+      {user?.role === 'admin' ? (
+        <AdminPaymentsReport 
+          payments={payments} 
+          loading={loadingHistory} 
+          onRefresh={loadHistory} 
+          config={activeConfig}
+          onConfigChange={loadConfig}
+          setPreviewUrl={setPreviewUrl}
+          setRotateDeg={setRotateDeg}
+        />
+      ) : (
+        <div className="paypg" dir="rtl">
         <div className="paypg-container">
         
         {/* Page Head */}
@@ -445,6 +444,7 @@ export default function Payments() {
         </div>
       </div>
     </div>
+  )}
       
       {/* ─────────── Receipt Full Screen Zoom Lightbox Modal (Shared by Student and Admin) ─────────── */}
       {previewUrl && (
@@ -959,6 +959,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                       <td>
                         <div 
                           onClick={() => { setRotateDeg(0); setPreviewUrl(p.screenshot_url); }}
+                          className="paypg-thumb-container"
                           style={{
                             width: 48, height: 48, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)',
                             cursor: 'zoom-in', background: '#fafafa', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -966,11 +967,14 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                           title="اضغط للتكبير والمراجعة"
                         >
                           <img src={p.screenshot_url} alt="Receipt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <div style={{
-                            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', opacity: 0,
-                            display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff',
-                            transition: 'opacity 0.2s'
-                          }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
+                          <div 
+                            className="paypg-thumb-overlay"
+                            style={{
+                              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', opacity: 0,
+                              display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff',
+                              transition: 'opacity 0.2s', pointerEvents: 'none'
+                            }}
+                          >
                             <i className="fas fa-search-plus" style={{ fontSize: '0.85rem' }}></i>
                           </div>
                         </div>

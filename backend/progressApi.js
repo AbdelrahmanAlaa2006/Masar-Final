@@ -6,7 +6,7 @@ import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } fro
 
 export async function listQuizAttemptsForVideo(videoId, studentId) {
   const key = `quiz_attempts:${videoId}:${studentId}`
-  return cached(key, 60_000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('quiz_attempts')
       .select('*')
@@ -50,7 +50,7 @@ export async function recordQuizAttempt({
 
 export async function listProgressForVideo(videoId, studentId) {
   const key = `video_progress:${videoId}:${studentId}`
-  return cached(key, 60_000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('video_progress')
       .select('*')

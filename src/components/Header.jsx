@@ -59,11 +59,7 @@ export default function Header() {
     }
 
     fetchPendingCount()
-    
-    // Check every 30 seconds to keep it live
-    const interval = setInterval(fetchPendingCount, 30000)
-    return () => clearInterval(interval)
-  }, [userRole, location.pathname])
+  }, [userRole])
 
   // Close drawer on nav
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])

@@ -822,3 +822,54 @@ body.dark .paypg-admin-btn-outline:hover {
   color: #fff;
 }
 
+/* Hover thumbnail styling with pointer-events protection for mobile views */
+.paypg-thumb-container {
+  transition: transform 0.2s ease;
+}
+
+.paypg-thumb-container:hover {
+  transform: scale(1.04);
+}
+
+.paypg-thumb-container:hover .paypg-thumb-overlay {
+  opacity: 1 !important;
+}
+
+/* Responsive mobile optimizations for Payments page */
+@media (max-width: 480px) {
+  .paypg {
+    padding: 24px 12px;
+  }
+  
+  .pay-card {
+    padding: 24px 16px;
+  }
+  
+  .pay-card-value-box {
+    padding: 10px 14px;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+  }
+  
+  .pay-card-value {
+    font-size: clamp(0.7rem, 3.6vw, 0.95rem);
+    word-break: break-all;
+  }
+  
+  .pay-card-action-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  
+  .pay-card-text {
+    margin-bottom: 16px;
+  }
+}
+
+

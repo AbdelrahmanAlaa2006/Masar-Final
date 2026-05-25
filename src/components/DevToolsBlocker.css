@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 999999; /* Higher than any header or viewport overlay */
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   width: 100vw;
@@ -28,6 +28,7 @@
   box-sizing: border-box;
   animation: blockerSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  margin: auto;
 }
 
 /* Red Circular Warning Shield on Top */

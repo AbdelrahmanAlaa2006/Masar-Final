@@ -168,7 +168,7 @@ export async function getMySubmission(homeworkId, studentId) {
 export async function getMySubmissionsBatch(homeworkIds, studentId) {
   if (!homeworkIds?.length || !studentId) return new Map()
   const key = `student-hw-subs-batch:${studentId}`
-  return cached(key, 30000, async () => {
+  return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('homework_submissions')
       .select('*')

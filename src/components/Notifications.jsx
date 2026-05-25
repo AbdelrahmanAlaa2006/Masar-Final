@@ -9,12 +9,11 @@ import {
   createNotification,
   deleteNotification,
 } from '@backend/notificationsApi'
-import { cached, invalidate as invalidateCache } from '../utils/cache'
+import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { useAuth } from '../contexts/AuthContext'
 
-// Short TTL — notifications change more often than the slow-moving lists.
-// 30s feels live enough that a freshly-revealed exam shows up "soon" while
-// still letting the user open/close the bell without re-fetching.
-const NOTIF_TTL = 30 * 1000
+// Use LIST_TTL since write paths proactively invalidate the cache
+const NOTIF_TTL = LIST_TTL
 
 const formatWhen = (iso) => {
   try {
@@ -41,30 +40,20 @@ export default function Notifications() {
   const [open, setOpen] = useState(false)
   const [list, setList] = useState([])
   const [readIds, setReadIds] = useState(new Set())
-  const [userRole, setUserRole] = useState(null)
-  const [userId, setUserId] = useState(null)
+  const { user, role: userRole } = useAuth()
+  const userId = user?.id || null
   const [composeOpen, setComposeOpen] = useState(false)
   const [draft, setDraft] = useState({ title: '', message: '', level: 'warning', grade: 'all' })
   const [loading, setLoading] = useState(false)
   const panelRef = useRef(null)
 
-  // Load user once
-  useEffect(() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      setUserRole(u?.role || null)
-      setUserId(u?.id || null)
-    } catch {
-      setUserRole(null)
-    }
-  }, [])
-
   // Fetch notifications + my read state
   const refresh = async (uid) => {
     setLoading(true)
+    const cacheKey = userRole === 'admin' ? 'notifications:admin' : `notifications:student:${uid}`
     try {
       const [rows, reads] = await Promise.all([
-        cached('notifications', NOTIF_TTL, () => listNotifications()),
+        cached(cacheKey, NOTIF_TTL, () => listNotifications()),
         uid
           ? cached(`reads:${uid}`, NOTIF_TTL, () => listMyReadIds(uid))
           : Promise.resolve([]),
@@ -100,17 +89,51 @@ export default function Notifications() {
     let filtered = [...list]
     if (userRole === 'admin') {
       filtered = filtered.filter((n) => {
-        if (n.scope === 'student' && n.target_student !== userId) {
+        // Discard student-specific notifications, unless they are targeted to this admin (userId)
+        // or they are system-wide admin-only alerts (target_student is null)
+        if (n.scope === 'student' && n.target_student && n.target_student !== userId) {
           return false
         }
-        if (n.scope === 'grade' || n.scope === 'group') {
+        
+        // Exclude student-only result reveal notifications (exams/homeworks) from admin alerts
+        const isReveal =
+          n.meta?.kind === 'reveal' ||
+          n.meta?.kind === 'reveal_hw' ||
+          n.meta?.examId ||
+          n.meta?.homeworkId ||
+          (n.title && n.title.startsWith('تم إعلان نتيجة:'))
+
+        if (isReveal) {
           return false
         }
         return true
       })
+    } else {
+      // Student filtering: discard admin-only notifications and unrelated students' alerts
+      filtered = filtered.filter((n) => {
+        // 1. Discard system-wide admin alerts (password reset requests and devtools violations)
+        if (n.meta?.kind === 'password_reset_request' || n.meta?.kind === 'devtools_violation') {
+          return false
+        }
+
+        // 2. Discard notifications targeted to other students, and admin alerts (where target_student is null)
+        if (n.scope === 'student') {
+          if (n.target_student !== userId) {
+            return false
+          }
+        }
+
+        // 3. Discard notifications targeted to other grades
+        const studentGrade = user?.grade || ''
+        if (n.scope === 'grade' && n.target_grade && n.target_grade !== studentGrade) {
+          return false
+        }
+
+        return true
+      })
     }
     return filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  }, [list, userRole, userId])
+  }, [list, userRole, userId, user?.grade])
   const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length
 
   const markAllRead = async () => {

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "inlineSourceMap": true,
+    "isolatedModules": true,
+    "lib": ["deno.window"],
+    "module": "esnext",
+    "moduleDetection": "force",
+    "strict": true,
+    "target": "esnext",
+    "useDefineForClassFields": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "https://esm.sh/react@18.2.0"
+  }
+}

@@ -9,7 +9,7 @@ import {
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
 import { supabase } from '@backend/supabase'
-import { cached, LIST_TTL } from '../../utils/cache'
+import { cached, LIST_TTL, invalidatePrefix } from '../../utils/cache'
 import {
   GradePickerCards,
   GroupPickerCards,
@@ -154,6 +154,7 @@ export default function RevealPanel({ onBack, flash }) {
           .from('notifications')
           .update({ created_at: new Date().toISOString() })
           .eq('id', existing[0].id)
+        invalidatePrefix('notifications')
         return
       }
 
@@ -226,6 +227,7 @@ export default function RevealPanel({ onBack, flash }) {
         }
 
         await deleteQuery
+        invalidatePrefix('notifications')
       }
 
       flash(
