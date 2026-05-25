@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '@backend/authApi'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'
@@ -36,6 +37,33 @@ export default function Header() {
   const avatarUrl = user?.avatar_url || null
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Dynamic pending payments count for Admin navbar badge
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0)
+
+  useEffect(() => {
+    if (userRole !== 'admin') return
+
+    const fetchPendingCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('payments')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+        if (!error) {
+          setPendingPaymentsCount(count || 0)
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending payments count:', err)
+      }
+    }
+
+    fetchPendingCount()
+    
+    // Check every 30 seconds to keep it live
+    const interval = setInterval(fetchPendingCount, 30000)
+    return () => clearInterval(interval)
+  }, [userRole, location.pathname])
 
   // Close drawer on nav
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
@@ -135,6 +163,11 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
+                {item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 && (
+                  <span className="nav-badge-pending">
+                    {pendingPaymentsCount}
+                  </span>
+                )}
               </Link>
             ))}
           </nav>
@@ -244,7 +277,12 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
-                <i className="fas fa-chevron-left mh-drawer__link-arrow"></i>
+                {item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 && (
+                  <span className="nav-badge-pending" style={{ marginRight: 'auto', marginLeft: 8 }}>
+                    {pendingPaymentsCount}
+                  </span>
+                )}
+                <i className="fas fa-chevron-left mh-drawer__link-arrow" style={{ marginRight: item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 ? '0' : 'auto' }}></i>
               </Link>
             ))}
           </nav>

@@ -58,6 +58,37 @@ export async function submitPayment({ studentId, amount, paymentMethod, screensh
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
 
+  // Proactively notify all admins about the new pending payment
+  try {
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin')
+
+    if (admins && admins.length > 0) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', studentId)
+        .single()
+
+      const studentName = profile?.name || 'طالب جديد'
+
+      for (const admin of admins) {
+        await createNotification({
+          title: 'طلب تأكيد دفع جديد 💰',
+          message: `قام الطالب ${studentName} بإرسال إيصال تحويل بقيمة ${amount} ج.م قيد المراجعة.`,
+          level: 'warning',
+          scope: 'student',
+          targetStudent: admin.id,
+          meta: { kind: 'payment_pending' }
+        })
+      }
+    }
+  } catch (err) {
+    console.error('Failed to notify admins of pending payment:', err)
+  }
+
   return data
 }
 

@@ -863,3 +863,35 @@ body.dark .mh__user {
 body.dark .header-back { color: #f7fafc; background: rgba(168, 85, 247, 0.18); }
 body.dark .header-back:hover { background: rgba(168, 85, 247, 0.3); }
 
+/* ─────────── Pending Payments Navbar Badge Styling ─────────── */
+.nav-badge-pending {
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  min-width: 17px;
+  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+  animation: pulse-orange 2s infinite;
+  margin-inline-start: 6px;
+}
+
+@keyframes pulse-orange {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+

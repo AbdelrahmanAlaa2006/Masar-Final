@@ -96,10 +96,21 @@ export default function Notifications() {
     }
   }, [open])
 
-  const sorted = useMemo(
-    () => [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-    [list]
-  )
+  const sorted = useMemo(() => {
+    let filtered = [...list]
+    if (userRole === 'admin') {
+      filtered = filtered.filter((n) => {
+        if (n.scope === 'student' && n.target_student !== userId) {
+          return false
+        }
+        if (n.scope === 'grade' || n.scope === 'group') {
+          return false
+        }
+        return true
+      })
+    }
+    return filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }, [list, userRole, userId])
   const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length
 
   const markAllRead = async () => {

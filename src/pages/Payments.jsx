@@ -40,6 +40,10 @@ export default function Payments() {
   // Dynamic payment config loaded from Supabase DB (falls back to PAYMENT_CONFIG)
   const [activeConfig, setActiveConfig] = useState(PAYMENT_CONFIG)
 
+  // Hoisted receipt preview modal states (shared by students and admins)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [rotateDeg, setRotateDeg] = useState(0)
+
   // QR toggling
   const [showInstaQr, setShowInstaQr] = useState(false)
   const [showVodaQr, setShowVodaQr] = useState(false)
@@ -159,12 +163,17 @@ export default function Payments() {
   }
 
   // Fast transfer USSD code dial generator for Vodafone cash
-  const getVodafoneCashDialer = () => {
+  const vodaDialerLink = useMemo(() => {
     return `tel:*9*7*${activeConfig.vodafoneCash.number}#`
-  }
+  }, [activeConfig.vodafoneCash.number])
 
-  const instaQrUrl = activeConfig.instaPay.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeConfig.instaPay.link)}`
-  const vodaQrUrl = activeConfig.vodafoneCash.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${activeConfig.vodafoneCash.number}`)}`
+  const instaQrUrl = useMemo(() => {
+    return activeConfig.instaPay.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeConfig.instaPay.link)}`
+  }, [activeConfig.instaPay.link, activeConfig.instaPay.qrOverride])
+
+  const vodaQrUrl = useMemo(() => {
+    return activeConfig.vodafoneCash.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${activeConfig.vodafoneCash.number}`)}`
+  }, [activeConfig.vodafoneCash.number, activeConfig.vodafoneCash.qrOverride])
 
   if (user?.role === 'admin') {
     return (
@@ -174,13 +183,16 @@ export default function Payments() {
         onRefresh={loadHistory} 
         config={activeConfig}
         onConfigChange={loadConfig}
+        setPreviewUrl={setPreviewUrl}
+        setRotateDeg={setRotateDeg}
       />
     )
   }
 
   return (
-    <div className="paypg" dir="rtl">
-      <div className="paypg-container">
+    <>
+      <div className="paypg" dir="rtl">
+        <div className="paypg-container">
         
         {/* Page Head */}
         <header className="paypg-head">
@@ -228,7 +240,7 @@ export default function Payments() {
 
             {showInstaQr && (
               <div style={{ background: '#fff', padding: 12, borderRadius: 16, marginTop: 18, display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', transform: 'scale(1)', transition: 'all 0.2s' }}>
-                <img src={instaQrUrl} alt="InstaPay QR Code" style={{ width: 140, height: 140 }} />
+                <img key={activeConfig.instaPay.link} src={instaQrUrl} alt="InstaPay QR Code" style={{ width: 140, height: 140 }} />
               </div>
             )}
           </div>
@@ -251,7 +263,7 @@ export default function Payments() {
             
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a 
-                href={getVodafoneCashDialer()}
+                href={vodaDialerLink}
                 className="pay-card-action-btn"
               >
                 اتصال وتحويل سريع <i className="fas fa-phone"></i>
@@ -268,7 +280,7 @@ export default function Payments() {
 
             {showVodaQr && (
               <div style={{ background: '#fff', padding: 12, borderRadius: 16, marginTop: 18, display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', transform: 'scale(1)', transition: 'all 0.2s' }}>
-                <img src={vodaQrUrl} alt="Vodafone Cash QR Code" style={{ width: 140, height: 140 }} />
+                <img key={activeConfig.vodafoneCash.number} src={vodaQrUrl} alt="Vodafone Cash QR Code" style={{ width: 140, height: 140 }} />
               </div>
             )}
           </div>
@@ -392,14 +404,14 @@ export default function Payments() {
 
                       <div className="pay-item-details">
                         <span className="pay-item-date"><i className="fas fa-calendar-alt"></i> تاريخ الطلب: {fmtDate(p.created_at)}</span>
-                        <a 
-                          href={p.screenshot_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <button 
+                          type="button"
+                          onClick={() => { setRotateDeg(0); setPreviewUrl(p.screenshot_url); }}
                           className="pay-item-link"
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, outline: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
-                          عرض صورة الإيصال <i className="fas fa-external-link-alt"></i>
-                        </a>
+                          عرض صورة الإيصال <i className="fas fa-search-plus"></i>
+                        </button>
                       </div>
 
                       <div className="pay-item-footer">
@@ -433,18 +445,74 @@ export default function Payments() {
         </div>
       </div>
     </div>
+      
+      {/* ─────────── Receipt Full Screen Zoom Lightbox Modal (Shared by Student and Admin) ─────────── */}
+      {previewUrl && (
+        <div 
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+            zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 24,
+            animation: 'fadeInDown 0.25s ease-out'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff', borderRadius: 24, width: '100%', maxWidth: 550,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+            }}
+          >
+            
+            {/* Modal Header */}
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Cairo', color: '#1e1b4b' }}>
+              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>مراجعة إيصال التحويل</h4>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button 
+                  type="button"
+                  onClick={() => setRotateDeg(d => (d + 90) % 360)} 
+                  className="paypg-admin-btn-outline"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  <i className="fas fa-rotate-right"></i> تدوير الصورة
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setPreviewUrl(null)}
+                  className="paypg-admin-btn-outline"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  <i className="fas fa-xmark"></i> إغلاق
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body with Rotation transition */}
+            <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fafafa', minHeight: 320, overflow: 'hidden' }}>
+              <img 
+                src={previewUrl} 
+                alt="Receipt screenshot" 
+                style={{ 
+                  maxHeight: '65vh', maxWidth: '100%', objectFit: 'contain', borderRadius: 12,
+                  transform: `rotate(${rotateDeg}deg)`, transition: 'transform 0.2s ease-out' 
+                }} 
+              />
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
-function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigChange }) {
+function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigChange, setPreviewUrl, setRotateDeg }) {
   const { user } = useAuth()
   const adminId = user?.id || null
 
   const [activeTab, setActiveTab] = useState('pending') // 'pending' is default for immediate attention, can switch to 'all', 'approved', 'rejected'
   const [searchQuery, setSearchQuery] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
-  const [previewUrl, setPreviewUrl] = useState(null)
-  const [rotateDeg, setRotateDeg] = useState(0)
 
   // Configuration editing states
   const [showConfigEditor, setShowConfigEditor] = useState(false)
@@ -583,9 +651,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     })
   }, [payments, activeTab, gradeFilter, searchQuery])
 
-  const handleRotate = () => {
-    setRotateDeg(d => (d + 90) % 360)
-  }
+
 
   return (
     <div className="paypg paypg-admin" dir="rtl">
@@ -628,7 +694,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <input 
                   type="text" 
                   value={instaAddress} 
-                  onChange={(e) => setInstaAddress(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setInstaAddress(val)
+                    if (val) {
+                      const parts = val.split('@')
+                      const username = parts[0].trim()
+                      if (username) {
+                        setInstaLink(`https://ipn.eg/S/${username}`)
+                      }
+                    }
+                  }}
                   placeholder="مثال: name@instapay"
                   className="paypg-admin-input"
                   style={{ height: 44, width: '100%' }}
@@ -971,61 +1047,6 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         </div>
 
       </div>
-
-      {/* ─────────── Receipt Full Screen Zoom Lightbox Modal ─────────── */}
-      {previewUrl && (
-        <div 
-          onClick={() => setPreviewUrl(null)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
-            zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 24,
-            animation: 'fadeInDown 0.25s ease-out'
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#ffffff', borderRadius: 24, width: '100%', maxWidth: 550,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
-            }}
-          >
-            
-            {/* Modal Header */}
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Cairo', color: '#1e1b4b' }}>
-              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>مراجعة إيصال تحويل الطالب</h4>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button 
-                  onClick={handleRotate} 
-                  className="paypg-admin-btn-outline"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  <i className="fas fa-rotate-right"></i> تدوير الصورة
-                </button>
-                <button 
-                  onClick={() => setPreviewUrl(null)}
-                  className="paypg-admin-btn-outline"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  <i className="fas fa-xmark"></i> إغلاق
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Image Body with Rotation transition */}
-            <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fafafa', minHeight: 320, overflow: 'hidden' }}>
-              <img 
-                src={previewUrl} 
-                alt="Full student receipt" 
-                style={{ 
-                  maxHeight: '65vh', maxWidth: '100%', objectFit: 'contain', borderRadius: 12,
-                  transform: `rotate(${rotateDeg}deg)`, transition: 'transform 0.2s ease-out' 
-                }} 
-              />
-            </div>
-
-          </div>
-        </div>
-      )}
     </div>
   )
 }
