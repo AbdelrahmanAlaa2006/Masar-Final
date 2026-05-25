@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { cached } from '../src/utils/cache'
+import { cached, invalidatePrefix } from '../src/utils/cache'
 
 // UI grade id ↔ DB enum, same mapping as lectures.
 const UI_TO_DB = { first: 'first-prep', second: 'second-prep', third: 'third-prep' }
@@ -142,7 +142,7 @@ export async function countSubmittedAttempts(examId, studentId, sinceIso = null)
 export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap = {}) {
   if (!examIds?.length || !studentId) return new Map()
   const key = `student-exam-attempts-batch:${studentId}`
-  return cached(key, 5000, async () => {
+  return cached(key, 30000, async () => {
     const { data, error } = await supabase
       .from('exam_attempts')
       .select('exam_id, submitted_at')
@@ -181,6 +181,10 @@ export async function submitAttempt(attemptId, { responses }) {
     p_responses: responses || [],
   })
   if (error) throw error
+  invalidatePrefix('attempts:')
+  invalidatePrefix('student-exam-attempts-batch:')
+  invalidatePrefix('student-exams-')
+  invalidatePrefix('upcoming-exam-')
   // RPC returns a single row {score, max_score}
   const row = Array.isArray(data) ? data[0] : data
   return row || { score: 0, max_score: 0 }
@@ -188,11 +192,14 @@ export async function submitAttempt(attemptId, { responses }) {
 
 // Used by /exams-report. RLS restricts students to their own id automatically.
 export async function listAttemptsForStudent(studentId) {
-  const { data, error } = await supabase
-    .from('exam_attempts')
-    .select('*, exams ( id, title, number, total_points, duration_minutes, reveal_grades )')
-    .eq('student_id', studentId)
-    .order('submitted_at', { ascending: false, nullsFirst: false })
-  if (error) throw error
-  return data || []
+  const key = `attempts:${studentId}`
+  return cached(key, 30000, async () => {
+    const { data, error } = await supabase
+      .from('exam_attempts')
+      .select('*, exams ( id, title, number, total_points, duration_minutes, reveal_grades )')
+      .eq('student_id', studentId)
+      .order('submitted_at', { ascending: false, nullsFirst: false })
+    if (error) throw error
+    return data || []
+  })
 }

@@ -20,6 +20,7 @@ const NAV_ITEMS_BASE = [
   { to: '/videos',   label: 'الفيديوهات', icon: 'fa-circle-play' },
   { to: '/exams',    label: 'الامتحانات', icon: 'fa-file-pen' },
   { to: '/homework', label: 'الواجبات',   icon: 'fa-clipboard-list' },
+  { to: '/payments', label: 'المدفوعات',   icon: 'fa-wallet' },
   { to: '/report',   label: 'التقارير',   icon: 'fa-chart-line' },
 ]
 const ADMIN_ITEMS = [
@@ -75,7 +76,6 @@ export default function Header() {
   }
 
   const handleLogout = () => {
-    logout()
     const overlay = document.createElement('div')
     overlay.className = 'auth-overlay'
     overlay.innerHTML = `
@@ -98,6 +98,7 @@ export default function Header() {
       overlay.classList.add('closing')
       setTimeout(() => {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+        logout()
         navigate('/login')
       }, 320)
     }, 1600)
@@ -140,17 +141,6 @@ export default function Header() {
 
           {/* ─── Actions ─── */}
           <div className="mh__actions">
-            {location.pathname !== '/' && location.pathname !== '/home' && (
-              <button
-                type="button"
-                className="mh__icon-btn mh__back"
-                onClick={() => navigate(-1)}
-                aria-label="رجوع"
-                title="رجوع"
-              >
-                <i className="fas fa-arrow-right"></i>
-              </button>
-            )}
             <Notifications />
             <button
               type="button"

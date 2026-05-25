@@ -41,6 +41,8 @@ export async function recordQuizAttempt({
     .single()
   if (error) throw error
   invalidateCache(`quiz_attempts:${video_id}:${student_id}`)
+  invalidatePrefix('student-vids-')
+  invalidatePrefix('video_progress_student:')
   return data
 }
 
@@ -73,6 +75,8 @@ export async function incrementPartView({ video_id, part_id }) {
   // canonical student_id but the cache key includes a uuid we don't
   // reconstruct here. Wipe by prefix.
   invalidatePrefix(`video_progress:${video_id}:`)
+  invalidatePrefix('student-vids-')
+  invalidatePrefix('video_progress_student:')
   return Array.isArray(data) ? data[0] : data
 }
 
@@ -149,5 +153,7 @@ export async function updatePartProgress({ student_id, video_id, part_id, second
     .single()
   if (error) throw error
   invalidateCache(`video_progress:${video_id}:${student_id}`)
+  invalidatePrefix('student-vids-')
+  invalidatePrefix('video_progress_student:')
   return data
 }

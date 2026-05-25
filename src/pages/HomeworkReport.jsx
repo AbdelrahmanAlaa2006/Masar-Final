@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listHomeworks, getMySubmissionsBatch, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { getProfile } from '@backend/profilesApi'
+import { cached, LIST_TTL } from '../utils/cache'
 import './HomeworkReport.css'
 
 /* Format a JS date as dd/mm/yyyy */
@@ -62,8 +63,8 @@ export default function HomeworkReport() {
           if (p?.phone) setStudentId(p.phone)
         }
 
-        // Cache homeworks list with a short 5-second TTL to avoid duplicate fetches on load
-        const allHw = await cached('homeworks', 5000, listHomeworks)
+        // Share and hit the global 30-minute homeworks list cache
+        const allHw = await cached('homeworks', LIST_TTL, listHomeworks)
         const hw = targetGrade ? allHw.filter((h) => h.grade === targetGrade) : allHw
 
         // Get submissions
@@ -81,10 +82,8 @@ export default function HomeworkReport() {
             if (sub) subsMap.set(hwIds[i], sub)
           }
         } else {
-          // Student viewing their own — cached with 5-second TTL
-          subsMap = await cached(`student-hw-subs-batch:${targetId}`, 5000, () =>
-            getMySubmissionsBatch(hwIds, targetId)
-          )
+          // Student viewing their own — cached internally with 5-second TTL
+          subsMap = await getMySubmissionsBatch(hwIds, targetId)
         }
 
         const rows = hw.map((h) => {

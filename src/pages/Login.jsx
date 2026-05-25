@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
 import { supabase } from '@backend/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import './Login.css'
 
 const translations = {
@@ -28,6 +29,7 @@ const translations = {
 }
 
 export default function Login() {
+  const { login } = useAuth()
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [phone, setPhone] = useState('')
@@ -245,10 +247,6 @@ export default function Login() {
         throw new Error('Invalid response from server')
       }
 
-      tokenAPI.setToken(response.token)
-      sessionStorage.setItem('masar-user', JSON.stringify(response.user))
-      clearFailures() 
-
       // Remember Me: handle setting/removing local storage value
       if (rememberMe) {
         localStorage.setItem('masaar-remembered-phone', phone.trim())
@@ -256,9 +254,11 @@ export default function Login() {
         localStorage.removeItem('masaar-remembered-phone')
       }
 
+      clearFailures() 
       showSuccessMessage()
 
       setTimeout(() => {
+        login(response.token, response.user)
         navigate('/')
       }, 1500)
     } catch (err) {

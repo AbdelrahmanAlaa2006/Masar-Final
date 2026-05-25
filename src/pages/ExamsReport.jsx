@@ -84,12 +84,9 @@ export default function ExamsReport() {
           ? allExamsRaw.filter((e) => e.grade === targetGrade)
           : allExamsRaw
         // The target student's attempts (admin can read any student via RLS).
-        // Per-student key — cached so admins can flip back to the same
+        // Per-student key — cached internally so admins can flip back to the same
         // student without re-pulling the whole attempt history.
-        const attempts = await cached(
-          `attempts:${targetId}`, LIST_TTL,
-          () => listAttemptsForStudent(targetId)
-        )
+        const attempts = await listAttemptsForStudent(targetId)
 
         // Per-student / per-grade reveal overrides. An allow=true override
         // reveals an exam's results for this student even when the exam's

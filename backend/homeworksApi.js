@@ -168,7 +168,7 @@ export async function getMySubmission(homeworkId, studentId) {
 export async function getMySubmissionsBatch(homeworkIds, studentId) {
   if (!homeworkIds?.length || !studentId) return new Map()
   const key = `student-hw-subs-batch:${studentId}`
-  return cached(key, 5000, async () => {
+  return cached(key, 30000, async () => {
     const { data, error } = await supabase
       .from('homework_submissions')
       .select('*')
@@ -190,6 +190,8 @@ export async function submitHomework(homeworkId, responses) {
     p_responses:   Array.isArray(responses) ? responses : [],
   })
   if (error) throw error
+  invalidatePrefix('student-hw-subs-batch:')
+  invalidatePrefix('student-hws-')
   return Array.isArray(data) ? data[0] : data
 }
 

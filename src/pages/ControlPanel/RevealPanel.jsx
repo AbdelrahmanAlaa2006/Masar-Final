@@ -9,6 +9,7 @@ import {
 } from '@backend/overridesApi'
 import { createNotification } from '@backend/notificationsApi'
 import { supabase } from '@backend/supabase'
+import { cached, LIST_TTL } from '../../utils/cache'
 import {
   GradePickerCards,
   GroupPickerCards,
@@ -37,7 +38,10 @@ export default function RevealPanel({ onBack, flash }) {
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, st] = await Promise.all([listExams(), listStudents()])
+        const [ex, st] = await Promise.all([
+          cached('exams', LIST_TTL, listExams),
+          cached('students', LIST_TTL, listStudents),
+        ])
         if (!cancelled) {
           setExams(ex)
           setStudents(st)

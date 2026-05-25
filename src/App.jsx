@@ -16,7 +16,7 @@ const VideosGroupReport = lazy(() => import('./pages/VideosGroupReport'))
 const ExamsGroupReport = lazy(() => import('./pages/ExamsGroupReport'))
 const HomeworkReport = lazy(() => import('./pages/HomeworkReport'))
 const HomeworkGroupReport = lazy(() => import('./pages/HomeworkGroupReport'))
-const ControlPanel = lazy(() => import('./pages/ControlPanel'))
+const ControlPanel = lazy(() => import('./pages/ControlPanel/index'))
 const ExamTaking = lazy(() => import('./pages/ExamTaking'))
 const ExamAdd = lazy(() => import('./pages/ExamAdd'))
 const VideoAdd = lazy(() => import('./pages/VideoAdd'))
@@ -24,6 +24,7 @@ const Profile = lazy(() => import('./pages/Profile'))
 const Help = lazy(() => import('./pages/Help'))
 const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
+const Payments = lazy(() => import('./pages/Payments'))
 
 import { tokenAPI } from '@backend/authApi'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -293,6 +294,7 @@ function AppContent() {
             <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
             <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
             <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
+            <Route path="/payments" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Payments /></ProtectedRoute>} />
 
             {/* Student + Admin: solo reports */}
             <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />

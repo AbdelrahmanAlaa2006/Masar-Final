@@ -7,6 +7,7 @@ import {
   upsertOverride,
   groupTargetId,
 } from '@backend/overridesApi'
+import { cached, LIST_TTL } from '../../utils/cache'
 import {
   GradePickerCards,
   GroupPickerCards,
@@ -36,7 +37,11 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, vd, st] = await Promise.all([listExams(), listVideos(), listStudents()])
+        const [ex, vd, st] = await Promise.all([
+          cached('exams', LIST_TTL, listExams),
+          cached('videos', LIST_TTL, listVideos),
+          cached('students', LIST_TTL, listStudents),
+        ])
         if (!cancelled) { setExams(ex); setVideos(vd); setStudents(st) }
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')

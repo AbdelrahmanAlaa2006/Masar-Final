@@ -26,6 +26,14 @@ const ROUTE_META = {
 }
 
 export default function HomeDashboard({ role }) {
+  const { loading } = useAuth()
+  if (loading) {
+    return (
+      <div className="hdash-card hdash-accent-violet" style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <EmptyHint icon="fa-spinner fa-spin" text="جاري تحميل لوحة التحكم..." />
+      </div>
+    )
+  }
   return role === 'admin' ? <AdminDashboard /> : <StudentDashboard />
 }
 
@@ -196,21 +204,21 @@ function StudentDashboard() {
       try {
         // 1. Fetch live student progress statistics in parallel
         const [subs, prog, attempts] = await Promise.all([
-          cached(`student-hws-${userId}`, 5000, () =>
+          cached(`student-hws-${userId}`, 30000, () =>
             supabase
               .from('homework_submissions')
               .select('homework_id')
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
-          cached(`student-vids-${userId}`, 5000, () =>
+          cached(`student-vids-${userId}`, 30000, () =>
             supabase
               .from('video_progress')
               .select('video_id')
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
-          cached(`student-exams-${userId}`, 5000, () =>
+          cached(`student-exams-${userId}`, 30000, () =>
             supabase
               .from('exam_attempts')
               .select('exam_id')
@@ -234,7 +242,7 @@ function StudentDashboard() {
 
         // 2. Resolve "Next/Upcoming Exam"
         // Find the newest exam available for this student's grade that they have NOT completed yet
-        const dbExams = await cached(`upcoming-exam-${userGrade}`, 5000, () =>
+        const dbExams = await cached(`upcoming-exam-${userGrade}`, 30000, () =>
           supabase
             .from('exams')
             .select('id, title, created_at, available_hours')

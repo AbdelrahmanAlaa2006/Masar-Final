@@ -79,7 +79,7 @@ export default function VideosReport() {
         // Per-student progress is cached so flipping between students
         // (admin) doesn't refetch the same student's data each click.
         const progressRows = await cached(
-          `video_progress_student:${targetId}`, LIST_TTL,
+          `video_progress_student:${targetId}`, 30000,
           async () => {
             const { data, error } = await supabase
               .from('video_progress')
