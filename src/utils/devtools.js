@@ -53,9 +53,7 @@ export function checkIsDevToolsOpen() {
   }
 
   if (isMobileUA) {
-    // If it's a real mobile device, widthDev will be false (outerWidth matches innerWidth).
-    // If it's emulated mobile on desktop, isEmulatingMobile will be true.
-    return isEmulatingMobile || widthDev;
+    return isEmulatingMobile;
   } else {
     // Desktop check
     if (widthDev || heightDev) return true;
