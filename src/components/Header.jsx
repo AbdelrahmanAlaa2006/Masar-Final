@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { authAPI } from '@backend/authApi'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
 import masarLogo from '../assets/logo.white.png'
@@ -29,6 +30,9 @@ const ADMIN_ITEMS = [
 ]
 
 export default function Header() {
+  const { tenant, tenantSlug } = useTenant()
+  const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
+  const brandLogo = !tenantSlug || tenantSlug === 'default' ? masarLogo : (tenant?.logo_url || masarLogo)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -139,12 +143,12 @@ export default function Header() {
       <header className={`mh ${scrolled ? 'mh--scrolled' : ''}`} dir="rtl">
         <div className="mh__inner">
           {/* ─── Brand ─── */}
-          <Link to="/" className="mh__brand" aria-label="مسار - الصفحة الرئيسية">
+          <Link to="/" className="mh__brand" aria-label={`${brandName} - الصفحة الرئيسية`}>
             <span className="mh__mark">
-              <img src={masarLogo} alt="" className="mh__mark-img" />
+              <img src={brandLogo} alt="" className="mh__mark-img" />
             </span>
             <span className="mh__wordmark">
-              <span className="mh__brand-name">مسار</span>
+              <span className="mh__brand-name">{brandName}</span>
               <span className="mh__brand-tag">منصة تعليمية</span>
             </span>
           </Link>
@@ -231,10 +235,10 @@ export default function Header() {
           <header className="mh-drawer__head">
             <div className="mh__brand">
               <span className="mh__mark">
-                <img src={masarLogo} alt="" className="mh__mark-img" />
+                <img src={brandLogo} alt="" className="mh__mark-img" />
               </span>
               <span className="mh__wordmark">
-                <span className="mh__brand-name">مسار</span>
+                <span className="mh__brand-name">{brandName}</span>
                 <span className="mh__brand-tag">منصة تعليمية</span>
               </span>
             </div>

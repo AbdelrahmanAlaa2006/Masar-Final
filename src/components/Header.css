@@ -6,12 +6,12 @@
   --bg-secondary: #f0f2f8;
   --text-color: #1a202c;
   --card-bg: #ffffff;
-  --primary: #667eea;
-  --secondary: #764ba2;
+  --primary: var(--primary, #7c3aed);
+  --secondary: var(--secondary, #06b6d4);
   --success: #48bb78;
   --warning: #ed8936;
-  --shadow: 0 4px 20px rgba(102, 126, 234, 0.12);
-  --shadow-hover: 0 12px 36px rgba(102, 126, 234, 0.2);
+  --shadow: 0 4px 20px rgba(124, 58, 237, 0.12);
+  --shadow-hover: 0 12px 36px rgba(124, 58, 237, 0.2);
   --gradient-success: linear-gradient(135deg, #48bb78, #38a169);
   --gradient-warning: linear-gradient(135deg, #ed8936, #dd6b20);
 
@@ -244,7 +244,7 @@ body.dark .mh::before {
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.2px;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
           background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -329,9 +329,9 @@ body.dark .mh__nav {
   width: 18px;
   height: 3px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
   transform: translate(-50%, 100%);
-  box-shadow: 0 4px 10px -2px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 4px 10px -2px rgba(124, 58, 237, 0.5);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -415,7 +415,7 @@ body.dark .mh__user {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #06b6d4 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: #fff;
   font-weight: 800;
   font-size: 15px;

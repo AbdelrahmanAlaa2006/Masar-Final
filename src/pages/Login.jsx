@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import './Login.css'
 
 const translations = {
@@ -30,7 +31,10 @@ const translations = {
 
 export default function Login() {
   const { login } = useAuth()
+  const { tenant, tenantId, tenantSlug, tenantName } = useTenant()
+  const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en')
+  const loginBrandName = isDefaultTenant ? (lang === 'ar' ? 'منصة مسار' : 'Masar') : tenantName
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -241,7 +245,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const response = await authAPI.login(phone.trim(), password)
+      const response = await authAPI.login(phone.trim(), password, tenantId)
 
       if (!response.token || !response.user) {
         throw new Error('Invalid response from server')
@@ -329,7 +333,8 @@ export default function Login() {
         .insert({
           phone: forgotPhone.trim(),
           full_name: forgotName.trim(),
-          status: 'pending'
+          status: 'pending',
+          tenant_id: tenantId
         })
 
       if (insertError) throw insertError
@@ -379,8 +384,8 @@ export default function Login() {
       <canvas ref={canvasRef} className="login-constellation" aria-hidden="true" />
       <nav className="login-navbar">
         <div className="navbar-brand">
-          <img src="/images/logo.white.png" alt="Masar Logo" className="navbar-logo" />
-          <span className="navbar-title">{lang === 'ar' ? 'منصة مسار' : 'Masar'}</span>
+          <img src={isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")} alt="Logo" className="navbar-logo" />
+          <span className="navbar-title">{loginBrandName}</span>
         </div>
         <div className="navbar-controls">
           <div className="lang-toggle">
@@ -407,7 +412,11 @@ export default function Login() {
           <div className="overlay"></div>
           <div className="left-section-content">
             <div className="login-intro">
-              <h2 className="login-intro-title">{lang === 'ar' ? 'مرحباً بك في مسار' : 'Welcome Back!'}</h2>
+              <h2 className="login-intro-title">
+                {isDefaultTenant 
+                  ? (lang === 'ar' ? 'مرحباً بك في مسار' : 'Welcome Back!')
+                  : (lang === 'ar' ? `مرحباً بك في ${tenantName}` : `Welcome to ${tenantName}!`)}
+              </h2>
               <p className="login-intro-sub">{lang === 'ar' ? 'سجل دخولك الآن لمتابعة رحلتك التعليمية' : 'Log in to continue your learning journey.'}</p>
             </div>
             
@@ -489,7 +498,7 @@ export default function Login() {
             {/* Hero tagline */}
             <div className="hero-tagline">
               <h1 className="hero-tagline-title">
-                {lang === 'ar' ? 'منصة مسار' : 'Masar'}
+                {loginBrandName}
               </h1>
               <p className="hero-tagline-sub">
                 {lang === 'ar'
@@ -678,8 +687,12 @@ export default function Login() {
       <footer className="login-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <img src="/images/logo.white.png" alt="Masar Logo" className="footer-logo" />
-            <span className="footer-brand-name">{lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform'}</span>
+            <img src={isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")} alt="Logo" className="footer-logo" />
+            <span className="footer-brand-name">
+              {isDefaultTenant 
+                ? (lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform')
+                : tenantName}
+            </span>
           </div>
 
           <div className="footer-socials">
@@ -702,7 +715,11 @@ export default function Login() {
 
           <div className="footer-divider"></div>
 
-          <p className="footer-copy">{lang === 'ar' ? '© 2026 منصة مسار التعليمية. جميع الحقوق محفوظة' : '© 2026 Masar Educational Platform. All rights reserved'}</p>
+          <p className="footer-copy">
+            {lang === 'ar' 
+              ? `© 2026 ${isDefaultTenant ? 'منصة مسار التعليمية' : tenantName}. جميع الحقوق محفوظة` 
+              : `© 2026 ${isDefaultTenant ? 'Masar Educational Platform' : tenantName}. All rights reserved`}
+          </p>
         </div>
       </footer>
 

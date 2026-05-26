@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { invalidateAll } from '../utils/cache'
+import { useTenant } from './TenantContext'
 
 const AuthContext = createContext(null)
 
@@ -7,6 +8,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { tenantId } = useTenant()
+
+  // Enforce session boundary for cross-tenant isolation (especially on localhost testing)
+  useEffect(() => {
+    if (user && tenantId && user.tenant_id !== tenantId) {
+      logout()
+    }
+  }, [user, tenantId])
 
   const syncAuth = () => {
     try {

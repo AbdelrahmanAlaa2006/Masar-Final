@@ -68,10 +68,12 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: profile } = await admin
     .from('profiles')
-    .select('role')
+    .select('role, tenant_id')
     .eq('id', userRes.user.id)
     .single()
   if (profile?.role !== 'admin') return json({ error: 'admin only' }, { status: 403 })
+  const adminTenantId = profile?.tenant_id
+  if (!adminTenantId) return json({ error: 'admin tenant not found' }, { status: 400 })
 
   // ── input ────────────────────────────────────────────────────────────
   let body: { csv?: string; apply?: boolean } = {}
@@ -127,7 +129,7 @@ serve(async (req) => {
 
     const { error: upErr } = await admin
       .from('profiles')
-      .update({ name, phone, password, grade, group, role: 'student' })
+      .update({ name, phone, password, grade, group, role: 'student', tenant_id: adminTenantId })
       .eq('id', userId)
     if (upErr) { logs.push(`grade fail ${phone}: ${upErr.message}`); failed++; continue }
     logs.push(`ok: ${name} (${phone}) → ${grade} [${group}]`); ok++
@@ -138,6 +140,7 @@ serve(async (req) => {
     .from('profiles')
     .select('id, name, phone')
     .eq('role', 'student')
+    .eq('tenant_id', adminTenantId)
   if (listErr) {
     return json({ error: `failed to list profiles: ${listErr.message}` }, { status: 500 })
   }

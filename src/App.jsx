@@ -26,6 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Payments = lazy(() => import('./pages/Payments'))
 
+import { TenantProvider } from './contexts/TenantContext'
 import { tokenAPI } from '@backend/authApi'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import SeasonalDecor from './seasonal/SeasonalDecor'
@@ -68,9 +69,11 @@ function PageLoader() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <TenantProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </TenantProvider>
     </Router>
   )
 }

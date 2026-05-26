@@ -6,7 +6,7 @@ const phoneToEmail = (phone) => `${phone.replace(/\s+/g, '')}@masaar.app`
 export const authAPI = {
 
   // Login with phone + password
-  login: async (phone, password) => {
+  login: async (phone, password, clientTenantId) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: phoneToEmail(phone),
       password,
@@ -14,14 +14,20 @@ export const authAPI = {
 
     if (error) throw new Error('رقم الهاتف أو كلمة المرور غلط')
 
-    // Fetch profile (name, role, level)
+    // Fetch profile (name, role, level, tenant_id)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, name, phone, grade, "group", role, avatar_url')
+      .select('id, name, phone, grade, "group", role, avatar_url, tenant_id')
       .eq('id', data.user.id)
       .single()
 
     if (profileError) throw new Error('فشل تحميل بيانات المستخدم')
+
+    // Cross-tenant login validation
+    if (clientTenantId && profile.tenant_id !== clientTenantId) {
+      await supabase.auth.signOut()
+      throw new Error('المستخدم غير مسجل في هذه المنصة')
+    }
 
     return { token: data.session.access_token, user: profile }
   },
@@ -33,7 +39,9 @@ export const authAPI = {
   },
 
   // Register with name + phone + password (always student role)
-  register: async (name, phone, password) => {
+  register: async (name, phone, password, clientTenantId) => {
+    if (!clientTenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
+
     const { data, error } = await supabase.auth.signUp({
       email: phoneToEmail(phone),
       password,
@@ -53,13 +61,14 @@ export const authAPI = {
         name: name.trim(),
         phone: phone.trim(),
         role: 'student',
+        tenant_id: clientTenantId,
       }, { onConflict: 'id' })
 
     if (upsertError) throw new Error('فشل إنشاء الملف الشخصي: ' + upsertError.message)
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, name, phone, grade, "group", role, avatar_url')
+      .select('id, name, phone, grade, "group", role, avatar_url, tenant_id')
       .eq('id', data.user.id)
       .single()
 
