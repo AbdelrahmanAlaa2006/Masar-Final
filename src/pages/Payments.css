@@ -116,15 +116,17 @@ body.dark .paypg-subtitle {
   border-radius: 12px;
   margin-bottom: 24px;
   width: 100%;
-  max-width: 280px;
+  max-width: 340px;
   justify-content: space-between;
 }
 
 .pay-card-value {
   font-family: 'Cairo', sans-serif;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  word-break: break-all;
+  min-width: 0;
 }
 
 .pay-card-copy-btn {
@@ -136,6 +138,7 @@ body.dark .paypg-subtitle {
   opacity: 0.8;
   padding: 4px;
   transition: opacity 0.2s, transform 0.2s;
+  flex-shrink: 0;
 }
 
 .pay-card-copy-btn:hover {
@@ -833,6 +836,83 @@ body.dark .paypg-admin-btn-outline:hover {
 
 .paypg-thumb-container:hover .paypg-thumb-overlay {
   opacity: 1 !important;
+}
+
+/* Student Info in Admin Table */
+.paypg-student-name {
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+body.dark .paypg-student-name {
+  color: #ffffff;
+}
+
+.paypg-student-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+body.dark .paypg-student-meta {
+  color: #cbd5e1;
+}
+
+.paypg-student-grade {
+  color: #7c3aed;
+  font-weight: 700;
+}
+
+body.dark .paypg-student-grade {
+  color: #a78bfa;
+}
+
+/* Payment Method Styles */
+.paypg-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.paypg-method-instapay {
+  color: #7c3aed;
+}
+
+body.dark .paypg-method-instapay {
+  color: #a78bfa;
+}
+
+.paypg-method-vodafone {
+  color: #dc2626;
+}
+
+body.dark .paypg-method-vodafone {
+  color: #f87171;
+}
+
+/* Order Date Styles */
+.paypg-date-text {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+body.dark .paypg-date-text {
+  color: #94a3b8;
+}
+
+/* Admin Notes Styles */
+.paypg-admin-notes-text {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+body.dark .paypg-admin-notes-text {
+  color: #cbd5e1;
 }
 
 /* Responsive mobile optimizations for Payments page */

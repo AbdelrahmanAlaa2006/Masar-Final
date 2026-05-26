@@ -1707,13 +1707,20 @@ body.dark .location-map-wrapper:hover .location-map {
   gap: 18px;
   padding: 22px 24px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(30, 41, 59, 0.35);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.4s cubic-bezier(.2,.8,.2,1);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+body:not(.dark) .location-info-card {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* Glass shine effect on hover */
@@ -1730,9 +1737,21 @@ body.dark .location-map-wrapper:hover .location-map {
 
 .location-info-card:hover {
   transform: translateX(-6px);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(124, 58, 237, 0.4);
-  box-shadow: 0 16px 32px -12px rgba(124, 58, 237, 0.25);
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: 
+    0 16px 32px -12px rgba(124, 58, 237, 0.4),
+    0 0 20px rgba(167, 139, 250, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+body:not(.dark) .location-info-card:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 
+    0 24px 60px -15px rgba(124, 58, 237, 0.22),
+    0 0 20px rgba(124, 58, 237, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .location-info-card:hover::before {
@@ -1781,6 +1800,10 @@ body.dark .location-map-wrapper:hover .location-map {
 
 .location-info-card:hover h4 {
   color: #c4b5fd;
+}
+
+body:not(.dark) .location-info-card:hover h4 {
+  color: #7c3aed;
 }
 
 /* Directions button */

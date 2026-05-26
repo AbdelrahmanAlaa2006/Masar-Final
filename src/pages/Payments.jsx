@@ -921,11 +921,11 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                       
                       {/* Student Info */}
                       <td>
-                        <div style={{ fontWeight: 700, color: '#1e1b4b' }} className="dark-text-white">{p.profiles?.name || '—'}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
+                        <div className="paypg-student-name">{p.profiles?.name || '—'}</div>
+                        <div className="paypg-student-meta">
                           <span><i className="fas fa-phone" style={{ fontSize: '0.75rem', opacity: 0.7 }}></i> {p.profiles?.phone || '—'}</span>
                           <span style={{ height: 4, width: 4, borderRadius: '50%', background: '#cbd5e1' }}></span>
-                          <span style={{ color: '#7c3aed', fontWeight: 700 }}>
+                          <span className="paypg-student-grade">
                             {GRADE_SHORT[p.profiles?.grade] || p.profiles?.grade || '—'}
                           </span>
                         </div>
@@ -938,10 +938,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
                       {/* Payment Method */}
                       <td>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 700,
-                          color: p.payment_method === 'InstaPay' ? '#7c3aed' : '#dc2626'
-                        }}>
+                        <span className={`paypg-method-badge ${p.payment_method === 'InstaPay' ? 'paypg-method-instapay' : 'paypg-method-vodafone'}`}>
                           {p.payment_method === 'InstaPay' ? (
                             <><i className="fas fa-bolt"></i> InstaPay</>
                           ) : (
@@ -952,7 +949,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
                       {/* Order Date */}
                       <td>
-                        <span style={{ fontSize: '0.85rem', color: '#64748b' }} className="dark-text-muted">{fmtDate(p.created_at)}</span>
+                        <span className="paypg-date-text">{fmtDate(p.created_at)}</span>
                       </td>
 
                       {/* Receipt Photo preview click */}
@@ -1026,7 +1023,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                             </div>
                           </div>
                         ) : (
-                          <div style={{ fontSize: '0.85rem', color: '#64748b' }} className="dark-text-muted">
+                          <div className="paypg-admin-notes-text">
                             {p.admin_notes ? (
                               <span><strong>السبب/الملاحظة:</strong> {p.admin_notes}</span>
                             ) : (
