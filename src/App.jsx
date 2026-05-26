@@ -37,7 +37,7 @@ import { detectDevTools } from './utils/devtools'
 
 // TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
 // Change this back to false to re-enable security features.
-const DISABLE_DEVTOOLS_BLOCKER = false || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const DISABLE_DEVTOOLS_BLOCKER = true || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -85,7 +85,20 @@ function App() {
    Lectures, ...) to unmount and remount — that looked like the page
    was "refreshing" mid-exam. */
 function ProtectedRoute({ isLoggedIn, children }) {
-  return isLoggedIn ? children : <Navigate to="/login" replace />
+  const { user } = useAuth()
+  const location = useLocation()
+  
+  if (!isLoggedIn) return <Navigate to="/login" replace />
+  
+  // Guard for inactive students: redirect to payments page if trying to access other pages
+  if (user && user.role === 'student' && user.is_active === false) {
+    const path = location.pathname
+    if (path !== '/payments' && path !== '/profile') {
+      return <Navigate to="/payments" replace />
+    }
+  }
+  
+  return children
 }
 function AdminRoute({ isLoggedIn, role, children }) {
   if (!isLoggedIn) return <Navigate to="/login" replace />

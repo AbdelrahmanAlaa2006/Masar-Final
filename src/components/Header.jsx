@@ -134,7 +134,9 @@ export default function Header() {
 
   const items = userRole === 'admin'
     ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
-    : NAV_ITEMS_BASE
+    : (user?.is_active === false
+        ? NAV_ITEMS_BASE.filter(item => item.to === '/payments')
+        : NAV_ITEMS_BASE)
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 

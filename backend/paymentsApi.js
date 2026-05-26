@@ -38,13 +38,14 @@ export async function listMyPayments(studentId) {
 }
 
 // Student: submit a new payment receipt
-export async function submitPayment({ studentId, amount, paymentMethod, screenshotUrl, screenshotKey }) {
+export async function submitPayment({ studentId, amount, paymentMethod, screenshotUrl, screenshotKey, packageName }) {
   const payload = {
     student_id: studentId,
     amount: parseFloat(amount),
     payment_method: paymentMethod,
     screenshot_url: screenshotUrl,
     screenshot_key: screenshotKey,
+    package_name: packageName || null,
     status: 'pending',
   }
   const { data, error } = await supabase
@@ -108,6 +109,19 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     .single()
   if (error) throw error
 
+  // If approved, activate the student's profile
+  if (status === 'approved') {
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ is_active: true })
+        .eq('id', studentId)
+      if (profileError) console.error('Failed to activate profile:', profileError)
+    } catch (err) {
+      console.error('Failed to activate profile:', err)
+    }
+  }
+
   // Create database-backed notification targeting the student
   try {
     const titleAr = status === 'approved' ? 'تم قبول دفعتك بنجاح' : 'تم رفض دفعتك'
@@ -125,6 +139,44 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     })
   } catch (err) {
     console.error('Failed to create payment resolution notification:', err)
+  }
+
+  // Invalidate both caches immediately
+  invalidatePrefix('student-payments-')
+  invalidatePrefix('admin-payments')
+
+  return data
+}
+
+// Admin: record a cash/offline payment in person (resolved instantly and activates student)
+export async function recordCashPayment({ studentId, amount, packageName, adminId }) {
+  const payload = {
+    student_id: studentId,
+    amount: parseFloat(amount),
+    payment_method: 'Cash',
+    screenshot_url: null,
+    screenshot_key: null,
+    status: 'approved',
+    package_name: packageName || null,
+    resolved_at: new Date().toISOString(),
+    resolved_by: adminId,
+  }
+  const { data, error } = await supabase
+    .from('payments')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+
+  // Activate the student's profile immediately
+  try {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ is_active: true })
+      .eq('id', studentId)
+    if (profileError) console.error('Failed to activate profile:', profileError)
+  } catch (err) {
+    console.error('Failed to activate profile:', err)
   }
 
   // Invalidate both caches immediately

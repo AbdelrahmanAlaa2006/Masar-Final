@@ -952,4 +952,125 @@ body.dark .paypg-admin-notes-text {
   }
 }
 
+/* ─────────── Record Cash Payment Modal Styles ─────────── */
+.paypg-modal {
+  background: #ffffff;
+  color: #1e1b4b;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Cairo', sans-serif;
+  text-align: right;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+body.dark .paypg-modal {
+  background: #111019;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.paypg-modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #1e1b4b;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+}
+
+body.dark .paypg-modal-header {
+  border-bottom-color: #334155;
+  color: #ffffff;
+}
+
+.paypg-modal-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  display: block;
+  color: #475569;
+}
+
+body.dark .paypg-modal-label {
+  color: #cbd5e1;
+}
+
+.paypg-modal-selected-student {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+body.dark .paypg-modal-selected-student {
+  background: #1e1b29;
+  border-color: #334155;
+}
+
+.paypg-modal-student-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  margin-bottom: 16px;
+  padding: 6px;
+  overscroll-behavior: contain;
+}
+
+body.dark .paypg-modal-student-list {
+  background: #1e1b29;
+  border-color: #334155;
+}
+
+.paypg-modal-student-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+body.dark .paypg-modal-student-item {
+  border-bottom-color: #334155;
+  color: #cbd5e1;
+}
+
+.paypg-modal-student-item:hover {
+  background: #f1f5f9;
+}
+
+body.dark .paypg-modal-student-item:hover {
+  background: #272535;
+}
+
+.paypg-modal-selected-student strong {
+  color: #1e1b4b;
+}
+body.dark .paypg-modal-selected-student strong {
+  color: #ffffff !important;
+}
+.paypg-modal-selected-student span {
+  color: #475569;
+}
+body.dark .paypg-modal-selected-student span {
+  color: #cbd5e1 !important;
+}
+
+
 
