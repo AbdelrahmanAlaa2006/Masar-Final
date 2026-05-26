@@ -87,7 +87,17 @@ function resolveTheme() {
     const t = findThemeById(override)
     if (t) return t
   }
-  return findThemeForDate()
+  const dateTheme = findThemeForDate()
+  if (dateTheme) return dateTheme
+
+  // For local development, default to 'eid-adha' so it immediately shows up for testing
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  if (isLocalhost) {
+    return findThemeById('eid-adha')
+  }
+
+  return null
 }
 
 /* Admin helper — write the override and notify same-tab listeners. */

@@ -37,7 +37,7 @@ import { detectDevTools } from './utils/devtools'
 
 // TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
 // Change this back to false to re-enable security features.
-const DISABLE_DEVTOOLS_BLOCKER = false;
+const DISABLE_DEVTOOLS_BLOCKER = false || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // Page loader component for Suspense fallback
 function PageLoader() {

@@ -332,9 +332,9 @@ function StudentDashboard() {
         title="تقدمك"
         accent="cyan"
       >
-        <ProgressRow label="الواجبات" data={progress.homeworks} accent="#8b5cf6" />
-        <ProgressRow label="الفيديوهات" data={progress.videos}   accent="#06b6d4" />
-        <ProgressRow label="الامتحانات" data={progress.exams}    accent="#f59e0b" />
+        <ProgressRow label="الواجبات" data={progress.homeworks} accent="var(--primary, #8b5cf6)" />
+        <ProgressRow label="الفيديوهات" data={progress.videos}   accent="var(--secondary, #06b6d4)" />
+        <ProgressRow label="الامتحانات" data={progress.exams}    accent="var(--season-accent-soft, var(--primary, #f59e0b))" />
       </WidgetCard>
 
       <WidgetCard
@@ -376,7 +376,7 @@ function ProgressRow({ label, data, accent }) {
       <div className="hdash-progress-bar">
         <div
           className="hdash-progress-fill"
-          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${accent}, #06b6d4)` }}
+          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${accent}, var(--secondary, #06b6d4))` }}
         />
       </div>
     </div>
@@ -515,12 +515,12 @@ function RecentAddsCard({ loading, recent, onRefresh, navigate }) {
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span className="hdash-recent-title" style={{ fontWeight: 700 }}>{r.title}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
-                    <span style={pillStyle('#7c3aed')}>{TYPE_LABEL[r.type]}</span>
+                    <span style={pillStyle('var(--primary, #7c3aed)')}>{TYPE_LABEL[r.type]}</span>
                     {r.grade && (
-                      <span style={pillStyle('#06b6d4')}>{GRADE_SHORT[r.grade] || r.grade}</span>
+                      <span style={pillStyle('var(--secondary, #06b6d4)')}>{GRADE_SHORT[r.grade] || r.grade}</span>
                     )}
                     {r.extra && (
-                      <span style={pillStyle('#64748b')}>{r.extra}</span>
+                      <span style={pillStyle('var(--text-muted, #64748b)')}>{r.extra}</span>
                     )}
                   </div>
                 </div>
@@ -536,11 +536,13 @@ function RecentAddsCard({ loading, recent, onRefresh, navigate }) {
   )
 }
 
-const pillStyle = (color) => ({
+const pillStyle = (colorVar) => ({
   display: 'inline-flex', alignItems: 'center',
   padding: '2px 8px', borderRadius: 999,
-  background: `${color}1a`, color, fontWeight: 700,
-  border: `1px solid ${color}40`,
+  background: `color-mix(in srgb, ${colorVar} 10%, transparent)`,
+  color: colorVar,
+  fontWeight: 700,
+  border: `1px solid color-mix(in srgb, ${colorVar} 25%, transparent)`,
   whiteSpace: 'nowrap',
 })
 

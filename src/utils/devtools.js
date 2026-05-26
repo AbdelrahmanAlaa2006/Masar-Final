@@ -14,6 +14,9 @@
  * @returns {boolean} True if DevTools is open.
  */
 export function checkIsDevToolsOpen() {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return false;
+  }
   const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   const threshold = 160;
