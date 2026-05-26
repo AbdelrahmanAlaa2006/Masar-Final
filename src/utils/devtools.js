@@ -9,36 +9,6 @@
  * Checks if DevTools is currently open.
  * @returns {boolean} True if DevTools is open.
  */
-let cachedIsDesktopGPU = null;
-
-/**
- * Checks if the WebGL renderer matches a known desktop GPU signature.
- * Caches the result to avoid recreating canvas elements repeatedly.
- * @returns {boolean} True if a desktop GPU signature is detected.
- */
-function checkIsDesktopGPU() {
-  if (cachedIsDesktopGPU !== null) return cachedIsDesktopGPU;
-
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (gl) {
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-      if (debugInfo) {
-        const renderer = (gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
-        // Desktop GPUs typically contain one of these keywords (including ANGLE backends on desktop Chrome)
-        cachedIsDesktopGPU = /nvidia|geforce|rtx|gtx|amd|radeon|intel|uhd|iris|swiftshader|llvmpipe|microsoft|direct3d|virtualbox|vmware|angle|metal/i.test(renderer);
-        return cachedIsDesktopGPU;
-      }
-    }
-  } catch (e) {
-    // Ignore context creation errors
-  }
-
-  cachedIsDesktopGPU = false;
-  return cachedIsDesktopGPU;
-}
-
 /**
  * Checks if DevTools is currently open.
  * @returns {boolean} True if DevTools is open.
@@ -63,15 +33,13 @@ export function checkIsDevToolsOpen() {
     } else if (platform.includes('macintel') || platform.includes('mac') || platform === 'macintosh') {
       // Real iPhones and iPods never report MacIntel/Mac/Macintosh.
       // Real iPads report MacIntel in desktop mode, but if requesting mobile site (isMobileUA === true),
-      // we check touch points and GPU to distinguish a real iPad from macOS desktop emulating it.
+      // we check touch points to distinguish a real iPad from macOS desktop emulating it.
       if (!ua.includes('ipad')) {
         isEmulatingMobile = true;
       } else {
         // iPad emulation check
-        const isDesktopGPU = checkIsDesktopGPU();
         const hasLowTouchPoints = navigator.maxTouchPoints <= 1;
-
-        if (isDesktopGPU || hasLowTouchPoints) {
+        if (hasLowTouchPoints) {
           isEmulatingMobile = true;
         }
       }
@@ -79,13 +47,6 @@ export function checkIsDevToolsOpen() {
       // Real Android reports 'Linux arm...', 'Linux aarch64', etc.
       // Desktop Linux reports 'Linux x86_64', 'Linux i686', etc.
       if (platform.includes('x86') || platform.includes('i686') || platform.includes('i386') || platform.includes('amd64')) {
-        isEmulatingMobile = true;
-      }
-    }
-
-    // 2. WebGL GPU fallback check for any other desktop signature under mobile UA
-    if (!isEmulatingMobile) {
-      if (checkIsDesktopGPU()) {
         isEmulatingMobile = true;
       }
     }
