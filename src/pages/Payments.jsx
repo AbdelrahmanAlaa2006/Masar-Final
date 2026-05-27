@@ -412,7 +412,7 @@ export default function Payments() {
                       onClick={() => setShowStudentPkgDropdown(!showStudentPkgDropdown)}
                       style={{
                         position: 'absolute', left: 10, background: 'transparent', border: 'none',
-                        color: 'var(--text-main, #64748b)', cursor: 'pointer', outline: 'none', padding: '8px 4px'
+                        color: 'var(--text-muted, #64748b)', cursor: 'pointer', outline: 'none', padding: '8px 4px'
                       }}
                     >
                       <i className={`fas fa-chevron-down ${showStudentPkgDropdown ? 'fa-rotate-180' : ''}`} style={{ transition: 'transform 0.2s' }}></i>
@@ -445,7 +445,7 @@ export default function Payments() {
                             }}
                             style={{
                               padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-                              color: 'var(--text-main, #1e1b4b)', fontWeight: 600, fontSize: '0.9rem',
+                              color: 'var(--text-color, #1e1b4b)', fontWeight: 600, fontSize: '0.9rem',
                               transition: 'background 0.2s', textAlign: 'right'
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg, rgba(124, 58, 237, 0.08))'}
@@ -1620,7 +1620,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     onClick={() => setShowAdminPkgDropdown(!showAdminPkgDropdown)}
                     style={{
                       position: 'absolute', left: 10, background: 'transparent', border: 'none',
-                      color: 'var(--text-main, #64748b)', cursor: 'pointer', outline: 'none', padding: '8px 4px'
+                      color: 'var(--text-muted, #64748b)', cursor: 'pointer', outline: 'none', padding: '8px 4px'
                     }}
                   >
                     <i className={`fas fa-chevron-down ${showAdminPkgDropdown ? 'fa-rotate-180' : ''}`} style={{ transition: 'transform 0.2s' }}></i>

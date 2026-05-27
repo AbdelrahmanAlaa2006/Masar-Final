@@ -1,14 +1,21 @@
 import { supabase } from './supabase'
 
-// Convert phone number to a fake email for Supabase auth
-const phoneToEmail = (phone) => `${phone.replace(/\s+/g, '')}@masaar.app`
+// Convert phone number to a fake email for Supabase auth, scoped per tenant
+const phoneToEmail = (phone, tenantId) => {
+  const cleanPhone = phone.replace(/\s+/g, '')
+  const defaultTenantId = 'd3b07384-d113-4ec2-a5d6-d005b6be4979'
+  if (!tenantId || tenantId === defaultTenantId) {
+    return `${cleanPhone}@masaar.app`
+  }
+  return `${cleanPhone}-${tenantId}@masaar.app`
+}
 
 export const authAPI = {
 
   // Login with phone + password
   login: async (phone, password, clientTenantId) => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: phoneToEmail(phone),
+      email: phoneToEmail(phone, clientTenantId),
       password,
     })
 
@@ -39,14 +46,21 @@ export const authAPI = {
   },
 
   // Register with name + phone + password (always student role)
-  register: async (name, phone, password, clientTenantId) => {
+  register: async (name, phone, password, clientTenantId, grade) => {
     if (!clientTenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
+    if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
 
     const { data, error } = await supabase.auth.signUp({
-      email: phoneToEmail(phone),
+      email: phoneToEmail(phone, clientTenantId),
       password,
       options: {
-        data: { name, phone: phone.trim(), role: 'student' },
+        data: { 
+          name, 
+          phone: phone.trim(), 
+          role: 'student', 
+          grade,
+          tenant_id: clientTenantId
+        },
       },
     })
 
@@ -62,6 +76,7 @@ export const authAPI = {
         phone: phone.trim(),
         role: 'student',
         tenant_id: clientTenantId,
+        grade: grade,
       }, { onConflict: 'id' })
 
     if (upsertError) throw new Error('فشل إنشاء الملف الشخصي: ' + upsertError.message)

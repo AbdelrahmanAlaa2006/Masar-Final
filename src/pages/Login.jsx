@@ -16,6 +16,19 @@ const translations = {
     forgot: 'نسيت كلمة المرور؟',
     'platform-title': 'منصة مسار التعليمية',
     'platform-description': 'منصة مسار تقدم لك تجربة تعليمية متكاملة تشمل الدروس التفاعلية، التمارين، والاختبارات الإلكترونية. تعلم أينما كنت، وبالطريقة التي تناسبك. انطلق الآن وابدأ مسارك نحو التميز والنجاح.',
+    register: 'إنشاء حساب جديد',
+    grade: 'المرحلة الدراسية',
+    'grade-first': 'الصف الأول الإعدادي',
+    'grade-second': 'الصف الثاني الإعدادي',
+    'grade-third': 'الصف الثالث الإعدادي',
+    'confirm-password': 'تأكيد كلمة المرور',
+    'have-account': 'لديك حساب بالفعل؟',
+    'no-account': 'ليس لديك حساب؟',
+    'register-btn': 'إنشاء الحساب',
+    'login-btn-link': 'سجل دخولك',
+    'register-btn-link': 'سجل الآن',
+    'student-name': 'الاسم الكامل للطالب',
+    'select-grade': 'اختر المرحلة الدراسية',
   },
   en: {
     login: 'Login',
@@ -26,6 +39,19 @@ const translations = {
     forgot: 'Forgot password?',
     'platform-title': 'Masar Educational Platform',
     'platform-description': 'The Masar platform offers you a comprehensive educational experience, including interactive lessons, exercises, and online tests. Learn wherever you are, in the way that suits you. Get started now and begin your path to excellence and success.',
+    register: 'Create New Account',
+    grade: 'Academic Grade',
+    'grade-first': 'First Preparatory Stage',
+    'grade-second': 'Second Preparatory Stage',
+    'grade-third': 'Third Preparatory Stage',
+    'confirm-password': 'Confirm Password',
+    'have-account': 'Already have an account?',
+    'no-account': 'Don\'t have an account?',
+    'register-btn': 'Create Account',
+    'login-btn-link': 'Log In',
+    'register-btn-link': 'Register Now',
+    'student-name': 'Full Student Name',
+    'select-grade': 'Select Academic Grade',
   },
 }
 
@@ -52,6 +78,13 @@ export default function Login() {
   const [forgotLoading, setForgotLoading] = useState(false)
   const [forgotError, setForgotError] = useState('')
   const [forgotSuccess, setForgotSuccess] = useState(false)
+
+  // Register state
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [name, setName] = useState('')
+  const [grade, setGrade] = useState('first-prep')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const t = translations[lang]
 
@@ -311,6 +344,90 @@ export default function Login() {
     }, 1400)
   }
 
+  const handleRegister = async e => {
+    e.preventDefault()
+    setError('')
+
+    if (name.trim().length < 3) {
+      setError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters')
+      return
+    }
+
+    if (phone.trim().length < 8) {
+      setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number')
+      return
+    }
+
+    if (password.length < 6) {
+      setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade)
+
+      if (!response.user) {
+        throw new Error('Invalid response from server')
+      }
+
+      showRegisterSuccessMessage()
+
+      setTimeout(() => {
+        if (response.token) {
+          login(response.token, response.user)
+          navigate('/')
+        } else {
+          setIsRegistering(false)
+          setPhone(phone.trim())
+          setPassword('')
+          setLoading(false)
+        }
+      }, 1500)
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError(err.message || (lang === 'ar' ? 'فشل إنشاء الحساب' : 'Registration failed'))
+      setLoading(false)
+    }
+  }
+
+  const showRegisterSuccessMessage = () => {
+    const title = lang === 'ar' ? 'تم إنشاء الحساب بنجاح' : 'Registration Successful'
+    const sub = lang === 'ar' ? 'جارٍ تحويلك إلى صفحة الدفع وتفعيل الحساب...' : 'Redirecting you to the payment page...'
+    const overlay = document.createElement('div')
+    overlay.className = 'auth-overlay'
+    overlay.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
+    overlay.innerHTML = `
+      <div class="auth-toast" role="status" aria-live="polite">
+        <div class="auth-toast-check success">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="auth-toast-check-circle" cx="26" cy="26" r="23" fill="none" />
+            <path class="auth-toast-check-path" fill="none" d="M14 27 l8 8 l16 -18" />
+          </svg>
+        </div>
+        <div class="auth-toast-text">${title}</div>
+        <div class="auth-toast-sub">${sub}</div>
+        <div class="auth-toast-bar"><span></span></div>
+      </div>
+    `
+    document.body.appendChild(overlay)
+    requestAnimationFrame(() => overlay.classList.add('open'))
+
+    setTimeout(() => {
+      overlay.classList.remove('open')
+      overlay.classList.add('closing')
+      setTimeout(() => {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay)
+      }, 320)
+    }, 1400)
+  }
+
   // Forgot password ticketing submit
   const handleForgotSubmit = async e => {
     e.preventDefault()
@@ -422,73 +539,204 @@ export default function Login() {
             
             <div className="login modern-login-box">
 
-              <h2>{t.login}</h2>
+              <h2>{isRegistering ? t.register : t.login}</h2>
 
               {error && <div className="error-message show">{error}</div>}
 
-              <form onSubmit={handleLogin}>
+              {isRegistering ? (
+                <form onSubmit={handleRegister}>
+                  {/* Name */}
+                  <div className="input-wrapper">
+                    <i className="fas fa-user"></i>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      required
+                      placeholder={t['student-name']}
+                    />
+                  </div>
 
-                <div className="input-wrapper">
-                  <i className="fas fa-phone"></i>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    required
-                    placeholder={t.phone}
-                    dir="ltr"
-                  />
-                </div>
+                  {/* Phone */}
+                  <div className="input-wrapper">
+                    <i className="fas fa-phone"></i>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      required
+                      placeholder={t.phone}
+                      dir="ltr"
+                    />
+                  </div>
 
-                <div className="input-wrapper">
-                  <i className="fas fa-lock"></i>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    placeholder={t.password}
-                    minLength="6"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="toggle-password-btn"
-                  >
-                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  {/* Grade Select */}
+                  <div className="input-wrapper">
+                    <i className="fas fa-graduation-cap"></i>
+                    <select
+                      value={grade}
+                      onChange={e => setGrade(e.target.value)}
+                      required
+                      style={{
+                        textAlign: lang === 'ar' ? 'right' : 'left'
+                      }}
+                    >
+                      <option value="first-prep">{t['grade-first']}</option>
+                      <option value="second-prep">{t['grade-second']}</option>
+                      <option value="third-prep">{t['grade-third']}</option>
+                    </select>
+                    <i className="fas fa-chevron-down" style={{ position: 'absolute', right: '18px', left: 'auto', pointerEvents: 'none', fontSize: '0.8rem', opacity: 0.7 }}></i>
+                  </div>
+
+                  {/* Password */}
+                  <div className="input-wrapper">
+                    <i className="fas fa-lock"></i>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      placeholder={t.password}
+                      minLength="6"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="toggle-password-btn"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="input-wrapper">
+                    <i className="fas fa-lock"></i>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      placeholder={t['confirm-password']}
+                      minLength="6"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="toggle-password-btn"
+                    >
+                      <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
+
+                  <button type="submit" className="modern-btn" disabled={loading}>
+                    <span className="btn-text">{t['register-btn']}</span>
+                    {loading && (
+                      <span className="btn-loader">
+                        <span className="spinner"></span>
+                      </span>
+                    )}
                   </button>
-                </div>
 
-                <div className="form-options">
-                  <label className="switch">
-                    <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                    <span className="slider"></span>
-                  </label>
-                  <span className="remember-text">{t.remember}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotPhone(phone)
-                      setForgotName('')
-                      setForgotError('')
-                      setForgotSuccess(false)
-                      setShowForgotModal(true)
-                    }}
-                    className="forgot-btn"
-                  >
-                    {t.forgot}
+                  <div className="form-toggle-link" style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.9rem' }}>
+                    <span style={{ color: 'var(--text-muted, #64748b)' }}>{t['have-account']} </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegistering(false)
+                        setError('')
+                      }}
+                      style={{
+                        background: 'transparent', border: 'none', color: 'var(--primary, #7c3aed)',
+                        fontWeight: 700, cursor: 'pointer', outline: 'none', padding: '0 4px', fontSize: '0.9rem',
+                        fontFamily: 'Cairo'
+                      }}
+                    >
+                      {t['login-btn-link']}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleLogin}>
+                  <div className="input-wrapper">
+                    <i className="fas fa-phone"></i>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      required
+                      placeholder={t.phone}
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="input-wrapper">
+                    <i className="fas fa-lock"></i>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      placeholder={t.password}
+                      minLength="6"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="toggle-password-btn"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
+
+                  <div className="form-options">
+                    <label className="switch">
+                      <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                      <span className="slider"></span>
+                    </label>
+                    <span className="remember-text">{t.remember}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotPhone(phone)
+                        setForgotName('')
+                        setForgotError('')
+                        setForgotSuccess(false)
+                        setShowForgotModal(true)
+                      }}
+                      className="forgot-btn"
+                    >
+                      {t.forgot}
+                    </button>
+                  </div>
+
+                  <button type="submit" className="modern-btn" disabled={loading}>
+                    <span className="btn-text">{t.login}</span>
+                    {loading && (
+                      <span className="btn-loader">
+                        <span className="spinner"></span>
+                      </span>
+                    )}
                   </button>
-                </div>
 
-                <button type="submit" className="modern-btn" disabled={loading}>
-                  <span className="btn-text">{t.login}</span>
-                  {loading && (
-                    <span className="btn-loader">
-                      <span className="spinner"></span>
-                    </span>
-                  )}
-                </button>
-              </form>
+                  <div className="form-toggle-link" style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.9rem' }}>
+                    <span style={{ color: 'var(--text-muted, #64748b)' }}>{t['no-account']} </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegistering(true)
+                        setError('')
+                      }}
+                      style={{
+                        background: 'transparent', border: 'none', color: 'var(--primary, #7c3aed)',
+                        fontWeight: 700, cursor: 'pointer', outline: 'none', padding: '0 4px', fontSize: '0.9rem',
+                        fontFamily: 'Cairo'
+                      }}
+                    >
+                      {t['register-btn-link']}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

@@ -580,6 +580,51 @@ body:not(.dark) .login:hover {
   color: var(--input-border-focus);
 }
 
+.login .input-wrapper select {
+  width: 100%;
+  padding: 14px 48px 14px 56px;
+  border-radius: 14px;
+  border: 2px solid var(--input-border);
+  background-color: var(--input-bg);
+  outline: none;
+  font-size: 14px;
+  color: var(--input-text);
+  transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-family: inherit;
+}
+
+.login .input-wrapper select:hover {
+  border-color: var(--input-border-hover);
+  background-color: var(--input-bg-focus);
+}
+
+.login .input-wrapper select:focus {
+  border-color: var(--input-border-focus);
+  background-color: var(--input-bg-focus);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 12px 24px -8px rgba(124, 58, 237, 0.25),
+    0 0 0 4px var(--input-ring),
+    0 4px 12px var(--input-glow);
+}
+
+.login .input-wrapper option {
+  background-color: var(--card-bg, #ffffff);
+  color: var(--input-text, #1a1a1a);
+  font-family: 'Cairo', sans-serif;
+  font-weight: 600;
+  padding: 10px;
+}
+
+body.dark .login .input-wrapper option {
+  background-color: #161628;
+  color: #f4f1ff;
+}
+
 .toggle-password-btn {
   position: absolute;
   right: 8px;
