@@ -68,6 +68,17 @@ export default function Header() {
   // Close drawer on nav
   useEffect(() => { setDrawerOpen(false) }, [location.pathname])
 
+  // Close drawer if window is resized to desktop viewport
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setDrawerOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // Theme toggle effect
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
@@ -134,9 +145,7 @@ export default function Header() {
 
   const items = userRole === 'admin'
     ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
-    : (user?.is_active === false
-        ? NAV_ITEMS_BASE.filter(item => item.to === '/payments')
-        : NAV_ITEMS_BASE)
+    : NAV_ITEMS_BASE
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 
@@ -145,7 +154,7 @@ export default function Header() {
       <header className={`mh ${scrolled ? 'mh--scrolled' : ''}`} dir="rtl">
         <div className="mh__inner">
           {/* ─── Brand ─── */}
-          <Link to="/" className="mh__brand" aria-label={`${brandName} - الصفحة الرئيسية`}>
+          <Link to="/" className="mh__brand" aria-label={`${brandName} - الصفحة الرئيسية`} title={brandName}>
             <span className="mh__mark">
               <img src={brandLogo} alt="" className="mh__mark-img" />
             </span>
@@ -222,6 +231,15 @@ export default function Header() {
             </button>
           </div>
         </div>
+        {user && user.role === 'student' && user.is_approved === true && user.is_active === false && (
+          <div className="mh__pending-ribbon">
+            <i className="fas fa-circle-exclamation"></i>
+            <span>
+              حسابك غير نشط حاليًا. يرجى تفعيل الحساب لتتمكن من مشاهدة الفيديوهات، دخول الامتحانات، وحل الواجبات. يمكنك تأكيد التفعيل من{' '}
+              <Link to="/payments">صفحة المدفوعات</Link>.
+            </span>
+          </div>
+        )}
       </header>
 
       {/* ─── Mobile drawer ─── */}
@@ -235,7 +253,7 @@ export default function Header() {
           onClick={(e) => e.stopPropagation()}
         >
           <header className="mh-drawer__head">
-            <div className="mh__brand">
+            <div className="mh__brand" title={brandName}>
               <span className="mh__mark">
                 <img src={brandLogo} alt="" className="mh__mark-img" />
               </span>

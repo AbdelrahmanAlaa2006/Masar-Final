@@ -102,6 +102,7 @@ function shapeVideo(row) {
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [showLockModal, setShowLockModal] = useState(false)
 
   // ── Load videos from Supabase ────────────────────────────────
   // 60s cache: videos rarely change between navigations. Admins who just
@@ -272,6 +273,10 @@ function shapeVideo(row) {
     }
   }
   const openVideoPlayer = (video) => {
+    if (userRole !== 'admin' && currentUser?.is_active === false) {
+      setShowLockModal(true)
+      return
+    }
     if (userRole !== 'admin' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
     }
@@ -746,6 +751,29 @@ function shapeVideo(row) {
             <h3 className="title-card mb-4">{alertData.title}</h3>
             <p className="mb-6">{alertData.message}</p>
             <button className="btn btn-primary" onClick={closeAlertModal}>حسناً</button>
+          </div>
+        </div>
+      )}
+
+      {/* Locked Modal for Inactive Students */}
+      {showLockModal && (
+        <div className="modal show" onClick={() => setShowLockModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '500px', textAlign: 'center', direction: 'rtl', padding: '32px 24px' }} onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowLockModal(false)}>&times;</button>
+            <div style={{ fontSize: '3.5rem', color: '#e0a96d', marginBottom: '16px' }}>
+              <i className="fas fa-lock"></i>
+            </div>
+            <h3 className="title-card mb-4" style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>المحتوى مغلق</h3>
+            <p className="mb-6" style={{ lineHeight: '1.8', fontSize: '0.95rem' }}>
+              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة). 
+              إذا قمت بالدفع بالفعل، يمكنك الانتظار أو تأكيد عملية الدفع من صفحة المدفوعات.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="btn btn-primary" onClick={() => { setShowLockModal(false); navigate('/payments') }}>
+                بوابة التأكيد (المدفوعات)
+              </button>
+              <button className="btn btn-outline" onClick={() => setShowLockModal(false)}>إغلاق</button>
+            </div>
           </div>
         </div>
       )}

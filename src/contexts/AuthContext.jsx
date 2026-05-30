@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { invalidateAll } from '../utils/cache'
 import { useTenant } from './TenantContext'
+import { supabase } from '@backend/supabase'
 
 const AuthContext = createContext(null)
 
@@ -49,6 +50,27 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const refreshProfile = async () => {
+    if (!user) return null
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, phone, grade, "group", role, avatar_url, tenant_id, is_active, is_approved')
+        .eq('id', user.id)
+        .single()
+      if (error) throw error
+      if (data) {
+        sessionStorage.setItem('masar-user', JSON.stringify(data))
+        setUser(data)
+        window.dispatchEvent(new Event('masar-user-updated'))
+        return data
+      }
+    } catch (err) {
+      console.error('Failed to refresh profile:', err)
+      throw err
+    }
+  }
+
   const login = (token, userData) => {
     sessionStorage.setItem('masar-token', token)
     sessionStorage.setItem('masar-user', JSON.stringify(userData))
@@ -75,6 +97,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     syncAuth,
+    refreshProfile,
   }
 
   return (

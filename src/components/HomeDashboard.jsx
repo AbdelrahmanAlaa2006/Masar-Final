@@ -47,9 +47,8 @@ export default function HomeDashboard({ role }) {
      recent  — newest 5 items across lectures/videos/exams (by created_at)
      loading — true while the initial fetch is in flight
 */
-function useContentStats({ role }) {
+function useContentStats({ role, grade }) {
   const [stats,  setStats]  = useState({ students: 0, homeworks: 0, videos: 0, exams: 0 })
-  const [recent, setRecent] = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
   // Manual refresh — bumping this triggers a re-fetch.
@@ -85,10 +84,16 @@ function useContentStats({ role }) {
         ])
         if (cancelled) return
 
-        const homeworks = H.ok ? H.v : []
-        const videos    = V.ok ? V.v : []
-        const exams     = E.ok ? E.v : []
+        let homeworks = H.ok ? H.v : []
+        let videos    = V.ok ? V.v : []
+        let exams     = E.ok ? E.v : []
         const students  = S.ok ? S.v : []
+
+        if (role === 'student' && grade) {
+          homeworks = homeworks.filter(h => h.grade === grade)
+          videos    = videos.filter(v => v.grade === grade)
+          exams     = exams.filter(e => e.grade === grade)
+        }
 
         setStats({
           students:  students.length,
@@ -96,28 +101,6 @@ function useContentStats({ role }) {
           videos:    videos.length,
           exams:     exams.length,
         })
-
-        // Carry richer per-item details into the recent panel: the type
-        // (so we can render the right icon/label), grade (so we can show
-        // a pill), and one extra piece of context per resource.
-        const combined = [
-          ...homeworks.map(r => ({
-            type: 'homeworks', title: r.title, at: r.created_at,
-            grade: r.grade, extra: r.subject || r.teacher || null,
-          })),
-          ...videos.map(r => ({
-            type: 'videos', title: r.title, at: r.created_at,
-            grade: r.grade,
-            extra: r.video_parts ? `${r.video_parts.length} جزء` : null,
-          })),
-          ...exams.map(r => ({
-            type: 'exams', title: r.title, at: r.created_at,
-            grade: r.grade,
-            extra: r.duration_minutes ? `${r.duration_minutes} د` : null,
-          })),
-        ]
-        combined.sort((a, b) => new Date(b.at) - new Date(a.at))
-        setRecent(combined.slice(0, 5))
 
         const fails = [H, V, E, S].filter((r) => !r.ok)
         if (fails.length) {
@@ -128,9 +111,9 @@ function useContentStats({ role }) {
       }
     })()
     return () => { cancelled = true }
-  }, [role, tick])
+  }, [role, tick, grade])
 
-  return { stats, recent, loading, error, refresh }
+  return { stats, loading, error, refresh }
 }
 
 // Arabic short labels for grade enums + content types — used by the
@@ -164,8 +147,8 @@ function StudentDashboard() {
   
   const [upcoming, setUpcoming] = useState(null)
   
-  // Live content for THIS student's grade (RLS does the filtering).
-  const { stats, recent, loading, error, refresh } = useContentStats({ role: 'student' })
+  // Live content for THIS student's grade
+  const { stats, loading, error, refresh } = useContentStats({ role: 'student', grade: userGrade })
 
   const progress = useMemo(() => {
     return {
@@ -298,14 +281,6 @@ function StudentDashboard() {
         </div>
       </WidgetCard>
 
-      <RecentAddsCard
-        loading={loading}
-        recent={recent}
-        error={error}
-        onRefresh={refresh}
-        navigate={navigate}
-      />
-
       <WidgetCard
         icon="fa-clock-rotate-left"
         title="أكمل من حيث توقفت"
@@ -397,7 +372,7 @@ function CountCell({ value, label }) {
 function AdminDashboard() {
   const navigate = useNavigate()
   // Pulled live from Supabase — totals across all grades.
-  const { stats, recent, loading, error, refresh } = useContentStats({ role: 'admin' })
+  const { stats, loading, error, refresh } = useContentStats({ role: 'admin' })
 
   return (
     <section className="hdash hdash-admin">
@@ -419,14 +394,6 @@ function AdminDashboard() {
           </div>
         )}
       </WidgetCard>
-
-      <RecentAddsCard
-        loading={loading}
-        recent={recent}
-        error={error}
-        onRefresh={refresh}
-        navigate={navigate}
-      />
 
       <WidgetCard icon="fa-bolt" title="إجراءات سريعة" accent="amber">
         <div className="hdash-quick">
@@ -465,7 +432,6 @@ function WidgetCard({ icon, title, accent, children }) {
     </div>
   )
 }
-
 function EmptyHint({ icon, text }) {
   return (
     <div className="hdash-empty">
@@ -474,78 +440,6 @@ function EmptyHint({ icon, text }) {
     </div>
   )
 }
-
-/* Recent additions panel — shared between admin and student. Each row
-   shows: type icon, title, type+grade pills, an optional extra detail
-   (subject / parts count / duration), and the relative time. The whole
-   row navigates to the section. A small refresh button on the header
-   lets the user re-pull without reloading the page. */
-function RecentAddsCard({ loading, recent, onRefresh, navigate }) {
-  return (
-    <div className="hdash-card hdash-accent-cyan">
-      <div className="hdash-card-head" style={{ justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="hdash-card-icon"><i className="fas fa-clock"></i></div>
-          <h3>أحدث الإضافات</h3>
-        </div>
-        <button
-          onClick={onRefresh}
-          title="تحديث"
-          aria-label="تحديث"
-          style={{
-            border: 'none', background: 'transparent', color: 'inherit',
-            cursor: 'pointer', padding: 6, borderRadius: 6, opacity: 0.7,
-          }}
-        >
-          <i className={`fas fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i>
-        </button>
-      </div>
-      <div className="hdash-card-body">
-        {loading ? (
-          <EmptyHint icon="fa-spinner" text="جاري التحميل..." />
-        ) : recent.length ? (
-          <ul className="hdash-recent-list">
-            {recent.map((r, i) => (
-              <li
-                key={i}
-                onClick={() => navigate(ROUTE_META[r.type]?.route || '/')}
-                style={{ cursor: 'pointer', alignItems: 'flex-start' }}
-              >
-                <i className={`fas ${ROUTE_META[r.type]?.icon || 'fa-circle'}`}></i>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span className="hdash-recent-title" style={{ fontWeight: 700 }}>{r.title}</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
-                    <span style={pillStyle('var(--primary, #7c3aed)')}>{TYPE_LABEL[r.type]}</span>
-                    {r.grade && (
-                      <span style={pillStyle('var(--secondary, #06b6d4)')}>{GRADE_SHORT[r.grade] || r.grade}</span>
-                    )}
-                    {r.extra && (
-                      <span style={pillStyle('var(--text-muted, #64748b)')}>{r.extra}</span>
-                    )}
-                  </div>
-                </div>
-                <span className="hdash-recent-time" style={{ flexShrink: 0 }}>{relTime(r.at)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyHint icon="fa-inbox" text="لم تتم إضافة محتوى مؤخرًا" />
-        )}
-      </div>
-    </div>
-  )
-}
-
-const pillStyle = (colorVar) => ({
-  display: 'inline-flex', alignItems: 'center',
-  padding: '2px 8px', borderRadius: 999,
-  background: `color-mix(in srgb, ${colorVar} 10%, transparent)`,
-  color: colorVar,
-  fontWeight: 700,
-  border: `1px solid color-mix(in srgb, ${colorVar} 25%, transparent)`,
-  whiteSpace: 'nowrap',
-})
-
 function relTime(iso) {
   if (!iso) return ''
   try {

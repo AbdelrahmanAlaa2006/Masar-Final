@@ -381,6 +381,7 @@ export default function Homework() {
                     key={hw.id}
                     hw={hw}
                     isAdmin={userRole === 'admin'}
+                    isInactive={userRole !== 'admin' && user?.is_active === false}
                     submission={submissions.get(hw.id) || null}
                     onOpen={() => {
                       if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })
@@ -576,7 +577,7 @@ export default function Homework() {
 
 /* ─────────────────────── sub-components ─────────────────────── */
 
-function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEdit, onDelete }) {
+function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, onGrade, onEdit, onDelete }) {
   const now = Date.now()
   const due = hw.due_at ? new Date(hw.due_at).getTime() : null
   const overdue = due && now > due
@@ -585,7 +586,9 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEd
   // so a successful submission ALWAYS shows the score immediately.
   let status = null
   if (!isAdmin) {
-    if (submission?.submitted_at) {
+    if (isInactive) {
+      status = { label: 'قيد مراجعة الحساب', cls: 'hw-status-pending', icon: 'fa-lock' }
+    } else if (submission?.submitted_at) {
       const sc = submission.score ?? 0
       const mx = submission.max_score ?? hw.max_score
       status = hw.reveal_grades === true
@@ -669,6 +672,10 @@ function HomeworkCard({ hw, isAdmin, submission, onOpen, onSubmit, onGrade, onEd
                 <i className="fas fa-trash"></i>
               </button>
             </>
+          ) : isInactive ? (
+            <button className="hw-btn hw-btn-primary" disabled style={{ opacity: 0.7, cursor: 'not-allowed', background: '#a0aec0', borderColor: '#a0aec0' }}>
+              <i className="fas fa-lock" style={{ marginInlineEnd: '6px' }}></i> قيد مراجعة الحساب
+            </button>
           ) : (
             <button className="hw-btn hw-btn-primary" onClick={onSubmit}>
               <i className="fas fa-cloud-arrow-up"></i>

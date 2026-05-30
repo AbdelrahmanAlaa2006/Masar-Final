@@ -31,6 +31,7 @@ export default function Exams() {
   })
 
   const [showModal, setShowModal] = useState(false)
+  const [showLockModal, setShowLockModal] = useState(false)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -125,6 +126,10 @@ export default function Exams() {
     Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
   const startExam = (exam) => {
+    if (userRole !== 'admin' && user?.is_active === false) {
+      setShowLockModal(true)
+      return
+    }
     if (userRole !== 'admin' && !isAllowed(exam)) {
       setAlertModal('الوصول محظور', 'تم تقييد هذا الامتحان من قِبَل الإدارة.')
       return
@@ -273,8 +278,16 @@ export default function Exams() {
         </div>
 
         <div className="ec-footer">
-          <span>⏳</span>
-          <span>متاح حتى {formattedDate}</span>
+          {userRole !== 'admin' && user?.is_active === false ? (
+            <span style={{ color: '#e0a96d', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <i className="fas fa-lock"></i> الامتحان مغلق (يتطلب تفعيل الحساب)
+            </span>
+          ) : (
+            <>
+              <span>⏳</span>
+              <span>متاح حتى {formattedDate}</span>
+            </>
+          )}
         </div>
       </div>
     )
@@ -354,6 +367,28 @@ export default function Exams() {
             <h3 className="modal-title">انتهت المحاولات</h3>
             <p className="modal-message">لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.</p>
             <button className="modal-button" onClick={() => setShowModal(false)}>حسناً</button>
+          </div>
+        </div>
+      )}
+
+      {showLockModal && (
+        <div className="modal active" onClick={() => setShowLockModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '500px', textAlign: 'center', direction: 'rtl', padding: '32px 24px', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowLockModal(false)} style={{ position: 'absolute', top: '16px', left: '16px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
+            <div style={{ fontSize: '3.5rem', color: '#e0a96d', marginBottom: '16px' }}>
+              <i className="fas fa-lock"></i>
+            </div>
+            <h3 className="modal-title" style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '16px' }}>المحتوى مغلق</h3>
+            <p className="modal-message" style={{ lineHeight: '1.8', fontSize: '0.95rem', marginBottom: '24px' }}>
+              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة). 
+              إذا قمت بالدفع بالفعل، يمكنك الانتظار أو تأكيد عملية الدفع من صفحة المدفوعات.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="modal-button" style={{ background: 'var(--primary-gradient)', color: 'white', border: 'none', padding: '10px 25px', borderRadius: 'var(--border-radius)', fontWeight: '600', cursor: 'pointer' }} onClick={() => { setShowLockModal(false); navigate('/payments') }}>
+                بوابة التأكيد (المدفوعات)
+              </button>
+              <button className="modal-button" style={{ background: 'transparent', border: '2px solid var(--text-secondary)', color: 'var(--text-color)', padding: '10px 25px', borderRadius: 'var(--border-radius)', fontWeight: '600', cursor: 'pointer' }} onClick={() => setShowLockModal(false)}>إغلاق</button>
+            </div>
           </div>
         </div>
       )}

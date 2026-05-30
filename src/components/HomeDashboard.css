@@ -251,30 +251,14 @@ body.dark .hdash-quick-ghost { color: var(--primary, #c4b5fd); border-color: col
 }
 .hdash-empty i { font-size: 1.1rem; }
 
-/* Student Dashboard specific card positioning for a balanced symmetrical grid */
+/* Admin and Student Dashboard symmetrical grid layouts on desktop */
 @media (min-width: 961px) {
+  .hdash-admin {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 960px;
+  }
   .hdash-student {
-    grid-template-rows: auto auto;
-    align-items: stretch;
-  }
-  .hdash-student .hdash-card:nth-child(1) {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .hdash-student .hdash-card:nth-child(2) {
-    grid-column: 3;
-    grid-row: span 2;
-  }
-  .hdash-student .hdash-card:nth-child(3) {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .hdash-student .hdash-card:nth-child(4) {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .hdash-student .hdash-card:nth-child(5) {
-    grid-column: 2;
-    grid-row: 2;
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 1100px;
   }
 }

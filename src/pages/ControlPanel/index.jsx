@@ -16,6 +16,7 @@ const ResetRequestsPanel = lazy(() => import('./ResetRequestsPanel'))
 const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
 const StudentsSyncPanel = lazy(() => import('./StudentsSyncPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
+const AccountsPanel = lazy(() => import('./AccountsPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
@@ -153,6 +154,13 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('students')}
             />
             <SectionCard
+              icon="fa-user-check"
+              accent="green"
+              title="حسابات الطلاب والتفعيل"
+              desc="مراجعة وتفعيل الحسابات الجديدة المسجلة ذاتياً والموافقة عليها"
+              onClick={() => enterSection('accounts')}
+            />
+            <SectionCard
               icon="fa-moon"
               accent="orange"
               title="السمات الموسمية"
@@ -183,6 +191,7 @@ export default function ControlPanelIndex() {
           {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
           {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
           {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
+          {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
 
 
           {/* Sub-tab navigation bar for dynamic settings */}

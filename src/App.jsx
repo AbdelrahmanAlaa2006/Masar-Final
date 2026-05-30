@@ -26,7 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Payments = lazy(() => import('./pages/Payments'))
 
-import { TenantProvider } from './contexts/TenantContext'
+import { TenantProvider, useTenant } from './contexts/TenantContext'
 import { tokenAPI } from '@backend/authApi'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import SeasonalDecor from './seasonal/SeasonalDecor'
@@ -78,24 +78,203 @@ function App() {
   )
 }
 
+function PendingApprovalPage() {
+  const { logout, refreshProfile } = useAuth()
+  const { tenant } = useTenant()
+  const brandName = tenant?.name || 'مسار'
+  const [isChecking, setIsChecking] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
+  const [messageType, setMessageType] = useState('') // 'success' or 'info' or 'error'
+
+  const handleLogout = async () => {
+    await logout()
+    window.location.href = '/login'
+  }
+
+  const handleCheckStatus = async () => {
+    if (isChecking) return
+    setIsChecking(true)
+    setStatusMessage('')
+    setMessageType('')
+    try {
+      const updatedUser = await refreshProfile()
+      if (updatedUser && updatedUser.is_approved) {
+        setMessageType('success')
+        setStatusMessage('تمت الموافقة على حسابك! جارٍ توجيهك للمنصة...')
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+      } else {
+        setMessageType('info')
+        setStatusMessage('حسابك لا يزال قيد المراجعة والموافقة من قبل الإدارة.')
+      }
+    } catch (err) {
+      console.error(err)
+      setMessageType('error')
+      setStatusMessage('حدث خطأ أثناء تحديث الحالة. يرجى المحاولة لاحقاً.')
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  return (
+    <div className="pending-app-container" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
+      color: '#fff',
+      padding: '24px',
+      fontFamily: 'Cairo, sans-serif'
+    }}>
+      <div className="pending-app-card" style={{
+        maxWidth: '520px',
+        width: '100%',
+        background: 'rgba(30, 41, 59, 0.45)',
+        backdropFilter: 'blur(20px)',
+        webkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '24px',
+        padding: '40px 32px',
+        textAlign: 'center',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+      }}>
+        {/* Animated Clock / Pending Icon */}
+        <div style={{
+          width: '80px',
+          height: '80px',
+          background: 'rgba(245, 158, 11, 0.1)',
+          color: '#f59e0b',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '2.5rem',
+          margin: '0 auto 24px',
+          animation: 'pulse 2s infinite'
+        }}>
+          <i className="fas fa-clock-rotate-left"></i>
+        </div>
+
+        <h2 style={{
+          fontSize: '1.8rem',
+          fontWeight: 700,
+          marginBottom: '16px',
+          color: '#fff'
+        }}>حسابك قيد المراجعة حاليًا</h2>
+
+        <p style={{
+          fontSize: '1.05rem',
+          lineHeight: '1.8',
+          color: '#cbd5e1',
+          marginBottom: '32px'
+        }}>
+          أهلاً بك في منصة <strong>{brandName}</strong>. لقد تم إنشاء حسابك بنجاح، وهو الآن قيد المراجعة والموافقة من قبل الإدارة. سيتم تفعيل حسابك للدخول إلى المحاضرات والامتحانات خلال 24 إلى 48 ساعة كحد أقصى.
+        </p>
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <button 
+            onClick={handleCheckStatus}
+            disabled={isChecking}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+              color: '#fff',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(124, 58, 237, 0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.3)'
+            }}
+          >
+            {isChecking ? (
+              <i className="fas fa-spinner fa-spin"></i>
+            ) : (
+              <i className="fas fa-arrows-rotate"></i>
+            )}
+            تحديث حالة الحساب
+          </button>
+
+          <button 
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+            }}
+          >
+            <i className="fas fa-right-from-bracket"></i>
+            تسجيل الخروج
+          </button>
+        </div>
+
+        {statusMessage && (
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            borderRadius: '12px',
+            background: messageType === 'success' ? 'rgba(16, 185, 129, 0.15)' : messageType === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+            border: `1px solid ${messageType === 'success' ? '#10b981' : messageType === 'error' ? '#ef4444' : '#6366f1'}`,
+            color: messageType === 'success' ? '#34d399' : messageType === 'error' ? '#f87171' : '#818cf8',
+            fontSize: '0.95rem',
+            textAlign: 'center',
+            fontWeight: '600'
+          }}>
+            {statusMessage}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* Hoisted out of AppContent so the component reference is stable across
-   re-renders. Defining them inside the parent meant every state change
-   in AppContent (e.g. examLocked toggling) gave React a brand-new
-   component type, which forced every routed child (ExamTaking,
-   Lectures, ...) to unmount and remount — that looked like the page
-   was "refreshing" mid-exam. */
+   re-renders. */
 function ProtectedRoute({ isLoggedIn, children }) {
   const { user } = useAuth()
-  const location = useLocation()
   
   if (!isLoggedIn) return <Navigate to="/login" replace />
   
-  // Guard for inactive students: redirect to payments page if trying to access other pages
-  if (user && user.role === 'student' && user.is_active === false) {
-    const path = location.pathname
-    if (path !== '/payments' && path !== '/profile') {
-      return <Navigate to="/payments" replace />
-    }
+  // Guard for newly registered students: show Pending Approval page if not approved
+  if (user && user.role === 'student' && user.is_approved === false) {
+    return <PendingApprovalPage />
   }
   
   return children
@@ -296,6 +475,9 @@ function AppContent() {
   // and friends aren't unmounted whenever AppContent re-renders.
   const role = user?.role
 
+  const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
+  const showHeaderFooter = !isLoginPage && !isExamTaking && !isUnapprovedStudent
+
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
       {/* Seasonal ambient overlay (Ramadan lanterns / Eid kahk / Adha
@@ -304,7 +486,7 @@ function AppContent() {
           the seasonal accent classes on <body> still apply, so the
           subtle top tint and selection color remain. */}
       <SeasonalDecor suppress={isExamTaking} />
-      {!isLoginPage && !isExamTaking && <Header />}
+      {showHeaderFooter && <Header />}
 
       <div className="page-container">
         <Suspense fallback={<PageLoader />}>
@@ -344,7 +526,7 @@ function AppContent() {
         </Suspense>
       </div>
 
-      {!isLoginPage && !isExamTaking && <Footer />}
+      {showHeaderFooter && <Footer />}
     </div>
   )
 }

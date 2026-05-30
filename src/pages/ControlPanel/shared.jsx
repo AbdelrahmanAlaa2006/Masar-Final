@@ -16,6 +16,11 @@ export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope
     section === 'videos' ? 'الفيديوهات'
     : section === 'exams' ? 'الامتحانات'
     : section === 'homeworks' ? 'الواجبات'
+    : section === 'accounts' ? 'حسابات الطلاب والتفعيل'
+    : section === 'students' ? 'مزامنة الطلاب'
+    : section === 'resets' ? 'طلبات استعادة الحساب'
+    : section === 'violations' ? 'سجلات الحماية الأمنية'
+    : section === 'seasons' ? 'السمات الموسمية'
     : ''
   const scopeLabel =
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
