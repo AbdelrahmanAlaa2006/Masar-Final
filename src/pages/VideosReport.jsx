@@ -306,6 +306,10 @@ export default function VideosReport() {
           </div>
         )}
 
+        {studentName && !isAdmin && (
+          <VideosDashboard videosData={videosData} />
+        )}
+
         {/* Stats */}
         <div className="vr-stats">
           <div className="vr-stat-card">
@@ -513,5 +517,131 @@ export default function VideosReport() {
         </div>
       )}
     </main>
+  )
+}
+
+function VideosDashboard({ videosData }) {
+  const total = videosData.length
+  const completed = videosData.filter((v) => v.progress >= 75).length
+  const partial = videosData.filter((v) => v.progress > 0 && v.progress < 75).length
+  const notWatched = videosData.filter((v) => v.progress === 0).length
+  const avgProgress = total > 0 ? Math.round(videosData.reduce((sum, v) => sum + v.progress, 0) / total) : 0
+
+  // Donut values
+  const strokeDash = (avgProgress / 100) * 251.2
+
+  // Watch-state breakdown percentages
+  const pctCompleted = total > 0 ? Math.round((completed / total) * 100) : 0
+  const pctPartial = total > 0 ? Math.round((partial / total) * 100) : 0
+  const pctNotWatched = total > 0 ? Math.max(0, 100 - pctCompleted - pctPartial) : 0
+
+  // Filter first 5 videos for inline bar chart representation
+  const recentVideos = videosData.slice(0, 5)
+
+  const getInsightMessage = () => {
+    if (total === 0) return 'لا توجد فيديوهات تعليمية مضافة بعد.'
+    if (avgProgress === 0) return 'ابدأ بمشاهدة الفيديوهات التعليمية للتقدم في المنهج.'
+    if (avgProgress >= 80) return 'ممتاز جداً! مشاهدتك للمحاضرات منتظمة ومستمرة. الاستمرار في متابعة الشرح أولاً بأول يضمن تفوقك الدراسي.'
+    if (avgProgress >= 60) return 'مستوى تقدمك جيد جداً. تأكد من إكمال الفيديوهات التي شاهدت أجزاءً منها فقط للوصول للإلمام الكامل بالمنهج.'
+    return 'معدل مشاهدتك للمحاضرات منخفض. يرجى تخصيص وقت كافٍ لمتابعة الفيديوهات المتأخرة لتجنب تراكم الدروس عليك.'
+  }
+
+  const getInsightIcon = () => {
+    if (avgProgress >= 80) return 'fa-circle-play'
+    if (avgProgress >= 60) return 'fa-clock'
+    return 'fa-circle-exclamation'
+  }
+
+  const getInsightClass = () => {
+    if (avgProgress >= 80) return 'vr-insight-excellent'
+    if (avgProgress >= 60) return 'vr-insight-good'
+    return 'vr-insight-warning'
+  }
+
+  return (
+    <div className="vr-dashboard-card card">
+      <h2 className="vr-dashboard-title">
+        <i className="fas fa-chart-line"></i> لوحة تحليل مشاهدة المحاضرات والتقدم الدراسي
+      </h2>
+
+      <div className="vr-dashboard-layout">
+        {/* Left: Overall watch donut progress */}
+        <div className="vr-dashboard-donut-wrap">
+          <div className="vr-dashboard-donut-inner">
+            <svg viewBox="0 0 100 100" className="vr-donut-svg">
+              <circle cx="50" cy="50" r="40" className="vr-donut-bg" />
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="40" 
+                className="vr-donut-fill"
+                style={{
+                  strokeDasharray: `${strokeDash} 251.2`,
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: '50% 50%',
+                  stroke: 'var(--secondary, #06b6d4)'
+                }}
+              />
+            </svg>
+            <div className="vr-donut-text">
+              <span className="vr-donut-num">{avgProgress}%</span>
+              <span className="vr-donut-lbl">متوسط التقدم</span>
+            </div>
+          </div>
+
+          <div className="vr-breakdown-container">
+            <h4 className="vr-breakdown-title-sub">نسب المشاهدة والتوزيع</h4>
+            <div className="vr-breakdown-bar">
+              {pctCompleted > 0 && <div className="vr-bb-fill vr-bb-complete" style={{ width: `${pctCompleted}%` }} title={`مكتمل: ${pctCompleted}%`} />}
+              {pctPartial > 0 && <div className="vr-bb-fill vr-bb-partial" style={{ width: `${pctPartial}%` }} title={`جزئي: ${pctPartial}%`} />}
+              {pctNotWatched > 0 && <div className="vr-bb-fill vr-bb-none" style={{ width: `${pctNotWatched}%` }} title={`لم يشاهد: ${pctNotWatched}%`} />}
+            </div>
+            <div className="vr-donut-legend">
+              <div><span className="legend-dot legend-complete"></span> مكتمل ({completed})</div>
+              <div><span className="legend-dot legend-partial"></span> جزئي ({partial})</div>
+              <div><span className="legend-dot legend-none"></span> لم يشاهد ({notWatched})</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Progress bars for individual lectures */}
+        <div className="vr-dashboard-chart-wrap">
+          <h3 className="vr-chart-header">تقدم مشاهدة آخر الفيديوهات</h3>
+          {recentVideos.length === 0 ? (
+            <div className="vr-chart-placeholder">
+              <i className="fas fa-video-slash"></i>
+              <p>لا توجد محاضرات مدرجة لعرض إحصائيات تقدمها</p>
+            </div>
+          ) : (
+            <div className="vr-chart-bars-list">
+              {recentVideos.map(v => (
+                <div key={v.id} className="vr-chart-bar-row">
+                  <div className="vr-bar-info">
+                    <span className="vr-bar-name" title={v.title}>{v.title}</span>
+                    <span className="vr-bar-value">{v.progress}%</span>
+                  </div>
+                  <div className="vr-bar-track">
+                    <div 
+                      className={`vr-bar-fill ${v.progress >= 75 ? 'fill-complete' : v.progress > 0 ? 'fill-partial' : 'fill-none'}`} 
+                      style={{ width: `${v.progress}%` }} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={`vr-dashboard-insight ${getInsightClass()}`}>
+        <div className="vr-insight-icon-wrap">
+          <i className={`fas ${getInsightIcon()}`}></i>
+        </div>
+        <div className="vr-insight-content">
+          <h4>ملاحظات تقدم الفيديوهات</h4>
+          <p>{getInsightMessage()}</p>
+        </div>
+      </div>
+    </div>
   )
 }

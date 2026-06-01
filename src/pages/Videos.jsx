@@ -10,7 +10,9 @@ import BunnyPlayer from '../components/BunnyPlayer'
 import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
+import VideoComments from '../components/VideoComments'
 import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
+import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
 import QuestionImagePicker from '../components/QuestionImagePicker'
@@ -93,11 +95,38 @@ function shapeVideo(row) {
 
   const [activeQuiz, setActiveQuiz] = useState(null)
   const [pendingPart, setPendingPart] = useState(null)
+
+  // Smart Video Notes state
+  const [currentTime, setCurrentTime] = useState(0)
+  const [notes, setNotes] = useState([])
+  const [noteContent, setNoteContent] = useState('')
+  const [seekTrigger, setSeekTrigger] = useState(null)
+  const [loadingNotes, setLoadingNotes] = useState(false)
   // Quizzes the student has just passed in this session. We add to this set
   // the moment a pass fires so the immediate `playVideoPart` retry doesn't
   // re-read stale `quizAttempts` (which is fetched async) and re-show the
   // quiz that was literally just passed.
   const passedThisSessionRef = useRef(new Set())
+
+  // Load notes for the active video part
+  useEffect(() => {
+    if (view === 'player' && selectedPart && currentUser?.id) {
+      setLoadingNotes(true)
+      listNotes(selectedPart.id)
+        .then((data) => {
+          setNotes(data)
+          setLoadingNotes(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load notes:', err)
+          setLoadingNotes(false)
+        })
+    } else {
+      setNotes([])
+      setCurrentTime(0)
+      setNoteContent('')
+    }
+  }, [selectedPart?.id, view, currentUser?.id])
 
   const [showAlert, setShowAlert] = useState(false)
   const [alertData, setAlertData] = useState({ title: '', message: '' })
@@ -195,8 +224,8 @@ function shapeVideo(row) {
     if (!video || !video.quizzes || video.quizzes.length === 0) return null
     const partIdx = video.parts.findIndex(p => p.id === part.id)
     const applies = (qz) =>
-      qz.scope === 'whole' ||
-      (qz.scope === 'part' && qz.partIndex === partIdx)
+      (qz.scope === 'whole' || (qz.scope === 'part' && Number(qz.partIndex) === partIdx)) &&
+      qz.triggerType !== 'timestamp'
     for (const qz of video.quizzes) {
       if (!applies(qz)) continue
       // Just-passed quizzes are remembered in a ref so the immediate retry
@@ -270,6 +299,99 @@ function shapeVideo(row) {
       setShowExitConfirm(true)
     } else {
       setCurrentVideo(null); setSelectedPart(null); setView('videos')
+    }
+  }
+
+  const handleSaveNote = async (e) => {
+    e.preventDefault()
+    if (!noteContent || !noteContent.trim()) return
+    if (!selectedPart || !currentVideo || !currentUser?.id) return
+
+    try {
+      const newNote = await createNote({
+        videoId: currentVideo.id,
+        partId: selectedPart.id,
+        content: noteContent,
+        timestampSeconds: currentTime,
+        profileId: currentUser.id
+      })
+      setNotes(prev => [...prev, newNote].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds))
+      setNoteContent('')
+    } catch (err) {
+      console.error('Failed to create note:', err)
+      notify('تعذر حفظ الملاحظة', 'error')
+    }
+  }
+
+  const handleDeleteNote = async (noteId) => {
+    try {
+      await deleteNote(noteId)
+      setNotes(prev => prev.filter(n => n.id !== noteId))
+    } catch (err) {
+      console.error('Failed to delete note:', err)
+      notify('تعذر حذف الملاحظة', 'error')
+    }
+  }
+
+  const handleSeekToNote = (seconds) => {
+    setSeekTrigger({ seconds, timestamp: Date.now() })
+  }
+
+  const handleTimeUpdate = (seconds) => {
+    setCurrentTime(seconds)
+
+    if (userRole === 'admin' || !currentUser?.id || !selectedPart || !currentVideo) return
+
+    // Count attempt when student watches 5 seconds of the video part
+    if (seconds >= 5 && !viewCountedRef.current) {
+      viewCountedRef.current = true
+      incrementPartView({ video_id: currentVideo.id, part_id: selectedPart.id })
+        .then((updated) => {
+          if (!updated) return
+          setProgressRows((prev) => {
+            const others = prev.filter((p) => p.part_id !== selectedPart.id)
+            return [...others, updated]
+          })
+        })
+        .catch((err) => console.error('youtube view increment failed', err))
+    }
+
+    // Trigger timestamp-based quizzes
+    if (activeQuiz) return
+
+    const partIdx = currentVideo.parts.findIndex(p => p.id === selectedPart.id)
+    if (partIdx !== -1 && currentVideo.quizzes && currentVideo.quizzes.length > 0) {
+      for (const qz of currentVideo.quizzes) {
+        if (qz.triggerType === 'timestamp' && qz.scope === 'part' && Number(qz.partIndex) === partIdx) {
+          const tSec = parseInt(qz.timestampSeconds, 10)
+          if (Number.isFinite(tSec) && seconds >= tSec) {
+            // Check if student has already passed the quiz
+            const passed = passedThisSessionRef.current.has(qz.localId) ||
+                           quizAttempts.some(a => a.quiz_local_id === qz.localId && a.passed)
+            if (!passed) {
+              const att = quizAttempts.find(a => a.quiz_local_id === qz.localId)
+              const attempts = att?.attempts || 0
+              const max = qz.maxAttempts || 1
+
+              if (attempts >= max) {
+                // Out of attempts, show alert and seek back to prevent infinite loop
+                showAlertModal(
+                  'انتهت محاولات الامتحان',
+                  `لقد استنفدت جميع المحاولات (${max}) لامتحان "${qz.title}" ولم تنجح. يُرجى التواصل مع المعلم.`
+                )
+                const targetSeek = Math.max(0, tSec - 5)
+                handleSeekToNote(targetSeek)
+                return
+              } else {
+                // Playback paused by setting activeQuiz, which triggers forcePause on player components
+                setPendingPart(selectedPart)
+                setActiveQuiz(qz)
+                return
+              }
+            }
+          }
+        }
+      }
     }
   }
   const openVideoPlayer = (video) => {
@@ -395,29 +517,31 @@ function shapeVideo(row) {
     setSelectedPart(part)
   }
 
-  // ── Count an attempt on EXIT, not on click ────────────────────
-  // The cleanup function fires when:
-  //   • the student picks a different part,
-  //   • the player view closes (currentVideo / selectedPart -> null),
-  //   • or the page unmounts.
-  // We snapshot the part/video/student IDs so the API call uses a stable
-  // reference even if the underlying state has already moved on.
+  // ── Count an attempt after 5 seconds of watching ──────────────
+  const viewCountedRef = useRef(false)
+
   useEffect(() => {
+    viewCountedRef.current = false
+
     if (!selectedPart || userRole === 'admin' || !currentUser?.id || !currentVideo?.id) return
-    const partId    = selectedPart.id
-    const studentId = currentUser.id
-    const videoId   = currentVideo.id
-    return () => {
-      // student_id derived from auth.uid() server-side; arg ignored.
-      incrementPartView({ video_id: videoId, part_id: partId })
-        .then((updated) => {
-          if (!updated) return
-          setProgressRows((prev) => {
-            const others = prev.filter((p) => p.part_id !== partId)
-            return [...others, updated]
-          })
-        })
-        .catch((err) => console.error('exit-time view increment failed', err))
+
+    // For non-YouTube parts (Google Drive, Bunny), we count the attempt after a 5-second delay
+    if (selectedPart.source !== 'youtube') {
+      const timer = setTimeout(() => {
+        if (!viewCountedRef.current) {
+          viewCountedRef.current = true
+          incrementPartView({ video_id: currentVideo.id, part_id: selectedPart.id })
+            .then((updated) => {
+              if (!updated) return
+              setProgressRows((prev) => {
+                const others = prev.filter((p) => p.part_id !== selectedPart.id)
+                return [...others, updated]
+              })
+            })
+            .catch((err) => console.error('non-youtube view increment failed', err))
+        }
+      }, 5000)
+      return () => clearTimeout(timer)
     }
   }, [selectedPart?.id, currentUser?.id, currentVideo?.id, userRole])
 
@@ -436,6 +560,15 @@ function shapeVideo(row) {
   }
 
   const handleQuizClose = () => {
+    // If it was a timestamp quiz and they didn't pass, seek them back 5 seconds to prevent bypass
+    if (activeQuiz && activeQuiz.triggerType === 'timestamp') {
+      const passed = passedThisSessionRef.current.has(activeQuiz.localId) ||
+                     quizAttempts.some(a => a.quiz_local_id === activeQuiz.localId && a.passed)
+      if (!passed) {
+        const targetSeek = Math.max(0, (activeQuiz.timestampSeconds || 0) - 5)
+        handleSeekToNote(targetSeek)
+      }
+    }
     setActiveQuiz(null)
     setPendingPart(null)
     setQuizTick(t => t + 1) // reflect attempts count bump in UI
@@ -637,6 +770,8 @@ function shapeVideo(row) {
                             partId={selectedPart.id}
                             initialWatchedSeconds={seed}
                             onProgress={handleProgress}
+                            onTimeUpdate={handleTimeUpdate}
+                            forcePause={!!activeQuiz}
                           />
                         ) : selectedPart.source === 'drive' ? (
                           <DrivePlayer
@@ -649,6 +784,9 @@ function shapeVideo(row) {
                             videoId={selectedPart.youtubeId}
                             initialWatchedSeconds={seed}
                             onProgress={handleProgress}
+                            seekTrigger={seekTrigger}
+                            onTimeUpdate={handleTimeUpdate}
+                            forcePause={!!activeQuiz}
                           />
                         )}
                       </PlayerFacade>
@@ -664,6 +802,9 @@ function shapeVideo(row) {
                   </div>
                 )}
               </div>
+              {currentVideo && (
+                <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
+              )}
             </div>
 
             <div className="video-sidebar">
@@ -726,6 +867,95 @@ function shapeVideo(row) {
                   })}
                 </div>
               </div>
+
+              {/* Personal Smart Notes Card */}
+              {true && (
+                <div className="card notes-card mt-6" style={{ direction: 'rtl' }}>
+                  <h3 className="title-section text-center" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
+                    <i className="fas fa-book-open" style={{ marginInlineEnd: 8, color: 'var(--educational-primary)' }}></i>
+                    ملاحظات وتوقيت الفيديو
+                  </h3>
+
+                  {selectedPart?.source !== 'youtube' ? (
+                    <div className="notes-warning-box">
+                      <i className="fas fa-triangle-exclamation" style={{ fontSize: '1.2rem', marginBottom: 8, color: '#e0a96d' }}></i>
+                      <p>الملاحظات الذكية وتحديد التوقيت مدعومة حالياً فقط لفيديوهات اليوتيوب.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Note add form */}
+                      {userRole === 'admin' && (
+                        <form onSubmit={handleSaveNote} className="note-form mb-4">
+                          <div className="note-input-container">
+                            <textarea
+                              className="note-textarea"
+                              placeholder="اكتب ملاحظة هنا أثناء المشاهدة..."
+                              value={noteContent}
+                              onChange={(e) => setNoteContent(e.target.value)}
+                              rows={3}
+                            />
+                            <div className="note-form-actions">
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-sm note-timestamp-btn"
+                                title="التوقيت الحالي"
+                              >
+                                <i className="fas fa-clock" style={{ marginInlineEnd: 4 }}></i>
+                                {formatTime(currentTime)}
+                              </button>
+                              <button type="submit" className="btn btn-primary btn-sm note-submit-btn" disabled={!noteContent.trim()}>
+                                حفظ الملاحظة
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Notes list */}
+                      <div className="notes-list-container">
+                        {loadingNotes ? (
+                          <div className="text-center p-4" style={{ color: 'var(--text-muted)' }}>
+                            <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }}></i>
+                            جاري تحميل الملاحظات...
+                          </div>
+                        ) : notes.length === 0 ? (
+                          <div className="text-center p-6 notes-empty-state">
+                            <i className="far fa-note-sticky" style={{ fontSize: '2rem', display: 'block', marginBottom: 8, opacity: 0.5 }}></i>
+                            <span>لا توجد ملاحظات محفوظة في هذا الجزء بعد.</span>
+                          </div>
+                        ) : (
+                          <div className="notes-list">
+                            {notes.map((note) => (
+                              <div key={note.id} className="note-item">
+                                <div className="note-header">
+                                  <button
+                                    onClick={() => handleSeekToNote(note.timestamp_seconds)}
+                                    className="note-time-badge"
+                                    title="انتقل إلى هذا الوقت"
+                                  >
+                                    <i className="fas fa-play" style={{ fontSize: '0.65rem', marginInlineEnd: 4 }}></i>
+                                    {formatTime(note.timestamp_seconds)}
+                                  </button>
+                                  {userRole === 'admin' && (
+                                    <button
+                                      onClick={() => handleDeleteNote(note.id)}
+                                      className="note-delete-btn"
+                                      title="حذف الملاحظة"
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="note-text">{note.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1029,6 +1259,24 @@ function BunnyUploader({ part, title, onChange }) {
   )
 }
 
+function parseTimestampToSeconds(str) {
+  if (!str) return null
+  const s = String(str).trim()
+  const parts = s.split(':').map(Number)
+  if (parts.some(Number.isNaN)) return null
+  if (parts.length === 1) return parts[0]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  return null
+}
+
+function formatSecondsToTimestamp(sec) {
+  if (sec == null || Number.isNaN(sec)) return ''
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function EditVideoModal({ video, onCancel, onSave }) {
   const [title, setTitle] = useState(video.title || '')
   const [desc,  setDesc]  = useState(video.description || '')
@@ -1060,6 +1308,9 @@ function EditVideoModal({ video, onCancel, onSave }) {
       partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
       passingQuestions: qz.passingQuestions ?? '',
       maxAttempts: qz.maxAttempts ?? 1,
+      triggerType: qz.triggerType || 'gate',
+      timestamp: qz.timestamp || (qz.timestampSeconds != null ? formatSecondsToTimestamp(qz.timestampSeconds) : ''),
+      timestampSeconds: qz.timestampSeconds ?? null,
       questions: (qz.questions || []).map((q) => ({
         qid: q.qid || `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         question: q.question || '',
@@ -1239,10 +1490,32 @@ function EditVideoModal({ video, onCancel, onSave }) {
           return null
         }
       }
-      if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
-        notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
-        return null
+      const triggerType = qz.triggerType || 'gate'
+      let timestamp = qz.timestamp || ''
+      let timestampSeconds = null
+
+      if (triggerType === 'timestamp') {
+        if (qz.scope !== 'part' || qz.partIndex === '' || qz.partIndex == null) {
+          notify(`${label}: الاختبارات أثناء المشاهدة يجب أن تكون مرتبطة بجزء محدد من الفيديو`, { type: 'warning' })
+          return null
+        }
+        if (!timestamp.trim()) {
+          notify(`${label}: يرجى تحديد وقت ظهور الاختبار (مثال 02:30)`, { type: 'warning' })
+          return null
+        }
+        const parsedSecs = parseTimestampToSeconds(timestamp)
+        if (parsedSecs === null || parsedSecs < 0) {
+          notify(`${label}: صيغة وقت ظهور الاختبار غير صالحة. يرجى إدخال الصيغة كـ (دقيقة:ثانية) مثل 02:30`, { type: 'warning' })
+          return null
+        }
+        timestampSeconds = parsedSecs
+      } else {
+        if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
+          notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
+          return null
+        }
       }
+
       const pqRaw = parseInt(qz.passingQuestions)
       const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
       if (pq < 1 || pq > questions.length) {
@@ -1271,6 +1544,9 @@ function EditVideoModal({ video, onCancel, onSave }) {
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
         passingQuestions: pq,
         maxAttempts: maxAtt,
+        triggerType,
+        timestamp: triggerType === 'timestamp' ? timestamp.trim() : '',
+        timestampSeconds: triggerType === 'timestamp' ? timestampSeconds : null,
         questions: cleanQuestions,
         totalPoints,
       })
@@ -1866,67 +2142,112 @@ function EditVideoModal({ video, onCancel, onSave }) {
 
                     <div className="edit-grid" style={{ marginBottom: 12 }}>
                       <div className="edit-field">
-                        <label>نطاق الاختبار</label>
+                        <label>طريقة تفعيل الاختبار</label>
                         <select
                           className="edit-select"
-                          value={qz.scope}
-                          onChange={(e) => updateQuiz(qz.localId, 'scope', e.target.value)}
+                          value={qz.triggerType || 'gate'}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const patch = { triggerType: val }
+                            if (val === 'timestamp') {
+                              patch.scope = 'part'
+                            }
+                            updateQuiz(qz.localId, 'triggerType', val)
+                            if (patch.scope) {
+                              updateQuiz(qz.localId, 'scope', patch.scope)
+                            }
+                          }}
                         >
-                          <option value="whole">قبل بدء مشاهدة الفيديو بالكامل</option>
-                          <option value="part">قبل بدء جزء محدد من المحاضرة</option>
+                          <option value="gate">قبل البدء بالمشاهدة (بوابة دخول)</option>
+                          <option value="timestamp">أثناء المشاهدة (عند وقت محدد)</option>
                         </select>
                       </div>
 
-                      {qz.scope === 'part' ? (
+                      {qz.triggerType === 'timestamp' ? (
                         <div className="edit-field">
-                          <label>الجزء المرتبط بالاختبار</label>
-                          <select
-                            className="edit-select"
-                            value={qz.partIndex}
-                            onChange={(e) => updateQuiz(qz.localId, 'partIndex', e.target.value)}
+                          <label>وقت ظهور الاختبار (دقيقة:ثانية)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: 02:30"
+                            className="edit-input"
+                            value={qz.timestamp || ''}
+                            onChange={(e) => updateQuiz(qz.localId, 'timestamp', e.target.value)}
                             required
-                          >
-                            <option value="">-- اختر الجزء --</option>
-                            {videoParts.map((p, pidx) => (
-                              <option key={p.id} value={pidx}>
-                                الجزء {pidx + 1} {p.title ? `— ${p.title}` : ''}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                          <small style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                            الوقت الذي سيظهر عنده الاختبار أثناء تشغيل الجزء.
+                          </small>
                         </div>
                       ) : (
                         <div className="edit-field">
-                          <label>الأسئلة المطلوبة للنجاح</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={questionCount}
-                            className="edit-input"
-                            value={qz.passingQuestions}
-                            onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
-                            placeholder={`الافتراضي: الكل (${questionCount})`}
-                          />
+                          <label>نطاق الاختبار</label>
+                          <select
+                            className="edit-select"
+                            value={qz.scope}
+                            onChange={(e) => updateQuiz(qz.localId, 'scope', e.target.value)}
+                          >
+                            <option value="whole">قبل بدء مشاهدة الفيديو بالكامل</option>
+                            <option value="part">قبل بدء جزء محدد من المحاضرة</option>
+                          </select>
                         </div>
                       )}
                     </div>
 
-                    {qz.scope === 'part' && (
-                      <div style={{ display: 'flex', gap: 15, marginBottom: 15 }}>
-                        <div className="edit-field" style={{ flex: 1 }}>
-                          <label>الأسئلة المطلوبة للنجاح</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={questionCount}
-                            className="edit-input"
-                            value={qz.passingQuestions}
-                            onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
-                            placeholder={`الافتراضي: الكل (${questionCount})`}
-                          />
-                        </div>
-                        <div style={{ flex: 1 }} />
-                      </div>
-                    )}
+                    <div className="edit-grid" style={{ marginBottom: 12 }}>
+                      {(qz.scope === 'part' || qz.triggerType === 'timestamp') ? (
+                        <>
+                          <div className="edit-field">
+                            <label>الجزء المرتبط بالاختبار</label>
+                            <select
+                              className="edit-select"
+                              value={qz.partIndex}
+                              onChange={(e) => updateQuiz(qz.localId, 'partIndex', e.target.value)}
+                              required
+                            >
+                              <option value="">-- اختر الجزء --</option>
+                              {videoParts.map((p, pidx) => (
+                                <option key={p.id} value={pidx}>
+                                  الجزء {pidx + 1} {p.title ? `— ${p.title}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            {qz.triggerType === 'timestamp' && qz.partIndex !== '' && videoParts[parseInt(qz.partIndex)]?.source === 'drive' && (
+                              <small style={{ color: '#d97706', fontSize: 11, marginTop: 4 }}>
+                                ⚠️ فيديوهات Google Drive لا تدعم تفعيل الاختبار أثناء المشاهدة.
+                              </small>
+                            )}
+                          </div>
+                          <div className="edit-field">
+                            <label>الأسئلة المطلوبة للنجاح</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={questionCount}
+                              className="edit-input"
+                              value={qz.passingQuestions}
+                              onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
+                              placeholder={`الافتراضي: الكل (${questionCount})`}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="edit-field">
+                            <label>الأسئلة المطلوبة للنجاح</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={questionCount}
+                              className="edit-input"
+                              value={qz.passingQuestions}
+                              onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
+                              placeholder={`الافتراضي: الكل (${questionCount})`}
+                            />
+                          </div>
+                          <div className="edit-field" />
+                        </>
+                      )}
+                    </div>
 
                     {/* Questions box */}
                     <div className="qb-questions-box">
@@ -2085,10 +2406,10 @@ function EditVideoModal({ video, onCancel, onSave }) {
 
             {previewData.quizzes && previewData.quizzes.length > 0 && (
               <div>
-                <h4 style={{ color: '#10b981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', paddingBottom: 6 }}>امتحانات البوابة:</h4>
+                <h4 style={{ color: '#10b981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', paddingBottom: 6 }}>الامتحانات المضافة:</h4>
                 {previewData.quizzes.map((qz, qzi) => (
                   <div key={qzi} style={{ padding: 15, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 12 }}>
-                    <strong>{qz.title}</strong> &middot; النطاق: <code>{qz.scope === 'whole' ? 'كامل الفيديو' : `جزء ${qz.partIndex + 1}`}</code> &middot; النجاح: <code>{qz.passingQuestions}</code> من <code>{qz.questions.length}</code> أسئلة &middot; المحاولات: <code>{qz.maxAttempts}</code>
+                    <strong>{qz.title}</strong> &middot; التفعيل: <code>{qz.triggerType === 'timestamp' ? `أثناء مشاهدة جزء ${qz.partIndex + 1} عند (${qz.timestamp})` : qz.scope === 'whole' ? 'كامل الفيديو (بوابة)' : `جزء ${qz.partIndex + 1} (بوابة)`}</code> &middot; النجاح: <code>{qz.passingQuestions}</code> من <code>{qz.questions.length}</code> أسئلة &middot; المحاولات: <code>{qz.maxAttempts}</code>
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {qz.questions.map((q, qidx) => (
                         <div key={qidx} style={{ paddingInlineStart: 12, borderRight: '2px solid rgba(255,255,255,0.1)' }}>
@@ -2188,4 +2509,14 @@ function PlayerFacade({ part, children }) {
       </div>
     </button>
   )
+}
+
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const s = Math.floor(sec % 60)
+  const mm = String(m).padStart(h ? 2 : 1, '0')
+  const ss = String(s).padStart(2, '0')
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }

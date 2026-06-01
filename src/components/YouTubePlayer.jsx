@@ -70,6 +70,9 @@ export default function YouTubePlayer({
   // Seed the watched-seconds counter so a returning student keeps their
   // already-credited time. We never lower this — only raise.
   initialWatchedSeconds = 0,
+  seekTrigger = null,
+  onTimeUpdate = null,
+  forcePause = false,
 }) {
   const hostRef = useRef(null)          // the <div> we mount the iframe on
   const wrapRef = useRef(null)          // the outer container (fullscreen target)
@@ -90,6 +93,16 @@ export default function YouTubePlayer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [rateMenuOpen, setRateMenuOpen] = useState(false)
   const RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+
+  useEffect(() => {
+    if (forcePause && playerRef.current && ready) {
+      try {
+        playerRef.current.pauseVideo()
+      } catch (err) {
+        console.error('Failed to pause YouTube player:', err)
+      }
+    }
+  }, [forcePause, ready])
 
   // Double-tap-to-seek state. We track the last tap's time + side so the
   // second tap in the same half within DOUBLE_TAP_MS triggers a ±10s seek
@@ -196,6 +209,19 @@ export default function YouTubePlayer({
   const pendingSkipCreditRef = useRef(0) // seconds to credit on next jump
 
   const lastProgressRef = useRef({ t: 0, secs: 0 })
+  const lastTimeReportRef = useRef(-1)
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate
+  }, [onTimeUpdate])
+
+  useEffect(() => {
+    if (seekTrigger?.seconds !== undefined && playerRef.current && ready) {
+      playerRef.current.seekTo(seekTrigger.seconds, true)
+      setCurrent(seekTrigger.seconds)
+    }
+  }, [seekTrigger, ready])
+
   useEffect(() => {
     function tick() {
       const p = playerRef.current
@@ -206,6 +232,13 @@ export default function YouTubePlayer({
           const rate = (typeof p.getPlaybackRate === 'function')
             ? (p.getPlaybackRate() || 1) : 1
           setCurrent(t)
+          const secInt = Math.floor(t)
+          if (secInt !== lastTimeReportRef.current) {
+            lastTimeReportRef.current = secInt
+            if (typeof onTimeUpdateRef.current === 'function') {
+              onTimeUpdateRef.current(secInt)
+            }
+          }
           const frac = p.getVideoLoadedFraction?.() || 0
           setBuffered(d * frac)
 

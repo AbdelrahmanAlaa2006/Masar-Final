@@ -16,10 +16,12 @@ import { getBunnySignedUrl } from '@backend/bunnyApi'
        refuses to load.
    ────────────────────────────────────────────────────────────── */
 
-export default function BunnyPlayer({ partId, onProgress }) {
+export default function BunnyPlayer({ partId, onProgress, onTimeUpdate, forcePause = false }) {
   const [src, setSrc] = useState(null)
   const [error, setError] = useState(null)
   const lastReportRef = useRef(0)
+  const lastTimeReportRef = useRef(-1)
+  const iframeRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -32,11 +34,24 @@ export default function BunnyPlayer({ partId, onProgress }) {
     return () => { cancelled = true }
   }, [partId])
 
+  // Pause Bunny player if forcePause is true
+  useEffect(() => {
+    if (forcePause && iframeRef.current && iframeRef.current.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ context: 'player.js', method: 'pause' }),
+          '*'
+        )
+      } catch (err) {
+        console.error('Failed to postMessage pause to Bunny iframe', err)
+      }
+    }
+  }, [forcePause])
+
   // Bunny Stream's iframe broadcasts 'timeupdate' events via postMessage.
-  // We throttle reports to onProgress to once every 5s so we don't hammer
+  // We throttle reports to onProgress to once every 30s so we don't hammer
   // the database with every browser tick.
   useEffect(() => {
-    if (!onProgress) return
     const handler = (e) => {
       if (typeof e?.data !== 'object' || e.data == null) return
       // Bunny dispatches { type, data } where data is e.g. { currentTime }.
@@ -46,14 +61,25 @@ export default function BunnyPlayer({ partId, onProgress }) {
           ? Number(t.currentTime)
           : (t.type === 'timeupdate' ? Number(t.data?.currentTime) : NaN)
       if (!Number.isFinite(ct)) return
-      const now = Date.now()
-      if (now - lastReportRef.current < 30000) return
-      lastReportRef.current = now
-      onProgress({ watchedSeconds: Math.floor(ct) })
+
+      const secInt = Math.floor(ct)
+      if (secInt !== lastTimeReportRef.current) {
+        lastTimeReportRef.current = secInt
+        if (typeof onTimeUpdate === 'function') {
+          onTimeUpdate(secInt)
+        }
+      }
+
+      if (onProgress) {
+        const now = Date.now()
+        if (now - lastReportRef.current < 30000) return
+        lastReportRef.current = now
+        onProgress({ watchedSeconds: secInt })
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [onProgress])
+  }, [onProgress, onTimeUpdate])
 
   if (error) {
     return (
@@ -71,6 +97,7 @@ export default function BunnyPlayer({ partId, onProgress }) {
   }
   return (
     <iframe
+      ref={iframeRef}
       src={src}
       allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
       allowFullScreen

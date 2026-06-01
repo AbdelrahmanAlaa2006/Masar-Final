@@ -45,6 +45,24 @@ function extractDriveId(input) {
   return ''
 }
 
+function parseTimestampToSeconds(str) {
+  if (!str) return null
+  const s = String(str).trim()
+  const parts = s.split(':').map(Number)
+  if (parts.some(Number.isNaN)) return null
+  if (parts.length === 1) return parts[0]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  return null
+}
+
+function formatSecondsToTimestamp(sec) {
+  if (sec == null || Number.isNaN(sec)) return ''
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 // ── Inline quiz builder ───────────────────────────────────────
 // Pre-video quizzes are STANDALONE — they are NOT pulled from the exams
 // library and they do NOT show up in the exams report. Each quiz lives
@@ -66,6 +84,9 @@ const makeQuiz = () => ({
   partIndex: '',            // index into videoParts when scope === 'part'
   passingQuestions: '',     // questions that must be correct (default = all)
   maxAttempts: 1,           // tries before lockout
+  triggerType: 'gate',      // 'gate' | 'timestamp'
+  timestamp: '',            // trigger timestamp string (e.g. '02:30')
+  timestampSeconds: null,   // parsed trigger seconds
   questions: [makeQuestion()],
 })
 
@@ -229,6 +250,9 @@ export default function VideoAdd() {
         partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
         passingQuestions: qz.passingQuestions ?? '',
         maxAttempts: qz.maxAttempts ?? 1,
+        triggerType: qz.triggerType || 'gate',
+        timestamp: qz.timestamp || (qz.timestampSeconds != null ? formatSecondsToTimestamp(qz.timestampSeconds) : ''),
+        timestampSeconds: qz.timestampSeconds ?? null,
         questions: qz.questions.map((q) => ({
           qid: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           question: q.question || '',
@@ -316,10 +340,32 @@ export default function VideoAdd() {
           return
         }
       }
-      if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
-        notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
-        return
+      const triggerType = qz.triggerType || 'gate'
+      let timestamp = qz.timestamp || ''
+      let timestampSeconds = null
+
+      if (triggerType === 'timestamp') {
+        if (qz.scope !== 'part' || qz.partIndex === '' || qz.partIndex == null) {
+          notify(`${label}: الاختبارات أثناء المشاهدة يجب أن تكون مرتبطة بجزء محدد من الفيديو`, { type: 'warning' })
+          return
+        }
+        if (!timestamp.trim()) {
+          notify(`${label}: يرجى تحديد وقت ظهور الاختبار (مثال 02:30)`, { type: 'warning' })
+          return
+        }
+        const parsedSecs = parseTimestampToSeconds(timestamp)
+        if (parsedSecs === null || parsedSecs < 0) {
+          notify(`${label}: صيغة وقت ظهور الاختبار غير صالحة. يرجى إدخال الصيغة كـ (دقيقة:ثانية) مثل 02:30`, { type: 'warning' })
+          return
+        }
+        timestampSeconds = parsedSecs
+      } else {
+        if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
+          notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
+          return
+        }
       }
+
       const pqRaw = parseInt(qz.passingQuestions)
       const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
       if (pq < 1 || pq > questions.length) {
@@ -348,6 +394,9 @@ export default function VideoAdd() {
         partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
         passingQuestions: pq,
         maxAttempts: maxAtt,
+        triggerType,
+        timestamp: triggerType === 'timestamp' ? timestamp.trim() : '',
+        timestampSeconds: triggerType === 'timestamp' ? timestampSeconds : null,
         questions: cleanQuestions,
         totalPoints,
       })
@@ -444,6 +493,9 @@ export default function VideoAdd() {
           partIndex: qz.scope === 'part' ? qz.partIndex : null,
           passingQuestions: pq,
           maxAttempts: maxAtt,
+          triggerType: qz.triggerType || 'gate',
+          timestamp: qz.timestamp || '',
+          timestampSeconds: parseTimestampToSeconds(qz.timestamp),
           questionCount: questions.length,
           totalPoints: questions.reduce((s, q) => s + (parseInt(q.points) || 1), 0),
         }
@@ -740,32 +792,70 @@ export default function VideoAdd() {
 
                     <div className="form-row">
                       <div className="form-group flex-1">
-                        <label>نطاق الاختبار</label>
-                        <div className="quiz-scope">
-                          <label className={`quiz-scope-opt ${qz.scope === 'whole' ? 'is-on' : ''}`}>
-                            <input
-                              type="radio"
-                              name={`scope-${qz.localId}`}
-                              checked={qz.scope === 'whole'}
-                              onChange={() => updateQuiz(qz.localId, 'scope', 'whole')}
-                            />
-                            <i className="fas fa-film"></i>
-                            <span>للفيديو كامل</span>
-                          </label>
-                          <label className={`quiz-scope-opt ${qz.scope === 'part' ? 'is-on' : ''}`}>
-                            <input
-                              type="radio"
-                              name={`scope-${qz.localId}`}
-                              checked={qz.scope === 'part'}
-                              onChange={() => updateQuiz(qz.localId, 'scope', 'part')}
-                            />
-                            <i className="fas fa-puzzle-piece"></i>
-                            <span>لجزء محدد</span>
-                          </label>
-                        </div>
+                        <label>طريقة تفعيل الاختبار</label>
+                        <select
+                          value={qz.triggerType || 'gate'}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const patch = { triggerType: val }
+                            if (val === 'timestamp') {
+                              patch.scope = 'part'
+                            }
+                            updateQuiz(qz.localId, 'triggerType', val)
+                            if (patch.scope) {
+                              updateQuiz(qz.localId, 'scope', patch.scope)
+                            }
+                          }}
+                        >
+                          <option value="gate">قبل البدء بالمشاهدة (بوابة دخول)</option>
+                          <option value="timestamp">أثناء المشاهدة (عند وقت محدد)</option>
+                        </select>
                       </div>
 
-                      {qz.scope === 'part' && (
+                      {qz.triggerType === 'timestamp' ? (
+                        <div className="form-group flex-1">
+                          <label>وقت ظهور الاختبار (دقيقة:ثانية)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: 02:30"
+                            value={qz.timestamp || ''}
+                            onChange={(e) => updateQuiz(qz.localId, 'timestamp', e.target.value)}
+                          />
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            الوقت الذي سيظهر عنده الاختبار أثناء تشغيل الجزء.
+                          </small>
+                        </div>
+                      ) : (
+                        <div className="form-group flex-1">
+                          <label>نطاق الاختبار</label>
+                          <div className="quiz-scope">
+                            <label className={`quiz-scope-opt ${qz.scope === 'whole' ? 'is-on' : ''}`}>
+                              <input
+                                type="radio"
+                                name={`scope-${qz.localId}`}
+                                checked={qz.scope === 'whole'}
+                                onChange={() => updateQuiz(qz.localId, 'scope', 'whole')}
+                              />
+                              <i className="fas fa-film"></i>
+                              <span>للفيديو كامل</span>
+                            </label>
+                            <label className={`quiz-scope-opt ${qz.scope === 'part' ? 'is-on' : ''}`}>
+                              <input
+                                type="radio"
+                                name={`scope-${qz.localId}`}
+                                checked={qz.scope === 'part'}
+                                onChange={() => updateQuiz(qz.localId, 'scope', 'part')}
+                              />
+                              <i className="fas fa-puzzle-piece"></i>
+                              <span>لجزء محدد</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="form-row">
+                      {(qz.scope === 'part' || qz.triggerType === 'timestamp') && (
                         <div className="form-group flex-1">
                           <label>الجزء المرتبط</label>
                           <select
@@ -781,6 +871,11 @@ export default function VideoAdd() {
                           </select>
                           {videoParts.length === 0 && (
                             <small className="quiz-warn">أنشئ أجزاء الفيديو أولاً</small>
+                          )}
+                          {qz.triggerType === 'timestamp' && qz.partIndex !== '' && videoParts[parseInt(qz.partIndex)]?.source === 'drive' && (
+                            <small className="quiz-warn" style={{ color: '#d97706', display: 'block', marginTop: 4 }}>
+                              ⚠️ فيديوهات Google Drive لا تدعم تفعيل الاختبار أثناء المشاهدة.
+                            </small>
                           )}
                         </div>
                       )}
@@ -1011,9 +1106,11 @@ export default function VideoAdd() {
                           <span className="part-index">📝 {qz.title}</span>
                           <div className="part-details">
                             <div>
-                              {qz.scope === 'whole'
-                                ? 'يُطلب قبل مشاهدة الفيديو كامل'
-                                : `يُطلب قبل الجزء ${parseInt(qz.partIndex) + 1}`}
+                              {qz.triggerType === 'timestamp'
+                                ? `يُطلب أثناء مشاهدة الجزء ${parseInt(qz.partIndex) + 1} عند التوقيت (${qz.timestamp})`
+                                : qz.scope === 'whole'
+                                  ? 'يُطلب قبل مشاهدة الفيديو كامل (بوابة)'
+                                  : `يُطلب قبل الجزء ${parseInt(qz.partIndex) + 1} (بوابة)`}
                             </div>
                             <div className="part-duration">
                               {qz.questionCount} سؤال · {qz.totalPoints} نقطة · النجاح: {qz.passingQuestions} من {qz.questionCount} · {qz.maxAttempts} محاولة

@@ -17,6 +17,7 @@ const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
 const StudentsSyncPanel = lazy(() => import('./StudentsSyncPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
+const ChatsPanel = lazy(() => import('./ChatsPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
@@ -181,6 +182,13 @@ export default function ControlPanelIndex() {
               desc="عرض وإدارة سجلات محاولات اختراق أدوات المطور (DevTools)"
               onClick={() => enterSection('violations')}
             />
+            <SectionCard
+              icon="fa-comments"
+              accent="blue"
+              title="محادثات الطلاب"
+              desc="استعرض وأجب على رسائل واستفسارات الطلاب (صوت وصور)"
+              onClick={() => enterSection('chats')}
+            />
           </div>
         )}
 
@@ -192,6 +200,7 @@ export default function ControlPanelIndex() {
           {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
           {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
           {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
+          {section === 'chats' && <ChatsPanel onBack={goHome} flash={flash} />}
 
 
           {/* Sub-tab navigation bar for dynamic settings */}

@@ -302,6 +302,10 @@ export default function ExamsReport() {
           </div>
         )}
 
+        {studentName && !isAdmin && (
+          <ExamsDashboard examsData={examsData} />
+        )}
+
         {/* Stats Strip */}
         <div className="er-stats">
           <div className="er-stat-card">
@@ -674,5 +678,195 @@ export default function ExamsReport() {
         </div>
       )}
     </main>
+  )
+}
+
+function ExamsDashboard({ examsData }) {
+  const total = examsData.length
+  const completed = examsData.filter((e) => e.status === 'completed').length
+  const revealed = examsData.filter((e) => e.gradesRevealed && e.status === 'completed')
+  const passed = revealed.filter((e) => e.score >= 60).length
+  const failed = revealed.filter((e) => e.score < 60).length
+  const avgScore = revealed.length > 0
+    ? Math.round(revealed.reduce((s, e) => s + e.score, 0) / revealed.length)
+    : 0
+
+  // Passing rate calculations
+  const passingRate = revealed.length > 0 ? Math.round((passed / revealed.length) * 100) : 0
+  const strokeDash = (passingRate / 100) * 251.2 // 2 * PI * r (r=40)
+
+  // Chronological scores for trend line
+  const chronological = [...revealed].reverse()
+
+  // Generate SVG path coordinates
+  const generatePaths = () => {
+    if (chronological.length < 2) return { linePath: '', fillPath: '' }
+    const points = chronological.map((e, idx) => {
+      const x = 10 + idx * (80 / (chronological.length - 1))
+      const y = 40 - e.score * 0.35
+      return { x, y }
+    })
+
+    const linePath = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+    const fillPath = `${linePath} L ${points[points.length - 1].x} 40 L ${points[0].x} 40 Z`
+    return { linePath, fillPath, points }
+  }
+
+  const { linePath, fillPath, points } = generatePaths()
+
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#10b981' // green
+    if (score >= 60) return '#f59e0b' // orange
+    return '#ef4444' // red
+  }
+
+  const getInsightMessage = () => {
+    if (total === 0) return 'لا توجد امتحانات مسجلة في هذا الصف بعد.'
+    if (completed === 0) return 'ابدأ بأداء امتحاناتك وتدريباتك لترى مستوى تقدمك هنا.'
+    if (avgScore >= 90) return 'ما شاء الله! مستواك الدراسي متميز جداً وثابت على الامتياز. استمر في التركيز للمحافظة على صدارة الترتيب!'
+    if (avgScore >= 80) return 'أداء رائع وممتاز في الامتحانات. درجاتك تؤهلك للتفوق، فقط استمر على نفس وتيرة المذاكرة والتحصيل.'
+    if (avgScore >= 60) return 'أداؤك مقبول وناجح بشكل عام، ولكنك تستطيع تحقيق درجات أعلى بكثير. راجع إجاباتك الخاطئة في نافذة المراجعة لتدعيم نقاط ضعفك.'
+    return 'مستواك في الامتحانات يحتاج إلى مراجعة مكثفة والتركيز على الأساسيات. احرص على حل امتحانات تدريبية إضافية والتواصل مع المعلم.'
+  }
+
+  const getInsightIcon = () => {
+    if (avgScore >= 80) return 'fa-trophy'
+    if (avgScore >= 60) return 'fa-circle-up'
+    return 'fa-circle-exclamation'
+  }
+
+  const getInsightClass = () => {
+    if (avgScore >= 80) return 'er-insight-excellent'
+    if (avgScore >= 60) return 'er-insight-good'
+    return 'er-insight-warning'
+  }
+
+  return (
+    <div className="er-dashboard-card card">
+      <h2 className="er-dashboard-title">
+        <i className="fas fa-chart-line"></i> لوحة تحليل نتائج الامتحانات ومستوى التحصيل
+      </h2>
+
+      <div className="er-dashboard-layout">
+        {/* Left: Gauge for passing rate */}
+        <div className="er-dashboard-donut-wrap">
+          <div className="er-dashboard-donut-inner">
+            <svg viewBox="0 0 100 100" className="er-donut-svg">
+              <circle cx="50" cy="50" r="40" className="er-donut-bg" />
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="40" 
+                className="er-donut-fill"
+                style={{
+                  strokeDasharray: `${strokeDash} 251.2`,
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: '50% 50%',
+                  stroke: passingRate >= 60 ? '#818cf8' : '#ef4444'
+                }}
+              />
+            </svg>
+            <div className="er-donut-text">
+              <span className="er-donut-num">{passingRate}%</span>
+              <span className="er-donut-lbl">نسبة النجاح</span>
+            </div>
+          </div>
+          <div className="er-donut-legend">
+            <div><span className="legend-dot legend-passed"></span> اجتياز ({passed})</div>
+            <div><span className="legend-dot legend-failed"></span> إخفاق ({failed})</div>
+          </div>
+        </div>
+
+        {/* Right: Trend line of scores over exams */}
+        <div className="er-dashboard-chart-wrap">
+          <h3 className="er-chart-header">منحنى أداء وتطوّر الدرجات</h3>
+          {revealed.length === 0 ? (
+            <div className="er-chart-placeholder">
+              <i className="fas fa-chart-line"></i>
+              <p>ستظهر إحصائيات ومنحنيات درجاتك هنا فور إعلان نتائج امتحاناتك الأولى</p>
+            </div>
+          ) : chronological.length === 1 ? (
+            <div className="er-chart-placeholder">
+              <i className="fas fa-chart-line"></i>
+              <p>يتطلب رسم منحنى الأداء أداء امتحانين على الأقل. لديك حالياً امتحان واحد مصحح بدرجة ({chronological[0].score}%)</p>
+            </div>
+          ) : (
+            <div className="er-svg-chart-container">
+              <svg viewBox="0 0 100 50" className="er-line-svg" preserveAspectRatio="none">
+                <defs>
+                  {/* Grid / Line Gradient */}
+                  <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#818cf8" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#818cf8" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                {/* Horizontal grids */}
+                {[0, 25, 50, 75, 100].map((grid, gi) => {
+                  const y = 40 - (grid * 0.35)
+                  return (
+                    <g key={gi}>
+                      <line x1="8" y1={y} x2="95" y2={y} className="er-chart-gridline" />
+                      <text x="3" y={y + 1} className="er-chart-gridtext">{grid}%</text>
+                    </g>
+                  )
+                })}
+
+                {/* Filled Gradient Area */}
+                <path d={fillPath} className="er-chart-fill-path" fill="url(#area-grad)" />
+
+                {/* Main Trend Line */}
+                <path d={linePath} className="er-chart-line-path" />
+
+                {/* Data point glowing circles */}
+                {points.map((p, idx) => {
+                  const exam = chronological[idx]
+                  const color = getScoreColor(exam.score)
+                  return (
+                    <g key={exam.id}>
+                      <circle 
+                        cx={p.x} 
+                        cy={p.y} 
+                        r="1.4" 
+                        fill="#fff" 
+                        stroke={color} 
+                        strokeWidth="0.8"
+                        className="er-chart-dot"
+                      />
+                      <text 
+                        x={p.x} 
+                        y={p.y - 3} 
+                        textAnchor="middle" 
+                        className="er-chart-score-label"
+                        fill={color}
+                      >
+                        {exam.score}%
+                      </text>
+                      <text 
+                        x={p.x} 
+                        y="45" 
+                        textAnchor="middle" 
+                        className="er-chart-x-label"
+                      >
+                        {exam.title.length > 5 ? exam.title.slice(0, 5) + '..' : exam.title}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={`er-dashboard-insight ${getInsightClass()}`}>
+        <div className="er-insight-icon-wrap">
+          <i className={`fas ${getInsightIcon()}`}></i>
+        </div>
+        <div className="er-insight-content">
+          <h4>ملاحظات الأداء العام</h4>
+          <p>{getInsightMessage()}</p>
+        </div>
+      </div>
+    </div>
   )
 }

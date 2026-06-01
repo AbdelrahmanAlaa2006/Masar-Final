@@ -265,6 +265,10 @@ export default function HomeworkReport() {
           </div>
         )}
 
+        {studentName && !isAdmin && (
+          <HomeworkDashboard hwData={hwData} />
+        )}
+
         {/* Stats Strip */}
         <div className="hr-stats">
           <div className="hr-stat-card">
@@ -652,5 +656,165 @@ export default function HomeworkReport() {
         </div>
       )}
     </main>
+  )
+}
+
+function HomeworkDashboard({ hwData }) {
+  const total = hwData.length
+  const submitted = hwData.filter((h) => h.status === 'submitted').length
+  const pending = hwData.filter((h) => h.status === 'pending').length
+  const revealed = hwData.filter((h) => h.gradesRevealed && h.status === 'submitted')
+  const avgScore = revealed.length > 0
+    ? Math.round(revealed.reduce((s, h) => s + h.score, 0) / revealed.length)
+    : 0
+
+  // Donut percentage calculations
+  const completionRate = total > 0 ? Math.round((submitted / total) * 100) : 0
+  const strokeDash = (completionRate / 100) * 251.2 // 2 * PI * r (r=40)
+
+  // Filter recent 5 graded homeworks for the bar chart
+  const recentGraded = [...revealed].slice(-5)
+
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#10b981' // green
+    if (score >= 60) return '#f59e0b' // orange
+    return '#ef4444' // red
+  }
+
+  const getInsightMessage = () => {
+    if (total === 0) return 'لا توجد واجبات مضافة بعد.'
+    if (submitted === 0) return 'ابدأ بحل واجباتك للحصول على تقييم لأدائك.'
+    if (avgScore >= 90) return 'أداء استثنائي! درجاتك ممتازة جداً وتدل على فهم كامل للمنهج. استمر في هذا التفوق الباهر!'
+    if (avgScore >= 80) return 'أداء رائع وممتاز! درجاتك ممتازة ومستواك ثابت. حافظ على هذا التميز لتحقيق أعلى الدرجات.'
+    if (avgScore >= 60) return 'أداء جيد جداً! مستواك جيد ولكن هناك مجال لبعض التحسين. ركز أكثر في المراجعة لرفع درجاتك.'
+    return 'مستواك يحتاج إلى بذل المزيد من الجهد والمراجعة. يرجى التركيز ومراجعة الأخطاء مع معلمك لرفع مستواك الدراسي.'
+  }
+
+  const getInsightIcon = () => {
+    if (avgScore >= 80) return 'fa-medal'
+    if (avgScore >= 60) return 'fa-circle-up'
+    return 'fa-circle-exclamation'
+  }
+
+  const getInsightClass = () => {
+    if (avgScore >= 80) return 'hr-insight-excellent'
+    if (avgScore >= 60) return 'hr-insight-good'
+    return 'hr-insight-warning'
+  }
+
+  return (
+    <div className="hr-dashboard-card card">
+      <h2 className="hr-dashboard-title">
+        <i className="fas fa-chart-pie"></i> لوحة تحليل الأداء والتقدم الدراسي
+      </h2>
+
+      <div className="hr-dashboard-layout">
+        {/* Left column: Donut Progress */}
+        <div className="hr-dashboard-donut-wrap">
+          <div className="hr-dashboard-donut-inner">
+            <svg viewBox="0 0 100 100" className="hr-donut-svg">
+              <circle cx="50" cy="50" r="40" className="hr-donut-bg" />
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="40" 
+                className="hr-donut-fill"
+                style={{
+                  strokeDasharray: `${strokeDash} 251.2`,
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: '50% 50%'
+                }}
+              />
+            </svg>
+            <div className="hr-donut-text">
+              <span className="hr-donut-num">{completionRate}%</span>
+              <span className="hr-donut-lbl">نسبة الإكمال</span>
+            </div>
+          </div>
+          <div className="hr-donut-legend">
+            <div><span className="legend-dot legend-submitted"></span> مُسلّم ({submitted})</div>
+            <div><span className="legend-dot legend-pending"></span> غير مُسلّم ({pending})</div>
+          </div>
+        </div>
+
+        {/* Right column: Recent Scores Chart */}
+        <div className="hr-dashboard-chart-wrap">
+          <h3 className="hr-chart-header">درجات آخر الواجبات المقيّمة</h3>
+          {recentGraded.length === 0 ? (
+            <div className="hr-chart-placeholder">
+              <i className="fas fa-chart-bar"></i>
+              <p>ستظهر درجاتك هنا بمجرد تصحيح المعلم لواجباتك وإعلانها</p>
+            </div>
+          ) : (
+            <div className="hr-svg-chart-container">
+              <svg viewBox="0 0 100 65" className="hr-bar-svg" preserveAspectRatio="none">
+                {[0, 25, 50, 75, 100].map((grid, gi) => {
+                  const y = 50 - (grid * 0.45);
+                  return (
+                    <g key={gi}>
+                      <line x1="8" y1={y} x2="95" y2={y} className="hr-chart-gridline" />
+                      <text x="3" y={y + 1} className="hr-chart-gridtext">{grid}%</text>
+                    </g>
+                  )
+                })}
+
+                {recentGraded.map((hw, idx) => {
+                  const x = 12 + idx * 16;
+                  const barHeight = hw.score * 0.45;
+                  const y = 50 - barHeight;
+                  const color = getScoreColor(hw.score);
+                  return (
+                    <g key={hw.id}>
+                      <defs>
+                        <linearGradient id={`grad-${hw.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={color} />
+                          <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+                        </linearGradient>
+                      </defs>
+                      <rect 
+                        x={x} 
+                        y={y} 
+                        width="8" 
+                        height={barHeight} 
+                        rx="2"
+                        className="hr-chart-bar-rect"
+                        fill={`url(#grad-${hw.id})`}
+                      />
+                      <text 
+                        x={x + 4} 
+                        y={y - 2} 
+                        textAnchor="middle" 
+                        className="hr-chart-bar-score"
+                        fill={color}
+                      >
+                        {hw.score}%
+                      </text>
+                      <text 
+                        x={x + 4} 
+                        y="55" 
+                        textAnchor="middle" 
+                        className="hr-chart-bar-label"
+                      >
+                        {hw.title.length > 5 ? hw.title.slice(0, 5) + '..' : hw.title}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={`hr-dashboard-insight ${getInsightClass()}`}>
+        <div className="hr-insight-icon-wrap">
+          <i className={`fas ${getInsightIcon()}`}></i>
+        </div>
+        <div className="hr-insight-content">
+          <h4>ملاحظات الأداء العام</h4>
+          <p>{getInsightMessage()}</p>
+        </div>
+      </div>
+    </div>
   )
 }

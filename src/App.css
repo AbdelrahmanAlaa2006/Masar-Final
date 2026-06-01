@@ -156,7 +156,9 @@ body.dark .auth-toast-sub { color: #94a3b8; }
    + footer so the only way out is the page's own back button (which
    shows a confirm dialog). Mirrors how the exam-taking screen hides
    the header to prevent accidental navigation away mid-attempt. */
+/* Disabled per user request to keep navbar visible:
 body.is-watching-video .mh,
 body.is-watching-video footer {
   display: none !important;
 }
+*/

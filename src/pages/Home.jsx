@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import { useAuth } from '../contexts/AuthContext'
+import StudentChatWidget from '../components/StudentChatWidget'
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
 // old assets are kept on disk in case anywhere else still loads
@@ -343,9 +344,9 @@ export default function Home() {
             ? 'لأي ملاحظات تقنية أو اقتراحات لتطوير المنصة، تواصل معنا عبر القنوات التالية'
             : 'لو بتواجهك أي مشاكل أو عندك أي استفسارات أو اقتراحات أو أي حاجة عايزنا نعرفها متترددش إنك تتواصل معانا'}
         </p>
-
-
       </section>
+
+      {role !== 'admin' && <StudentChatWidget currentUser={user} />}
     </main>
   )
 }

@@ -836,3 +836,248 @@
   .er-table th, .er-table td { padding: 0.45rem 0.35rem; }
   .er-review-modal { padding: 1rem; }
 }
+
+/* ── Exams Dashboard & Charts ── */
+.er-dashboard-card {
+  padding: 24px;
+  margin-bottom: 24px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.er-dashboard-title {
+  color: var(--text-color);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.er-dashboard-title i {
+  color: var(--primary, #667eea);
+}
+.er-dashboard-layout {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.er-dashboard-donut-wrap {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.er-dashboard-donut-inner {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+.er-donut-svg {
+  width: 100%;
+  height: 100%;
+}
+.er-donut-bg {
+  fill: none;
+  stroke: var(--hover-bg, rgba(0,0,0,0.05));
+  stroke-width: 8;
+}
+.er-donut-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s ease-out;
+}
+.er-donut-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+.er-donut-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-color);
+}
+.er-donut-lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted, #718096);
+}
+.er-donut-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--text-color);
+}
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-inline-end: 6px;
+}
+.legend-passed { background: #818cf8; }
+.legend-failed { background: #ef4444; }
+
+/* Line Chart */
+.er-dashboard-chart-wrap {
+  flex: 2;
+  min-width: 300px;
+}
+.er-chart-header {
+  font-size: 0.95rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+.er-chart-placeholder {
+  height: 140px;
+  border: 1px dashed var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #718096);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 16px;
+}
+.er-chart-placeholder i {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+.er-svg-chart-container {
+  background: var(--hover-bg, #f0f2f8);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px 12px 6px;
+}
+.er-line-svg {
+  width: 100%;
+  height: 150px;
+}
+.er-chart-gridline {
+  stroke: var(--border-light, #e2e8f0);
+  stroke-dasharray: 1 1;
+  stroke-width: 0.3;
+}
+.er-chart-gridtext {
+  fill: var(--text-muted, #718096);
+  font-size: 3px;
+  font-family: inherit;
+}
+.er-chart-line-path {
+  fill: none;
+  stroke: #818cf8;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.er-chart-fill-path {
+  stroke: none;
+}
+.er-chart-dot {
+  transition: r 0.25s;
+}
+.er-chart-dot:hover {
+  r: 2.2;
+  cursor: pointer;
+}
+.er-chart-score-label {
+  font-size: 3.2px;
+  font-weight: 800;
+}
+.er-chart-x-label {
+  fill: var(--text-muted, #718096);
+  font-size: 2.6px;
+}
+
+/* Insight Box */
+.er-dashboard-insight {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+.er-insight-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.er-insight-content {
+  flex: 1;
+}
+.er-insight-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+.er-insight-content p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-color);
+  opacity: 0.9;
+}
+
+.er-insight-excellent {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+.er-insight-excellent .er-insight-icon-wrap {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+.er-insight-good {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+.er-insight-good .er-insight-icon-wrap {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.er-insight-warning {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+.er-insight-warning .er-insight-icon-wrap {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Dark Mode Overrides for Exams Dashboard */
+body.dark .er-dashboard-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+body.dark .er-donut-bg {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+body.dark .er-svg-chart-container {
+  background: rgba(15, 23, 42, 0.3);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+body.dark .er-chart-gridline {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+body.dark .er-chart-placeholder {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
