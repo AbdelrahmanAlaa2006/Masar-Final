@@ -37,7 +37,7 @@ import { detectDevTools } from './utils/devtools'
 
 // TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
 // Change this back to false to re-enable security features.
-const DISABLE_DEVTOOLS_BLOCKER = true || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const DISABLE_DEVTOOLS_BLOCKER = false || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -178,7 +178,7 @@ function PendingApprovalPage() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          <button 
+          <button
             onClick={handleCheckStatus}
             disabled={isChecking}
             style={{
@@ -215,7 +215,7 @@ function PendingApprovalPage() {
             تحديث حالة الحساب
           </button>
 
-          <button 
+          <button
             onClick={handleLogout}
             style={{
               width: '100%',
@@ -269,14 +269,14 @@ function PendingApprovalPage() {
    re-renders. */
 function ProtectedRoute({ isLoggedIn, children }) {
   const { user } = useAuth()
-  
+
   if (!isLoggedIn) return <Navigate to="/login" replace />
-  
+
   // Guard for newly registered students: show Pending Approval page if not approved
   if (user && user.role === 'student' && user.is_approved === false) {
     return <PendingApprovalPage />
   }
-  
+
   return children
 }
 function AdminRoute({ isLoggedIn, role, children }) {
