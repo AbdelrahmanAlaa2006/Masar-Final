@@ -35,9 +35,9 @@ import './App.css'
 import DevToolsBlocker from './components/DevToolsBlocker'
 import { detectDevTools } from './utils/devtools'
 
-// TEMPORARY TESTING OVERRIDE: Set to true to disable the devtools blocker and copy/paste restrictions.
-// Change this back to false to re-enable security features.
-const DISABLE_DEVTOOLS_BLOCKER = false || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
+// Set to false to disable them (not blocked).
+const ENABLE_DEVTOOLS_BLOCKER = true;
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -379,9 +379,9 @@ function AppContent() {
      right-click, view source, or open DevTools via shortcuts. Admins
      keep normal browser behavior so they can manage content. */
   useEffect(() => {
-    if (DISABLE_DEVTOOLS_BLOCKER) {
+    if (!ENABLE_DEVTOOLS_BLOCKER) {
       document.body.classList.remove('no-select')
-      return // temporarily disabled for testing
+      return // blocker is disabled
     }
     const isAdmin = user?.role === 'admin'
     document.body.classList.toggle('no-select', !isAdmin)
@@ -435,7 +435,7 @@ function AppContent() {
 
   // DevTools detection loop for non-admins
   useEffect(() => {
-    if (DISABLE_DEVTOOLS_BLOCKER) {
+    if (!ENABLE_DEVTOOLS_BLOCKER) {
       sessionStorage.removeItem('masar-devtools-blocked')
       setIsDevToolsOpen(false)
       return
@@ -466,7 +466,7 @@ function AppContent() {
     return <PageLoader />
   }
 
-  if (isDevToolsOpen && !DISABLE_DEVTOOLS_BLOCKER) {
+  if (isDevToolsOpen && ENABLE_DEVTOOLS_BLOCKER) {
     return <DevToolsBlocker />
   }
 
