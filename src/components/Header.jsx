@@ -145,7 +145,7 @@ export default function Header() {
 
   const items = userRole === 'admin'
     ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
-    : NAV_ITEMS_BASE
+    : [...NAV_ITEMS_BASE, { to: '/chat', label: 'الدردشة', icon: 'fa-comments' }]
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 

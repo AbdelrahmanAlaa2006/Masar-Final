@@ -200,7 +200,13 @@ export default function ControlPanelIndex() {
           {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
           {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
           {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
-          {section === 'chats' && <ChatsPanel onBack={goHome} flash={flash} />}
+          {section === 'chats' && (
+            <ChatsPanel 
+              onBack={goHome} 
+              flash={flash} 
+              initialStudentId={location.state?.studentId} 
+            />
+          )}
 
 
           {/* Sub-tab navigation bar for dynamic settings */}

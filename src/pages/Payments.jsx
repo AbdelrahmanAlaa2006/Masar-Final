@@ -82,18 +82,11 @@ export default function Payments() {
 
   // Sync default package name when config loads
   useEffect(() => {
-    if (activeConfig.packages) {
-      const list = activeConfig.packages.split(',').map(p => p.trim())
-      if (list.length > 0) {
-        setPackageName(list[0])
-      }
-    } else {
-      setPackageName('اشتراك شهر أكتوبر')
-    }
-  }, [activeConfig.packages])
+    setPackageName('اشتراك شهر أكتوبر')
+  }, [])
 
   const studentPackages = useMemo(() => {
-    const defaultPkgs = [
+    return [
       'اشتراك شهر سبتمبر',
       'اشتراك شهر أكتوبر',
       'اشتراك شهر نوفمبر',
@@ -110,12 +103,7 @@ export default function Payments() {
       'اشتراك الترم الثاني',
       'اشتراك السنة كاملة'
     ]
-    if (activeConfig.packages) {
-      const dbPkgs = activeConfig.packages.split(',').map(p => p.trim()).filter(Boolean)
-      return Array.from(new Set([...dbPkgs, ...defaultPkgs]))
-    }
-    return defaultPkgs
-  }, [activeConfig.packages])
+  }, [])
 
 
 
@@ -711,8 +699,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const handleSaveConfig = async (e) => {
     e.preventDefault()
-    if (!instaAddress || !instaLink || !vodaNumber || !packagesStr) {
-      notify('الرجاء تعبئة جميع حقول بيانات الدفع والباقات ⚠️', 'danger')
+    if (!instaAddress || !instaLink || !vodaNumber) {
+      notify('الرجاء تعبئة جميع حقول بيانات الدفع ⚠️', 'danger')
       return
     }
 
@@ -733,10 +721,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         qrOverride: config?.vodafoneCash?.qrOverride || ''
       })
 
-      // 3. Update Packages config
-      await updatePaymentSetting('packages', packagesStr)
-
-      notify('تم تحديث بيانات الدفع والباقات بنجاح وسيتم تطبيقها فورًا لجميع الطلاب! ⚙️💳', 'success')
+      notify('تم تحديث بيانات الدفع بنجاح وسيتم تطبيقها فورًا لجميع الطلاب! ⚙️💳', 'success')
       setShowConfigEditor(false)
       
       if (onConfigChange) {
@@ -800,7 +785,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   // Derive available packages list
   const availablePackages = useMemo(() => {
-    const defaultPkgs = [
+    return [
       'اشتراك شهر سبتمبر',
       'اشتراك شهر أكتوبر',
       'اشتراك شهر نوفمبر',
@@ -817,12 +802,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       'اشتراك الترم الثاني',
       'اشتراك السنة كاملة'
     ]
-    if (config?.packages) {
-      const dbPkgs = config.packages.split(',').map(p => p.trim()).filter(Boolean)
-      return Array.from(new Set([...dbPkgs, ...defaultPkgs]))
-    }
-    return defaultPkgs
-  }, [config?.packages])
+  }, [])
 
   // Fetch students for manual logging
   const fetchStudents = async () => {
@@ -1025,7 +1005,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
         {/* Collapsible Config Editor Card */}
         {showConfigEditor && (
-          <div className="paypg-widget-card" style={{ marginBottom: 32, padding: 28, border: '2px solid #7c3aed', background: 'rgba(124, 58, 237, 0.01)', animation: 'fadeInDown 0.3s ease-out' }}>
+          <div className="paypg-widget-card paypg-config-card" style={{ marginBottom: 32, border: '2px solid #7c3aed', background: 'rgba(124, 58, 237, 0.01)', animation: 'fadeInDown 0.3s ease-out' }}>
             <h3 className="paypg-widget-title" style={{ color: '#7c3aed', marginBottom: 12, fontSize: '1.25rem' }}>
               <i className="fas fa-gears" style={{ color: '#7c3aed' }}></i> إعدادات الحسابات البنكية ومحافظ التحويل والباقات
             </h3>
@@ -1033,7 +1013,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               قم بتعديل بيانات InstaPay ورقم Vodafone Cash والباقات المتاحة للاشتراك مباشرة من هنا. سيتم تطبيق هذه القيم فورًا لجميع الطلاب.
             </p>
 
-            <form onSubmit={handleSaveConfig} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, alignItems: 'end' }}>
+            <form onSubmit={handleSaveConfig} className="paypg-config-form">
               
               <div className="form-group">
                 <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>عنوان إنستا باي (InstaPay Address) *</label>
@@ -1084,20 +1064,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 />
               </div>
 
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>الباقات المتاحة للاشتراك (افصل بينها بفواصل) *</label>
-                <input 
-                  type="text" 
-                  value={packagesStr} 
-                  onChange={(e) => setPackagesStr(e.target.value)}
-                  placeholder="مثال: اشتراك شهر أكتوبر, اشتراك شهر نوفمبر, اشتراك الترم الأول"
-                  className="paypg-admin-input"
-                  style={{ height: 44, width: '100%' }}
-                  required
-                />
-              </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div className="paypg-span-2" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button 
                   type="submit" 
                   disabled={savingConfig}

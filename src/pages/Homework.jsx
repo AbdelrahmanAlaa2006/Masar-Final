@@ -59,18 +59,19 @@ const fmtDateTime = (iso) => {
 }
 
 function rowToCard(row) {
+  if (!row) return {}
   return {
-    id: row.id,
-    title: row.title,
+    id: row.id || '',
+    title: row.title || '',
     desc: row.description || '',
     subject: row.subject || '',
     teacher: row.teacher || '',
     week: row.week || '',
-    date: (row.created_at || '').slice(0, 10),
+    date: typeof row.created_at === 'string' ? row.created_at.slice(0, 10) : '',
     cover: row.cover_url || PLACEHOLDER_COVER,
     pdf_url: row.pdf_url || null,
-    grade: row.grade,
-    due_at: row.due_at,
+    grade: row.grade || '',
+    due_at: row.due_at || null,
     max_score: row.max_score ?? 0,
     answer_key: Array.isArray(row.answer_key) ? row.answer_key : [],
     reveal_grades: !!row.reveal_grades,
@@ -109,7 +110,7 @@ export default function Homework() {
   const [pdfViewer, setPdfViewer] = useState(null)
 
   // Per-student submission status (homeworkId -> submissionRow|undefined)
-  const [submissions, setSubmissions] = useState(new Map())
+  const [submissions, setSubmissions] = useState({})
   // Open submission modal (student): { homework }
   const [submitModal, setSubmitModal] = useState(null)
   // Open grading modal (admin): { homework }
@@ -137,13 +138,13 @@ export default function Homework() {
   // Admins don't have submissions of their own — skip entirely.
   useEffect(() => {
     if (!userId || userRole === 'admin' || rows.length === 0) {
-      setSubmissions(new Map()); return
+      setSubmissions({}); return
     }
     let cancelled = false
     ;(async () => {
       try {
-        const map = await getMySubmissionsBatch(rows.map(r => r.id), userId)
-        if (!cancelled) setSubmissions(map)
+        const res = await getMySubmissionsBatch(rows.map(r => r.id), userId)
+        if (!cancelled) setSubmissions(res || {})
       } catch { /* ignore */ }
     })()
     return () => { cancelled = true }
@@ -151,9 +152,17 @@ export default function Homework() {
 
   const homeworks = useMemo(() => {
     const grouped = { first: [], second: [], third: [] }
+    if (!Array.isArray(rows)) return grouped
     for (const r of rows) {
+      if (!r) continue
       const ui = dbToUiGrade(r.grade)
-      if (ui && grouped[ui]) grouped[ui].push(rowToCard(r))
+      if (ui && grouped[ui]) {
+        try {
+          grouped[ui].push(rowToCard(r))
+        } catch (e) {
+          console.error("Failed to parse row:", r, e)
+        }
+      }
     }
     return grouped
   }, [rows])
@@ -169,7 +178,8 @@ export default function Homework() {
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter((l) =>
-      [l.title, l.desc, l.week, l.id]
+      l && [l.title, l.desc, l.week, l.id]
+        .map(val => val || '')
         .join(' ').toLowerCase().includes(q)
     )
   }, [homeworks, grade, search])
@@ -382,7 +392,7 @@ export default function Homework() {
                     hw={hw}
                     isAdmin={userRole === 'admin'}
                     isInactive={userRole !== 'admin' && user?.is_active === false}
-                    submission={submissions.get(hw.id) || null}
+                    submission={submissions[hw.id] || null}
                     onOpen={() => {
                       if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })
                       else flash('لا يوجد ملف PDF لهذا الواجب', 'warning')
@@ -512,20 +522,21 @@ export default function Homework() {
       {submitModal && createPortal(
         <SubmitModal
           homework={submitModal.homework}
-          existing={submissions.get(submitModal.homework.id) || null}
+          existing={submissions[submitModal.homework.id] || null}
           onClose={() => setSubmitModal(null)}
           onDone={(res) => {
             const now = new Date().toISOString()
             setSubmissions((prev) => {
-              const m = new Map(prev)
-              const existing = prev.get(submitModal.homework.id) || {}
-              m.set(submitModal.homework.id, {
-                ...existing,
-                ...res,
-                submitted_at: now,
-                graded_at: now,
-              })
-              return m
+              const existing = prev[submitModal.homework.id] || {}
+              return {
+                ...prev,
+                [submitModal.homework.id]: {
+                  ...existing,
+                  ...res,
+                  submitted_at: now,
+                  graded_at: now,
+                }
+              }
             })
             setSubmitModal(null)
             if (submitModal.homework.reveal_grades === true) {
@@ -578,6 +589,7 @@ export default function Homework() {
 /* ─────────────────────── sub-components ─────────────────────── */
 
 function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, onGrade, onEdit, onDelete }) {
+  if (!hw) return null
   const now = Date.now()
   const due = hw.due_at ? new Date(hw.due_at).getTime() : null
   const overdue = due && now > due

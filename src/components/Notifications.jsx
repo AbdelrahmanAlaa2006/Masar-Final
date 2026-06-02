@@ -12,8 +12,9 @@ import {
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
 
-// Use LIST_TTL since write paths proactively invalidate the cache
-const NOTIF_TTL = LIST_TTL
+// Notifications need to be responsive. A 30-minute cache makes them feel sluggish.
+// Set to 10 seconds so they update almost instantly on mount or dropdown click.
+const NOTIF_TTL = 10 * 1000
 
 const formatWhen = (iso) => {
   try {
@@ -69,6 +70,15 @@ export default function Notifications() {
   useEffect(() => { if (userId !== null) refresh(userId) }, [userId])
   useEffect(() => { if (open && userId) refresh(userId) }, [open, userId])
 
+  // Poll for new notifications every 30 seconds for live badge updates
+  useEffect(() => {
+    if (!userId) return
+    const interval = setInterval(() => {
+      refresh(userId)
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [userId])
+
   // Close on outside click / Escape
   useEffect(() => {
     if (!open) return
@@ -111,8 +121,8 @@ export default function Notifications() {
     } else {
       // Student filtering: discard admin-only notifications and unrelated students' alerts
       filtered = filtered.filter((n) => {
-        // 1. Discard system-wide admin alerts (password reset requests and devtools violations)
-        if (n.meta?.kind === 'password_reset_request' || n.meta?.kind === 'devtools_violation') {
+        // 1. Discard system-wide admin alerts (password reset requests, devtools violations, and student chat messages)
+        if (n.meta?.kind === 'password_reset_request' || n.meta?.kind === 'devtools_violation' || n.meta?.kind === 'student_chat_message') {
           return false
         }
 
@@ -191,6 +201,11 @@ export default function Notifications() {
         target = '/control-panel'
         state = { section: 'violations' }
       }
+    } else if (meta.kind === 'student_chat_message') {
+      if (userRole === 'admin') {
+        target = '/control-panel'
+        state = { section: 'chats', studentId: meta.studentId }
+      }
     }
 
     if (target) {
@@ -232,6 +247,7 @@ export default function Notifications() {
 
   // For admin display: produce a readable "target" label per row.
   const targetLabel = (n) => {
+    if (n.meta?.kind === 'student_chat_message') return 'المشرفين'
     if (n.scope === 'all') return GRADE_LABELS.all
     if (n.scope === 'grade') return GRADE_LABELS[n.target_grade] || n.target_grade
     if (n.scope === 'student') return 'طالب محدد'

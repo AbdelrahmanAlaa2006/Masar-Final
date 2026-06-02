@@ -1072,5 +1072,41 @@ body.dark .paypg-modal-selected-student span {
   color: #cbd5e1 !important;
 }
 
+/* Responsive Config Editor Card & Form */
+.paypg-config-card {
+  padding: 16px !important;
+}
+
+.paypg-config-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: end;
+}
+
+.paypg-span-2 {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .paypg-config-card {
+    padding: 28px !important;
+  }
+  
+  .paypg-config-form {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  
+  .paypg-span-2 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .paypg-title {
+    font-size: 1.7rem !important;
+  }
+}
+
 
 

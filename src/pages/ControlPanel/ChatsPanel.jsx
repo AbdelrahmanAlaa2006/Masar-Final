@@ -3,7 +3,7 @@ import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRea
 import { uploadHomeworkSubmission } from '@backend/r2'
 import './ChatsPanel.css'
 
-export default function ChatsPanel({ onBack, flash }) {
+export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   const [threads, setThreads] = useState([])
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [messages, setMessages] = useState([])
@@ -14,6 +14,7 @@ export default function ChatsPanel({ onBack, flash }) {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const fileInputRef = useRef(null)
+  const hasAutoSelectedRef = useRef(false)
 
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -50,6 +51,15 @@ export default function ChatsPanel({ onBack, flash }) {
       if (!isPoll) setLoadingThreads(true)
       const data = await listChatsOverview()
       setThreads(data)
+
+      // Auto-select initial student once upon loading threads
+      if (initialStudentId && !hasAutoSelectedRef.current && data?.length > 0) {
+        const target = data.find(t => t.student?.id === initialStudentId)
+        if (target?.student) {
+          hasAutoSelectedRef.current = true
+          handleSelectStudent(target.student)
+        }
+      }
     } catch (err) {
       console.error('Failed to load chats overview:', err)
       if (!isPoll) flash('تعذر تحميل قائمة المحادثات', 'warning')

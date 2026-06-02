@@ -2,7 +2,7 @@
 
 .vr-page {
   padding-top: 30px;
-  min-height: 100vh;
+  min-height: calc(100vh - 144px);
 }
 
 .vr-container {
@@ -552,21 +552,6 @@
   .vr-print-btn, .vr-back-btn, .vr-controls, .vr-stats, .vr-student-card { display: none; }
 }
 
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .vr-stats { grid-template-columns: repeat(3, 1fr); }
-  .vr-student-card { flex-direction: column; text-align: center; border-right: none; border-top: 4px solid #48bb78; }
-}
-
-@media (max-width: 640px) {
-  .vr-header h1 { font-size: 1.4rem; }
-  .vr-stats { grid-template-columns: repeat(2, 1fr); }
-  .vr-controls { flex-direction: column; align-items: stretch; }
-  .vr-filter-group { justify-content: center; }
-  .vr-view-toggle { justify-content: center; }
-  .vr-table { font-size: 0.78rem; }
-  .vr-table th, .vr-table td { padding: 0.45rem 0.35rem; }
-}
 
 /* ── Videos Dashboard & Charts ── */
 .vr-dashboard-card {
@@ -844,4 +829,25 @@ body.dark .vr-bar-track {
 body.dark .vr-bar-fill.fill-none {
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* ── Responsive overrides (placed at end for CSS cascade priority) ── */
+@media (max-width: 900px) {
+  .vr-stats { grid-template-columns: repeat(3, 1fr) !important; }
+  .vr-student-card { flex-direction: column !important; text-align: center !important; border-right: none !important; border-top: 4px solid #48bb78 !important; }
+}
+
+@media (max-width: 640px) {
+  .vr-header h1 { font-size: 1.4rem !important; }
+  .vr-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  .vr-controls { flex-direction: column !important; align-items: stretch !important; }
+  .vr-filter-group { justify-content: center !important; }
+  .vr-view-toggle { justify-content: center !important; }
+  .vr-table { font-size: 0.78rem !important; }
+  .vr-table th, .vr-table td { padding: 0.45rem 0.35rem !important; }
+  .vr-dashboard-card { padding: 16px 12px !important; }
+  .vr-dashboard-layout { flex-direction: column !important; gap: 16px !important; align-items: stretch !important; }
+  .vr-dashboard-donut-wrap, .vr-dashboard-chart-wrap { width: 100% !important; min-width: 0 !important; }
+  .vr-dashboard-insight { padding: 12px !important; gap: 10px !important; }
+}
+
 

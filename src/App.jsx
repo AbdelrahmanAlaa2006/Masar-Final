@@ -25,6 +25,7 @@ const Help = lazy(() => import('./pages/Help'))
 const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Payments = lazy(() => import('./pages/Payments'))
+const StudentChat = lazy(() => import('./pages/StudentChat'))
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
 import { tokenAPI } from '@backend/authApi'
@@ -311,60 +312,9 @@ function AppContent() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Smooth scroll-to-top on route change.
-  //
-  // Native window.scrollTo({ behavior: 'smooth' }) is unreliable here:
-  // when the new route's initial render is shorter than the previous
-  // scroll position (e.g. /exams or / before their async data loads),
-  // the browser clamps scrollY to the new max BEFORE this effect runs,
-  // so the smooth animation has zero distance to cover and the jump
-  // feels instant. Pages with a tall hero (lectures, videos) accidentally
-  // worked because their initial render was tall enough to keep the
-  // old scrollY valid.
-  //
-  // Workaround: read the pre-clamp scrollY from the ref above, pad the
-  // body to make that position reachable again, restore scroll to it,
-  // then tween it down to 0 with rAF. The body padding is removed at
-  // the end so it doesn't leave permanent empty space.
+  // Scroll to top instantly on route change.
   useEffect(() => {
-    const startY = Math.max(
-      window.scrollY || window.pageYOffset || 0,
-      lastScrollYRef.current || 0,
-    )
-    if (startY <= 4) return // already at the top — nothing to animate
-
-    // Reserve enough document height that scrollTo(startY) sticks even
-    // if the freshly-mounted page is short. Saved so we can restore.
-    const prevMinHeight = document.body.style.minHeight
-    document.body.style.minHeight = `${startY + window.innerHeight}px`
-    window.scrollTo(0, startY)
-
-    const duration = Math.min(650, 220 + startY * 0.35) // 220–650 ms
-    const startTime = performance.now()
-    let cancelled = false
-    // Cancel the tween if the user scrolls / wheels / touches —
-    // hijacking scroll past real input feels worse than a snap.
-    const cancel = () => { cancelled = true }
-    window.addEventListener('wheel', cancel, { passive: true, once: true })
-    window.addEventListener('touchstart', cancel, { passive: true, once: true })
-    window.addEventListener('keydown', cancel, { once: true })
-
-    const ease = (t) => 1 - Math.pow(1 - t, 3) // easeOutCubic
-    const cleanup = () => {
-      document.body.style.minHeight = prevMinHeight
-      window.removeEventListener('wheel', cancel)
-      window.removeEventListener('touchstart', cancel)
-      window.removeEventListener('keydown', cancel)
-    }
-    const step = (now) => {
-      if (cancelled) { cleanup(); return }
-      const t = Math.min(1, (now - startTime) / duration)
-      window.scrollTo(0, startY * (1 - ease(t)))
-      if (t < 1) requestAnimationFrame(step)
-      else cleanup()
-    }
-    requestAnimationFrame(step)
-    return () => { cancelled = true; cleanup() }
+    window.scrollTo(0, 0)
   }, [location.pathname])
 
   // Apply the saved theme app-wide so it survives routes that don't
@@ -503,6 +453,7 @@ function AppContent() {
             <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
             <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
             <Route path="/payments" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Payments /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute isLoggedIn={isLoggedIn}><StudentChat /></ProtectedRoute>} />
 
             {/* Student + Admin: solo reports */}
             <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />

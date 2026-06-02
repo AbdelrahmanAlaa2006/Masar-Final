@@ -17,8 +17,36 @@ const fmtDate = (d) => {
 export default function VideosReport() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const [studentName, setStudentName] = useState('')
-  const [studentId, setStudentId] = useState('')
+  const [studentName, setStudentName] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search)
+        const student = params.get('student')
+        if (student) return student
+        const stored = sessionStorage.getItem('masar-user')
+        if (stored) {
+          const u = JSON.parse(stored)
+          return u?.name || ''
+        }
+      }
+    } catch {}
+    return ''
+  })
+  const [studentId, setStudentId] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search)
+        const idParam = params.get('id')
+        if (idParam) return idParam
+        const stored = sessionStorage.getItem('masar-user')
+        if (stored) {
+          const u = JSON.parse(stored)
+          return u?.phone || ''
+        }
+      }
+    } catch {}
+    return ''
+  })
   const [currentFilter, setCurrentFilter] = useState('all')
   // Students never see the detailed table view — force cards.
   const initialViewMode = (() => {

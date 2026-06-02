@@ -1,7 +1,7 @@
 /* ── Homework Report — hr- prefix ─────────────────────────── */
 
 .hr-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 144px);
   padding: 32px 16px 80px;
   background: var(--section-bg-1, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
   direction: rtl;
@@ -377,16 +377,6 @@
   .hr-table th, .hr-table td { color: #000; border-color: #ccc; }
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-  .hr-page { padding: 16px 10px 60px; }
-  .hr-stats { grid-template-columns: repeat(2, 1fr); }
-  .hr-cards-grid { grid-template-columns: 1fr; }
-  .hr-student-card { flex-direction: column; text-align: center; }
-  .hr-controls { flex-direction: column; align-items: stretch; }
-  .hr-filter-group { justify-content: center; }
-  .hr-modal { padding: 18px; max-height: 90vh; }
-}
 
 /* ── Light Mode Overrides for HomeworkReport ── */
 body:not(.dark) .hr-page {
@@ -843,4 +833,21 @@ body:not(.dark) .hr-insight-content h4 {
 body:not(.dark) .hr-insight-content p {
   color: #334155;
 }
+
+/* Responsive (at the end for CSS cascade priority) */
+@media (max-width: 600px) {
+  .hr-page { padding: 16px 10px 60px; }
+  .hr-stats { grid-template-columns: repeat(2, 1fr); }
+  .hr-cards-grid { grid-template-columns: 1fr; }
+  .hr-student-card { flex-direction: column; text-align: center; }
+  .hr-controls { flex-direction: column; align-items: stretch; }
+  .hr-filter-group { justify-content: center; }
+  .hr-modal { padding: 18px; max-height: 90vh; }
+  .hr-dashboard-card { padding: 16px 12px !important; }
+  .hr-dashboard-layout { flex-direction: column !important; gap: 16px !important; align-items: stretch !important; }
+  .hr-dashboard-donut-wrap, .hr-dashboard-chart-wrap { width: 100% !important; min-width: 0 !important; }
+  .hr-svg-chart-container { padding: 12px 8px 6px !important; }
+  .hr-dashboard-insight { padding: 12px !important; gap: 10px !important; }
+}
+
 

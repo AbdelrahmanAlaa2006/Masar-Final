@@ -2,7 +2,7 @@
 
 .er-page {
   padding-top: 30px;
-  min-height: 100vh;
+  min-height: calc(100vh - 144px);
 }
 
 .er-container {
@@ -820,22 +820,6 @@
   .er-print-btn, .er-back-btn, .er-controls, .er-stats, .er-student-card { display: none; }
 }
 
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .er-stats { grid-template-columns: repeat(3, 1fr); }
-  .er-student-card { flex-direction: column; text-align: center; border-right: none; border-top: 4px solid #ed8936; }
-}
-
-@media (max-width: 640px) {
-  .er-header h1 { font-size: 1.4rem; }
-  .er-stats { grid-template-columns: repeat(2, 1fr); }
-  .er-controls { flex-direction: column; align-items: stretch; }
-  .er-filter-group { justify-content: center; }
-  .er-view-toggle { justify-content: center; }
-  .er-table { font-size: 0.78rem; }
-  .er-table th, .er-table td { padding: 0.45rem 0.35rem; }
-  .er-review-modal { padding: 1rem; }
-}
 
 /* ── Exams Dashboard & Charts ── */
 .er-dashboard-card {
@@ -1080,4 +1064,27 @@ body.dark .er-chart-gridline {
 body.dark .er-chart-placeholder {
   border-color: rgba(255, 255, 255, 0.08);
 }
+
+/* ── Responsive overrides (placed at end for CSS cascade priority) ── */
+@media (max-width: 900px) {
+  .er-stats { grid-template-columns: repeat(3, 1fr) !important; }
+  .er-student-card { flex-direction: column !important; text-align: center !important; border-right: none !important; border-top: 4px solid #ed8936 !important; }
+}
+
+@media (max-width: 640px) {
+  .er-header h1 { font-size: 1.4rem !important; }
+  .er-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  .er-controls { flex-direction: column !important; align-items: stretch !important; }
+  .er-filter-group { justify-content: center !important; }
+  .er-view-toggle { justify-content: center !important; }
+  .er-table { font-size: 0.78rem !important; }
+  .er-table th, .er-table td { padding: 0.45rem 0.35rem !important; }
+  .er-review-modal { padding: 1rem !important; }
+  .er-dashboard-card { padding: 16px 12px !important; }
+  .er-dashboard-layout { flex-direction: column !important; gap: 16px !important; align-items: stretch !important; }
+  .er-dashboard-donut-wrap, .er-dashboard-chart-wrap { width: 100% !important; min-width: 0 !important; }
+  .er-svg-chart-container { padding: 12px 8px 6px !important; }
+  .er-dashboard-insight { padding: 12px !important; gap: 10px !important; }
+}
+
 
