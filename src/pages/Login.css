@@ -2411,7 +2411,7 @@ body:not(.dark) .footer-divider {
   align-items: center;
   justify-content: center;
   color: var(--card-text-soft);
-  transition: all 0.25s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 [dir="rtl"] .auth-modal-close {
@@ -2420,9 +2420,8 @@ body:not(.dark) .footer-divider {
 }
 
 .auth-modal-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: var(--card-text);
-  transform: rotate(90deg);
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--btn-from, #764ba2);
 }
 
 body.dark .auth-modal-close {
@@ -2431,6 +2430,7 @@ body.dark .auth-modal-close {
 
 body.dark .auth-modal-close:hover {
   background: rgba(255, 255, 255, 0.15);
+  color: var(--btn-from, #a78bfa);
 }
 
 .auth-modal-header {

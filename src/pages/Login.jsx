@@ -16,6 +16,7 @@ import { authAPI, tokenAPI } from '@backend/authApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
+import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // your existing styles (forms, marketing, footer, forgot modal)
 import './login-styles.css'     // NEW styles (navbar, hero, auth-modal, teacher portrait)
 
@@ -80,6 +81,7 @@ export default function Login() {
   const { login } = useAuth()
   const { tenant, tenantId, tenantSlug, tenantName } = useTenant()
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
+  const brandLogo = isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [phone, setPhone] = useState('')
@@ -348,7 +350,7 @@ export default function Login() {
       <header className="aa-nav">
         <div className="aa-nav-inner">
           <div className="aa-brand">
-            <div className="aa-brand-mark">🎓</div>
+            <img src={brandLogo} alt="Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
             <span className="aa-brand-name">{t.brand_short}</span>
           </div>
 

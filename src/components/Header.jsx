@@ -18,12 +18,12 @@ import './Header.css'
    ────────────────────────────────────────────────────────────── */
 
 const NAV_ITEMS_BASE = [
-  { to: '/',         label: 'الرئيسية',   icon: 'fa-house' },
-  { to: '/videos',   label: 'الفيديوهات', icon: 'fa-circle-play' },
-  { to: '/exams',    label: 'الامتحانات', icon: 'fa-file-pen' },
-  { to: '/homework', label: 'الواجبات',   icon: 'fa-clipboard-list' },
-  { to: '/payments', label: 'المدفوعات',   icon: 'fa-wallet' },
-  { to: '/report',   label: 'التقارير',   icon: 'fa-chart-line' },
+  { to: '/', label: 'الرئيسية', icon: 'fa-house' },
+  { to: '/videos', label: 'الفيديوهات', icon: 'fa-circle-play' },
+  { to: '/exams', label: 'الامتحانات', icon: 'fa-file-pen' },
+  { to: '/homework', label: 'الواجبات', icon: 'fa-clipboard-list' },
+  { to: '/payments', label: 'المدفوعات', icon: 'fa-wallet' },
+  { to: '/report', label: 'التقارير', icon: 'fa-chart-line' },
 ]
 const ADMIN_ITEMS = [
   { to: '/control-panel', label: 'لوحة التحكم', icon: 'fa-sliders' },
@@ -32,7 +32,7 @@ const ADMIN_ITEMS = [
 export default function Header() {
   const { tenant, tenantSlug } = useTenant()
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
-  const brandLogo = !tenantSlug || tenantSlug === 'default' ? masarLogo : (tenant?.logo_url || masarLogo)
+  const brandLogo = !tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
