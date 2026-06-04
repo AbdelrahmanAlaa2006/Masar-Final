@@ -38,13 +38,30 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // 1. Initial sync from sessionStorage
     syncAuth()
 
-    // Sync state on custom event and standard storage updates
+    // 2. Subscribe to Supabase auth state change events
+    // This resolves the asynchronous session restoration on app boot
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        syncAuth()
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsLoggedIn(false)
+        setLoading(false)
+      } else {
+        // For other events (like initial session check resolving to null), stop loading
+        setLoading(false)
+      }
+    })
+
+    // 3. Sync state on custom event and standard storage updates
     window.addEventListener('masar-user-updated', syncAuth)
     window.addEventListener('storage', syncAuth)
 
     return () => {
+      subscription.unsubscribe()
       window.removeEventListener('masar-user-updated', syncAuth)
       window.removeEventListener('storage', syncAuth)
     }

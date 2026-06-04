@@ -1,12 +1,16 @@
 # Full Optimization & SaaS Architecture Review — Masar Platform
 
-## Executive Summary
+## User Review Required: Chat First-Load Bug Fix
 
-After a thorough review of ~30 source files, 12 API modules, 5 edge functions, and all page components, I've identified **42 specific issues** across 8 categories. The codebase is surprisingly well-structured for its stage — good RLS, lean API layer, existing cache system. The main problems are: **no code splitting**, **giant monolithic components**, **auth state scattered via sessionStorage**, **no React context/query layer**, and **zero multi-tenant infrastructure**.
-
-This plan is ordered by **impact-to-effort ratio** — quick wins first, architectural changes last.
+> [!IMPORTANT]
+> **Auth Initialization Race Condition Fix**: I've diagnosed the blank chat page on initial load. The custom local storage check in `AuthContext.jsx` sets `loading: false` synchronously on mount, allowing the dashboard/chat routes to mount and send queries before the Supabase client finishes its asynchronous initial session restoration. Since the queries go out anonymously, RLS filters out all rows, returning empty data. Once Supabase finishes loading, the state doesn't re-trigger a fetch.
+>
+> I propose updating `AuthContext.jsx` so that the app-wide `loading` state remains `true` until Supabase fires its first `onAuthStateChange` event. This will guarantee that all pages mount only when the Supabase auth state is fully resolved, preventing blank/empty data results.
+>
+> Please review the plan below and let me know if you approve proceeding with the execution.
 
 ---
+
 
 ## User Review Required
 

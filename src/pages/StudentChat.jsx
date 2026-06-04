@@ -7,9 +7,7 @@ import './StudentChat.css'
 
 export default function StudentChat() {
   const { user } = useAuth()
-  if (!user) return null
-
-  const studentId = user.id
+  const studentId = user?.id
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const [previewImageUrl, setPreviewImageUrl] = useState(null)
@@ -43,6 +41,7 @@ export default function StudentChat() {
 
   // Fetch messages
   const fetchMessages = async (isPoll = false) => {
+    if (!studentId) return
     try {
       if (!isPoll) setLoading(true)
       const data = await listChatMessages(studentId)
@@ -62,7 +61,9 @@ export default function StudentChat() {
 
   // Initial load
   useEffect(() => {
-    fetchMessages()
+    if (studentId) {
+      fetchMessages()
+    }
   }, [studentId])
 
   // Scroll on new messages
@@ -72,6 +73,7 @@ export default function StudentChat() {
 
   // Polling for new messages every 5 seconds ONLY when on this page
   useEffect(() => {
+    if (!studentId) return
     const interval = setInterval(() => {
       fetchMessages(true)
     }, 5000)
@@ -223,7 +225,7 @@ export default function StudentChat() {
   }
 
   const handleClearChat = async () => {
-    const confirmDelete = window.confirm('هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوفة مرة أخرى.')
+    const confirmDelete = window.confirm('هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوعة مرة أخرى.')
     if (!confirmDelete) return
 
     try {
@@ -252,6 +254,17 @@ export default function StudentChat() {
     } catch {
       return ''
     }
+  }
+
+  if (!user) {
+    return (
+      <main className="sc-page" dir="rtl">
+        <div className="sc-page-loading">
+          <i className="fas fa-spinner fa-spin"></i>
+          <p>جاري تحميل المحادثة...</p>
+        </div>
+      </main>
+    )
   }
 
   return (

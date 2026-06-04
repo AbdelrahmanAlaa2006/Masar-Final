@@ -2,9 +2,20 @@ import React, { useState, useEffect, useRef } from 'react'
 import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRead, clearChatMessages } from '@backend/chatApi'
 import { createNotification } from '@backend/notificationsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
+import { useAuth } from '../../contexts/AuthContext'
 import './ChatsPanel.css'
 
 export default function ChatsPanel({ onBack, flash, initialStudentId }) {
+  // Get Admin profile info from sessionStorage to use as senderId
+  const adminId = (() => {
+    try {
+      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      return u?.id || null
+    } catch {
+      return null
+    }
+  })()
+
   const [threads, setThreads] = useState([])
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [messages, setMessages] = useState([])
@@ -33,15 +44,8 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
 
   const messagesBodyRef = useRef(null)
 
-  // Get Admin profile info from sessionStorage to use as senderId
-  const adminId = (() => {
-    try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      return u?.id || null
-    } catch {
-      return null
-    }
-  })()
+  // Mobile layout view toggler
+  const [mobileActiveView, setMobileActiveView] = useState('list') // 'list' | 'chat'
 
   // Scroll to bottom helper
   const scrollToBottom = () => {
@@ -138,6 +142,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
     setInputText('')
     cancelImage()
     loadMessages(student.id)
+    setMobileActiveView('chat')
   }
 
   // Image Attach
@@ -353,7 +358,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
         </button>
       </div>
 
-      <div className="ap-chats-container">
+      <div className={`ap-chats-container mobile-view-${mobileActiveView}`}>
         {/* Left: Chat list side list */}
         <div className="ap-chats-sidebar">
           <div className="ap-chats-search">
@@ -427,6 +432,16 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
               {/* Header */}
               <div className="chat-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {/* Mobile back button */}
+                  <button 
+                    type="button" 
+                    className="chat-pane-back-btn" 
+                    onClick={() => setMobileActiveView('list')}
+                    title="رجوع لقائمة المحادثات"
+                  >
+                    <i className="fas fa-arrow-right"></i>
+                  </button>
+
                   <div className="chat-pane-header-avatar">
                     {selectedStudent.avatar_url ? (
                       <img src={selectedStudent.avatar_url} alt="" />

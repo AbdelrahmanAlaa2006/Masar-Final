@@ -554,15 +554,52 @@
 }
 
 /* Responsive adjustment */
+.chat-pane-back-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-color, #fff);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: 8px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.chat-pane-back-btn:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.06));
+}
+
 @media (max-width: 768px) {
   .ap-chats-wrapper {
-    height: calc(100vh - 160px);
+    height: calc(100vh - 120px);
+    min-height: auto;
   }
-  .ap-chats-sidebar {
-    width: 240px;
+  
+  .ap-chats-container.mobile-view-list .ap-chats-sidebar {
+    display: flex;
+    width: 100%;
   }
-  .chat-item-preview {
+  .ap-chats-container.mobile-view-list .ap-chats-pane {
     display: none;
+  }
+  .ap-chats-container.mobile-view-chat .ap-chats-sidebar {
+    display: none;
+  }
+  .ap-chats-container.mobile-view-chat .ap-chats-pane {
+    display: flex;
+    width: 100%;
+  }
+  
+  .chat-pane-back-btn {
+    display: flex;
+  }
+  
+  .chat-item-preview {
+    display: block;
   }
 }
 

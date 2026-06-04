@@ -24,6 +24,7 @@ export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope
     : section === 'resets' ? 'طلبات استعادة الحساب'
     : section === 'violations' ? 'سجلات الحماية الأمنية'
     : section === 'seasons' ? 'السمات الموسمية'
+    : section === 'chats' ? 'محادثات الطلاب'
     : ''
   const scopeLabel =
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
