@@ -34,6 +34,9 @@ const GRADE_LABELS = {
   'first-prep': 'الصف الأول الإعدادي',
   'second-prep': 'الصف الثاني الإعدادي',
   'third-prep': 'الصف الثالث الإعدادي',
+  'first-sec': 'الصف الأول الثانوي',
+  'second-sec': 'الصف الثاني الثانوي',
+  'third-sec': 'الصف الثالث الثانوي',
 }
 
 export default function Notifications() {
@@ -206,6 +209,10 @@ export default function Notifications() {
         target = '/control-panel'
         state = { section: 'chats', studentId: meta.studentId }
       }
+    } else if (meta.kind === 'admin_chat_message') {
+      if (userRole !== 'admin') {
+        target = '/chat'
+      }
     }
 
     if (target) {
@@ -323,6 +330,9 @@ export default function Notifications() {
                   <option value="first-prep">الصف الأول الإعدادي</option>
                   <option value="second-prep">الصف الثاني الإعدادي</option>
                   <option value="third-prep">الصف الثالث الإعدادي</option>
+                  <option value="first-sec">الصف الأول الثانوي</option>
+                  <option value="second-sec">الصف الثاني الثانوي</option>
+                  <option value="third-sec">الصف الثالث الثانوي</option>
                 </select>
                 <button type="submit" className="notif-send">
                   <i className="fas fa-paper-plane"></i> إرسال

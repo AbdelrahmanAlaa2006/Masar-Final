@@ -17,7 +17,7 @@ const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
 const StudentsSyncPanel = lazy(() => import('./StudentsSyncPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
-const ChatsPanel = lazy(() => import('./ChatsPanel'))
+import ChatsPanel from './ChatsPanel'
 
 export default function ControlPanelIndex() {
   const location = useLocation()

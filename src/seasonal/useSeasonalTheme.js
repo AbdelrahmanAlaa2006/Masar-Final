@@ -50,6 +50,7 @@ export function useSeasonalTheme() {
 
   // Apply body class + CSS vars on every theme change.
   useEffect(() => {
+    console.log('[Theme Debug] Active seasonal theme:', theme ? theme.id : 'none', '| localStorage season-override:', localStorage.getItem(STORAGE_KEY));
     // Strip any previous season-* class so we don't pile them up.
     const body = document.body
     for (const cls of [...body.classList]) {
@@ -89,13 +90,6 @@ function resolveTheme() {
   }
   const dateTheme = findThemeForDate()
   if (dateTheme) return dateTheme
-
-  // For local development, default to 'eid-adha' so it immediately shows up for testing
-  const isLocalhost = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  if (isLocalhost) {
-    return findThemeById('eid-adha')
-  }
 
   return null
 }

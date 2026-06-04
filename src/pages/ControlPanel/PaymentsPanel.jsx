@@ -14,6 +14,9 @@ const GRADE_SHORT = {
   'first-prep':  'أولى إعدادي',
   'second-prep': 'تانية إعدادي',
   'third-prep':  'تالتة إعدادي',
+  'first-sec':   'أولى ثانوي',
+  'second-sec':  'تانية ثانوي',
+  'third-sec':   'تالتة ثانوي',
 }
 
 export default function PaymentsPanel() {

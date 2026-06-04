@@ -47,7 +47,7 @@ function parseCSV(text) {
 const normPhone = (p) => String(p || '').replace(/\D/g, '').replace(/^0+/, '')
 
 const rows = parseCSV(fs.readFileSync(csvPath, 'utf8'))
-const GRADES = new Set(['first-prep', 'second-prep', 'third-prep'])
+const GRADES = new Set(['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec'])
 const csvPhones = new Set()
 
 console.log(apply ? '⚙️  APPLY mode — changes will be written' : '🔍 DRY-RUN — no changes will be written')

@@ -57,15 +57,6 @@ export function checkIsDevToolsOpen() {
   } else {
     // Desktop check
     if (widthDev || heightDev) return true;
-
-    // Desktop Small Viewport Enforcer
-    // Skip this for touch devices (like iPads, tablets, or touch laptops) to avoid false positives when portrait
-    const isTouchDevice = navigator.maxTouchPoints > 1;
-    if (!isTouchDevice) {
-      if (window.innerWidth < 1000 || window.innerHeight < 700) {
-        return true;
-      }
-    }
   }
 
   return false;

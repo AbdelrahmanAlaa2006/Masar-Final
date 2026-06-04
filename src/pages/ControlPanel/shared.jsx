@@ -4,9 +4,12 @@ export const GRADE_LABEL = {
   'first-prep':  'الأول الإعدادي',
   'second-prep': 'الثاني الإعدادي',
   'third-prep':  'الثالث الإعدادي',
+  'first-sec':   'الأول الثانوي',
+  'second-sec':  'الثاني الثانوي',
+  'third-sec':   'الثالث الثانوي',
 }
 
-export const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
+export const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
 
 export const initials = (name = '') =>
   name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('')
@@ -419,7 +422,10 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
 
 export function GradePickerCards({ value, onChange, students = [] }) {
   const counts = useMemo(() => {
-    const out = { 'first-prep': 0, 'second-prep': 0, 'third-prep': 0 }
+    const out = {
+      'first-prep': 0, 'second-prep': 0, 'third-prep': 0,
+      'first-sec': 0, 'second-sec': 0, 'third-sec': 0
+    }
     for (const s of students) if (s?.grade && out[s.grade] !== undefined) out[s.grade]++
     return out
   }, [students])

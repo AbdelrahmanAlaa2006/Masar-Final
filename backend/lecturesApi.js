@@ -1,8 +1,22 @@
 import { supabase } from './supabase'
 
-// UI grade id  ('first'/'second'/'third')  <->  DB grade enum  ('first-prep'/...)
-const UI_TO_DB = { first: 'first-prep', second: 'second-prep', third: 'third-prep' }
-const DB_TO_UI = { 'first-prep': 'first', 'second-prep': 'second', 'third-prep': 'third' }
+// UI grade id  ('first'/'second'/'third'/'first-sec'/...)  <->  DB grade enum  ('first-prep'/...)
+const UI_TO_DB = {
+  first: 'first-prep',
+  second: 'second-prep',
+  third: 'third-prep',
+  'first-sec': 'first-sec',
+  'second-sec': 'second-sec',
+  'third-sec': 'third-sec'
+}
+const DB_TO_UI = {
+  'first-prep': 'first',
+  'second-prep': 'second',
+  'third-prep': 'third',
+  'first-sec': 'first-sec',
+  'second-sec': 'second-sec',
+  'third-sec': 'third-sec'
+}
 export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
 export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 

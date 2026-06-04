@@ -34,6 +34,9 @@ export default function Videos() {
     { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
     { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
     { id: 'third-prep',  ar: 'الصف الثالث الإعدادي',  en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+    { id: 'first-sec',   ar: 'الصف الأول الثانوي',   en: 'First Sec',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
+    { id: 'second-sec',  ar: 'الصف الثاني الثانوي',  en: 'Second Sec',  accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
+    { id: 'third-sec',   ar: 'الصف الثالث الثانوي',   en: 'Third Sec',   accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
   ]
 
 // Convert a DB video row (with embedded video_parts) into the shape the
@@ -177,7 +180,10 @@ function shapeVideo(row) {
 
   // ── Group by grade for the grid ──────────────────────────────
   const videosByGrade = useMemo(() => {
-    const out = { 'first-prep': [], 'second-prep': [], 'third-prep': [] }
+    const out = {
+      'first-prep': [], 'second-prep': [], 'third-prep': [],
+      'first-sec': [], 'second-sec': [], 'third-sec': []
+    }
     for (const v of allVideos) {
       if (out[v.grade]) out[v.grade].push(v)
     }
@@ -1618,7 +1624,10 @@ function EditVideoModal({ video, onCancel, onSave }) {
   const gradeNames = {
     'first-prep': 'الصف الأول الإعدادي',
     'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep': 'الصف الثالث الإعدادي'
+    'third-prep': 'الصف الثالث الإعدادي',
+    'first-sec': 'الصف الأول الثانوي',
+    'second-sec': 'الصف الثاني الثانوي',
+    'third-sec': 'الصف الثالث الثانوي'
   }
 
   return (
@@ -1919,6 +1928,9 @@ function EditVideoModal({ video, onCancel, onSave }) {
                 <option value="first-prep">الصف الأول الإعدادي</option>
                 <option value="second-prep">الصف الثاني الإعدادي</option>
                 <option value="third-prep">الصف الثالث الإعدادي</option>
+                <option value="first-sec">الصف الأول الثانوي</option>
+                <option value="second-sec">الصف الثاني الثانوي</option>
+                <option value="third-sec">الصف الثالث الثانوي</option>
               </select>
             </div>
           </div>

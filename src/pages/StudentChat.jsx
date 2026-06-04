@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { listChatMessages, sendChatMessage, markMessagesAsRead } from '@backend/chatApi'
+import { listChatMessages, sendChatMessage, markMessagesAsRead, clearChatMessages } from '@backend/chatApi'
 import { createNotification } from '@backend/notificationsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import { useAuth } from '../contexts/AuthContext'
@@ -12,6 +12,7 @@ export default function StudentChat() {
   const studentId = user.id
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
+  const [previewImageUrl, setPreviewImageUrl] = useState(null)
   
   // Attachment states
   const [selectedImage, setSelectedImage] = useState(null)
@@ -28,11 +29,16 @@ export default function StudentChat() {
   // UI state
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const messagesEndRef = useRef(null)
+  const messagesBodyRef = useRef(null)
 
   // Scroll to bottom helper
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesBodyRef.current) {
+      messagesBodyRef.current.scrollTo({
+        top: messagesBodyRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
   }
 
   // Fetch messages
@@ -216,6 +222,23 @@ export default function StudentChat() {
     }
   }
 
+  const handleClearChat = async () => {
+    const confirmDelete = window.confirm('هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوفة مرة أخرى.')
+    if (!confirmDelete) return
+
+    try {
+      setSending(true)
+      await clearChatMessages(studentId)
+      setMessages([])
+      alert('تم حذف المحادثة بنجاح')
+    } catch (err) {
+      console.error('Failed to clear chat:', err)
+      alert('فشل في حذف المحادثة: ' + err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
   const formatTime = (sec) => {
     const mins = Math.floor(sec / 60)
     const secs = sec % 60
@@ -264,12 +287,36 @@ export default function StudentChat() {
 
         {/* Chat Workspace Area */}
         <div className="sc-chat-area">
-          <div className="sc-chat-header-bar">
-            <i className="fas fa-comments"></i>
-            <span>نافذة المناقشة والدعم</span>
+          <div className="sc-chat-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <i className="fas fa-comments" style={{ marginInlineEnd: 8 }}></i>
+              <span>نافذة المناقشة والدعم</span>
+            </div>
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearChat}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#ef4444',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <i className="fas fa-trash-can"></i>
+                حذف المحادثة
+              </button>
+            )}
           </div>
 
-          <div className="sc-chat-messages-body">
+          <div className="sc-chat-messages-body" ref={messagesBodyRef}>
             {loading ? (
               <div className="sc-page-loading">
                 <i className="fas fa-spinner fa-spin"></i>
@@ -295,10 +342,8 @@ export default function StudentChat() {
                         )}
                         
                         {msg.file_type === 'image' && msg.file_url && (
-                          <div className="sc-page-msg-image">
-                            <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                              <img src={msg.file_url} alt="مرفق صورة" />
-                            </a>
+                          <div className="sc-page-msg-image" onClick={() => setPreviewImageUrl(msg.file_url)} style={{ cursor: 'pointer' }}>
+                            <img src={msg.file_url} alt="مرفق صورة" />
                           </div>
                         )}
 
@@ -310,12 +355,24 @@ export default function StudentChat() {
 
                         {msg.content && <p className="sc-page-msg-text">{msg.content}</p>}
                         
-                        <span className="sc-page-msg-time">{formatMsgTime(msg.created_at)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 }}>
+                          <span className="sc-page-msg-time" style={{ margin: 0 }}>{formatMsgTime(msg.created_at)}</span>
+                          {isMe && (
+                            <i 
+                              className="fas fa-check-double" 
+                              style={{ 
+                                color: msg.is_read ? '#38bdf8' : '#94a3b8', 
+                                fontSize: '0.75rem',
+                                transition: 'color 0.2s'
+                              }}
+                              title={msg.is_read ? 'تمت القراءة' : 'تم التسليم'}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
                 })}
-                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
@@ -400,6 +457,16 @@ export default function StudentChat() {
         </div>
 
       </div>
+
+      {/* Lightbox / Image Preview Modal */}
+      {previewImageUrl && (
+        <div className="sc-image-lightbox" onClick={() => setPreviewImageUrl(null)}>
+          <div className="sc-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button className="sc-lightbox-close" onClick={() => setPreviewImageUrl(null)}>&times;</button>
+            <img src={previewImageUrl} alt="Preview" />
+          </div>
+        </div>
+      )}
     </main>
   )
 }

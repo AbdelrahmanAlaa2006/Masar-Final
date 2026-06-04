@@ -11,9 +11,12 @@ import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 
 const PREP_META = {
-  first:  { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-  third:  { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  first:        { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  second:       { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+  third:        { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  'first-sec':  { ar: 'الصف الأول الثانوي',   en: 'First Sec',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
+  'second-sec': { ar: 'الصف الثاني الثانوي',  en: 'Second Sec',  accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
+  'third-sec':  { ar: 'الصف الثالث الثانوي',   en: 'Third Sec',   accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
 }
 
 export default function Exams() {
@@ -100,7 +103,10 @@ export default function Exams() {
   }, [rows, userId, userRole, overridesMap])
 
   const examsByLevel = useMemo(() => {
-    const out = { first: [], second: [], third: [] }
+    const out = {
+      first: [], second: [], third: [],
+      'first-sec': [], 'second-sec': [], 'third-sec': []
+    }
     for (const r of rows) {
       const ui = dbToUiGrade(r.grade)
       if (ui && out[ui]) out[ui].push(r)
@@ -185,9 +191,15 @@ export default function Exams() {
     first: 'امتحانات الصف الأول الإعدادي',
     second: 'امتحانات الصف الثاني الإعدادي',
     third: 'امتحانات الصف الثالث الإعدادي',
+    'first-sec': 'امتحانات الصف الأول الثانوي',
+    'second-sec': 'امتحانات الصف الثاني الثانوي',
+    'third-sec': 'امتحانات الصف الثالث الثانوي',
   }
 
-  const levelEmojis = { first: '1️⃣', second: '2️⃣', third: '3️⃣' }
+  const levelEmojis = {
+    first: '1️⃣', second: '2️⃣', third: '3️⃣',
+    'first-sec': '1️⃣', 'second-sec': '2️⃣', 'third-sec': '3️⃣'
+  }
 
   const renderLevelCard = (level) => {
     const m = PREP_META[level]
@@ -344,9 +356,7 @@ export default function Exams() {
             </div>
           </div>
           <div className="prep-grid">
-            {renderLevelCard('first')}
-            {renderLevelCard('second')}
-            {renderLevelCard('third')}
+            {Object.keys(PREP_META).map((key) => renderLevelCard(key))}
           </div>
         </div>
       )}
@@ -914,6 +924,9 @@ function EditExamModal({ exam, onCancel, onSave }) {
                 <option value="first-prep">الصف الأول الإعدادي</option>
                 <option value="second-prep">الصف الثاني الإعدادي</option>
                 <option value="third-prep">الصف الثالث الإعدادي</option>
+                <option value="first-sec">الصف الأول الثانوي</option>
+                <option value="second-sec">الصف الثاني الثانوي</option>
+                <option value="third-sec">الصف الثالث الثانوي</option>
               </select>
             </div>
             <div className="edit-field">

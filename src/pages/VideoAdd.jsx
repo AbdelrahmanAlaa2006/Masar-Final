@@ -508,7 +508,10 @@ export default function VideoAdd() {
   const gradeNames = {
     'first-prep': 'الصف الأول الإعدادي',
     'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep': 'الصف الثالث الإعدادي'
+    'third-prep': 'الصف الثالث الإعدادي',
+    'first-sec': 'الصف الأول الثانوي',
+    'second-sec': 'الصف الثاني الثانوي',
+    'third-sec': 'الصف الثالث الثانوي'
   }
 
   return (
@@ -549,6 +552,9 @@ export default function VideoAdd() {
                   <option value="first-prep">الصف الأول الإعدادي</option>
                   <option value="second-prep">الصف الثاني الإعدادي</option>
                   <option value="third-prep">الصف الثالث الإعدادي</option>
+                  <option value="first-sec">الصف الأول الثانوي</option>
+                  <option value="second-sec">الصف الثاني الثانوي</option>
+                  <option value="third-sec">الصف الثالث الثانوي</option>
                 </select>
               </div>
 

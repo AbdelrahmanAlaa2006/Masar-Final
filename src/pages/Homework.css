@@ -135,11 +135,16 @@
 .prep-blue   .prep-cover { background: linear-gradient(135deg, #4facfe 0%, #2b6cb0 100%); }
 .prep-orange .prep-cover { background: linear-gradient(135deg, #f6ad55 0%, #dd6b20 100%); }
 .prep-purple .prep-cover { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-
+.prep-teal   .prep-cover { background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%); }
+.prep-pink   .prep-cover { background: linear-gradient(135deg, #f472b6 0%, #db2777 100%); }
+.prep-red    .prep-cover { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); }
 .prep-green:hover  { border-color: #38a169; }
 .prep-blue:hover   { border-color: #2b6cb0; }
 .prep-orange:hover { border-color: #dd6b20; }
 .prep-purple:hover { border-color: #667eea; }
+.prep-teal:hover   { border-color: #0d9488; }
+.prep-pink:hover   { border-color: #db2777; }
+.prep-red:hover    { border-color: #e11d48; }
 
 .prep-cover-deco {
   position: absolute;

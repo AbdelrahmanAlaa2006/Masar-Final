@@ -323,6 +323,9 @@ export default function ExamAdd() {
             <option value="first">الصف الأول الإعدادي</option>
             <option value="second">الصف الثاني الإعدادي</option>
             <option value="third">الصف الثالث الإعدادي</option>
+            <option value="first-sec">الصف الأول الثانوي</option>
+            <option value="second-sec">الصف الثاني الثانوي</option>
+            <option value="third-sec">الصف الثالث الثانوي</option>
           </select>
         </div>
 

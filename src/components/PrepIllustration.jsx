@@ -10,6 +10,9 @@ export default function PrepIllustration({ kind = 'first', stage = '' }) {
       {kind === 'first' && <FirstPrepArt />}
       {kind === 'second' && <SecondPrepArt />}
       {kind === 'third' && <ThirdPrepArt />}
+      {kind === 'first-sec' && <FirstSecArt />}
+      {kind === 'second-sec' && <SecondSecArt />}
+      {kind === 'third-sec' && <ThirdSecArt />}
       {stage && <span className="prep-stage">{stage}</span>}
     </div>
   )
@@ -210,6 +213,180 @@ function ThirdPrepArt() {
       <g fill="rgba(255,255,255,0.18)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
         <text x="20" y="118" fontSize="22">★</text>
         <text x="38" y="124" fontSize="14">1ST</text>
+      </g>
+    </svg>
+  )
+}
+
+/* ── Art 4: 1st Sec - Neutral Book & Inkwell/Quill (Teal) ── */
+function FirstSecArt() {
+  return (
+    <svg
+      className="prep-svg"
+      viewBox="0 0 320 150"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      {/* faded background starburst / circle */}
+      <g fill="rgba(255,255,255,0.08)">
+        <circle cx="160" cy="75" r="45" />
+      </g>
+      
+      {/* faded letter/symbols */}
+      <g fill="rgba(255,255,255,0.14)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+        <text x="24" y="66" fontSize="28">أ</text>
+        <text x="50" y="96" fontSize="20">ب</text>
+      </g>
+
+      {/* open book on the left */}
+      <g transform="translate(85, 45)">
+        {/* Book pages */}
+        <path d="M0,52 L0,12 Q4,4 38,10 L38,52 Q4,46 0,52 Z" fill="rgba(255,255,255,0.96)" />
+        <path d="M76,52 L76,12 Q72,4 38,10 L38,52 Q72,46 76,52 Z" fill="rgba(255,255,255,0.86)" />
+        {/* Page text lines */}
+        <g stroke="#0d9488" strokeWidth="1.4" strokeLinecap="round">
+          <line x1="6"  y1="20" x2="32" y2="20" />
+          <line x1="6"  y1="28" x2="28" y2="28" />
+          <line x1="6"  y1="36" x2="32" y2="36" />
+          <line x1="44" y1="20" x2="70" y2="20" />
+          <line x1="44" y1="28" x2="66" y2="28" />
+          <line x1="44" y1="36" x2="70" y2="36" />
+        </g>
+      </g>
+
+      {/* Inkwell & Quill pen on the right */}
+      <g transform="translate(185, 45)">
+        {/* Inkwell base */}
+        <path d="M12,36 L32,36 L36,54 Q36,58 32,58 L12,58 Q8,58 8,54 Z" fill="rgba(255,255,255,0.96)" />
+        {/* Inkwell neck & opening */}
+        <rect x="16" y="28" width="12" height="8" rx="1.5" fill="rgba(255,255,255,0.9)" />
+        <rect x="14" y="26" width="16" height="3" rx="1" fill="rgba(255,255,255,0.98)" />
+        {/* inkwell accent label */}
+        <rect x="12" y="42" width="20" height="10" rx="1" fill="#0d9488" opacity="0.8" />
+        
+        {/* Feather Quill Pen resting in inkwell / writing */}
+        <g transform="rotate(-25 15 30)">
+          {/* quill stem / shaft */}
+          <line x1="20" y1="42" x2="20" y2="-12" stroke="rgba(255,255,255,0.96)" strokeWidth="2" strokeLinecap="round" />
+          {/* quill feather vanes */}
+          <path d="M20,15 C8,5 12,-12 20,-12 C28,-12 32,5 20,15 Z" fill="rgba(255,255,255,0.76)" />
+          {/* decorative vane cuts */}
+          <line x1="16" y1="4" x2="11" y2="8" stroke="#0d9488" strokeWidth="1" />
+          <line x1="15" y1="-2" x2="10" y2="1" stroke="#0d9488" strokeWidth="1" />
+          <line x1="24" y1="4" x2="29" y2="8" stroke="#0d9488" strokeWidth="1" />
+          <line x1="25" y1="-2" x2="30" y2="1" stroke="#0d9488" strokeWidth="1" />
+        </g>
+      </g>
+
+      {/* sparkles / stars */}
+      <g fill="rgba(255,255,255,0.75)">
+        <path d="M48,32 l1.5,3 l3,1.5 l-3,1.5 l-1.5,3 l-1.5,-3 l-3,-1.5 l3,-1.5 z" />
+        <path d="M272,102 l1.5,3 l3,1.5 l-3,1.5 l-1.5,3 l-1.5,-3 l-3,-1.5 l3,-1.5 z" />
+      </g>
+    </svg>
+  )
+}
+
+/* ── Art 5: 2nd Sec - Neutral Stacked Books & Reading Glasses (Pink) ── */
+function SecondSecArt() {
+  return (
+    <svg
+      className="prep-svg"
+      viewBox="0 0 320 150"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      {/* faded background starburst / circle */}
+      <g fill="rgba(255,255,255,0.08)">
+        <circle cx="160" cy="75" r="45" />
+      </g>
+
+      {/* faded letter/symbols */}
+      <g fill="rgba(255,255,255,0.14)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+        <text x="24" y="66" fontSize="28">ت</text>
+        <text x="50" y="96" fontSize="20">ث</text>
+      </g>
+
+      {/* stack of notebooks/books */}
+      <g transform="translate(105, 52)">
+        {/* Book 3 (bottom) */}
+        <rect x="0" y="32" width="110" height="14" rx="2" fill="rgba(255,255,255,0.92)" />
+        <rect x="0" y="32" width="14" height="14" fill="#db2777" />
+        <line x1="22" y1="39" x2="100" y2="39" stroke="#e2e8f0" strokeWidth="1" />
+        
+        {/* Book 2 (middle) */}
+        <rect x="6" y="16" width="98" height="14" rx="2" fill="rgba(255,255,255,0.96)" />
+        <rect x="6" y="16" width="14" height="14" fill="#f472b6" />
+        <line x1="28" y1="23" x2="92" y2="23" stroke="#e2e8f0" strokeWidth="1" />
+        
+        {/* Book 1 (top, slightly offset/tilted) */}
+        <g transform="rotate(-6 50 8)">
+          <rect x="12" y="0" width="86" height="14" rx="2" fill="rgba(255,255,255,0.98)" />
+          <rect x="12" y="0" width="14" height="14" fill="#db2777" />
+          <line x1="34" y1="7" x2="88" y2="7" stroke="#e2e8f0" strokeWidth="1" />
+        </g>
+      </g>
+
+      {/* reading glasses resting above the books */}
+      <g transform="translate(112, 14)">
+        {/* left lens frame */}
+        <circle cx="28" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.96)" strokeWidth="2.2" />
+        <circle cx="28" cy="18" r="11" fill="rgba(255,255,255,0.08)" />
+        {/* right lens frame */}
+        <circle cx="68" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.96)" strokeWidth="2.2" />
+        <circle cx="68" cy="18" r="11" fill="rgba(255,255,255,0.08)" />
+        {/* bridge connect */}
+        <path d="M42,18 Q48,13 54,18" fill="none" stroke="rgba(255,255,255,0.96)" strokeWidth="2.2" strokeLinecap="round" />
+        {/* temples / arms */}
+        <path d="M14,18 Q4,18 0,12" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M82,18 Q92,18 96,12" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round" />
+      </g>
+
+      {/* sparkles / stars */}
+      <g fill="rgba(255,255,255,0.75)">
+        <path d="M42,112 l1.5,3 l3,1.5 l-3,1.5 l-1.5,3 l-1.5,-3 l-3,-1.5 l3,-1.5 z" />
+        <path d="M268,36 l1.5,3 l3,1.5 l-3,1.5 l-1.5,3 l-1.5,-3 l-3,-1.5 l3,-1.5 z" />
+      </g>
+    </svg>
+  )
+}
+
+/* ── Art 6: 3rd Sec - Graduation Mortarboard & Diploma (Red) ── */
+function ThirdSecArt() {
+  return (
+    <svg
+      className="prep-svg"
+      viewBox="0 0 320 150"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      {/* faded percent */}
+      <g fill="rgba(255,255,255,0.12)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+        <text x="24" y="66" fontSize="32">100%</text>
+      </g>
+      {/* graduation cap */}
+      <g transform="translate(112, 14)">
+        {/* bottom cap skull segment */}
+        <path d="M26,38 Q48,46 70,38 L70,48 Q48,56 26,48 Z" fill="rgba(255,255,255,0.96)" />
+        {/* cap diamond top */}
+        <polygon points="48,8 96,24 48,40 0,24" fill="rgba(255,255,255,0.96)" stroke="rgba(255,255,255,0.85)" strokeWidth="1" />
+        {/* tassel ribbon */}
+        <path d="M48,24 Q24,28 14,48" fill="none" stroke="#e11d48" strokeWidth="1.8" />
+        <circle cx="14" cy="48" r="2.5" fill="#e11d48" />
+      </g>
+      {/* diploma scroll */}
+      <g transform="translate(196, 64) rotate(-15)">
+        <rect x="0" y="0" width="56" height="14" rx="2" fill="rgba(255,255,255,0.92)" stroke="rgba(255,255,255,0.8)" strokeWidth="1" />
+        {/* ribbon band */}
+        <rect x="22" y="-1" width="12" height="16" fill="#e11d48" rx="1" />
+      </g>
+      {/* sparkles */}
+      <g fill="rgba(255,255,255,0.85)">
+        <path d="M54,92 l2.5,4 l4,2.5 l-4,2.5 l-2.5,4 l-2.5,-4 l-4,-2.5 l4,-2.5 z" />
+        <path d="M256,42 l2.5,4 l4,2.5 l-4,2.5 l-2.5,4 l-2.5,-4 l-4,-2.5 l4,-2.5 z" />
       </g>
     </svg>
   )

@@ -10,6 +10,9 @@ const GRADE_LABEL = {
   'first-prep':  'الأول الإعدادي',
   'second-prep': 'الثاني الإعدادي',
   'third-prep':  'الثالث الإعدادي',
+  'first-sec':   'الأول الثانوي',
+  'second-sec':  'الثاني الثانوي',
+  'third-sec':   'الثالث الثانوي',
 }
 
 export default function Report() {

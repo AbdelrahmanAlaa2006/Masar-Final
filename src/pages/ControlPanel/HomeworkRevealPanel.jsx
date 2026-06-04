@@ -158,6 +158,9 @@ export default function HomeworkRevealPanel({ onBack, flash }) {
           { id: 'first-prep',  icon: 'fa-seedling',      label: 'الأول الإعدادي' },
           { id: 'second-prep', icon: 'fa-book-open-reader', label: 'الثاني الإعدادي' },
           { id: 'third-prep',  icon: 'fa-trophy',        label: 'الثالث الإعدادي' },
+          { id: 'first-sec',   icon: 'fa-graduation-cap', label: 'الأول الثانوي' },
+          { id: 'second-sec',  icon: 'fa-user-graduate', label: 'الثاني الثانوي' },
+          { id: 'third-sec',   icon: 'fa-award',         label: 'الثالث الثانوي' },
         ].map((opt) => (
           <button
             key={opt.id}

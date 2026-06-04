@@ -17,9 +17,45 @@ body.dark {
   --bg-color: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   --bg-secondary: #0f0f23;
   --text-color: #f7fafc;
-  --card-bg: #2d3748;
+  --card-bg: rgba(30, 41, 59, 0.45);
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+body.dark::before {
+  background: #0f0f23;
+}
+
+body.dark .card {
+  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow);
+}
+
+body.dark .card:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+  box-shadow: 0 15px 35px rgba(167, 139, 250, 0.15);
+}
+
+body.dark .card h2 {
+  color: #a78bfa;
+}
+
+body.dark .card p {
+  color: #cbd5e1;
+  opacity: 0.85;
+}
+
+body.dark .home-card-icon {
+  --icon-primary: #a78bfa;
+  --icon-secondary: #c084fc;
+  filter: drop-shadow(0 6px 14px rgba(167, 139, 250, 0.15));
+}
+
+body.dark .card:hover .home-card-icon {
+  filter: drop-shadow(0 10px 20px rgba(167, 139, 250, 0.35));
 }
 
 body {

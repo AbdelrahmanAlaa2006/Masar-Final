@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRead } from '@backend/chatApi'
+import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRead, clearChatMessages } from '@backend/chatApi'
+import { createNotification } from '@backend/notificationsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import './ChatsPanel.css'
 
@@ -9,12 +10,14 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [previewImageUrl, setPreviewImageUrl] = useState(null)
 
   // Attachment states
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const fileInputRef = useRef(null)
   const hasAutoSelectedRef = useRef(false)
+  const lastProcessedInitialStudentIdRef = useRef(null)
 
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -28,7 +31,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [sending, setSending] = useState(false)
 
-  const messagesEndRef = useRef(null)
+  const messagesBodyRef = useRef(null)
 
   // Get Admin profile info from sessionStorage to use as senderId
   const adminId = (() => {
@@ -42,7 +45,12 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
 
   // Scroll to bottom helper
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesBodyRef.current) {
+      messagesBodyRef.current.scrollTo({
+        top: messagesBodyRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
   }
 
   // Load chats overview
@@ -96,6 +104,17 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   useEffect(() => {
     loadOverview()
   }, [])
+
+  // Focus student chat when initialStudentId changes (e.g. clicked notification)
+  useEffect(() => {
+    if (initialStudentId && threads.length > 0 && initialStudentId !== lastProcessedInitialStudentIdRef.current) {
+      const target = threads.find(t => t.student?.id === initialStudentId)
+      if (target?.student) {
+        lastProcessedInitialStudentIdRef.current = initialStudentId
+        handleSelectStudent(target.student)
+      }
+    }
+  }, [initialStudentId, threads])
 
   // Poll for overview and selected thread updates
   useEffect(() => {
@@ -198,6 +217,17 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
         fileType: 'audio'
       })
 
+      // Trigger student alert notification
+      await createNotification({
+        title: 'رسالة جديدة من المعلم',
+        message: '🎙️ أرسل رسالة صوتية',
+        level: 'info',
+        scope: 'student',
+        targetStudent: selectedStudent.id,
+        meta: { kind: 'admin_chat_message' },
+        createdBy: adminId
+      }).catch(err => console.error('Student voice chat notification alert failed:', err))
+
       setMessages(prev => [...prev, newMsg])
       scrollToBottom()
       loadOverview(true)
@@ -233,6 +263,17 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
         fileType
       })
 
+      // Trigger student alert notification
+      await createNotification({
+        title: 'رسالة جديدة من المعلم',
+        message: inputText.trim() || (fileType === 'image' ? '🖼️ أرسل صورة' : 'مرفق جديد'),
+        level: 'info',
+        scope: 'student',
+        targetStudent: selectedStudent.id,
+        meta: { kind: 'admin_chat_message' },
+        createdBy: adminId
+      }).catch(err => console.error('Student chat notification alert failed:', err))
+
       setMessages(prev => [...prev, newMsg])
       setInputText('')
       cancelImage()
@@ -241,6 +282,25 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
     } catch (err) {
       console.error('Failed to send admin reply:', err)
       flash('فشل إرسال الرد: ' + err.message, 'warning')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleClearChat = async () => {
+    if (!selectedStudent) return
+    const confirmDelete = window.confirm('هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوفة مرة أخرى.')
+    if (!confirmDelete) return
+
+    try {
+      setSending(true)
+      await clearChatMessages(selectedStudent.id)
+      setMessages([])
+      flash('تم حذف المحادثة بنجاح', 'success')
+      loadOverview(true)
+    } catch (err) {
+      console.error('Failed to clear chat:', err)
+      flash('فشل في حذف المحادثة: ' + err.message, 'warning')
     } finally {
       setSending(false)
     }
@@ -365,22 +425,46 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
           {selectedStudent ? (
             <div className="chat-pane-inner">
               {/* Header */}
-              <div className="chat-pane-header">
-                <div className="chat-pane-header-avatar">
-                  {selectedStudent.avatar_url ? (
-                    <img src={selectedStudent.avatar_url} alt="" />
-                  ) : (
-                    <i className="fas fa-user-graduate"></i>
-                  )}
+              <div className="chat-pane-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="chat-pane-header-avatar">
+                    {selectedStudent.avatar_url ? (
+                      <img src={selectedStudent.avatar_url} alt="" />
+                    ) : (
+                      <i className="fas fa-user-graduate"></i>
+                    )}
+                  </div>
+                  <div className="chat-pane-header-info">
+                    <h3>{selectedStudent.name}</h3>
+                    <p><i className="fas fa-phone"></i> {selectedStudent.phone || 'بدون رقم هاتف'}</p>
+                  </div>
                 </div>
-                <div className="chat-pane-header-info">
-                  <h3>{selectedStudent.name}</h3>
-                  <p><i className="fas fa-phone"></i> {selectedStudent.phone || 'بدون رقم هاتف'}</p>
-                </div>
+                {messages.length > 0 && (
+                  <button 
+                    className="cp-btn cp-btn-danger" 
+                    onClick={handleClearChat}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#ef4444',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <i className="fas fa-trash-can"></i>
+                    حذف المحادثة
+                  </button>
+                )}
               </div>
 
               {/* Message List area */}
-              <div className="chat-pane-messages">
+              <div className="chat-pane-messages" ref={messagesBodyRef}>
                 {loadingMessages ? (
                   <div className="chat-messages-loading">
                     <i className="fas fa-spinner fa-spin"></i>
@@ -402,10 +486,8 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
                           <div className={`chat-bubble-row ${isStudentMsg ? 'student' : 'admin'}`}>
                             <div className="chat-bubble-card">
                               {msg.file_type === 'image' && msg.file_url && (
-                                <div className="bubble-attached-image">
-                                  <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                                    <img src={msg.file_url} alt="Attached attachment" />
-                                  </a>
+                                <div className="bubble-attached-image" onClick={() => setPreviewImageUrl(msg.file_url)} style={{ cursor: 'pointer' }}>
+                                  <img src={msg.file_url} alt="Attached attachment" />
                                 </div>
                               )}
 
@@ -428,7 +510,6 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
                         </React.Fragment>
                       )
                     })}
-                    <div ref={messagesEndRef} />
                   </div>
                 )}
               </div>
@@ -519,6 +600,16 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
           )}
         </div>
       </div>
+
+      {/* Lightbox / Image Preview Modal */}
+      {previewImageUrl && (
+        <div className="ap-image-lightbox" onClick={() => setPreviewImageUrl(null)}>
+          <div className="ap-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button className="ap-lightbox-close" onClick={() => setPreviewImageUrl(null)}>&times;</button>
+            <img src={previewImageUrl} alt="Preview" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

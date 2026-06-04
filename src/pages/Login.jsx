@@ -17,7 +17,7 @@ import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import './Login.css'        // your existing styles (forms, marketing, footer, forgot modal)
-import './Login.css'     // NEW styles (navbar, hero, auth-modal, teacher portrait)
+import './login-styles.css'     // NEW styles (navbar, hero, auth-modal, teacher portrait)
 
 /* ─────────── translations ─────────── */
 const translations = {
@@ -48,14 +48,14 @@ const translations = {
     nav_about: 'عن المعلم',
     nav_signin: 'تسجيل الدخول',
     nav_signup: 'إنشاء حساب',
-    hero_badge: 'منصة الأستاذ عبدالرحمن علاء',
+    hero_badge: 'منصة مسار التعليمية',
     hero_title_a: 'اللغة العربية',
-    hero_title_b: 'بطعم جديد',
+    hero_title_b: 'لغة الضاد بطعم جديد',
     hero_sub: 'منصة تعليمية متخصّصة في اللغة العربية — سجّل حسابك، يتم اعتماده، وابدأ رحلتك مع شرح يخلّيك تفهم وتحب اللغة.',
     cta_primary: 'أنشئ حسابك الآن',
     cta_secondary: 'لديك حساب؟ ادخل',
-    brand_short: 'أ. عبدالرحمن علاء',
-    brand_long: 'منصة الأستاذ عبدالرحمن علاء',
+    brand_short: 'منصة مسار التعليمية',
+    brand_long: 'منصة مسار التعليمية',
   },
   en: {
     login: 'Login', phone: 'Phone Number', name: 'Full Name', password: 'Password',
@@ -68,17 +68,18 @@ const translations = {
     'register-btn': 'Create Account', 'login-btn-link': 'Log In', 'register-btn-link': 'Register Now',
     'student-name': 'Full Student Name', 'select-grade': 'Select Academic Grade',
     nav_about: 'About', nav_signin: 'Sign in', nav_signup: 'Sign up',
-    hero_badge: "Mr. Abdelrahman Alaa's Platform",
+    hero_badge: "Masar Educational Platform",
     hero_title_a: 'Arabic language', hero_title_b: 'made enjoyable',
     hero_sub: "A learning platform dedicated to Arabic. Create your account, get approved, and start learning with a teacher who makes the language click.",
     cta_primary: 'Create account', cta_secondary: 'Have an account? Sign in',
-    brand_short: 'Mr. Abdelrahman', brand_long: "Mr. Abdelrahman Alaa's Platform",
+    brand_short: 'Masar Educational Platform', brand_long: "Masar Educational Platform",
   },
 }
 
 export default function Login() {
   const { login } = useAuth()
-  const { tenantId } = useTenant() // tenantId still passed to authAPI; brand display uses new branding
+  const { tenant, tenantId, tenantSlug, tenantName } = useTenant()
+  const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [phone, setPhone] = useState('')
@@ -112,6 +113,32 @@ export default function Login() {
   const [portraitHover, setPortraitHover] = useState(false)
 
   const t = translations[lang]
+
+  const features = lang === 'ar' ? [
+    { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
+    { icon: 'fa-video', title: 'فيديوهات بجودة عالية', desc: 'شرح مسجل للمحاضرات بجودة HD مع إمكانية التشغيل والاستئناف في أي وقت ومن أي جهاز.' },
+    { icon: 'fa-file-signature', title: 'واجبات ومتابعة دورية', desc: 'حل الواجبات ورفع الإجابات إلكترونيًا للمعلم مع تصحيح وملاحظات تفصيلية لضمان الاستفادة.' },
+    { icon: 'fa-file-alt', title: 'امتحانات إلكترونية', desc: 'اختبارات دورية لقياس المستوى بمختلف درجات الصعوبة وتوفير نتائج ونماذج إجابة فورية.' },
+    { icon: 'fa-chart-line', title: 'تقارير أداء شاملة', desc: 'رصد دقيق لمستوى الطالب بالامتحانات والواجبات والمشاهدات، ومشاركتها مع ولي الأمر.' },
+    { icon: 'fa-comments', title: 'دعم وتواصل مستمر', desc: 'تواصل وتفاعل مباشر مع المعلم لحل المشكلات والإجابة عن جميع الاستفسارات التعليمية.' },
+  ] : [
+    { icon: 'fa-book-open', title: 'Interactive Lectures', desc: 'Detailed and simplified explanations of the curriculum using modern visual aids.' },
+    { icon: 'fa-video', title: 'High-Definition Videos', desc: 'Recorded lectures available in HD to play, pause, and resume anytime on any device.' },
+    { icon: 'fa-file-signature', title: 'Periodic Homework', desc: 'Submit assignments online to receive detailed corrections and teacher feedback.' },
+    { icon: 'fa-file-alt', title: 'Electronic Exams', desc: 'Periodic tests of varying difficulty levels with instant grading and detailed model answers.' },
+    { icon: 'fa-chart-line', title: 'Performance Reports', desc: 'Comprehensive tracking of student progress in exams and lectures, visible to parents.' },
+    { icon: 'fa-comments', title: 'Direct Student Support', desc: 'Engage with your teacher to ask questions, clarify concepts, and receive academic support.' },
+  ]
+
+  const steps = lang === 'ar' ? [
+    { n: '1', title: 'احصل على حسابك', desc: 'تواصل مع المعلم أو إدارة المنصة لتسجيل حسابك واستلام بيانات الدخول الخاصة بك.' },
+    { n: '2', title: 'سجّل دخولك', desc: 'أدخل رقم هاتفك وكلمة المرور الخاصة بك في النموذج بالأعلى للدخول الآمن إلى حسابك.' },
+    { n: '3', title: 'انطلق في مسارك', desc: 'شاهد المحاضرات والملخصات، حلّ واجباتك واختباراتك، وتابع أداءك خطوة بخطوة للتميز.' },
+  ] : [
+    { n: '1', title: 'Get Your Account', desc: 'Contact your teacher or the platform administration to register and receive your credentials.' },
+    { n: '2', title: 'Log In Securely', desc: 'Enter your assigned phone number and password in the login form above to access your portal.' },
+    { n: '3', title: 'Start Your Path', desc: 'Watch video lectures, submit homework assignments, complete exams, and track your achievements.' },
+  ]
 
   useEffect(() => {
     if (theme === 'dark') document.body.classList.add('dark')
@@ -408,13 +435,141 @@ export default function Login() {
         </div>
       </section>
 
-      {/* ─────────── KEEP YOUR EXISTING MARKETING SECTIONS BELOW ─────────── */}
-      {/* If you want to keep features / steps / location, paste them here from your old file.
-          They will use your existing Login.css and continue to work unchanged. */}
+      {/* ─────────── MARKETING SECTIONS ─────────── */}
+      <section id="features" className="login-features">
+        <div className="section-inner">
+          <h2 className="section-heading">{lang === 'ar' ? 'لماذا منصة مسار؟' : 'Why Masar Platform?'}</h2>
+          <p className="section-sub">{lang === 'ar' ? 'كل ما تحتاجه لرحلة تعليمية ناجحة في مكان واحد' : 'Everything you need for a successful learning journey in one place'}</p>
+          <div className="features-grid">
+            {features.map((f, i) => (
+              <div key={i} className="feature-card">
+                <div className="feature-icon"><i className={`fas ${f.icon}`}></i></div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="login-steps">
+        <div className="section-inner">
+          <h2 className="section-heading">{lang === 'ar' ? 'كيف تبدأ؟' : 'How to Get Started?'}</h2>
+          <p className="section-sub">{lang === 'ar' ? 'ثلاث خطوات بسيطة تفصلك عن رحلتك التعليمية' : 'Three simple steps to begin your learning journey'}</p>
+          <div className="steps-grid">
+            {steps.map((s, i) => (
+              <div key={i} className="step-card">
+                <div className="step-number">{s.n}</div>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="login-location">
+        <div className="section-inner">
+          <h2 className="section-heading">{lang === 'ar' ? 'موقعنا' : 'Find Us'}</h2>
+          <p className="section-sub">{lang === 'ar' ? 'تعرف على مكاننا وتواصل معنا بسهولة' : 'Locate our center and reach us easily'}</p>
+
+          <div className="location-grid">
+            {/* Map embed */}
+            <div className="location-map-wrapper">
+              <iframe
+                title="Masar Location"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+                className="location-map"
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              ></iframe>
+            </div>
+
+            {/* Contact info */}
+            <div className="location-info">
+              <div className="location-info-card">
+                <div className="location-info-icon">
+                  <i className="fas fa-map-marker-alt"></i>
+                </div>
+                <div>
+                  <h4>{lang === 'ar' ? 'العنوان' : 'Address'}</h4>
+                  <p>{lang === 'ar' ? 'دمنهور، البحيرة، مصر' : 'Damanhour, Beheira, Egypt'}</p>
+                </div>
+              </div>
+
+              <div className="location-info-card">
+                <div className="location-info-icon">
+                  <i className="fas fa-phone-alt"></i>
+                </div>
+                <div>
+                  <h4>{lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}</h4>
+                  <p dir="ltr">+20 XXX XXX XXXX</p>
+                </div>
+              </div>
+
+              <div className="location-info-card">
+                <div className="location-info-icon">
+                  <i className="fas fa-clock"></i>
+                </div>
+                <div>
+                  <h4>{lang === 'ar' ? 'ساعات العمل' : 'Working Hours'}</h4>
+                  <p>{lang === 'ar' ? 'السبت – الخميس: ٩ ص – ٩ م' : 'Sat – Thu: 9 AM – 9 PM'}</p>
+                </div>
+              </div>
+
+              <a
+                href="https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="location-directions-btn"
+              >
+                <i className="fas fa-directions"></i>
+                {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ─────────── FOOTER ─────────── */}
-      <footer className="aa-footer">
-        © 2026 {t.brand_long} — {lang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}
+      <footer className="login-footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <img src={isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")} alt="Logo" className="footer-logo" />
+            <span className="footer-brand-name">
+              {isDefaultTenant
+                ? (lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform')
+                : tenantName}
+            </span>
+          </div>
+
+          <div className="footer-socials">
+            <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
+              <i className="fab fa-facebook-f"></i>
+            </a>
+            <a href="https://wa.me/" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="WhatsApp">
+              <i className="fab fa-whatsapp"></i>
+            </a>
+            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
+              <i className="fab fa-instagram"></i>
+            </a>
+            <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="YouTube">
+              <i className="fab fa-youtube"></i>
+            </a>
+            <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="TikTok">
+              <i className="fab fa-tiktok"></i>
+            </a>
+          </div>
+
+          <div className="footer-divider"></div>
+
+          <p className="footer-copy">
+            {lang === 'ar'
+              ? `© 2026 ${isDefaultTenant ? 'منصة مسار التعليمية' : tenantName}. جميع الحقوق محفوظة`
+              : `© 2026 ${isDefaultTenant ? 'Masar Educational Platform' : tenantName}. All rights reserved`}
+          </p>
+        </div>
       </footer>
 
       {/* ─────────── AUTH MODAL (login/register) ─────────── */}

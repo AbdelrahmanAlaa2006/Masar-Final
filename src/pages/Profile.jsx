@@ -33,6 +33,9 @@ export default function Profile() {
     'first-prep':  'الصف الأول الإعدادي',
     'second-prep': 'الصف الثاني الإعدادي',
     'third-prep':  'الصف الثالث الإعدادي',
+    'first-sec':   'الصف الأول الثانوي',
+    'second-sec':  'الصف الثاني الثانوي',
+    'third-sec':   'الصف الثالث الثانوي',
   }
   const gradeLabel = GRADE_LABEL[user?.grade] || '—'
 

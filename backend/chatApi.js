@@ -155,3 +155,22 @@ export async function markMessagesAsRead(studentId, role) {
   }
   return true
 }
+
+/**
+ * Delete all chat messages for a specific student.
+ */
+export async function clearChatMessages(studentId) {
+  if (!studentId) throw new Error('مطلوب معرف الطالب')
+
+  const { error } = await supabase
+    .from('chat_messages')
+    .delete()
+    .eq('student_id', studentId)
+
+  if (error) {
+    console.error('Error clearing chat messages:', error)
+    throw error
+  }
+  return true
+}
+

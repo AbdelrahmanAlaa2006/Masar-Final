@@ -11,6 +11,9 @@ const GRADE_SHORT = {
   'first-prep':  'أولى إعدادي',
   'second-prep': 'تانية إعدادي',
   'third-prep':  'تالتة إعدادي',
+  'first-sec':   'أولى ثانوي',
+  'second-sec':  'تانية ثانوي',
+  'third-sec':   'تالتة ثانوي',
 }
 
 const fmtDate = (d) => {
@@ -1192,6 +1195,9 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <option value="first-prep">الصف الأول الإعدادي</option>
                 <option value="second-prep">الصف الثاني الإعدادي</option>
                 <option value="third-prep">الصف الثالث الإعدادي</option>
+                <option value="first-sec">الصف الأول الثانوي</option>
+                <option value="second-sec">الصف الثاني الثانوي</option>
+                <option value="third-sec">الصف الثالث الثانوي</option>
               </select>
 
               {/* Text Search Field */}

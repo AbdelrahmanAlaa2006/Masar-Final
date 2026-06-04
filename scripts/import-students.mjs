@@ -24,7 +24,7 @@ function parseCSV(text) {
 }
 
 const rows = parseCSV(fs.readFileSync(csvPath, 'utf8'))
-const GRADES = new Set(['first-prep', 'second-prep', 'third-prep'])
+const GRADES = new Set(['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec'])
 
 let ok = 0, skipped = 0, failed = 0
 

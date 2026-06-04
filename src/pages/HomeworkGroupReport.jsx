@@ -9,8 +9,11 @@ const GRADE_LABEL = {
   'first-prep':  'الأول الإعدادي',
   'second-prep': 'الثاني الإعدادي',
   'third-prep':  'الثالث الإعدادي',
+  'first-sec':   'الأول الثانوي',
+  'second-sec':  'الثاني الثانوي',
+  'third-sec':   'الثالث الثانوي',
 }
-const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep']
+const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
 
 export default function HomeworkGroupReport() {
   const navigate = useNavigate()

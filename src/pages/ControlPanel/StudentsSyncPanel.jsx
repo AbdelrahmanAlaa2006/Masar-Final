@@ -6,6 +6,9 @@ const GRADE_LABEL = {
   'first-prep':  'الأول الإعدادي',
   'second-prep': 'الثاني الإعدادي',
   'third-prep':  'الثالث الإعدادي',
+  'first-sec':   'الأول الثانوي',
+  'second-sec':  'الثاني الثانوي',
+  'third-sec':   'الثالث الثانوي',
 }
 
 // ── IndexedDB tiny helper for storing the FileSystemFileHandle ─────
@@ -298,7 +301,7 @@ export default function StudentsSyncPanel() {
           <i className="fas fa-circle-info"></i>
           <span>
             القيم المسموحة لعمود <code>grade</code>:
-            <code>first-prep</code> ، <code>second-prep</code> ، <code>third-prep</code>
+            <code>first-prep</code> ، <code>second-prep</code> ، <code>third-prep</code> ، <code>first-sec</code> ، <code>second-sec</code> ، <code>third-sec</code>
           </span>
         </div>
       </div>

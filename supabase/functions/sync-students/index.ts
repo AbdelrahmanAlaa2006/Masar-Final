@@ -31,7 +31,7 @@ const json = (body: unknown, init: ResponseInit = {}) =>
     headers: { ...CORS, 'Content-Type': 'application/json', ...(init.headers || {}) },
   })
 
-const GRADES = new Set(['first-prep', 'second-prep', 'third-prep'])
+const GRADES = new Set(['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec'])
 
 // Same normalisation as the local script: digits-only, no leading zero.
 const normPhone = (p: string) => String(p || '').replace(/\D/g, '').replace(/^0+/, '')

@@ -32,9 +32,12 @@ import { useAuth } from '../contexts/AuthContext'
    ────────────────────────────────────────────────────────────── */
 
 const PREPS = [
-  { id: 'first',  nameAr: 'الصف الأول الإعدادي',  nameEn: 'First Prep',  icon: 'fa-seedling',         accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  { id: 'second', nameAr: 'الصف الثاني الإعدادي', nameEn: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-  { id: 'third',  nameAr: 'الصف الثالث الإعدادي',  nameEn: 'Third Prep',  icon: 'fa-trophy',           accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  { id: 'first',      nameAr: 'الصف الأول الإعدادي',  nameEn: 'First Prep',  icon: 'fa-seedling',         accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  { id: 'second',     nameAr: 'الصف الثاني الإعدادي', nameEn: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
+  { id: 'third',      nameAr: 'الصف الثالث الإعدادي',  nameEn: 'Third Prep',  icon: 'fa-trophy',           accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  { id: 'first-sec',  nameAr: 'الصف الأول الثانوي',   nameEn: 'First Sec',   icon: 'fa-graduation-cap',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
+  { id: 'second-sec', nameAr: 'الصف الثاني الثانوي',  nameEn: 'Second Sec',  icon: 'fa-user-graduate',    accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
+  { id: 'third-sec',  nameAr: 'الصف الثالث الثانوي',   nameEn: 'Third Sec',   icon: 'fa-award',            accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
 ]
 
 const PLACEHOLDER_COVER =
@@ -151,7 +154,10 @@ export default function Homework() {
   }, [rows, userId, userRole])
 
   const homeworks = useMemo(() => {
-    const grouped = { first: [], second: [], third: [] }
+    const grouped = {
+      first: [], second: [], third: [],
+      'first-sec': [], 'second-sec': [], 'third-sec': []
+    }
     if (!Array.isArray(rows)) return grouped
     for (const r of rows) {
       if (!r) continue
