@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRead, clearChatMessages } from '@backend/chatApi'
 import { createNotification } from '@backend/notificationsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
-import { useAuth } from '../../contexts/AuthContext'
+import { getProfile } from '@backend/profilesApi'
+import { cached, invalidate } from '../../utils/cache'
 import './ChatsPanel.css'
 
 export default function ChatsPanel({ onBack, flash, initialStudentId }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+
   // Get Admin profile info from sessionStorage to use as senderId
   const adminId = (() => {
     try {
@@ -15,7 +19,6 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
       return null
     }
   })()
-
   const [threads, setThreads] = useState([])
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [messages, setMessages] = useState([])
@@ -61,15 +64,22 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   const loadOverview = async (isPoll = false) => {
     try {
       if (!isPoll) setLoadingThreads(true)
-      const data = await listChatsOverview()
+      const data = await cached('chats:overview', 5000, () => listChatsOverview())
       setThreads(data)
 
       // Auto-select initial student once upon loading threads
-      if (initialStudentId && !hasAutoSelectedRef.current && data?.length > 0) {
-        const target = data.find(t => t.student?.id === initialStudentId)
+      if (initialStudentId && !hasAutoSelectedRef.current) {
+        const target = data?.find(t => t.student?.id === initialStudentId)
         if (target?.student) {
           hasAutoSelectedRef.current = true
           handleSelectStudent(target.student)
+        } else if (data !== null) {
+          // If student is not in threads list, fetch their profile to start a new chat
+          const profile = await getProfile(initialStudentId)
+          if (profile) {
+            hasAutoSelectedRef.current = true
+            handleSelectStudent(profile)
+          }
         }
       }
     } catch (err) {
@@ -93,6 +103,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
       if (hasUnread) {
         await markMessagesAsRead(studentId, 'admin')
         // Refresh threads overview to update badges
+        invalidate('chats:overview')
         const updatedThreads = await listChatsOverview()
         setThreads(updatedThreads)
       }
@@ -104,32 +115,65 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
     }
   }
 
-  // Initial load
+  // Single automatic reload on mount to prevent layout/blank screen issues, and initial overview load
   useEffect(() => {
-    loadOverview()
+    const handleUnload = () => {
+      window.isReloading = true
+    }
+    window.addEventListener('beforeunload', handleUnload)
+
+    const hasRefreshed = sessionStorage.getItem('chats-refreshed')
+    if (!hasRefreshed) {
+      sessionStorage.setItem('chats-refreshed', 'true')
+      window.location.reload()
+    } else {
+      loadOverview()
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+    }
   }, [])
 
   // Focus student chat when initialStudentId changes (e.g. clicked notification)
   useEffect(() => {
-    if (initialStudentId && threads.length > 0 && initialStudentId !== lastProcessedInitialStudentIdRef.current) {
+    if (initialStudentId && initialStudentId !== lastProcessedInitialStudentIdRef.current) {
       const target = threads.find(t => t.student?.id === initialStudentId)
       if (target?.student) {
         lastProcessedInitialStudentIdRef.current = initialStudentId
         handleSelectStudent(target.student)
+      } else if (threads.length > 0) {
+        // Fetch and select student if they are not in the current threads list
+        ;(async () => {
+          const profile = await getProfile(initialStudentId)
+          if (profile) {
+            lastProcessedInitialStudentIdRef.current = initialStudentId
+            handleSelectStudent(profile)
+          }
+        })()
       }
     }
   }, [initialStudentId, threads])
 
-  // Poll for overview and selected thread updates
+  // Poll active chat thread messages every 10 seconds
   useEffect(() => {
+    if (!selectedStudent) return
+
     const interval = setInterval(() => {
-      loadOverview(true)
-      if (selectedStudent) {
-        loadMessages(selectedStudent.id, true)
-      }
-    }, 5000)
+      if (document.hidden) return
+      loadMessages(selectedStudent.id, true)
+    }, 10000)
     return () => clearInterval(interval)
   }, [selectedStudent])
+
+  // Poll chats overview list (sidebar) less frequently, every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.hidden) return
+      loadOverview(true)
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Scroll when messages load or change
   useEffect(() => {
@@ -138,11 +182,13 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
 
   // Select student thread
   const handleSelectStudent = (student) => {
+    lastProcessedInitialStudentIdRef.current = student.id
     setSelectedStudent(student)
     setInputText('')
     cancelImage()
     loadMessages(student.id)
     setMobileActiveView('chat')
+    setSearchParams({ section: 'chats', studentId: student.id }, { replace: true })
   }
 
   // Image Attach
@@ -235,6 +281,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
 
       setMessages(prev => [...prev, newMsg])
       scrollToBottom()
+      invalidate('chats:overview')
       loadOverview(true)
     } catch (err) {
       console.error('Audio reply upload failed:', err)
@@ -283,6 +330,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
       setInputText('')
       cancelImage()
       scrollToBottom()
+      invalidate('chats:overview')
       loadOverview(true)
     } catch (err) {
       console.error('Failed to send admin reply:', err)
@@ -302,6 +350,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
       await clearChatMessages(selectedStudent.id)
       setMessages([])
       flash('تم حذف المحادثة بنجاح', 'success')
+      invalidate('chats:overview')
       loadOverview(true)
     } catch (err) {
       console.error('Failed to clear chat:', err)

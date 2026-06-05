@@ -276,7 +276,7 @@ export default function Login() {
       else localStorage.removeItem('masaar-remembered-phone')
       clearFailures()
       showSuccessMessage()
-      setTimeout(() => { login(response.token, response.user); navigate('/') }, 1500)
+      setTimeout(() => { login(response.token, response.user); window.location.href = '/' }, 1500)
     } catch (err) {
       console.error('Login error:', err); recordFailure()
       const cd = getCooldownRemaining()
@@ -298,7 +298,7 @@ export default function Login() {
       if (!response.user) throw new Error('Invalid response from server')
       showRegisterSuccessMessage()
       setTimeout(() => {
-        if (response.token) { login(response.token, response.user); navigate('/') }
+        if (response.token) { login(response.token, response.user); window.location.href = '/' }
         else { setIsRegistering(false); setPhone(phone.trim()); setPassword(''); setLoading(false) }
       }, 1500)
     } catch (err) {
@@ -436,6 +436,65 @@ export default function Login() {
           </div>
         </div>
       </section>
+      {/* ─────────── ABOUT TEACHER ─────────── */}
+      {/* Paste this block in Login.jsx right AFTER the closing </section> of the hero
+    (around line 438) and BEFORE the <section id="features"> block. */}
+      <section id="about" className="login-about">
+        <div className="section-inner about-grid">
+          <div className="about-text">
+            <span className="about-kicker">
+              {lang === 'ar' ? 'عن المعلم' : 'About the teacher'}
+            </span>
+            <h2 className="section-heading about-title">
+              {lang === 'ar' ? 'أ. عبدالرحمن علاء' : 'Mr. Abdelrahman Alaa'}
+            </h2>
+            <p className="about-role">
+              {lang === 'ar' ? 'مدرّس اللغة العربية' : 'Arabic Language Teacher'}
+            </p>
+            <p className="about-bio">
+              {lang === 'ar'
+                ? 'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.'
+                : 'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'}
+            </p>
+
+            <div className="about-stats">
+              <div className="about-stat">
+                <i className="fas fa-award"></i>
+                <div className="about-stat-value">+10</div>
+                <div className="about-stat-label">
+                  {lang === 'ar' ? 'سنوات خبرة' : 'Years of experience'}
+                </div>
+              </div>
+              <div className="about-stat">
+                <i className="fas fa-users"></i>
+                <div className="about-stat-value">+2,000</div>
+                <div className="about-stat-label">
+                  {lang === 'ar' ? 'طالب وطالبة' : 'Students taught'}
+                </div>
+              </div>
+              <div className="about-stat">
+                <i className="fas fa-book-open"></i>
+                <div className="about-stat-value">98%</div>
+                <div className="about-stat-label">
+                  {lang === 'ar' ? 'رضا الطلاب' : 'Student satisfaction'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="about-quote">
+            <i className="fas fa-sparkles about-quote-icon"></i>
+            <p className="about-quote-text">
+              {lang === 'ar'
+                ? '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»'
+                : '“Arabic isn\'t hard — it just needs to be taught the right way.”'}
+            </p>
+            <p className="about-quote-author">
+              — {lang === 'ar' ? 'أ. عبدالرحمن علاء' : 'Mr. Abdelrahman Alaa'}
+            </p>
+          </aside>
+        </div>
+      </section>
 
       {/* ─────────── MARKETING SECTIONS ─────────── */}
       <section id="features" className="login-features">
@@ -470,33 +529,71 @@ export default function Login() {
         </div>
       </section>
 
-      <section className="login-location">
+      <section className="login-location" id="location">
+        {/* decorative background layers */}
+        <div className="loc-bg-grid" aria-hidden="true"></div>
+        <div className="loc-bg-blob loc-bg-blob--a" aria-hidden="true"></div>
+        <div className="loc-bg-blob loc-bg-blob--b" aria-hidden="true"></div>
+
         <div className="section-inner">
-          <h2 className="section-heading">{lang === 'ar' ? 'موقعنا' : 'Find Us'}</h2>
-          <p className="section-sub">{lang === 'ar' ? 'تعرف على مكاننا وتواصل معنا بسهولة' : 'Locate our center and reach us easily'}</p>
+          <div className="loc-head">
+            <span className="loc-kicker">
+              <i className="fas fa-location-crosshairs"></i>
+              {lang === 'ar' ? 'زورنا' : 'Visit us'}
+            </span>
+            <h2 className="section-heading loc-title">
+              {lang === 'ar' ? 'موقعنا على الخريطة' : 'Find Us on the Map'}
+            </h2>
+            <p className="section-sub">
+              {lang === 'ar'
+                ? 'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.'
+                : 'Drop by our center in Damanhour — easy to find and easy to reach.'}
+            </p>
+          </div>
 
           <div className="location-grid">
-            {/* Map embed */}
+            {/* ── Map card ── */}
             <div className="location-map-wrapper">
-              <iframe
-                title="Masar Location"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
-                className="location-map"
-                allowFullScreen=""
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              ></iframe>
+              <div className="map-shell">
+                <iframe
+                  title="Masar Location"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+                  className="location-map"
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+
+                {/* animated pin overlay */}
+                <div className="map-pin" aria-hidden="true">
+                  <span className="map-pin__pulse"></span>
+                  <span className="map-pin__pulse map-pin__pulse--2"></span>
+                  <span className="map-pin__dot">
+                    <i className="fas fa-graduation-cap"></i>
+                  </span>
+                </div>
+
+                {/* live badge */}
+                <div className="map-badge">
+                  <span className="map-badge__dot"></span>
+                  {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
+                </div>
+
+                {/* gradient frame */}
+                <div className="map-frame" aria-hidden="true"></div>
+              </div>
             </div>
 
-            {/* Contact info */}
+            {/* ── Info column ── */}
             <div className="location-info">
               <div className="location-info-card">
                 <div className="location-info-icon">
                   <i className="fas fa-map-marker-alt"></i>
                 </div>
-                <div>
-                  <h4>{lang === 'ar' ? 'العنوان' : 'Address'}</h4>
-                  <p>{lang === 'ar' ? 'دمنهور، البحيرة، مصر' : 'Damanhour, Beheira, Egypt'}</p>
+                <div className="loc-card-body">
+                  <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
+                  <h4>{lang === 'ar' ? 'دمنهور، البحيرة' : 'Damanhour, Beheira'}</h4>
+                  <p>{lang === 'ar' ? 'جمهورية مصر العربية' : 'Arab Republic of Egypt'}</p>
                 </div>
               </div>
 
@@ -504,9 +601,10 @@ export default function Login() {
                 <div className="location-info-icon">
                   <i className="fas fa-phone-alt"></i>
                 </div>
-                <div>
-                  <h4>{lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}</h4>
-                  <p dir="ltr">+20 XXX XXX XXXX</p>
+                <div className="loc-card-body">
+                  <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
+                  <h4 dir="ltr">+20 XXX XXX XXXX</h4>
+                  <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
                 </div>
               </div>
 
@@ -514,21 +612,35 @@ export default function Login() {
                 <div className="location-info-icon">
                   <i className="fas fa-clock"></i>
                 </div>
-                <div>
-                  <h4>{lang === 'ar' ? 'ساعات العمل' : 'Working Hours'}</h4>
-                  <p>{lang === 'ar' ? 'السبت – الخميس: ٩ ص – ٩ م' : 'Sat – Thu: 9 AM – 9 PM'}</p>
+                <div className="loc-card-body">
+                  <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
+                  <h4>{lang === 'ar' ? 'السبت – الخميس' : 'Sat – Thu'}</h4>
+                  <p>{lang === 'ar' ? '٩ صباحًا – ٩ مساءً' : '9 AM – 9 PM'}</p>
                 </div>
               </div>
 
-              <a
-                href="https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="location-directions-btn"
-              >
-                <i className="fas fa-directions"></i>
-                {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
-              </a>
+              <div className="loc-actions">
+                <a
+                  href="https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="location-directions-btn"
+                >
+                  <i className="fas fa-directions"></i>
+                  {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+                  <span className="loc-btn-shine" aria-hidden="true"></span>
+                </a>
+
+                <a
+                  href="https://wa.me/20XXXXXXXXXX"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="location-directions-btn location-directions-btn--ghost"
+                >
+                  <i className="fab fa-whatsapp"></i>
+                  {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
+                </a>
+              </div>
             </div>
           </div>
         </div>

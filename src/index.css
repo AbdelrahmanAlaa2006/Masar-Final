@@ -21,6 +21,7 @@ body {
   background: #f0f2f8;
   color: #1a202c;
   transition: background 0.3s ease, color 0.3s ease;
+  overflow-x: clip;
 }
 
 body.dark {

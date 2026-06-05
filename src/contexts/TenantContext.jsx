@@ -15,16 +15,7 @@ export function TenantProvider({ children }) {
         const hostname = window.location.hostname
         const urlParams = new URLSearchParams(window.location.search)
         
-        // 1. Fetch all tenants for local development selectors
-        const { data: allTenants } = await supabase
-          .from('tenants')
-          .select('slug, name')
-          .order('name')
-        if (allTenants) {
-          setAvailableTenants(allTenants)
-        }
-
-        // 2. Resolve slug/domain candidate
+        // 1. Resolve slug/domain candidate first
         let candidate = 'default'
         
         // For development on localhost: check query param first, then sessionStorage
@@ -50,7 +41,32 @@ export function TenantProvider({ children }) {
           }
         }
 
-        // 3. Fetch tenant config from database
+        // 2. Check if cached data exists in sessionStorage
+        const cacheKey = `masar-cached-tenant-${candidate}`
+        const cachedTenant = sessionStorage.getItem(cacheKey)
+        const cachedAvailable = sessionStorage.getItem('masar-cached-available-tenants')
+
+        if (cachedTenant && cachedAvailable) {
+          const tenantData = JSON.parse(cachedTenant)
+          const availableData = JSON.parse(cachedAvailable)
+          setTenant(tenantData)
+          setAvailableTenants(availableData)
+          applyTenantTheme(tenantData)
+          setLoading(false)
+          return
+        }
+
+        // 3. Fetch all tenants for local development selectors
+        const { data: allTenants } = await supabase
+          .from('tenants')
+          .select('slug, name')
+          .order('name')
+        if (allTenants) {
+          setAvailableTenants(allTenants)
+          sessionStorage.setItem('masar-cached-available-tenants', JSON.stringify(allTenants))
+        }
+
+        // 4. Fetch tenant config from database
         let tenantData = null
         if (candidate && candidate !== 'default') {
           const { data, error } = await supabase
@@ -63,7 +79,7 @@ export function TenantProvider({ children }) {
           }
         }
 
-        // 4. Fallback to default tenant if not found or candidate is default
+        // 5. Fallback to default tenant if not found or candidate is default
         if (!tenantData) {
           const { data, error } = await supabase
             .from('tenants')
@@ -89,6 +105,7 @@ export function TenantProvider({ children }) {
 
         setTenant(tenantData)
         applyTenantTheme(tenantData)
+        sessionStorage.setItem(cacheKey, JSON.stringify(tenantData))
       } catch (err) {
         console.error('Failed to resolve tenant:', err)
       } finally {

@@ -196,18 +196,15 @@ export default function Notifications() {
       }
     } else if (meta.kind === 'password_reset_request') {
       if (userRole === 'admin') {
-        target = '/control-panel'
-        state = { section: 'resets' }
+        target = '/control-panel?section=resets'
       }
     } else if (meta.kind === 'devtools_violation') {
       if (userRole === 'admin') {
-        target = '/control-panel'
-        state = { section: 'violations' }
+        target = '/control-panel?section=violations'
       }
     } else if (meta.kind === 'student_chat_message') {
       if (userRole === 'admin') {
-        target = '/control-panel'
-        state = { section: 'chats', studentId: meta.studentId }
+        target = `/control-panel?section=chats&studentId=${meta.studentId}`
       }
     } else if (meta.kind === 'admin_chat_message') {
       if (userRole !== 'admin') {

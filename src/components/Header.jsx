@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
+import { cached } from '../utils/cache'
 import masarLogo from '../assets/logo.white.png'
 import './Header.css'
 
@@ -50,13 +51,15 @@ export default function Header() {
 
     const fetchPendingCount = async () => {
       try {
-        const { count, error } = await supabase
-          .from('payments')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
-        if (!error) {
-          setPendingPaymentsCount(count || 0)
-        }
+        const count = await cached('payments:pending-count', 5000, async () => {
+          const { count: c, error } = await supabase
+            .from('payments')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending')
+          if (error) throw error
+          return c || 0
+        })
+        setPendingPaymentsCount(count)
       } catch (err) {
         console.error('Failed to fetch pending payments count:', err)
       }
@@ -71,7 +74,7 @@ export default function Header() {
   // Close drawer if window is resized to desktop viewport
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768) {
+      if (window.innerWidth > 1150) {
         setDrawerOpen(false)
       }
     }

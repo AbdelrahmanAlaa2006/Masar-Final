@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { listExams } from '@backend/examsApi'
 import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
@@ -21,17 +21,11 @@ import ChatsPanel from './ChatsPanel'
 
 export default function ControlPanelIndex() {
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  /* navigation */
-  const [section, setSection] = useState(() => {
-    if (location.state && location.state.section) {
-      return location.state.section
-    }
-    return 'home'
-  })
-  
-  // Which sub-tab inside a section: 'attempts' | 'availability' | 'reveal'
-  const [subtab, setSubtab] = useState('attempts')
+  /* navigation derived from URL search parameters */
+  const section = searchParams.get('section') || 'home'
+  const subtab = searchParams.get('subtab') || 'attempts'
 
   // Toast notifications
   const [toast, setToast] = useState(null)
@@ -39,13 +33,6 @@ export default function ControlPanelIndex() {
     setToast({ msg, kind })
     setTimeout(() => setToast(null), 2200)
   }
-
-  // Handle in-app notification navigations
-  useEffect(() => {
-    if (location.state && location.state.section) {
-      setSection(location.state.section)
-    }
-  }, [location.state])
 
   /* catalog data from Supabase - shared across sub-panels */
   const [students, setStudents] = useState([])
@@ -76,14 +63,33 @@ export default function ControlPanelIndex() {
     return () => { cancelled = true }
   }, [])
 
+  // Clear chats refresh flag when navigating away from the chats section
+  useEffect(() => {
+    if (section !== 'chats') {
+      sessionStorage.removeItem('chats-refreshed')
+    }
+    return () => {
+      const params = new URLSearchParams(window.location.search)
+      if (window.location.pathname !== '/control-panel' || params.get('section') !== 'chats') {
+        sessionStorage.removeItem('chats-refreshed')
+      }
+    }
+  }, [section])
+
   const goHome = () => {
-    setSection('home')
-    setSubtab('attempts')
+    setSearchParams({ section: 'home' }, { replace: true })
   }
 
   const enterSection = (s) => {
-    setSection(s)
-    setSubtab('attempts')
+    const nextParams = { section: s }
+    if (s === 'videos' || s === 'exams') {
+      nextParams.subtab = 'attempts'
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  const setSubtab = (tab) => {
+    setSearchParams({ section, subtab: tab }, { replace: true })
   }
 
   // Mini Panel Loader inside the Suspense boundary
@@ -192,6 +198,14 @@ export default function ControlPanelIndex() {
           </div>
         )}
 
+        {section === 'chats' && (
+          <ChatsPanel 
+            onBack={goHome} 
+            flash={flash} 
+            initialStudentId={searchParams.get('studentId')} 
+          />
+        )}
+
         {/* Suspense wrapper for lazy loading individual components */}
         <Suspense fallback={<PanelLoader />}>
           {section === 'students' && <StudentsSyncPanel />}
@@ -200,13 +214,6 @@ export default function ControlPanelIndex() {
           {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
           {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
           {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
-          {section === 'chats' && (
-            <ChatsPanel 
-              onBack={goHome} 
-              flash={flash} 
-              initialStudentId={location.state?.studentId} 
-            />
-          )}
 
 
           {/* Sub-tab navigation bar for dynamic settings */}
