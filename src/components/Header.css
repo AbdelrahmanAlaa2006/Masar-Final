@@ -104,24 +104,27 @@ body.dark {
   pointer-events: none;
   z-index: -1;
 }
+
 .mh::before {
   background:
     radial-gradient(600px 100px at 12% 0%, rgba(102, 126, 234, 0.18), transparent 70%),
     radial-gradient(500px 120px at 88% 100%, rgba(118, 75, 162, 0.16), transparent 70%);
   opacity: .9;
 }
+
 .mh::after {
   /* hairline gradient under the bottom border */
   bottom: -1px;
   top: auto;
   height: 1px;
   background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(102, 126, 234, 0.45) 25%,
-    rgba(118, 75, 162, 0.45) 75%,
-    transparent 100%);
+      transparent 0%,
+      rgba(102, 126, 234, 0.45) 25%,
+      rgba(118, 75, 162, 0.45) 75%,
+      transparent 100%);
   opacity: .5;
 }
+
 body.dark .mh::before {
   background:
     radial-gradient(600px 110px at 12% 0%, rgba(129, 140, 248, 0.16), transparent 70%),
@@ -159,8 +162,14 @@ body.dark .mh::before {
   padding: 4px;
   transition: transform .25s ease;
 }
-.mh__brand:hover { transform: translateY(-1px); }
-.mh__brand:focus-visible { box-shadow: 0 0 0 3px var(--mh-ring); }
+
+.mh__brand:hover {
+  transform: translateY(-1px);
+}
+
+.mh__brand:focus-visible {
+  box-shadow: 0 0 0 3px var(--mh-ring);
+}
 
 .mh__mark {
   width: 48px;
@@ -177,8 +186,9 @@ body.dark .mh::before {
     0 10px 22px -8px rgba(102, 126, 234, 0.55),
     0 2px 0 rgba(255, 255, 255, 0.18) inset,
     0 -8px 16px -8px rgba(0, 0, 0, 0.18) inset;
-  transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s ease;
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s ease;
 }
+
 .mh__mark::before {
   /* spinning conic ring */
   content: '';
@@ -187,46 +197,52 @@ body.dark .mh::before {
   border-radius: inherit;
   padding: 2px;
   background: conic-gradient(from 0deg,
-    rgba(255,255,255,0.0),
-    rgba(255,255,255,0.55),
-    rgba(255,255,255,0.0) 40%,
-    rgba(255,255,255,0.45) 70%,
-    rgba(255,255,255,0.0));
+      rgba(255, 255, 255, 0.0),
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.0) 40%,
+      rgba(255, 255, 255, 0.45) 70%,
+      rgba(255, 255, 255, 0.0));
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  mask-composite: exclude;
   opacity: 0;
   transition: opacity .35s ease;
   animation: mh-spin 6s linear infinite;
 }
+
 .mh__mark::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(255,255,255,0.30), transparent 60%),
-    radial-gradient(140% 100% at 100% 100%, rgba(0,0,0,0.18), transparent 55%);
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.30), transparent 60%),
+    radial-gradient(140% 100% at 100% 100%, rgba(0, 0, 0, 0.18), transparent 55%);
   pointer-events: none;
 }
+
 .mh__brand:hover .mh__mark {
   transform: rotate(-4deg) scale(1.04);
   box-shadow:
     0 14px 30px -10px rgba(102, 126, 234, 0.65),
     0 2px 0 rgba(255, 255, 255, 0.22) inset;
 }
-.mh__brand:hover .mh__mark::before { opacity: 1; }
+
+.mh__brand:hover .mh__mark::before {
+  opacity: 1;
+}
 
 .mh__mark-letter {
   font-weight: 800;
   font-size: 24px;
   line-height: 1;
   font-family: 'Cairo', sans-serif;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.18);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
   position: relative;
   z-index: 1;
 }
+
 .mh__mark-img {
   position: absolute;
   inset: 0;
@@ -244,13 +260,14 @@ body.dark .mh::before {
   align-items: flex-start;
   line-height: 1.05;
 }
+
 .mh__brand-name {
   font-size: clamp(14px, 1.15vw, 17px);
   font-weight: 800;
   letter-spacing: 0.2px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
-          background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
   display: -webkit-box;
@@ -264,12 +281,14 @@ body.dark .mh::before {
   width: auto;
   max-width: 220px;
 }
+
 body.dark .mh__brand-name {
   background: linear-gradient(135deg, #c7d2fe 0%, #ddd6fe 100%);
   -webkit-background-clip: text;
-          background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
 .mh__brand-tag {
   font-size: 11.5px;
   font-weight: 600;
@@ -294,6 +313,7 @@ body.dark .mh__brand-name {
   border: 1px solid var(--mh-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
+
 body.dark .mh__nav {
   background: rgba(148, 163, 184, 0.06);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -314,26 +334,35 @@ body.dark .mh__nav {
   transition: color .2s ease, background .2s ease, transform .2s ease;
   white-space: nowrap;
 }
+
 .mh__link i {
   font-size: 13.5px;
   opacity: .85;
   transition: transform .25s ease, opacity .2s ease;
 }
+
 .mh__link:hover {
   color: var(--mh-text);
   background: var(--mh-hover);
 }
-.mh__link:hover i { transform: translateY(-1px) scale(1.1); opacity: 1; }
+
+.mh__link:hover i {
+  transform: translateY(-1px) scale(1.1);
+  opacity: 1;
+}
+
 .mh__link:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--mh-ring);
 }
+
 .mh__link.is-active {
   color: var(--mh-active-fg);
   background: var(--mh-active-bg);
   box-shadow: inset 0 0 0 1px rgba(102, 126, 234, 0.20),
-              0 4px 12px -6px rgba(102, 126, 234, 0.40);
+    0 4px 12px -6px rgba(102, 126, 234, 0.40);
 }
+
 .mh__link.is-active::after {
   /* small accent dot under the active item */
   content: '';
@@ -374,6 +403,7 @@ body.dark .mh__nav {
   position: relative;
   overflow: hidden;
 }
+
 .mh__icon-btn::before {
   content: '';
   position: absolute;
@@ -382,20 +412,36 @@ body.dark .mh__nav {
   opacity: 0;
   transition: opacity .2s ease;
 }
+
 .mh__icon-btn:hover {
   border-color: transparent;
   box-shadow: 0 6px 16px -8px rgba(102, 126, 234, 0.5);
   color: var(--mh-active-fg);
   transform: translateY(-1px);
 }
-.mh__icon-btn:hover::before { opacity: 1; }
-.mh__icon-btn:active { transform: scale(.96); }
+
+.mh__icon-btn:hover::before {
+  opacity: 1;
+}
+
+.mh__icon-btn:active {
+  transform: scale(.96);
+}
+
 .mh__icon-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--mh-ring);
 }
-.mh__icon-btn i { position: relative; z-index: 1; transition: transform .35s ease; }
-.mh__icon-btn:hover i { transform: rotate(20deg); }
+
+.mh__icon-btn i {
+  position: relative;
+  z-index: 1;
+  transition: transform .35s ease;
+}
+
+.mh__icon-btn:hover i {
+  transform: rotate(20deg);
+}
 
 /* User chip */
 .mh__user {
@@ -413,15 +459,18 @@ body.dark .mh__nav {
   transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease, background .25s ease;
   position: relative;
 }
+
 body.dark .mh__user {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(99, 102, 241, 0.08));
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+
 .mh__user:hover {
   transform: translateY(-1px);
   border-color: rgba(124, 58, 237, 0.35);
   box-shadow: 0 8px 22px -10px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
+
 .mh__avatar {
   width: 36px;
   height: 36px;
@@ -443,6 +492,7 @@ body.dark .mh__user {
   letter-spacing: 0.3px;
   transition: transform .3s ease, box-shadow .3s ease;
 }
+
 .mh__user:hover .mh__avatar {
   transform: scale(1.06) rotate(-3deg);
   box-shadow:
@@ -451,6 +501,7 @@ body.dark .mh__user {
     0 8px 20px -4px rgba(124, 58, 237, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
+
 .mh__avatar::after {
   content: '';
   position: absolute;
@@ -465,10 +516,19 @@ body.dark .mh__user {
     0 0 8px rgba(34, 197, 94, 0.7);
   animation: mhPulse 2.2s ease-in-out infinite;
 }
+
 @keyframes mhPulse {
-  0%, 100% { box-shadow: 0 0 0 2px var(--mh-bg-solid), 0 0 0 0 rgba(34, 197, 94, 0.55); }
-  50%      { box-shadow: 0 0 0 2px var(--mh-bg-solid), 0 0 0 5px rgba(34, 197, 94, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--mh-bg-solid), 0 0 0 0 rgba(34, 197, 94, 0.55);
+  }
+
+  50% {
+    box-shadow: 0 0 0 2px var(--mh-bg-solid), 0 0 0 5px rgba(34, 197, 94, 0);
+  }
 }
+
 .mh__avatar-img {
   position: absolute;
   inset: 0;
@@ -485,7 +545,10 @@ body.dark .mh__user {
   font-size: 20px;
   border-radius: 14px;
 }
-.mh__avatar--lg::after { display: none; }
+
+.mh__avatar--lg::after {
+  display: none;
+}
 
 .mh__user-meta {
   display: inline-flex;
@@ -495,6 +558,7 @@ body.dark .mh__user {
   min-width: 0;
   padding-block: 2px;
 }
+
 .mh__user-hi {
   font-size: 10.5px;
   color: var(--mh-muted);
@@ -503,6 +567,7 @@ body.dark .mh__user {
   opacity: 0.85;
   margin-bottom: 2px;
 }
+
 .mh__user-name {
   font-size: 13.5px;
   font-weight: 800;
@@ -547,6 +612,7 @@ body.dark .mh__user {
     0 8px 18px -8px rgba(220, 38, 38, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
+
 .mh__logout::before {
   /* subtle shimmer sweep */
   content: '';
@@ -555,17 +621,24 @@ body.dark .mh__user {
   inset-inline-start: -120%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
   transition: inset-inline-start .55s ease;
   pointer-events: none;
 }
+
 .mh__logout i {
   font-size: 13px;
   transition: transform .25s ease;
   position: relative;
   z-index: 1;
 }
-.mh__logout span { position: relative; z-index: 1; white-space: nowrap; }
+
+.mh__logout span {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
 .mh__logout:hover {
   transform: translateY(-1px);
   filter: saturate(1.1);
@@ -573,14 +646,25 @@ body.dark .mh__user {
     0 12px 24px -10px rgba(220, 38, 38, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
-.mh__logout:hover::before { inset-inline-start: 120%; }
-.mh__logout:hover i { transform: translateX(2px); }
-.mh__logout:active { transform: translateY(0); }
+
+.mh__logout:hover::before {
+  inset-inline-start: 120%;
+}
+
+.mh__logout:hover i {
+  transform: translateX(2px);
+}
+
+.mh__logout:active {
+  transform: translateY(0);
+}
+
 .mh__logout:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.45),
-              0 8px 18px -8px rgba(220, 38, 38, 0.55);
+    0 8px 18px -8px rgba(220, 38, 38, 0.55);
 }
+
 .mh__logout--full {
   width: 100%;
   justify-content: center;
@@ -605,6 +689,7 @@ body.dark .mh__user {
   padding: 0;
   transition: background .2s ease, border-color .2s ease;
 }
+
 .mh__burger span {
   width: 20px;
   height: 2.5px;
@@ -612,13 +697,19 @@ body.dark .mh__user {
   border-radius: 2px;
   transition: transform .3s ease, opacity .2s ease;
 }
+
 .mh__burger.is-open span:nth-child(1) {
   transform: translateY(7.5px) rotate(45deg);
 }
-.mh__burger.is-open span:nth-child(2) { opacity: 0; }
+
+.mh__burger.is-open span:nth-child(2) {
+  opacity: 0;
+}
+
 .mh__burger.is-open span:nth-child(3) {
   transform: translateY(-7.5px) rotate(-45deg);
 }
+
 .mh__burger:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--mh-ring);
@@ -639,6 +730,7 @@ body.dark .mh__user {
   transition: opacity .25s ease, visibility .25s ease;
   z-index: 1100;
 }
+
 .mh-drawer.is-open {
   opacity: 1;
   visibility: visible;
@@ -657,12 +749,18 @@ body.dark .mh__user {
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform .35s cubic-bezier(.2,.8,.2,1);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1);
   box-shadow: -24px 0 50px -22px rgba(15, 23, 42, 0.35);
   font-family: 'Cairo', sans-serif;
 }
-[dir="rtl"] .mh-drawer__panel { transform: translateX(-100%); }
-.mh-drawer.is-open .mh-drawer__panel { transform: translateX(0); }
+
+[dir="rtl"] .mh-drawer__panel {
+  transform: translateX(-100%);
+}
+
+.mh-drawer.is-open .mh-drawer__panel {
+  transform: translateX(0);
+}
 
 .mh-drawer__head {
   display: flex;
@@ -683,11 +781,13 @@ body.dark .mh__user {
   border-bottom: 1px solid var(--mh-border);
   flex: 0 0 auto;
 }
+
 .mh-drawer__user-name {
   font-size: 15.5px;
   font-weight: 800;
   color: var(--mh-text);
 }
+
 .mh-drawer__user-role {
   display: inline-block;
   font-size: 11.5px;
@@ -722,7 +822,8 @@ body.dark .mh__user {
   transition: background .2s ease, color .2s ease, transform .2s ease;
   border: 1px solid transparent;
 }
-.mh-drawer__link > i:first-child {
+
+.mh-drawer__link>i:first-child {
   width: 32px;
   height: 32px;
   display: inline-flex;
@@ -735,33 +836,42 @@ body.dark .mh__user {
   transition: background .2s ease, color .2s ease, transform .25s ease;
   flex: 0 0 auto;
 }
-.mh-drawer__link > span { flex: 1; }
+
+.mh-drawer__link>span {
+  flex: 1;
+}
+
 .mh-drawer__link-arrow {
   font-size: 11px;
   color: var(--mh-muted);
   opacity: .5;
   transition: transform .25s ease, opacity .2s ease;
 }
+
 .mh-drawer__link:hover {
   background: var(--mh-hover);
   transform: translateX(-2px);
 }
-.mh-drawer__link:hover > i:first-child {
+
+.mh-drawer__link:hover>i:first-child {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
   transform: scale(1.06);
 }
+
 .mh-drawer__link:hover .mh-drawer__link-arrow {
   opacity: 1;
   transform: translateX(-4px);
   color: var(--mh-active-fg);
 }
+
 .mh-drawer__link.is-active {
   background: var(--mh-active-bg);
   color: var(--mh-active-fg);
   border-color: rgba(102, 126, 234, 0.20);
 }
-.mh-drawer__link.is-active > i:first-child {
+
+.mh-drawer__link.is-active>i:first-child {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
 }
@@ -776,15 +886,29 @@ body.dark .mh__user {
    Animations
    ────────────────────────────────────────────────────────────── */
 @keyframes mh-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mh, .mh__brand, .mh__mark, .mh__link, .mh__icon-btn, .mh__logout,
-  .mh__user, .mh-drawer__panel, .mh-drawer__link, .mh__burger span {
+
+  .mh,
+  .mh__brand,
+  .mh__mark,
+  .mh__link,
+  .mh__icon-btn,
+  .mh__logout,
+  .mh__user,
+  .mh-drawer__panel,
+  .mh-drawer__link,
+  .mh__burger span {
     transition: none !important;
   }
-  .mh__mark::before { animation: none; }
+
+  .mh__mark::before {
+    animation: none;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -795,69 +919,206 @@ body.dark .mh__user {
 
 /* Tighten outer padding + nav padding */
 @media (max-width: 1300px) {
-  .mh__inner { gap: 18px; padding: 10px 22px; }
-  .mh__link { padding: 9px 13px; font-size: 13.5px; gap: 8px; }
-  .mh__nav { padding: 5px; gap: 3px; }
-  .mh__user { max-width: 260px; padding-inline-end: 12px; }
-  .mh__user-name { max-width: 220px; }
-  .mh__logout span { display: none; }
-  .mh__logout { padding: 0 12px; }
+  .mh__inner {
+    gap: 18px;
+    padding: 10px 22px;
+  }
+
+  .mh__link {
+    padding: 9px 13px;
+    font-size: 13.5px;
+    gap: 8px;
+  }
+
+  .mh__nav {
+    padding: 5px;
+    gap: 3px;
+  }
+
+  .mh__user {
+    max-width: 260px;
+    padding-inline-end: 12px;
+  }
+
+  .mh__user-name {
+    max-width: 220px;
+  }
+
+  .mh__logout span {
+    display: none;
+  }
+
+  .mh__logout {
+    padding: 0 12px;
+  }
 }
 
 /* Drop wordmark tagline + shrink user chip further */
 @media (max-width: 1220px) {
-  .mh__inner { gap: 14px; padding: 10px 18px; }
-  .mh__brand-tag { display: none; }
-  .mh__brand { gap: 10px; }
-  .mh__link { padding: 8px 11px; font-size: 13px; gap: 7px; }
-  .mh__link i { font-size: 12.5px; }
-  .mh__actions { gap: 8px; }
-  .mh__icon-btn { width: 40px; height: 40px; }
-  .mh__logout { height: 40px; padding: 0 12px; font-size: 13px; }
-  .mh__user { padding-inline-end: 4px; padding: 3px; }
-  .mh__user-meta { display: none; }
-  .mh__avatar { width: 32px; height: 32px; font-size: 13px; }
+  .mh__inner {
+    gap: 14px;
+    padding: 10px 18px;
+  }
+
+  .mh__brand-tag {
+    display: none;
+  }
+
+  .mh__brand {
+    gap: 10px;
+  }
+
+  .mh__link {
+    padding: 8px 11px;
+    font-size: 13px;
+    gap: 7px;
+  }
+
+  .mh__link i {
+    font-size: 12.5px;
+  }
+
+  .mh__actions {
+    gap: 8px;
+  }
+
+  .mh__icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mh__logout {
+    height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .mh__user {
+    padding-inline-end: 4px;
+    padding: 3px;
+  }
+
+  .mh__user-meta {
+    display: none;
+  }
+
+  .mh__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
 }
 
 /* Hide brand wordmark text (keep mark/logo) + nav labels (keep icons) */
 @media (max-width: 1100px) {
-  .mh__inner { gap: 10px; padding: 10px 14px; }
-  .mh__wordmark { display: none; }
-  .mh__link { padding: 9px 10px; }
-  .mh__link span { display: none; }
-  .mh__link i { font-size: 15px; opacity: 1; }
-  .mh__link.is-active::after { display: none; }
+  .mh__inner {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .mh__wordmark {
+    display: none;
+  }
+
+  .mh__link {
+    padding: 9px 10px;
+  }
+
+  .mh__link span {
+    display: none;
+  }
+
+  .mh__link i {
+    font-size: 15px;
+    opacity: 1;
+  }
+
+  .mh__link.is-active::after {
+    display: none;
+  }
 }
 
 /* Hide user chip entirely when space gets really tight */
 @media (max-width: 900px) {
-  .mh__user { display: none; }
-  .mh__inner { gap: 8px; padding: 10px 12px; }
+  .mh__user {
+    display: none;
+  }
+
+  .mh__inner {
+    gap: 8px;
+    padding: 10px 12px;
+  }
 }
 
 /* Final collapse: nav -> burger drawer */
 @media (max-width: 1150px) {
-  .mh__nav { display: none; }
-  .mh__user { display: none; }
-  .mh__actions > .mh__logout { display: none; }
-  .mh__burger { display: inline-flex; }
+  .mh__nav {
+    display: none;
+  }
+
+  .mh__user {
+    display: none;
+  }
+
+  .mh__actions>.mh__logout {
+    display: none;
+  }
+
+  .mh__burger {
+    display: inline-flex;
+  }
+
   .mh__inner {
     grid-template-columns: 1fr auto;
     gap: 12px;
     padding: 10px 16px;
   }
-  .mh__wordmark { display: flex; }
-  .mh__brand-tag { display: none; }
-  .mh__brand-name { font-size: 16px; max-width: 200px; width: auto; }
+
+  .mh__wordmark {
+    display: flex;
+  }
+
+  .mh__brand-tag {
+    display: none;
+  }
+
+  .mh__brand-name {
+    font-size: 16px;
+    max-width: 200px;
+    width: auto;
+  }
 }
 
 @media (max-width: 480px) {
-  :root { --mh-h: 72px; }
-  .mh__brand-tag { display: none; }
-  .mh__mark { width: 42px; height: 42px; border-radius: 12px; }
-  .mh__mark-letter { font-size: 21px; }
-  .mh__brand-name { font-size: 15px; max-width: 170px; width: auto; }
-  .mh__icon-btn, .mh__burger { width: 40px; height: 40px; }
+  :root {
+    --mh-h: 72px;
+  }
+
+  .mh__brand-tag {
+    display: none;
+  }
+
+  .mh__mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .mh__mark-letter {
+    font-size: 21px;
+  }
+
+  .mh__brand-name {
+    font-size: 15px;
+    max-width: 170px;
+    width: auto;
+  }
+
+  .mh__icon-btn,
+  .mh__burger {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 
@@ -876,9 +1137,20 @@ body.dark .mh__user {
   font-size: 1rem;
   transition: background 0.2s, transform 0.2s;
 }
-.header-back:hover { background: rgba(124, 58, 237, 0.22); transform: scale(1.05); }
-body.dark .header-back { color: #f7fafc; background: rgba(168, 85, 247, 0.18); }
-body.dark .header-back:hover { background: rgba(168, 85, 247, 0.3); }
+
+.header-back:hover {
+  background: rgba(124, 58, 237, 0.22);
+  transform: scale(1.05);
+}
+
+body.dark .header-back {
+  color: #f7fafc;
+  background: rgba(168, 85, 247, 0.18);
+}
+
+body.dark .header-back:hover {
+  background: rgba(168, 85, 247, 0.3);
+}
 
 /* ─────────── Pending Payments Navbar Badge Styling ─────────── */
 .nav-badge-pending {
@@ -903,9 +1175,11 @@ body.dark .header-back:hover { background: rgba(168, 85, 247, 0.3); }
   0% {
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
   }
+
   70% {
     box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
   }
@@ -928,17 +1202,168 @@ body.dark .header-back:hover { background: rgba(168, 85, 247, 0.3); }
   box-sizing: border-box;
   z-index: 10;
 }
+
 .mh__pending-ribbon a {
   color: #fff;
   text-decoration: underline;
   font-weight: 800;
   transition: opacity 0.2s;
 }
+
 .mh__pending-ribbon a:hover {
   opacity: 0.85;
 }
+
 .mh__pending-ribbon i {
   font-size: 14px;
 }
 
 
+
+
+/* ══════════════════════════════════════════════════════════════
+   ✦ UI ENHANCEMENT LAYER — Header.css
+   Non-destructive polish: deeper glass, smoother active pill,
+   richer dark-mode borders, refined avatar + logout shimmer.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --mh-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Crisper glass + finer hairline */
+.mh {
+  -webkit-backdrop-filter: saturate(190%) blur(22px);
+  backdrop-filter: saturate(190%) blur(22px);
+  background: color-mix(in srgb, var(--mh-bg) 100%, transparent);
+}
+
+.mh--scrolled {
+  box-shadow:
+    0 1px 0 var(--mh-border),
+    0 12px 28px -18px rgba(102, 126, 234, 0.35),
+    0 2px 8px -2px rgba(15, 23, 42, 0.06);
+}
+
+body.dark .mh--scrolled {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 36px -20px rgba(0, 0, 0, 0.75),
+    0 2px 10px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* Brand mark — softer 3D feel */
+.mh__mark {
+  border-radius: 16px;
+  box-shadow:
+    0 10px 24px -8px rgba(102, 126, 234, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -10px 18px -10px rgba(0, 0, 0, 0.22) inset;
+}
+
+/* Nav pill — slightly more refined */
+.mh__nav {
+  border-radius: 16px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+body.dark .mh__nav {
+  background: rgba(148, 163, 184, 0.07);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.mh__link {
+  border-radius: 11px;
+  transition: color 0.25s var(--mh-ease),
+    background 0.25s var(--mh-ease),
+    transform 0.25s var(--mh-ease);
+}
+
+.mh__link.is-active {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent),
+    0 6px 16px -8px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+/* Icon buttons — softer surface */
+.mh__icon-btn {
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--mh-bg-solid) 92%, transparent);
+}
+
+.mh__icon-btn:hover {
+  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+/* Avatar — finer ring */
+.mh__avatar {
+  box-shadow:
+    0 0 0 2px var(--mh-bg-solid),
+    0 0 0 3.5px color-mix(in srgb, var(--primary) 30%, transparent),
+    0 8px 20px -6px color-mix(in srgb, var(--primary) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* Logout button — softer red with stronger shimmer */
+.mh__logout {
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f43f5e 0%, #dc2626 100%);
+  box-shadow:
+    0 10px 22px -10px rgba(220, 38, 38, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.mh__logout:hover {
+  box-shadow:
+    0 14px 28px -12px rgba(244, 63, 94, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+/* Drawer panel — deeper depth */
+.mh-drawer {
+  background: rgba(15, 23, 42, 0.55);
+}
+
+body.dark .mh-drawer {
+  background: rgba(2, 6, 23, 0.65);
+}
+
+.mh-drawer__panel {
+  box-shadow: -30px 0 70px -28px rgba(15, 23, 42, 0.45);
+}
+
+body.dark .mh-drawer__panel {
+  box-shadow: -30px 0 70px -28px rgba(0, 0, 0, 0.85);
+  background: linear-gradient(180deg, #0f172a 0%, #0b1224 100%);
+}
+
+/* Drawer link arrow alignment polish */
+.mh-drawer__link {
+  border-radius: 14px;
+  transition: background 0.25s var(--mh-ease),
+    color 0.25s var(--mh-ease),
+    transform 0.25s var(--mh-ease),
+    border-color 0.25s ease;
+}
+
+/* Pending ribbon — softer corners + glow */
+.mh__pending-ribbon {
+  background: linear-gradient(90deg, #b45309 0%, #d97706 50%, #f59e0b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 6px 16px -10px rgba(245, 158, 11, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .mh,
+  .mh__link,
+  .mh__icon-btn,
+  .mh__logout,
+  .mh__user,
+  .mh-drawer__panel,
+  .mh-drawer__link {
+    transition: none !important;
+  }
+}

@@ -29,7 +29,7 @@ export default function Home() {
       const filtered = (Array.isArray(existing) ? existing : []).filter((r) => r.type !== type)
       const next = [{ type, route, at: new Date().toISOString() }, ...filtered].slice(0, 5)
       localStorage.setItem('masar-recent', JSON.stringify(next))
-    } catch {}
+    } catch { }
     // Use React Router so we don't blow away the in-memory cache with a
     // full page reload. Previous code did `window.location.href = route`
     // which forced every navigation to re-fetch everything.
@@ -171,7 +171,7 @@ export default function Home() {
   // banner on the home page.
   const seasonalTheme = useSeasonalTheme()
   const seasonalGreeting = seasonalTheme && {
-    'ramadan':  { en: 'Ramadan Mubarak • A Month of Grace & Blessings',  ar: 'رمضان مبارك • مبارك عليكم الشهر الفضيل وسدد الله خطاكم', emoji: '' },
+    'ramadan': { en: 'Ramadan Mubarak • A Month of Grace & Blessings', ar: 'رمضان مبارك • مبارك عليكم الشهر الفضيل وسدد الله خطاكم', emoji: '' },
     'eid-fitr': { en: 'Eid Mubarak • Wishing You Joy, Peace & Prosperity', ar: 'عيد فطر مبارك • تقبل الله منا ومنكم صالح الأعمال وكل عام وأنتم بخير', emoji: '✨' },
     'eid-adha': { en: 'Blessed Eid • Wishing You a Beautiful Celebration', ar: 'عيد أضحى مبارك • أعاده الله عليكم وعلى أحبابكم باليُمن والبركات', emoji: '🕌' },
   }[seasonalTheme.id] || null
