@@ -127,7 +127,7 @@ function PendingApprovalPage() {
       background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
       color: '#fff',
       padding: '24px',
-      fontFamily: 'Cairo, sans-serif'
+      fontFamily: 'Tajawal, sans-serif'
     }}>
       <div className="pending-app-card" style={{
         maxWidth: '520px',

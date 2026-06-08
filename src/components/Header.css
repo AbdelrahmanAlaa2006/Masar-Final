@@ -89,7 +89,7 @@ body.dark {
   border-bottom: 1px solid var(--mh-border);
   box-shadow: var(--mh-shadow);
   transition: box-shadow .35s ease, background .35s ease, height .25s ease;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   color: var(--mh-text);
   isolation: isolate;
   padding-top: env(safe-area-inset-top, 0px);
@@ -237,7 +237,7 @@ body.dark .mh::before {
   font-weight: 800;
   font-size: 24px;
   line-height: 1;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
   position: relative;
   z-index: 1;
@@ -751,7 +751,7 @@ body.dark .mh__user {
   transform: translateX(100%);
   transition: transform .35s cubic-bezier(.2, .8, .2, 1);
   box-shadow: -24px 0 50px -22px rgba(15, 23, 42, 0.35);
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 [dir="rtl"] .mh-drawer__panel {
@@ -1366,4 +1366,23 @@ body.dark .mh-drawer__panel {
   .mh-drawer__link {
     transition: none !important;
   }
+}
+
+/* Subtle cyan glow underline for active Control Panel nav button */
+.mh__link[href="/control-panel"].is-active {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #5bc2e7 !important;
+}
+.mh__link[href="/control-panel"].is-active::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -4px !important;
+  left: 50% !important;
+  width: 24px !important;
+  height: 2px !important;
+  background: #5bc2e7 !important;
+  transform: translate(-50%, 0) !important;
+  box-shadow: 0 0 8px #5bc2e7 !important;
+  border-radius: 99px !important;
 }

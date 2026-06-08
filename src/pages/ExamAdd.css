@@ -22,15 +22,86 @@ body.dark .exam-add-container {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
-.exam-add-container h1 {
-  text-align: center;
+.exam-add-page .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 40px;
+  min-height: 80px;
+  width: 100%;
+  gap: 20px;
+}
+
+.exam-add-page .page-header-text {
+  text-align: center;
+  flex: 1;
+}
+
+.exam-add-page .page-title {
+  text-align: center;
   font-size: 2.2rem;
   font-weight: 700;
   background: linear-gradient(45deg, #6366f1, #8b5cf6, #06b6d4);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.exam-add-page .btn-outline {
+  background: transparent !important;
+  color: var(--primary) !important;
+  border: 1.5px solid var(--primary) !important;
+  transition: all 0.2s ease !important;
+}
+
+body.dark .exam-add-page .btn-outline {
+  color: #a78bfa !important;
+  border-color: #a78bfa !important;
+}
+
+.exam-add-page .btn-outline:hover {
+  background: rgba(124, 58, 237, 0.08) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+body.dark .exam-add-page .btn-outline:hover {
+  background: rgba(167, 139, 250, 0.1) !important;
+  color: #a78bfa !important;
+  border-color: #a78bfa !important;
+}
+
+.exam-add-page .page-header-back {
+  flex: 0 0 auto;
+  min-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.exam-add-page .page-header-spacer {
+  flex: 0 0 auto;
+  width: 180px;
+  visibility: hidden;
+}
+
+@media (max-width: 768px) {
+  .exam-add-page .page-header {
+    flex-direction: column;
+    gap: 16px;
+    min-height: auto;
+    align-items: center;
+  }
+  .exam-add-page .page-header-back {
+    width: 100%;
+    min-width: auto;
+  }
+  .exam-add-page .page-header-spacer {
+    display: none;
+  }
 }
 
 @keyframes fadeIn {
@@ -91,7 +162,7 @@ label {
   background: #f8fafc;
   color: var(--text-color);
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 body.dark .exam-add-container input[type="text"],
@@ -302,7 +373,7 @@ textarea {
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
   position: relative;
   overflow: hidden;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .btn::before {

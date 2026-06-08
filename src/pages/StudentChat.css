@@ -6,7 +6,7 @@
   background: radial-gradient(ellipse at bottom, #111428 0%, #090a0f 100%);
   display: flex;
   justify-content: center;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   color: #fff;
 }
 
@@ -362,7 +362,7 @@
   border-radius: 24px;
   padding: 10px 18px;
   color: #fff;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s;
@@ -432,7 +432,7 @@
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   display: flex;
   align-items: center;
   gap: 6px;

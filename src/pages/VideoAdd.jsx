@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
@@ -91,6 +92,7 @@ const makeQuiz = () => ({
 })
 
 export default function VideoAdd() {
+  const navigate = useNavigate()
   const [videoTitle, setVideoTitle] = useState('')
   const [videoDescription, setVideoDescription] = useState('')
   const [videoGrade, setVideoGrade] = useState('first-prep')
@@ -104,6 +106,29 @@ export default function VideoAdd() {
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [selectedGrade] = useState(localStorage.getItem('selectedVideoGrade') || 'first-prep')
+
+  const addPart = () => {
+    const nextId = `new_part_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    setVideoParts(prev => [
+      ...prev,
+      {
+        id: nextId,
+        title: '',
+        source: 'youtube',
+        videoId: '',
+        driveId: '',
+        bunnyVideoId: '',
+        bunnyLibraryId: '',
+        durationMinutes: '',
+        viewLimit: 3,
+      }
+    ])
+    setShowRestoreSection(true)
+  }
+
+  const removePart = (id) => {
+    setVideoParts(prev => prev.filter(p => p.id !== id))
+  }
 
   useEffect(() => {
     loadSavedVideos()
@@ -518,8 +543,17 @@ export default function VideoAdd() {
     <div className="video-add-page" dir="rtl">
       <div className="video-add-container">
         <div className="page-header">
-          <h1 className="page-title">إضافة فيديو جديد</h1>
-          <p className="page-subtitle">قم بإنشاء فيديو تعليمي جديد مع تعريف الأجزاء والتفاصيل</p>
+          <button
+            type="button"
+            className="btn btn-outline page-header-back"
+            onClick={() => navigate('/videos')}
+          >
+            <i className="fas fa-arrow-right"></i> العودة للفيديوهات
+          </button>
+          <div className="page-header-text">
+            <h1 className="page-title" style={{ margin: '0 0 6px' }}>إضافة فيديو جديد</h1>
+            <p className="page-subtitle" style={{ margin: 0 }}>قم بإنشاء فيديو تعليمي جديد مع تعريف الأجزاء والتفاصيل</p>
+          </div>
         </div>
 
         <div className="video-add-content">
@@ -589,153 +623,175 @@ export default function VideoAdd() {
             </div>
 
             {/* Video Parts Section */}
-            {videoParts.length > 0 && (
-              <div className="parts-section">
-                <h3 className="section-title">أجزاء الفيديو</h3>
-                {videoParts.map((part, index) => (
-                  <div key={part.id} className="part-block">
-                    <div className="part-header">
-                      <span className="part-number">الجزء {index + 1}</span>
-                    </div>
-
-                    <div className="form-group">
-                      <label>عنوان الجزء</label>
-                      <input
-                        type="text"
-                        placeholder="مثال: مقدمة الموضوع"
-                        value={part.title}
-                        onChange={(e) => updatePart(part.id, 'title', e.target.value)}
-                      />
-                    </div>
-
-                    {/* Source picker — YouTube or Google Drive ──────── */}
-                    <div className="form-group">
-                      <label>مصدر الفيديو</label>
-                      <div className="quiz-scope">
-                        <label className={`quiz-scope-opt ${part.source === 'youtube' ? 'is-on' : ''}`}>
-                          <input
-                            type="radio"
-                            name={`source-${part.id}`}
-                            checked={part.source === 'youtube'}
-                            onChange={() => updatePart(part.id, 'source', 'youtube')}
-                          />
-                          <i className="fab fa-youtube" style={{ color: '#ef4444' }}></i>
-                          <span>YouTube</span>
-                        </label>
-                        <label className={`quiz-scope-opt ${part.source === 'drive' ? 'is-on' : ''}`}>
-                          <input
-                            type="radio"
-                            name={`source-${part.id}`}
-                            checked={part.source === 'drive'}
-                            onChange={() => updatePart(part.id, 'source', 'drive')}
-                          />
-                          <i className="fab fa-google-drive" style={{ color: '#4285f4' }}></i>
-                          <span>Google Drive</span>
-                        </label>
-                        <label className={`quiz-scope-opt ${part.source === 'bunny' ? 'is-on' : ''}`}>
-                          <input
-                            type="radio"
-                            name={`source-${part.id}`}
-                            checked={part.source === 'bunny'}
-                            onChange={() => updatePart(part.id, 'source', 'bunny')}
-                          />
-                          <i className="fas fa-cloud" style={{ color: '#f97316' }}></i>
-                          <span>Bunny Stream</span>
-                        </label>
+            <div className="parts-section">
+              <h3 className="section-title">أجزاء الفيديو</h3>
+              {videoParts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 20px', border: '1.5px dashed var(--border-primary)', borderRadius: '16px', background: 'rgba(0,0,0,0.01)' }}>
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontWeight: 700 }}>لم تقم بإضافة أي أجزاء للمحاضرة بعد.</p>
+                  <button type="button" className="btn btn-secondary" onClick={addPart}>
+                    ➕ إضافة جزء أول
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {videoParts.map((part, index) => (
+                    <div key={part.id} className="part-block" style={{ animationDelay: `${index * 0.05}s` }}>
+                      <div className="part-header">
+                        <span className="part-number">الجزء {index + 1}</span>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444', background: 'transparent', margin: 0 }}
+                          onClick={() => removePart(part.id)}
+                        >
+                          <i className="fas fa-trash"></i> حذف الجزء
+                        </button>
                       </div>
-                    </div>
 
-                    {part.source === 'bunny' ? (
-                      <BunnyUploader
-                        part={part}
-                        title={videoTitle ? `${videoTitle} — ${part.title || `الجزء ${part.id + 1}`}` : (part.title || 'video')}
-                        onChange={(patch) => Object.entries(patch).forEach(([k, v]) => updatePart(part.id, k, v))}
-                      />
-                    ) : part.source === 'youtube' ? (
                       <div className="form-group">
-                        <label>معرّف فيديو يوتيوب (Video ID)</label>
+                        <label>عنوان الجزء</label>
                         <input
                           type="text"
-                          placeholder="مثال: dQw4w9WgXcQ"
-                          value={part.videoId}
-                          onChange={(e) => {
-                            // Auto-extract id if admin pastes a full URL.
-                            const v = e.target.value
-                            const extracted = extractYouTubeId(v)
-                            updatePart(part.id, 'videoId', extracted || v)
-                          }}
-                          maxLength={64}
+                          placeholder="مثال: مقدمة الموضوع"
+                          value={part.title}
+                          onChange={(e) => updatePart(part.id, 'title', e.target.value)}
                         />
-                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                          الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
-                        </small>
-                        {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
-                          <small style={{ color: '#c53030', fontSize: 12 }}>
-                            المعرّف يجب أن يكون 11 حرفاً.
-                          </small>
-                        )}
                       </div>
-                    ) : (
-                      <>
+
+                      {/* Source picker — YouTube or Google Drive ──────── */}
+                      <div className="form-group">
+                        <label>مصدر الفيديو</label>
+                        <div className="quiz-scope">
+                          <label className={`quiz-scope-opt ${part.source === 'youtube' ? 'is-on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`source-${part.id}`}
+                              checked={part.source === 'youtube'}
+                              onChange={() => updatePart(part.id, 'source', 'youtube')}
+                            />
+                            <i className="fab fa-youtube" style={{ color: '#ef4444' }}></i>
+                            <span>YouTube</span>
+                          </label>
+                          <label className={`quiz-scope-opt ${part.source === 'drive' ? 'is-on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`source-${part.id}`}
+                              checked={part.source === 'drive'}
+                              onChange={() => updatePart(part.id, 'source', 'drive')}
+                            />
+                            <i className="fab fa-google-drive" style={{ color: '#4285f4' }}></i>
+                            <span>Google Drive</span>
+                          </label>
+                          <label className={`quiz-scope-opt ${part.source === 'bunny' ? 'is-on' : ''}`}>
+                            <input
+                              type="radio"
+                              name={`source-${part.id}`}
+                              checked={part.source === 'bunny'}
+                              onChange={() => updatePart(part.id, 'source', 'bunny')}
+                            />
+                            <i className="fas fa-cloud" style={{ color: '#f97316' }}></i>
+                            <span>Bunny Stream</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {part.source === 'bunny' ? (
+                        <BunnyUploader
+                          part={part}
+                          title={videoTitle ? `${videoTitle} — ${part.title || `الجزء ${part.id + 1}`}` : (part.title || 'video')}
+                          onChange={(patch) => Object.entries(patch).forEach(([k, v]) => updatePart(part.id, k, v))}
+                        />
+                      ) : part.source === 'youtube' ? (
                         <div className="form-group">
-                          <label>رابط أو معرّف ملف Google Drive</label>
+                          <label>معرّف فيديو يوتيوب (Video ID)</label>
                           <input
                             type="text"
-                            placeholder="ألصق رابط Drive أو معرّف الملف"
-                            value={part.driveId}
+                            placeholder="مثال: dQw4w9WgXcQ"
+                            value={part.videoId}
                             onChange={(e) => {
+                              // Auto-extract id if admin pastes a full URL.
                               const v = e.target.value
-                              const extracted = extractDriveId(v)
-                              updatePart(part.id, 'driveId', extracted || v)
+                              const extracted = extractYouTubeId(v)
+                              updatePart(part.id, 'videoId', extracted || v)
                             }}
+                            maxLength={64}
                           />
-                          <small style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6, display: 'block', marginTop: 4 }}>
-                            <strong>مهم:</strong> يجب ضبط الملف في Drive على «أي شخص لديه الرابط يمكنه العرض».
-                            سيتم استخراج المعرّف تلقائياً من الرابط. لا يوجد حد لحجم الفيديو — يبقى الملف في Drive ولا يستهلك مساحة Cloudflare.
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
                           </small>
-                          {part.driveId && !/^[A-Za-z0-9_-]{15,}$/.test(part.driveId) && (
+                          {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
                             <small style={{ color: '#c53030', fontSize: 12 }}>
-                              معرّف Drive غير صالح.
+                              المعرّف يجب أن يكون 11 حرفاً.
                             </small>
                           )}
                         </div>
-                        <div className="form-group">
-                          <label>مدة الفيديو (بالدقائق) — اختياري</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            placeholder="مثال: 12"
-                            value={part.durationMinutes}
-                            onChange={(e) => updatePart(part.id, 'durationMinutes', e.target.value)}
-                          />
-                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                            تُستخدم في تقرير المشاهدة. إن تركتها فارغة ستُحسب تلقائياً عند أول تشغيل للطالب.
-                          </small>
-                        </div>
-                      </>
-                    )}
+                      ) : (
+                        <>
+                          <div className="form-group">
+                            <label>رابط أو معرّف ملف Google Drive</label>
+                            <input
+                              type="text"
+                              placeholder="ألصق رابط Drive أو معرّف الملف"
+                              value={part.driveId}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                const extracted = extractDriveId(v)
+                                updatePart(part.id, 'driveId', extracted || v)
+                              }}
+                            />
+                            <small style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6, display: 'block', marginTop: 4 }}>
+                              <strong>مهم:</strong> يجب ضبط الملف في Drive على «أي شخص لديه الرابط يمكنه العرض».
+                              سيتم استخراج المعرّف تلقائياً من الرابط. لا يوجد حد لحجم الفيديو — يبقى الملف في Drive ولا يستهلك مساحة Cloudflare.
+                            </small>
+                            {part.driveId && !/^[A-Za-z0-9_-]{15,}$/.test(part.driveId) && (
+                              <small style={{ color: '#c53030', fontSize: 12 }}>
+                                معرّف Drive غير صالح.
+                              </small>
+                            )}
+                          </div>
+                          <div className="form-group">
+                            <label>مدة الفيديو (بالدقائق) — اختياري</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder="مثال: 12"
+                              value={part.durationMinutes}
+                              onChange={(e) => updatePart(part.id, 'durationMinutes', e.target.value)}
+                            />
+                            <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                              تُستخدم في تقرير المشاهدة. إن تركتها فارغة ستُحسب تلقائياً عند أول تشغيل للطالب.
+                            </small>
+                          </div>
+                        </>
+                      )}
 
-                    <div className="form-group">
-                      <label>عدد المحاولات لكل طالب</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={part.viewLimit ?? 3}
-                        onChange={(e) => {
-                          const n = Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1))
-                          updatePart(part.id, 'viewLimit', n)
-                        }}
-                      />
-                      <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                        كل طالب يستطيع مشاهدة هذا الجزء بهذا العدد من المرات.
-                      </small>
+                      <div className="form-group">
+                        <label>عدد المحاولات لكل طالب</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          value={part.viewLimit ?? 3}
+                          onChange={(e) => {
+                            const n = Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1))
+                            updatePart(part.id, 'viewLimit', n)
+                          }}
+                        />
+                        <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          كل طالب يستطيع مشاهدة هذا الجزء بهذا العدد من المرات.
+                        </small>
+                      </div>
                     </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                    <button type="button" className="btn btn-secondary" onClick={addPart}>
+                      ➕ إضافة جزء جديد
+                    </button>
                   </div>
-                ))}
-              </div>
-            )}
+                </>
+              )}
+            </div>
 
             {/* ── Quizzes Section ─────────────────────────────────────
                  Inline pre-video quizzes. These are STANDALONE — they are

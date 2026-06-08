@@ -105,14 +105,15 @@ export default function ControlPanelIndex() {
       <div className="cp-container">
         {/* Top header */}
         <div className="cp-page-header">
-          <div className="cp-page-icon">
-            <i className="fas fa-sliders"></i>
-          </div>
-          <div>
+          <div className="cp-page-header-text">
             <h1>لوحة التحكم</h1>
             <p>إدارة صلاحيات الفيديوهات والامتحانات للطلاب والمراحل الدراسية</p>
           </div>
+          <div className="cp-page-icon">
+            <i className="fas fa-sliders"></i>
+          </div>
         </div>
+        <div className="cp-header-divider"></div>
 
         {loadError && (
           <div className="cp-empty" style={{ color: '#c53030' }}>
@@ -169,14 +170,14 @@ export default function ControlPanelIndex() {
             />
             <SectionCard
               icon="fa-moon"
-              accent="orange"
+              accent="violet"
               title="السمات الموسمية"
               desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي حسب التاريخ"
               onClick={() => enterSection('seasons')}
             />
             <SectionCard
               icon="fa-key"
-              accent="red"
+              accent="gold"
               title="طلبات استعادة الحساب"
               desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب وقم بتلبيتها"
               onClick={() => enterSection('resets')}
@@ -190,7 +191,7 @@ export default function ControlPanelIndex() {
             />
             <SectionCard
               icon="fa-comments"
-              accent="blue"
+              accent="teal"
               title="محادثات الطلاب"
               desc="استعرض وأجب على رسائل واستفسارات الطلاب (صوت وصور)"
               onClick={() => enterSection('chats')}

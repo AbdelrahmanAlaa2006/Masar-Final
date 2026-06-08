@@ -287,9 +287,21 @@ export default function ExamAdd() {
   }
 
   return (
-    <div className="exam-add-page">
+    <div className="exam-add-page" dir="rtl">
       <div className="exam-add-container">
-        <h1>إنشاء امتحان</h1>
+        <div className="page-header">
+          <button
+            type="button"
+            className="btn btn-outline page-header-back"
+            onClick={() => navigate('/exams')}
+          >
+            <i className="fas fa-arrow-right"></i> العودة للامتحانات
+          </button>
+          <div className="page-header-text">
+            <h1 className="page-title" style={{ margin: '0 0 6px' }}>إنشاء امتحان</h1>
+          </div>
+          <div className="page-header-spacer"></div>
+        </div>
 
         <div className="form-group">
           <label htmlFor="examNumber">🔢 رقم الامتحان:</label>

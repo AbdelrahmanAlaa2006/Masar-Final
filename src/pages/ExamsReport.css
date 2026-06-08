@@ -21,7 +21,7 @@
   border: 1.5px solid var(--border-light, #e2e8f0);
   padding: 0.5rem 1.1rem;
   border-radius: 10px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -174,7 +174,7 @@
   border: 1.5px solid var(--border-light, #e2e8f0);
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -196,7 +196,7 @@
   border: 1.5px solid var(--border-light, #e2e8f0);
   padding: 0.4rem 0.8rem;
   border-radius: 8px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -252,7 +252,7 @@
   border: none;
   padding: 0.45rem 1rem;
   border-radius: 8px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
@@ -269,7 +269,7 @@
 .er-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.85rem;
 }
 
@@ -371,7 +371,7 @@
   border: 1px solid rgba(102, 126, 234, 0.3);
   padding: 0.28rem 0.6rem;
   border-radius: 6px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -388,7 +388,7 @@
   border: none;
   padding: 0.28rem 0.6rem;
   border-radius: 6px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -804,7 +804,7 @@
   border: none;
   padding: 0.7rem;
   border-radius: 10px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;

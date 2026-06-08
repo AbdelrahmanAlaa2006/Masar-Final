@@ -610,10 +610,18 @@ function shapeVideo(row) {
           </div>
 
           <div className="prep-grid">
-            {GRADES.map((p) => {
+            {GRADES.map((p, index) => {
               const count = (videosByGrade[p.id] || []).length
               return (
-                <button key={p.id} className={`prep-card prep-${p.accent}`} onClick={() => selectGrade(p.id)}>
+                <button
+                  key={p.id}
+                  className={`prep-card prep-${p.accent}`}
+                  style={{
+                    animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
+                    animationDelay: `${index * 0.06}s`
+                  }}
+                  onClick={() => selectGrade(p.id)}
+                >
                   <div className="prep-cover">
                     <div className="prep-cover-deco" />
                     <PrepIllustration kind={p.id.replace('-prep','')} stage={p.en} />
@@ -678,7 +686,12 @@ function shapeVideo(row) {
                 }) : '—'
 
                 return (
-                  <div key={video.id} className="vc-card" onClick={() => openVideoPlayer(video)}>
+                  <div
+                    key={video.id}
+                    className="vc-card"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                    onClick={() => openVideoPlayer(video)}
+                  >
                     <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
                       <span className="vc-status-dot" />
                       <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
@@ -747,8 +760,7 @@ function shapeVideo(row) {
           </div>
 
           <div className="video-player-container">
-            <div className="video-main">
-              <div className="card" style={{ padding: 12 }}>
+            <div className="video-player-card card" style={{ padding: 12 }}>
                 {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
                   (() => {
                     // Both players share the same onProgress contract, so
@@ -808,10 +820,6 @@ function shapeVideo(row) {
                   </div>
                 )}
               </div>
-              {currentVideo && (
-                <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
-              )}
-            </div>
 
             <div className="video-sidebar">
               <div className="card">
@@ -963,6 +971,12 @@ function shapeVideo(row) {
                 </div>
               )}
             </div>
+
+            {currentVideo && (
+              <div className="video-comments-area">
+                <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1708,7 +1722,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
           border: 1.5px solid rgba(99, 102, 241, 0.18);
           background: rgba(255, 255, 255, 0.03);
           color: var(--text-color, #f7fafc);
-          font-family: 'Cairo', sans-serif;
+          font-family: 'Tajawal', sans-serif;
           transition: all 0.2s;
         }
         body.dark .edit-input, body.dark .edit-select, body.dark .edit-textarea {
@@ -1769,7 +1783,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
           background: rgba(255,255,255,0.05);
           color: var(--text-color, #e2e8f0);
           cursor: pointer;
-          font-family: 'Cairo', sans-serif;
+          font-family: 'Tajawal', sans-serif;
           transition: all 0.2s;
           display: inline-flex;
           align-items: center;
@@ -1810,7 +1824,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
           background: rgba(255, 255, 255, 0.02);
           color: var(--text-color, #e2e8f0);
           cursor: pointer;
-          font-family: 'Cairo', sans-serif;
+          font-family: 'Tajawal', sans-serif;
           font-weight: 600;
           transition: all 0.2s;
         }

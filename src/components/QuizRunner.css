@@ -14,7 +14,7 @@
   justify-content: center;
   padding: 1.25rem;
   animation: qr-fade .25s ease;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 @keyframes qr-fade {
   from { opacity: 0; }

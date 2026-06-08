@@ -125,7 +125,7 @@ export default function YouTubePlayer({
         height: '100%',
         playerVars: {
           // Strip every piece of YouTube branding we can.
-          autoplay:        0,
+          autoplay:        1,
           controls:        0,  // hide native controls
           rel:             0,  // no end-screen suggestions
           modestbranding:  1,
@@ -316,14 +316,17 @@ export default function YouTubePlayer({
 
   // Tell the rest of the component which control variant to render.
   // Recomputed on resize so toggling the device orientation updates it.
-  const [isNarrow, setIsNarrow] = useState(
-    typeof window !== 'undefined' && window.innerWidth < 640
-  )
+  // We check both width and height to capture mobile landscape orientation.
+  const checkNarrow = useCallback(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth < 768 || window.innerHeight < 500
+  }, [])
+  const [isNarrow, setIsNarrow] = useState(checkNarrow())
   useEffect(() => {
-    const onResize = () => setIsNarrow(window.innerWidth < 640)
+    const onResize = () => setIsNarrow(checkNarrow())
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [])
+  }, [checkNarrow])
 
   // ---------- Control handlers ----------
   const togglePlay = useCallback(() => {
@@ -420,9 +423,15 @@ export default function YouTubePlayer({
         ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : null),
       }}
     >
-      {/* The YT iframe mounts here. Controls are layered above. */}
+      {/* The YT iframe mounts here. Controls are layered above.
+          Set pointerEvents: 'none' to block direct interactions and prevent native controls on mobile. */}
       <div ref={hostRef} style={{
-        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        position: 'absolute',
+        top: fullscreen ? 0 : '-10%',
+        left: 0,
+        width: '100%',
+        height: fullscreen ? '100%' : '120%',
+        pointerEvents: 'none',
       }} />
 
       {/* Clickable transparent layer — catches clicks so YouTube's
@@ -466,7 +475,7 @@ export default function YouTubePlayer({
           position: 'absolute',
           inset: 0,
           // bottom band is the controls area — let events through to them
-          bottom: 56,
+          bottom: isNarrow ? 40 : 56,
           cursor: 'pointer',
           background: 'transparent',
           zIndex: 2,
@@ -482,7 +491,7 @@ export default function YouTubePlayer({
           onAnimationEnd={() => setSeekFlash(null)}
           style={{
             position: 'absolute',
-            top: 0, bottom: 56,
+            top: 0, bottom: isNarrow ? 40 : 56,
             [seekFlash.side]: 0,
             width: '35%',
             display: 'grid', placeItems: 'center',
@@ -503,11 +512,23 @@ export default function YouTubePlayer({
                style={{ fontSize: 28 }}></i>
             <span>{SEEK_STEP} ثوانٍ</span>
           </div>
-          <style>{`@keyframes ytp-seek-flash {
-            0%   { opacity: 0; transform: scale(0.92); }
-            20%  { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(1); }
-          }`}</style>
+          <style>{`
+            @keyframes ytp-seek-flash {
+              0%   { opacity: 0; transform: scale(0.92); }
+              20%  { opacity: 1; transform: scale(1); }
+              100% { opacity: 0; transform: scale(1); }
+            }
+            .ytp-custom-btn {
+              transition: all 0.2s ease !important;
+            }
+            .ytp-custom-btn:hover {
+              background: rgba(255, 255, 255, 0.15) !important;
+              color: #f56565 !important;
+            }
+            .ytp-custom-btn:active {
+              transform: scale(0.92) !important;
+            }
+          `}</style>
         </div>
       )}
 
@@ -519,10 +540,10 @@ export default function YouTubePlayer({
           style={{
             position: 'absolute', left: '50%', top: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 72, height: 72, borderRadius: '50%',
+            width: isNarrow ? 56 : 72, height: isNarrow ? 56 : 72, borderRadius: '50%',
             border: 'none',
             background: 'rgba(0,0,0,0.55)',
-            color: '#fff', fontSize: 28, cursor: 'pointer',
+            color: '#fff', fontSize: isNarrow ? 20 : 28, cursor: 'pointer',
             display: 'grid', placeItems: 'center',
             zIndex: 3,
             backdropFilter: 'blur(4px)',
@@ -539,10 +560,10 @@ export default function YouTubePlayer({
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: isNarrow ? 48 : 56,
-          padding: isNarrow ? '0 6px' : '0 12px',
+          height: isNarrow ? 40 : 56,
+          padding: isNarrow ? '0 8px' : '0 12px',
           display: 'flex', alignItems: 'center',
-          gap: isNarrow ? 4 : 10,
+          gap: isNarrow ? 6 : 10,
           background: 'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.15))',
           color: '#fff',
           zIndex: 4,
@@ -553,12 +574,17 @@ export default function YouTubePlayer({
           onClick={() => seekBy(-5, 5)}
           aria-label="Back 5 seconds"
           title="إرجاع 5 ثوانٍ"
-          style={{ ...iconBtn, position: 'relative' }}
+          className="ytp-custom-btn"
+          style={{ ...getIconBtnStyle(isNarrow), position: 'relative' }}
         >
           <i className="fas fa-rotate-left"></i>
           <span style={{
-            position: 'absolute', fontSize: 8, fontWeight: 800,
-            marginTop: 1,
+            position: 'absolute',
+            top: '55%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: isNarrow ? 7 : 8,
+            fontWeight: 800,
           }}>5</span>
         </button>
 
@@ -566,7 +592,8 @@ export default function YouTubePlayer({
         <button
           onClick={togglePlay}
           aria-label={playing ? 'Pause' : 'Play'}
-          style={iconBtn}
+          className="ytp-custom-btn"
+          style={getIconBtnStyle(isNarrow)}
         >
           <i className={`fas ${playing ? 'fa-pause' : 'fa-play'}`}></i>
         </button>
@@ -576,12 +603,17 @@ export default function YouTubePlayer({
           onClick={() => seekBy(5, 5)}
           aria-label="Forward 5 seconds"
           title="تقديم 5 ثوانٍ"
-          style={{ ...iconBtn, position: 'relative' }}
+          className="ytp-custom-btn"
+          style={{ ...getIconBtnStyle(isNarrow), position: 'relative' }}
         >
           <i className="fas fa-rotate-right"></i>
           <span style={{
-            position: 'absolute', fontSize: 8, fontWeight: 800,
-            marginTop: 1,
+            position: 'absolute',
+            top: '55%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: isNarrow ? 7 : 8,
+            fontWeight: 800,
           }}>5</span>
         </button>
 
@@ -629,7 +661,7 @@ export default function YouTubePlayer({
             silent switch / volume keys). Desktop keeps both. */}
         {!isNarrow && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} style={iconBtn}>
+            <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
               <i className={`fas ${muted || volume === 0 ? 'fa-volume-xmark' : volume < 40 ? 'fa-volume-low' : 'fa-volume-high'}`}></i>
             </button>
             <input
@@ -649,11 +681,12 @@ export default function YouTubePlayer({
             onClick={() => { setRateMenuOpen(v => !v); setMenuOpen(false) }}
             aria-label="Playback speed"
             title="سرعة التشغيل"
+            className="ytp-custom-btn"
             style={{
-              ...iconBtn,
-              width: isNarrow ? 36 : 'auto',
+              ...getIconBtnStyle(isNarrow),
+              width: isNarrow ? 30 : 'auto',
               padding: isNarrow ? 0 : '0 10px',
-              fontSize: 12, fontWeight: 700,
+              fontSize: isNarrow ? 11 : 12, fontWeight: 700,
             }}
           >
             <i className="fas fa-gauge-high" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
@@ -700,11 +733,12 @@ export default function YouTubePlayer({
           <button
             onClick={() => { setMenuOpen((v) => !v); setRateMenuOpen(false) }}
             aria-label="Quality"
+            className="ytp-custom-btn"
             style={{
-              ...iconBtn,
-              width: isNarrow ? 36 : 'auto',
+              ...getIconBtnStyle(isNarrow),
+              width: isNarrow ? 30 : 'auto',
               padding: isNarrow ? 0 : '0 10px',
-              fontSize: 12, fontWeight: 600,
+              fontSize: isNarrow ? 11 : 12, fontWeight: 600,
             }}
           >
             <i className="fas fa-gear" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
@@ -756,7 +790,7 @@ export default function YouTubePlayer({
         </div>
 
         {/* Fullscreen */}
-        <button onClick={toggleFullscreen} aria-label="Fullscreen" style={iconBtn}>
+        <button onClick={toggleFullscreen} aria-label="Fullscreen" className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
           <i className={`fas ${fullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
         </button>
       </div>
@@ -766,14 +800,15 @@ export default function YouTubePlayer({
   )
 }
 
-const iconBtn = {
-  width: 36, height: 36,
+const getIconBtnStyle = (isNarrow) => ({
+  width: isNarrow ? 30 : 36,
+  height: isNarrow ? 30 : 36,
   borderRadius: 8,
   border: 'none',
   background: 'transparent',
   color: '#fff',
   cursor: 'pointer',
   display: 'grid', placeItems: 'center',
-  fontSize: 14,
+  fontSize: isNarrow ? 12 : 14,
   transition: 'background 0.12s',
-}
+})

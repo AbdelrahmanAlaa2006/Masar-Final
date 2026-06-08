@@ -18,7 +18,7 @@
 }
 
 .paypg-title {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 2.5rem;
   font-weight: 800;
   background: linear-gradient(135deg, #7c3aed, #06b6d4);
@@ -28,7 +28,7 @@
 }
 
 .paypg-subtitle {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1.1rem;
   color: #64748b;
   max-width: 600px;
@@ -93,14 +93,14 @@ body.dark .paypg-subtitle {
 }
 
 .pay-card-title {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1.4rem;
   font-weight: 700;
   margin-bottom: 8px;
 }
 
 .pay-card-text {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   opacity: 0.85;
   margin-bottom: 20px;
@@ -121,7 +121,7 @@ body.dark .paypg-subtitle {
 }
 
 .pay-card-value {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -147,7 +147,7 @@ body.dark .paypg-subtitle {
 }
 
 .pay-card-action-btn {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1rem;
   font-weight: 700;
   color: #1e1b4b;
@@ -195,7 +195,7 @@ body.dark .paypg-widget-card {
 }
 
 .paypg-widget-title {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1.4rem;
   font-weight: 700;
   color: #1e1b4b;
@@ -227,7 +227,7 @@ body.dark .paypg-widget-title {
 }
 
 .form-group label {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
   color: #475569;
@@ -239,7 +239,7 @@ body.dark .form-group label {
 
 .form-group input,
 .form-group select {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid #cbd5e1;
@@ -303,7 +303,7 @@ body.dark .paypg-upload-area {
 }
 
 .paypg-upload-placeholder span {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
   color: #334155;
@@ -331,7 +331,7 @@ body.dark .paypg-upload-placeholder span {
 }
 
 .paypg-file-preview span {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: #1e293b;
@@ -367,14 +367,14 @@ body.dark .paypg-progress-bar {
 }
 
 .paypg-progress-text {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.8rem;
   color: #64748b;
 }
 
 /* Submit Button */
 .paypg-submit-btn {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
   color: #ffffff;
@@ -444,7 +444,7 @@ body.dark .pay-item {
 }
 
 .pay-item-method {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 700;
   color: #334155;
   font-size: 0.95rem;
@@ -455,7 +455,7 @@ body.dark .pay-item-method {
 }
 
 .pay-item-amount {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 800;
   color: #7c3aed;
   font-size: 1.1rem;
@@ -476,7 +476,7 @@ body.dark .pay-item-details {
 .pay-item-link {
   color: #06b6d4;
   text-decoration: none;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 600;
   transition: opacity 0.2s;
 }
@@ -524,7 +524,7 @@ body.dark .pay-item-footer {
 }
 
 .pay-item-notes {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.85rem;
   color: #64748b;
   background: #f1f5f9;
@@ -552,7 +552,7 @@ body.dark .pay-item-notes {
 }
 
 .paypg-loader {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   color: #64748b;
 }
 
@@ -572,7 +572,7 @@ body.dark .paypg-empty i {
 }
 
 .paypg-empty span {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 1rem;
   font-weight: 700;
   color: #334155;
@@ -583,7 +583,7 @@ body.dark .paypg-empty span {
 }
 
 .paypg-empty small {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.85rem;
   color: #64748b;
   max-width: 250px;
@@ -697,7 +697,7 @@ body.dark .paypg-admin-stat-label {
   border-radius: 12px;
   border: 1px solid rgba(0,0,0,0.08);
   outline: none;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.85rem;
   background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -731,7 +731,7 @@ body.dark .paypg-admin-table-container {
   width: 100%;
   border-collapse: collapse;
   text-align: right;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .paypg-admin-table th {
@@ -776,7 +776,7 @@ body.dark .paypg-admin-table tr:hover {
   color: #fff;
   padding: 10px 18px;
   border-radius: 12px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -801,7 +801,7 @@ body.dark .paypg-admin-table tr:hover {
   color: #64748b;
   padding: 10px 18px;
   border-radius: 12px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -963,7 +963,7 @@ body.dark .paypg-admin-notes-text {
   overflow: visible;
   display: flex;
   flex-direction: column;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   text-align: right;
   border: 1px solid rgba(0,0,0,0.06);
 }

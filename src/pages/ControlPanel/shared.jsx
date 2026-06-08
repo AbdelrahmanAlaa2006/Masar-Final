@@ -30,30 +30,38 @@ export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''
   return (
     <nav className="cp-crumbs" aria-label="breadcrumb">
-      <button onClick={onHome} className={section === 'home' ? 'is-active' : ''}>
-        <i className="fas fa-house"></i> الرئيسية
-      </button>
+      <div className="cp-crumbs-list">
+        <button onClick={onHome} className={section === 'home' ? 'is-active' : ''}>
+          <i className="fas fa-house"></i> الرئيسية
+        </button>
+        {section !== 'home' && (
+          <>
+            <i className="fas fa-chevron-left cp-crumb-sep"></i>
+            <button onClick={onSection} className={!scope ? 'is-active' : ''}>
+              {sectionLabel}
+            </button>
+          </>
+        )}
+        {scope && (
+          <>
+            <i className="fas fa-chevron-left cp-crumb-sep"></i>
+            <button onClick={onScope} className={!target ? 'is-active' : ''}>
+              {scopeLabel}
+            </button>
+          </>
+        )}
+        {target && (
+          <>
+            <i className="fas fa-chevron-left cp-crumb-sep"></i>
+            <button className="is-active">{target.name}</button>
+          </>
+        )}
+      </div>
       {section !== 'home' && (
-        <>
-          <i className="fas fa-chevron-left cp-crumb-sep"></i>
-          <button onClick={onSection} className={!scope ? 'is-active' : ''}>
-            {sectionLabel}
-          </button>
-        </>
-      )}
-      {scope && (
-        <>
-          <i className="fas fa-chevron-left cp-crumb-sep"></i>
-          <button onClick={onScope} className={!target ? 'is-active' : ''}>
-            {scopeLabel}
-          </button>
-        </>
-      )}
-      {target && (
-        <>
-          <i className="fas fa-chevron-left cp-crumb-sep"></i>
-          <button className="is-active">{target.name}</button>
-        </>
+        <button className="cp-crumbs-back" onClick={onHome} title="الرجوع للرئيسية">
+          <span>الرجوع للرئيسية</span>
+          <i className="fas fa-arrow-left"></i>
+        </button>
       )}
     </nav>
   )
@@ -69,7 +77,9 @@ export function SectionCard({ icon, title, desc, accent, onClick }) {
         <h3>{title}</h3>
         <p>{desc}</p>
       </div>
-      <i className="fas fa-arrow-left cp-section-arrow"></i>
+      <div className="cp-section-chevron-circle">
+        <i className="fas fa-chevron-left"></i>
+      </div>
     </button>
   )
 }

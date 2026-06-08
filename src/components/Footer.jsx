@@ -79,10 +79,11 @@ export default function Footer() {
             <h4 className="sf-col-title"><i className="fas fa-compass"></i> روابط سريعة</h4>
             <ul className="sf-links">
               <li><Link to="/"><i className="fas fa-house"></i> الرئيسية</Link></li>
-              <li><Link to="/lectures"><i className="fas fa-book"></i> المحاضرات</Link></li>
-              <li><Link to="/videos"><i className="fas fa-video"></i> الفيديوهات</Link></li>
-              <li><Link to="/exams"><i className="fas fa-file-alt"></i> الامتحانات</Link></li>
-              <li><Link to="/report"><i className="fas fa-chart-bar"></i> التقارير</Link></li>
+              <li><Link to="/homework"><i className="fas fa-clipboard-list"></i> الواجبات</Link></li>
+              <li><Link to="/videos"><i className="fas fa-circle-play"></i> الفيديوهات</Link></li>
+              <li><Link to="/exams"><i className="fas fa-file-pen"></i> الامتحانات</Link></li>
+              <li><Link to="/payments"><i className="fas fa-wallet"></i> المدفوعات</Link></li>
+              <li><Link to="/report"><i className="fas fa-chart-line"></i> التقارير</Link></li>
             </ul>
           </div>
 
@@ -93,6 +94,9 @@ export default function Footer() {
               <li><span><i className="fas fa-seedling"></i> الصف الأول الإعدادي</span></li>
               <li><span><i className="fas fa-book-open-reader"></i> الصف الثاني الإعدادي</span></li>
               <li><span><i className="fas fa-trophy"></i> الصف الثالث الإعدادي</span></li>
+              <li><span><i className="fas fa-graduation-cap"></i> الصف الأول الثانوي</span></li>
+              <li><span><i className="fas fa-book"></i> الصف الثاني الثانوي</span></li>
+              <li><span><i className="fas fa-award"></i> الصف الثالث الثانوي</span></li>
             </ul>
             <div className="sf-badges sf-badges--text">
               <span className="sf-badge sf-badge--text"><i className="fas fa-shield-halved"></i> آمن</span>

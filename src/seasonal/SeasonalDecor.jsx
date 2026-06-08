@@ -370,7 +370,6 @@ function EidAdhaDecor() {
   return (
     <>
       <div className="season-green-tint" />
-      <ArchRow />
       {stars.map((s, i) => <AdhaStar key={i} {...s} />)}
       <CrescentSilhouette />
     </>

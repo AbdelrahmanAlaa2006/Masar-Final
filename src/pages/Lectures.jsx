@@ -56,7 +56,7 @@ const PLACEHOLDER_COVER =
         </linearGradient>
       </defs>
       <rect width="600" height="340" fill="url(#g)"/>
-      <text x="50%" y="50%" font-family="Cairo, Arial" font-size="44" font-weight="700"
+      <text x="50%" y="50%" font-family="Tajawal, Arial" font-size="44" font-weight="700"
         fill="rgba(255,255,255,0.85)" text-anchor="middle" dominant-baseline="middle">محاضرة</text>
     </svg>`
   )
@@ -300,10 +300,11 @@ export default function Lectures() {
               </div>
             </div>
             <div className="prep-grid">
-              {PREPS.map((p) => (
+              {PREPS.map((p, index) => (
                 <PrepCard
                   key={p.id}
                   prep={p}
+                  index={index}
                   count={(lectures[p.id] || []).length}
                   onClick={() => setGrade(p.id)}
                 />
@@ -668,9 +669,16 @@ function PdfViewerModal({ viewer, onClose }) {
   )
 }
 
-function PrepCard({ prep, count, onClick }) {
+function PrepCard({ prep, count, index, onClick }) {
   return (
-    <button className={`prep-card prep-${prep.accent}`} onClick={onClick}>
+    <button
+      className={`prep-card prep-${prep.accent}`}
+      style={{
+        animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
+        animationDelay: `${index * 0.06}s`
+      }}
+      onClick={onClick}
+    >
       <div className="prep-cover">
         <div className="prep-cover-deco" />
         <PrepIllustration kind={prep.id} stage={prep.nameEn} />

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
 
 /* ─────────────────────────────────────────
    Wrapper
@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: flex-start;
   padding: calc(48px + env(safe-area-inset-top, 0px)) 20px 64px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .et-back-row {
@@ -248,7 +248,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .et-nav-dot:hover {
@@ -289,7 +289,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.22s;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .et-btn:disabled {
@@ -544,7 +544,7 @@ body.dark .et-finished-title {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 .et-sidepanel-head {
@@ -690,7 +690,7 @@ body.dark .et-sidepanel-legend { color: #94a3b8; border-top-color: rgba(255, 255
   padding: 20px;
   z-index: 1000;
   animation: etFadeIn 0.18s ease-out;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
 }
 
 @keyframes etFadeIn { from { opacity: 0; } to { opacity: 1; } }

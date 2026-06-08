@@ -201,10 +201,18 @@ export default function Exams() {
     'first-sec': '1️⃣', 'second-sec': '2️⃣', 'third-sec': '3️⃣'
   }
 
-  const renderLevelCard = (level) => {
+  const renderLevelCard = (level, index) => {
     const m = PREP_META[level]
     return (
-      <button key={level} className={`prep-card prep-${m.accent}`} onClick={() => setCurrentLevel(level)}>
+      <button
+        key={level}
+        className={`prep-card prep-${m.accent}`}
+        style={{
+          animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
+          animationDelay: `${index * 0.06}s`
+        }}
+        onClick={() => setCurrentLevel(level)}
+      >
         <div className="prep-cover">
           <div className="prep-cover-deco" />
           <PrepIllustration kind={level} stage={m.en} />
@@ -356,7 +364,7 @@ export default function Exams() {
             </div>
           </div>
           <div className="prep-grid">
-            {Object.keys(PREP_META).map((key) => renderLevelCard(key))}
+            {Object.keys(PREP_META).map((key, index) => renderLevelCard(key, index))}
           </div>
         </div>
       )}
@@ -764,7 +772,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
           border: 1.5px solid rgba(99, 102, 241, 0.18);
           background: rgba(255, 255, 255, 0.03);
           color: var(--text-color, #f7fafc);
-          font-family: 'Cairo', sans-serif;
+          font-family: 'Tajawal', sans-serif;
           transition: all 0.2s;
         }
         body.dark .edit-input, body.dark .edit-select, body.dark .edit-textarea {
@@ -826,7 +834,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
           background: rgba(255,255,255,0.05);
           color: var(--text-color, #e2e8f0);
           cursor: pointer;
-          font-family: 'Cairo', sans-serif;
+          font-family: 'Tajawal', sans-serif;
           transition: all 0.2s;
         }
         .edit-btn-sm:hover {

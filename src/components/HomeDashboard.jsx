@@ -388,9 +388,10 @@ function AdminDashboard() {
         </div>
         {error && (
           <div style={{
-            marginTop: 10, padding: '8px 10px', borderRadius: 8,
-            background: 'rgba(239,68,68,0.1)', color: '#dc2626',
+            marginTop: 15, padding: '10px 12px', borderRadius: 12,
+            background: 'rgba(239,68,68,0.08)', color: '#ef4444',
             fontSize: 12, fontWeight: 600,
+            border: '1px solid rgba(239,68,68,0.15)'
           }}>
             <i className="fas fa-triangle-exclamation" style={{ marginInlineEnd: 6 }}></i>
             تعذر تحميل بعض البيانات: {error}
@@ -400,10 +401,22 @@ function AdminDashboard() {
 
       <WidgetCard icon="fa-bolt" title="إجراءات سريعة" accent="amber">
         <div className="hdash-quick">
-          <Link to="/exams"  className="hdash-quick-btn"><i className="fas fa-plus"></i> امتحان جديد</Link>
-          <Link to="/videos" className="hdash-quick-btn"><i className="fas fa-plus"></i> فيديو جديد</Link>
-          <Link to="/report"       className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-chart-line"></i> التقارير</Link>
-          <Link to="/control-panel" className="hdash-quick-btn hdash-quick-ghost"><i className="fas fa-gear"></i> لوحة التحكم</Link>
+          <Link to="/exams" className="hdash-quick-card-btn hdash-quick-primary">
+            <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
+            <span className="hdash-quick-text">امتحان جديد</span>
+          </Link>
+          <Link to="/videos" className="hdash-quick-card-btn hdash-quick-primary">
+            <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
+            <span className="hdash-quick-text">فيديو جديد</span>
+          </Link>
+          <Link to="/report" className="hdash-quick-card-btn hdash-quick-ghost">
+            <span className="hdash-quick-icon-chip"><i className="fas fa-chart-line"></i></span>
+            <span className="hdash-quick-text">التقارير</span>
+          </Link>
+          <Link to="/control-panel" className="hdash-quick-card-btn hdash-quick-ghost">
+            <span className="hdash-quick-icon-chip"><i className="fas fa-gear"></i></span>
+            <span className="hdash-quick-text">لوحة التحكم</span>
+          </Link>
         </div>
       </WidgetCard>
     </section>
@@ -413,8 +426,9 @@ function AdminDashboard() {
 function StatCell({ icon, label, value }) {
   return (
     <div className="hdash-stat">
+      <span className="hdash-stat-accent-bar" aria-hidden="true" />
       <div className="hdash-stat-icon"><i className={`fas ${icon}`}></i></div>
-      <div>
+      <div className="hdash-stat-info">
         <div className="hdash-stat-value">{value}</div>
         <div className="hdash-stat-label">{label}</div>
       </div>

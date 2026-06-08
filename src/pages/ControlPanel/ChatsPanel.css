@@ -6,7 +6,7 @@
   flex-direction: column;
   height: calc(100vh - 200px);
   min-height: 520px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   overflow: hidden;
   padding: 0 !important;
 }
@@ -66,7 +66,7 @@
   border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
   border-radius: 10px;
   color: var(--text-color, #fff);
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.85rem;
   outline: none;
 }
@@ -467,7 +467,7 @@
   border-radius: 24px;
   padding: 10px 18px;
   color: var(--text-color, #fff);
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 0.9rem;
   outline: none;
 }
@@ -525,7 +525,7 @@
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   display: flex;
   align-items: center;
   gap: 4px;

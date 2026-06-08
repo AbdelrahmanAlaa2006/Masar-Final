@@ -29,7 +29,7 @@ function FirstPrepArt() {
       aria-hidden="true"
     >
       {/* faded letters */}
-      <g fill="rgba(255,255,255,0.18)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.18)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="22" y="60" fontSize="36">A</text>
         <text x="46" y="38" fontSize="26">B</text>
         <text x="70" y="58" fontSize="22">C</text>
@@ -97,7 +97,7 @@ function SecondPrepArt() {
       aria-hidden="true"
     >
       {/* faded "123" */}
-      <g fill="rgba(255,255,255,0.16)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.16)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="20" y="60" fontSize="36">1</text>
         <text x="44" y="40" fontSize="26">2</text>
         <text x="66" y="58" fontSize="22">3</text>
@@ -210,7 +210,7 @@ function ThirdPrepArt() {
       </g>
 
       {/* faded "1st" badge */}
-      <g fill="rgba(255,255,255,0.18)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.18)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="20" y="118" fontSize="22">★</text>
         <text x="38" y="124" fontSize="14">1ST</text>
       </g>
@@ -234,7 +234,7 @@ function FirstSecArt() {
       </g>
       
       {/* faded letter/symbols */}
-      <g fill="rgba(255,255,255,0.14)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.14)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="24" y="66" fontSize="28">أ</text>
         <text x="50" y="96" fontSize="20">ب</text>
       </g>
@@ -304,7 +304,7 @@ function SecondSecArt() {
       </g>
 
       {/* faded letter/symbols */}
-      <g fill="rgba(255,255,255,0.14)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.14)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="24" y="66" fontSize="28">ت</text>
         <text x="50" y="96" fontSize="20">ث</text>
       </g>
@@ -364,7 +364,7 @@ function ThirdSecArt() {
       aria-hidden="true"
     >
       {/* faded percent */}
-      <g fill="rgba(255,255,255,0.12)" fontFamily="Cairo, Arial, sans-serif" fontWeight="900">
+      <g fill="rgba(255,255,255,0.12)" fontFamily="Tajawal, Arial, sans-serif" fontWeight="900">
         <text x="24" y="66" fontSize="32">100%</text>
       </g>
       {/* graduation cap */}

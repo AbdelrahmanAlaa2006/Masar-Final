@@ -259,7 +259,7 @@ export default function Payments() {
               alignItems: 'center',
               gap: 16,
               color: '#ef4444',
-              fontFamily: 'Cairo',
+              fontFamily: 'Tajawal',
               animation: 'fadeInDown 0.3s ease-out'
             }}
           >
@@ -618,7 +618,7 @@ export default function Payments() {
           >
             
             {/* Modal Header */}
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Cairo', color: '#1e1b4b' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Tajawal', color: '#1e1b4b' }}>
               <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>مراجعة إيصال التحويل</h4>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button 
@@ -1165,7 +1165,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                       border: 'none', padding: '8px 18px', borderRadius: 10,
                       background: isActive ? '#ffffff' : 'transparent',
                       color: isActive ? themeColor : '#64748b',
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'Cairo', fontSize: '0.85rem',
+                      fontWeight: 700, cursor: 'pointer', fontFamily: 'Tajawal', fontSize: '0.85rem',
                       boxShadow: isActive ? '0 4px 10px rgba(0,0,0,0.04)' : 'none',
                       display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s'
                     }}
@@ -1515,7 +1515,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     <button 
                       type="button" 
                       onClick={() => setCashStudentId('')} 
-                      style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontFamily: 'Cairo' }}
+                      style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontFamily: 'Tajawal' }}
                     >
                       تغيير الطالب
                     </button>

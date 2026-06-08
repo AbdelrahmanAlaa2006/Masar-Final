@@ -139,7 +139,7 @@ body.dark {
   flex-direction: row-reverse;
   color: #fff;
   position: relative;
-  font-family: 'Cairo', 'Segoe UI', sans-serif;
+  font-family: 'Tajawal', 'Segoe UI', sans-serif;
   transition: color 0.3s ease;
   overflow: hidden;
   z-index: 1;
@@ -633,7 +633,7 @@ body:not(.dark) .login:hover {
 .auth-modal .input-wrapper option {
   background-color: var(--card-bg, #ffffff);
   color: var(--input-text, #1a1a1a);
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-weight: 600;
   padding: 10px;
 }
@@ -878,7 +878,7 @@ body.dark .right-section::after {
 .hero-tagline-title {
   font-size: 2.6rem;
   font-weight: 900;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   line-height: 1.1;
   letter-spacing: -0.5px;
   background: linear-gradient(135deg, #a78bfa 0%, #818cf8 35%, #06b6d4 70%, #a78bfa 100%);
@@ -1883,7 +1883,7 @@ body:not(.dark) .location-info-card:hover h4 {
   background-size: 200% 100%;
   color: #fff;
   text-decoration: none;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.4px;
@@ -2382,7 +2382,7 @@ body:not(.dark) .footer-divider {
   max-width: 480px;
   padding: 36px;
   position: relative;
-  font-family: 'Cairo', 'Segoe UI', sans-serif;
+  font-family: 'Tajawal', 'Segoe UI', sans-serif;
   animation: modalSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }

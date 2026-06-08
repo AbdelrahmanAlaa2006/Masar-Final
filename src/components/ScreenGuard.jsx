@@ -38,7 +38,7 @@ export default function ScreenGuard({ active = true, label = '' /*, strict */ })
   const fillAlpha = isMobile ? 0.08 : 0.06
   const tileSvg = encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${tileW}" height="${tileH}">
-       <text x="50%" y="50%" font-family="Cairo, Arial, sans-serif"
+       <text x="50%" y="50%" font-family="Tajawal, Arial, sans-serif"
              font-size="${fontSize}" font-weight="700"
              fill="rgba(255,255,255,${fillAlpha})"
              text-anchor="middle" dominant-baseline="middle"

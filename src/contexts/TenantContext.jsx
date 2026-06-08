@@ -140,42 +140,69 @@ export function TenantProvider({ children }) {
         <>
           {children}
           
-          {/* Localhost Dev Tenant Selector Overlay */}
+                    {/* Localhost Dev Tenant Selector Overlay (Redesigned Floating Glass Pill Switcher) */}
           {isLocalhost && availableTenants.length > 1 && (
-            <div style={{
+            <div className="dev-tenant-switcher" style={{
               position: 'fixed',
-              bottom: '12px',
-              left: '12px',
+              bottom: '16px',
+              left: '16px',
               zIndex: 99999,
-              background: '#1e293b',
-              color: '#fff',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              webkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '999px',
+              padding: '6px 14px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontFamily: 'sans-serif',
-              border: '1px solid #334155'
+              gap: '10px',
+              fontFamily: 'Tajawal, sans-serif',
+              fontSize: '13px',
+              color: '#f1f5f9',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'all 0.2s ease',
             }}>
-              <span>Tenant (Dev):</span>
+              {/* Avatar circle */}
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #5BC2E7, #8b5cf6)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 'bold'
+              }}>
+                {(tenant?.name || 'M').charAt(0)}
+              </div>
+              
+              {/* Tenant Name */}
+              <span style={{ fontWeight: '600' }}>{tenant?.name || 'Default'}</span>
+              
+              {/* Chevron */}
+              <i className="fas fa-chevron-up" style={{ fontSize: '10px', color: '#94a3b8' }}></i>
+
+              {/* Invisible native select overlay */}
               <select
                 value={tenant?.slug || 'default'}
                 onChange={(e) => changeTenantDev(e.target.value)}
                 style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  border: '1px solid #475569',
-                  borderRadius: '4px',
-                  padding: '2px 4px',
-                  fontSize: '11px',
-                  cursor: 'pointer'
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer',
+                  zIndex: 2
                 }}
               >
                 {availableTenants.map((t) => (
                   <option key={t.slug} value={t.slug}>
-                    {t.name} ({t.slug})
+                    {t.name}
                   </option>
                 ))}
               </select>

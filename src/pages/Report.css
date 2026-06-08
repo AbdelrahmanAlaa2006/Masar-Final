@@ -80,7 +80,7 @@
   background: var(--page-bg, #f0f2f8);
   color: var(--text-color);
   font-size: 0.95rem;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
@@ -127,7 +127,7 @@
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s;
@@ -248,7 +248,7 @@
   gap: 12px;
   padding: 0.75rem 1rem;
   cursor: pointer;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   color: var(--text-color);
   transition: background 0.12s;
   border-bottom: 1px solid var(--border-light, #e2e8f0);
@@ -506,7 +506,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   overflow: hidden;
   animation: rp-pop 0.22s ease-out;
 }
@@ -593,7 +593,7 @@
   background: var(--page-bg, #f0f2f8);
   color: var(--text-color);
   font-size: 0.92rem;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   box-sizing: border-box;
   transition: border-color 0.15s;
 }

@@ -5,7 +5,7 @@
 .pp-page {
   min-height: 100vh;
   padding: 32px 20px 80px;
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   background: var(--page-bg);
   color: var(--text-primary);
 }

@@ -192,7 +192,7 @@ export default function PaymentsPanel() {
               borderRadius: 12,
               border: '1px solid rgba(0,0,0,0.08)',
               outline: 'none',
-              fontFamily: 'Cairo',
+              fontFamily: 'Tajawal',
               fontSize: '0.9rem',
             }}
           />
@@ -202,7 +202,7 @@ export default function PaymentsPanel() {
 
       {/* ─────────── Content Table / List ─────────── */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', fontFamily: 'Cairo' }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', fontFamily: 'Tajawal' }}>
           <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#7c3aed', marginBottom: 12 }}></i>
           <div>جاري تحميل كشف التحويلات...</div>
         </div>
@@ -302,7 +302,7 @@ export default function PaymentsPanel() {
                           disabled={resolvingId === p.id}
                           style={{
                             padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)',
-                            fontSize: '0.85rem', outline: 'none', fontFamily: 'Cairo'
+                            fontSize: '0.85rem', outline: 'none', fontFamily: 'Tajawal'
                           }}
                         />
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -342,7 +342,7 @@ export default function PaymentsPanel() {
       ) : (
         <div style={{
           textAlign: 'center', padding: '60px 20px', background: '#ffffff', borderRadius: 20, 
-          border: '1px solid rgba(0,0,0,0.04)', color: '#64748b', fontFamily: 'Cairo'
+          border: '1px solid rgba(0,0,0,0.04)', color: '#64748b', fontFamily: 'Tajawal'
         }}>
           <i className="fas fa-wallet" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1e1b4b', marginBottom: 6 }}>لا توجد تحويلات</h3>
@@ -399,12 +399,12 @@ const thStyle = {
   fontWeight: 700,
   fontSize: '0.85rem',
   color: '#475569',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
 }
 
 const tdStyle = {
   padding: '14px 18px',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
   verticalAlign: 'middle',
 }
 
@@ -416,7 +416,7 @@ const tabBtnStyle = (active) => ({
   color: active ? '#7c3aed' : '#64748b',
   fontWeight: 700,
   cursor: 'pointer',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
   fontSize: '0.85rem',
   boxShadow: active ? '0 4px 6px rgba(0,0,0,0.04)' : 'none',
   display: 'flex',
@@ -456,7 +456,7 @@ const actionBtnStyle = (color) => ({
   fontWeight: 700,
   fontSize: '0.85rem',
   cursor: 'pointer',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
   transition: 'opacity 0.2s, transform 0.2s',
   flex: 1,
 })
@@ -491,7 +491,7 @@ const modalHeadStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
   color: '#1e1b4b',
 }
 
@@ -501,7 +501,7 @@ const modalIconBtnStyle = {
   padding: '6px 12px',
   borderRadius: 8,
   cursor: 'pointer',
-  fontFamily: 'Cairo',
+  fontFamily: 'Tajawal',
   fontSize: '0.85rem',
   fontWeight: 700,
   color: '#475569',

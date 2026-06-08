@@ -44,7 +44,7 @@ export default function Home() {
     const mouse = { x: -9999, y: -9999, active: false }
 
     const COLORS = ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
-    const COUNT = Math.max(38, Math.floor((window.innerWidth * window.innerHeight) / 28000))
+    const COUNT = Math.max(25, Math.floor((window.innerWidth * window.innerHeight) / 38000))
     const particles = []
 
     const resize = () => {
@@ -59,7 +59,8 @@ export default function Home() {
         y: Math.random() * height,
         vx: 0,
         vy: 0,
-        r: 1.8 + Math.random() * 2.2,
+        r: 1.0 + Math.random() * 2.0,
+        opacity: 0.2 + Math.random() * 0.4,
         c: COLORS[Math.floor(Math.random() * COLORS.length)],
       })
     }
@@ -109,6 +110,7 @@ export default function Home() {
       }
 
       for (const p of particles) {
+        ctx.globalAlpha = p.opacity || 0.5
         ctx.fillStyle = p.c
         ctx.shadowColor = p.c
         ctx.shadowBlur = 12
@@ -116,6 +118,7 @@ export default function Home() {
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
         ctx.fill()
       }
+      ctx.globalAlpha = 1.0
       ctx.shadowBlur = 0
 
       raf = requestAnimationFrame(step)
@@ -171,18 +174,34 @@ export default function Home() {
   // banner on the home page.
   const seasonalTheme = useSeasonalTheme()
   const seasonalGreeting = seasonalTheme && {
-    'ramadan': { en: 'Ramadan Mubarak • A Month of Grace & Blessings', ar: 'رمضان مبارك • مبارك عليكم الشهر الفضيل وسدد الله خطاكم', emoji: '' },
-    'eid-fitr': { en: 'Eid Mubarak • Wishing You Joy, Peace & Prosperity', ar: 'عيد فطر مبارك • تقبل الله منا ومنكم صالح الأعمال وكل عام وأنتم بخير', emoji: '✨' },
-    'eid-adha': { en: 'Blessed Eid • Wishing You a Beautiful Celebration', ar: 'عيد أضحى مبارك • أعاده الله عليكم وعلى أحبابكم باليُمن والبركات', emoji: '🕌' },
+    'ramadan': {
+      arTitle: 'رمضان مبارك',
+      arBlessing: 'مبارك عليكم الشهر الفضيل وسدد الله خطاكم',
+      en: 'Ramadan Mubarak • A Month of Grace & Blessings',
+      ariaLabel: 'تهنئة شهر رمضان',
+    },
+    'eid-fitr': {
+      arTitle: 'عيد فطر مبارك',
+      arBlessing: 'تقبل الله منا ومنكم صالح الأعمال وكل عام وأنتم بخير',
+      en: 'Eid al-Fitr Mubarak • Joy & Renewal',
+      ariaLabel: 'تهنئة عيد الفطر',
+    },
+    'eid-adha': {
+      arTitle: 'عيد أضحى مبارك',
+      arBlessing: 'أعاده الله عليكم وعلى أحبابكم باليُمن والبركات',
+      en: 'Blessed Eid al-Adha • Sacrifice & Gratitude',
+      ariaLabel: 'تهنئة عيد الأضحى',
+    },
   }[seasonalTheme.id] || null
 
+
   const marqueeItems = [
-    '🚀 قريبًا: دورات مكثفة للمرحلة الإعدادية',
-    '📅 امتحانات شهرية جديدة كل أسبوع',
-    '🎁 خصومات خاصة لأوائل المشتركين',
-    '🎥 فيديوهات حصرية قادمة هذا الشهر',
-    '💬 انضم لمجتمع الطلاب على الواتساب',
-    '🏆 مسابقة شهرية بجوائز قيمة',
+    { icon: '🚀', text: 'قريبًا: دورات مكثفة للمرحلة الإعدادية' },
+    { icon: '📅', text: 'امتحانات شهرية جديدة كل أسبوع' },
+    { icon: '🎁', text: 'خصومات خاصة لأوائل المشتركين' },
+    { icon: '🎥', text: 'فيديوهات حصرية قادمة هذا الشهر' },
+    { icon: '💬', text: 'انضم لمجتمع الطلاب على الواتساب' },
+    { icon: '🏆', text: 'مسابقة شهرية بجوائز قيمة' },
   ]
 
   return (
@@ -195,110 +214,99 @@ export default function Home() {
           context. */}
       {seasonalGreeting && (
         <section
-          className={`home-seasonal home-seasonal-${seasonalTheme.id}`}
-          aria-label={seasonalGreeting.ar}
+          className={`sb sb-${seasonalTheme.id}`}
+          aria-label={seasonalGreeting.ariaLabel}
         >
-          {/* Decorative left flourish — eight-point star + petals */}
-          <span className="home-seasonal-flourish home-seasonal-flourish-start" aria-hidden="true">
-            <svg viewBox="0 0 60 60" width="38" height="38">
-              <g transform="translate(30 30)" fill="currentColor" opacity="0.85">
-                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" />
-                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" transform="rotate(22.5)" opacity="0.55" />
-                <circle r="4" />
+          {/* Background pattern layer */}
+          <span className="sb-pattern" aria-hidden="true" />
+          {/* Radial glow */}
+          <span className="sb-glow" aria-hidden="true" />
+
+          {/* Decorative star */}
+          <span className="sb-star" aria-hidden="true">
+            <svg viewBox="0 0 80 80" width="52" height="52">
+              <g transform="translate(40 40)" fill="currentColor" opacity="0.7">
+                <polygon points="0,-28 6,-6 28,0 6,6 0,28 -6,6 -28,0 -6,-6" />
+                <polygon points="0,-28 6,-6 28,0 6,6 0,28 -6,6 -28,0 -6,-6" transform="rotate(22.5)" opacity="0.45" />
+                <circle r="5" opacity="0.9" />
               </g>
             </svg>
           </span>
 
-          {/* Big emoji "monogram" inside a gradient ring */}
-          {seasonalGreeting.emoji && (
-            <span className="home-seasonal-mono" aria-hidden="true">
-              <span className="home-seasonal-mono-inner">{seasonalGreeting.emoji}</span>
-            </span>
-          )}
-
-          {/* Stacked text: English on top, Arabic below — both gradient-filled,
-              both animated (shimmer for the English, scale-pulse for the Arabic) */}
-          <div className="home-seasonal-text">
-            <span className="home-seasonal-en" data-text={seasonalGreeting.en}>
-              {seasonalGreeting.en}
-            </span>
-            <span className="home-seasonal-ar">{seasonalGreeting.ar}</span>
+          {/* Text column */}
+          <div className="sb-text">
+            <h3 className="sb-title">{seasonalGreeting.arTitle}</h3>
+            <p className="sb-blessing">{seasonalGreeting.arBlessing}</p>
+            <span className="sb-en">{seasonalGreeting.en}</span>
           </div>
 
-          {/* Decorative right flourish — mirror of the left */}
-          <span className="home-seasonal-flourish home-seasonal-flourish-end" aria-hidden="true">
-            <svg viewBox="0 0 60 60" width="38" height="38">
-              <g transform="translate(30 30)" fill="currentColor" opacity="0.85">
-                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" />
-                <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" transform="rotate(22.5)" opacity="0.55" />
-                <circle r="4" />
-              </g>
-            </svg>
-          </span>
 
-          {/* Sparkle dots layered absolutely — pure decoration */}
-          <span className="home-seasonal-sparkle home-seasonal-sparkle-1" aria-hidden="true" />
-          <span className="home-seasonal-sparkle home-seasonal-sparkle-2" aria-hidden="true" />
-          <span className="home-seasonal-sparkle home-seasonal-sparkle-3" aria-hidden="true" />
         </section>
       )}
 
       {/* Greeting banner */}
-      <section className="home-greeting">
+      <section className="home-greeting animate-fade-up">
         <h2 className="home-greeting-title">
-          أهلاً بك، <span className="home-greeting-name">{username || (role === 'admin' ? 'المشرف' : 'الطالب')}</span>
+          <span className="home-greeting-hi">أهلاً بك،</span>{" "}
+          <span className="home-greeting-name">{username || (role === 'admin' ? 'المشرف' : 'الطالب')}</span>
         </h2>
         <p className="home-greeting-sub">
           {role === 'admin'
             ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
             : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨'}
         </p>
+        <div className="home-greeting-shimmer" />
       </section>
+
+      <div className="home-divider" />
 
       {/* Role-aware dashboard */}
       <HomeDashboard role={role} />
+
+      <div className="home-divider" />
 
       {/* Upcoming news marquee */}
       <div className="home-marquee" aria-label="أحدث الإعلانات" dir="ltr">
         <div className="home-marquee-track">
           <div className="home-marquee-set">
-            {marqueeItems.map((t, i) => (
-              <span className="home-marquee-item" key={i}>{t}</span>
+            {marqueeItems.map((item, i) => (
+              <span className="home-marquee-item" key={i}>
+                <span className="home-marquee-icon">{item.icon}</span>
+                <span className="home-marquee-text">{item.text}</span>
+              </span>
             ))}
           </div>
           <div className="home-marquee-set" aria-hidden="true">
-            {marqueeItems.map((t, i) => (
-              <span className="home-marquee-item" key={i}>{t}</span>
+            {marqueeItems.map((item, i) => (
+              <span className="home-marquee-item" key={i}>
+                <span className="home-marquee-icon">{item.icon}</span>
+                <span className="home-marquee-text">{item.text}</span>
+              </span>
             ))}
           </div>
         </div>
       </div>
 
+      <div className="home-divider" />
+
       {/* Hero Section */}
-      <section className="hero">
-        {role === 'admin' ? (
-          <>
-            <h1>لوحة إدارة منصة مسار</h1>
-            <p>
-              تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.
-            </p>
-            <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
-              انتقل إلى الإدارة
-            </a>
-          </>
-        ) : (
-          <>
-            <h1>طور مهاراتك مع منصة مسار</h1>
-            <p>
-              أكتشف مجموعة واسعة من الدورات التعليمية المصممة خصيصًا للطلاب، من البرمجة إلى التصميم الجرافيكي. كل ما
-              تحتاجه لتطوير مهاراتك وتحقيق أهدافك المهنية.
-            </p>
-            <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
-              ابدأ التعلم الآن
-            </a>
-          </>
-        )}
+      <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>
+        <div className="hero-title-container">
+          <h1>{role === 'admin' ? 'لوحة إدارة منصة مسار' : 'طور مهاراتك مع منصة مسار'}</h1>
+          <div className="hero-title-accent" />
+        </div>
+        <p>
+          {role === 'admin'
+            ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
+            : 'أكتشف مجموعة واسعة من الدورات التعليمية المصممة خصيصًا للطلاب، من البرمجة إلى التصميم الجرافيكي. كل ما تحتاجه لتطوير مهاراتك وتحقيق أهدافك المهنية.'}
+        </p>
+        <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
+          <span>{role === 'admin' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن'}</span>
+          <i className="fas fa-arrow-left hero-btn-arrow" />
+        </a>
       </section>
+
+      <div className="home-divider" />
 
       {/* Cards Section */}
       <div className="container">
@@ -306,31 +314,47 @@ export default function Home() {
           <div className="card" onClick={() => goAndTrack('exams', '/exams')}>
             <span className="home-card-icon" aria-hidden="true"><ExamsIcon /></span>
             <h2>الامتحانات</h2>
+            <div className="card-title-accent" />
             <p>{role === 'admin' ? 'إدارة الامتحانات ومتابعة نتائج الطلاب' : 'اختبارات التدريب والامتحانات السابقة'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('homeworks', '/homework')}>
             <span className="home-card-icon" aria-hidden="true"><LecturesIcon /></span>
             <h2>الواجبات</h2>
+            <div className="card-title-accent" />
             <p>{role === 'admin' ? 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها' : 'حلّ واجباتك وارفع إجاباتك للمعلم'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('report', '/report')}>
             <span className="home-card-icon" aria-hidden="true"><ReportsIcon /></span>
             <h2>التقارير</h2>
+            <div className="card-title-accent" />
             <p>{role === 'admin' ? 'تقارير أداء الطلاب وتحليلات المجموعات' : 'عرض تقارير الأداء والتقدم'}</p>
           </div>
 
           <div className="card" onClick={() => goAndTrack('videos', '/videos')}>
             <span className="home-card-icon" aria-hidden="true"><VideosIcon /></span>
             <h2>الفيديوهات</h2>
+            <div className="card-title-accent" />
             <p>{role === 'admin' ? 'رفع الفيديوهات وضبط صلاحيات المشاهدة' : 'مشاهدة الفيديوهات التعليمية'}</p>
           </div>
         </div>
       </div>
 
+      <div className="home-divider" />
+
       {/* Greeting Section */}
       <section className="greeting-section">
+        <div className="greeting-confetti" aria-hidden="true">
+          <span className="greeting-dot greeting-dot--1" />
+          <span className="greeting-dot greeting-dot--2" />
+          <span className="greeting-dot greeting-dot--3" />
+          <span className="greeting-dot greeting-dot--4" />
+          <span className="greeting-dot greeting-dot--5" />
+          <span className="greeting-dot greeting-dot--6" />
+          <span className="greeting-dot greeting-dot--7" />
+          <span className="greeting-dot greeting-dot--8" />
+        </div>
         <h2>
           <span className="name-highlight">
             {role === 'admin'
@@ -338,6 +362,7 @@ export default function Home() {
               : `يومك سعيد يا ${username || 'الطالب'}`}
           </span>
         </h2>
+        <div className="greeting-title-accent" />
         <p>
           {role === 'admin'
             ? 'لأي ملاحظات تقنية أو اقتراحات لتطوير المنصة، تواصل معنا عبر القنوات التالية'
