@@ -1374,6 +1374,7 @@ body.dark .mh-drawer__panel {
   box-shadow: none !important;
   color: #5bc2e7 !important;
 }
+
 .mh__link[href="/control-panel"].is-active::after {
   content: '' !important;
   position: absolute !important;
