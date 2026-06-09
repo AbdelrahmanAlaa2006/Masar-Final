@@ -114,10 +114,10 @@ export default function DevToolsViolationsPanel({ onBack, flash }) {
         )}
 
         {violations.length > 0 && (
-          <button 
-            className="cp-btn cp-btn-danger" 
+          <button
+            className="cp-btn cp-btn-danger"
             type="button"
-            disabled={clearing} 
+            disabled={clearing}
             onClick={() => setShowClearConfirm(true)}
           >
             <i className="fas fa-trash-can"></i> مسح جميع السجلات

@@ -36,7 +36,7 @@ export async function updateStudentStatus(studentId, { is_approved, is_active })
   const patch = {}
   if (is_approved !== undefined) patch.is_approved = is_approved
   if (is_active !== undefined) patch.is_active = is_active
-  
+
   const { data, error } = await supabase
     .from('profiles')
     .update(patch)
@@ -45,7 +45,7 @@ export async function updateStudentStatus(studentId, { is_approved, is_active })
     .single()
 
   if (error) throw error
-  
+
   invalidateProfile(studentId)
   invalidateCache('students')
   return data

@@ -1,7 +1,8 @@
 .devtools-blocked-wrapper {
   position: fixed;
   inset: 0;
-  z-index: 999999; /* Higher than any header or viewport overlay */
+  z-index: 999999;
+  /* Higher than any header or viewport overlay */
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -224,18 +225,37 @@
 
 /* Animations */
 @keyframes blockerFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes blockerSlideUp {
-  from { transform: translateY(24px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes warningScale {
-  0% { transform: scale(1); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15); }
-  100% { transform: scale(1.05); box-shadow: 0 12px 30px rgba(239, 68, 68, 0.25); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
+  }
+
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 30px rgba(239, 68, 68, 0.25);
+  }
 }
 
 /* Responsive adjustments */
@@ -243,16 +263,16 @@
   .devtools-blocked-card {
     padding: 32px 20px 24px;
   }
-  
+
   .blocked-title {
     font-size: 1.85rem;
   }
-  
+
   .blocked-actions-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .blocked-notice-badge {
     flex-direction: column;
     text-align: center;

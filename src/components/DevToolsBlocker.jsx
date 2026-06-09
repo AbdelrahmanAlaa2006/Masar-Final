@@ -159,7 +159,7 @@ export default function DevToolsBlocker() {
             <i className="fas fa-home"></i>
             <span>الصفحة الرئيسية</span>
           </button>
-          
+
           <button className="blocked-btn btn-back" onClick={handleGoBack}>
             <span>العودة للصفحة السابقة</span>
             <i className="fas fa-arrow-left"></i>
