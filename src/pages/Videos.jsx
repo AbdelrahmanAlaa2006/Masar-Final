@@ -31,42 +31,42 @@ export default function Videos() {
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
 
   const GRADES = [
-    { id: 'first-prep',  ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-    { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-    { id: 'third-prep',  ar: 'الصف الثالث الإعدادي',  en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-    { id: 'first-sec',   ar: 'الصف الأول الثانوي',   en: 'First Sec',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
-    { id: 'second-sec',  ar: 'الصف الثاني الثانوي',  en: 'Second Sec',  accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
-    { id: 'third-sec',   ar: 'الصف الثالث الثانوي',   en: 'Third Sec',   accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
+    { id: 'first-prep', ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
+    { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
+    { id: 'third-prep', ar: 'الصف الثالث الإعدادي', en: 'Third Prep', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+    { id: 'first-sec', ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
+    { id: 'second-sec', ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
+    { id: 'third-sec', ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
   ]
 
-// Convert a DB video row (with embedded video_parts) into the shape the
-// rest of the page was built around (parts[], totalParts, quizzes[]).
-function shapeVideo(row) {
-  const parts = (row.video_parts || []).map((p) => ({
-    id: p.id,
-    title: p.title,
-    source: p.source || 'youtube',
-    youtubeId: p.youtube_id || '',
-    driveId: p.drive_id || '',
-    bunnyVideoId: p.bunny_video_id || '',
-    bunnyLibraryId: p.bunny_library_id || null,
-    durationSeconds: p.duration_seconds || null,
-    part_index: p.part_index,
-    viewLimit: p.view_limit ?? null, // null = unlimited
-  }))
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description || '',
-    grade: row.grade,
-    totalParts: parts.length,
-    parts,
-    activeHours: row.active_hours,
-    expiryTime: row.expiry_at,
-    createdAt: row.created_at,
-    quizzes: row.quizzes || [],
+  // Convert a DB video row (with embedded video_parts) into the shape the
+  // rest of the page was built around (parts[], totalParts, quizzes[]).
+  function shapeVideo(row) {
+    const parts = (row.video_parts || []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      source: p.source || 'youtube',
+      youtubeId: p.youtube_id || '',
+      driveId: p.drive_id || '',
+      bunnyVideoId: p.bunny_video_id || '',
+      bunnyLibraryId: p.bunny_library_id || null,
+      durationSeconds: p.duration_seconds || null,
+      part_index: p.part_index,
+      viewLimit: p.view_limit ?? null, // null = unlimited
+    }))
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      grade: row.grade,
+      totalParts: parts.length,
+      parts,
+      activeHours: row.active_hours,
+      expiryTime: row.expiry_at,
+      createdAt: row.created_at,
+      quizzes: row.quizzes || [],
+    }
   }
-}
 
 
   const { user: currentUser, role: userRole } = useAuth()
@@ -164,17 +164,17 @@ function shapeVideo(row) {
     const grade = currentUser.grade
     if (!grade) { setVideoOverrides(new Map()); return }
     let cancelled = false
-    ;(async () => {
-      try {
-        const rows = await listEffectiveOverrides({
-          studentId: currentUser.id,
-          grade,
-          group: currentUser.group || null,
-          itemType: 'video',
-        })
-        if (!cancelled) setVideoOverrides(reduceEffective(rows))
-      } catch { /* defaults apply */ }
-    })()
+      ; (async () => {
+        try {
+          const rows = await listEffectiveOverrides({
+            studentId: currentUser.id,
+            grade,
+            group: currentUser.group || null,
+            itemType: 'video',
+          })
+          if (!cancelled) setVideoOverrides(reduceEffective(rows))
+        } catch { /* defaults apply */ }
+      })()
     return () => { cancelled = true }
   }, [currentUser?.id, currentUser?.grade, currentUser?.group, currentUser?.role])
 
@@ -373,7 +373,7 @@ function shapeVideo(row) {
           if (Number.isFinite(tSec) && seconds >= tSec) {
             // Check if student has already passed the quiz
             const passed = passedThisSessionRef.current.has(qz.localId) ||
-                           quizAttempts.some(a => a.quiz_local_id === qz.localId && a.passed)
+              quizAttempts.some(a => a.quiz_local_id === qz.localId && a.passed)
             if (!passed) {
               const att = quizAttempts.find(a => a.quiz_local_id === qz.localId)
               const attempts = att?.attempts || 0
@@ -569,7 +569,7 @@ function shapeVideo(row) {
     // If it was a timestamp quiz and they didn't pass, seek them back 5 seconds to prevent bypass
     if (activeQuiz && activeQuiz.triggerType === 'timestamp') {
       const passed = passedThisSessionRef.current.has(activeQuiz.localId) ||
-                     quizAttempts.some(a => a.quiz_local_id === activeQuiz.localId && a.passed)
+        quizAttempts.some(a => a.quiz_local_id === activeQuiz.localId && a.passed)
       if (!passed) {
         const targetSeek = Math.max(0, (activeQuiz.timestampSeconds || 0) - 5)
         handleSeekToNote(targetSeek)
@@ -624,7 +624,7 @@ function shapeVideo(row) {
                 >
                   <div className="prep-cover">
                     <div className="prep-cover-deco" />
-                    <PrepIllustration kind={p.id.replace('-prep','')} stage={p.en} />
+                    <PrepIllustration kind={p.id.replace('-prep', '')} stage={p.en} />
                   </div>
                   <div className="prep-body">
                     <h3>{p.ar}</h3>
@@ -761,65 +761,65 @@ function shapeVideo(row) {
 
           <div className="video-player-container">
             <div className="video-player-card card" style={{ padding: 12 }}>
-                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
-                  (() => {
-                    // Both players share the same onProgress contract, so
-                    // we hoist the handler and just swap the component.
-                    const handleProgress = ({ watchedSeconds }) => {
-                      if (userRole === 'admin' || !currentUser?.id) return
-                      updatePartProgress({
-                        student_id: currentUser.id,
-                        video_id: currentVideo.id,
-                        part_id: selectedPart.id,
-                        seconds: watchedSeconds,
-                      }).then((row) => {
-                        if (!row) return
-                        setProgressRows(prev => {
-                          const others = prev.filter(p => p.part_id !== selectedPart.id)
-                          return [...others, row]
-                        })
-                      }).catch((e) => console.error('updatePartProgress failed', e))
-                    }
-                    const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
-                    return (
-                      <PlayerFacade key={selectedPart.id} part={selectedPart}>
-                        {selectedPart.source === 'bunny' ? (
-                          <BunnyPlayer
-                            partId={selectedPart.id}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                            onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
-                          />
-                        ) : selectedPart.source === 'drive' ? (
-                          <DrivePlayer
-                            driveId={selectedPart.driveId}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                          />
-                        ) : (
-                          <YouTubePlayer
-                            videoId={selectedPart.youtubeId}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                            seekTrigger={seekTrigger}
-                            onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
-                          />
-                        )}
-                      </PlayerFacade>
-                    )
-                  })()
-                ) : (
-                  <div className="placeholder-video">
-                    <div>
-                      <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
-                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
-                    </div>
+              {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
+                (() => {
+                  // Both players share the same onProgress contract, so
+                  // we hoist the handler and just swap the component.
+                  const handleProgress = ({ watchedSeconds }) => {
+                    if (userRole === 'admin' || !currentUser?.id) return
+                    updatePartProgress({
+                      student_id: currentUser.id,
+                      video_id: currentVideo.id,
+                      part_id: selectedPart.id,
+                      seconds: watchedSeconds,
+                    }).then((row) => {
+                      if (!row) return
+                      setProgressRows(prev => {
+                        const others = prev.filter(p => p.part_id !== selectedPart.id)
+                        return [...others, row]
+                      })
+                    }).catch((e) => console.error('updatePartProgress failed', e))
+                  }
+                  const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
+                  return (
+                    <PlayerFacade key={selectedPart.id} part={selectedPart}>
+                      {selectedPart.source === 'bunny' ? (
+                        <BunnyPlayer
+                          partId={selectedPart.id}
+                          initialWatchedSeconds={seed}
+                          onProgress={handleProgress}
+                          onTimeUpdate={handleTimeUpdate}
+                          forcePause={!!activeQuiz}
+                        />
+                      ) : selectedPart.source === 'drive' ? (
+                        <DrivePlayer
+                          driveId={selectedPart.driveId}
+                          initialWatchedSeconds={seed}
+                          onProgress={handleProgress}
+                        />
+                      ) : (
+                        <YouTubePlayer
+                          videoId={selectedPart.youtubeId}
+                          initialWatchedSeconds={seed}
+                          onProgress={handleProgress}
+                          seekTrigger={seekTrigger}
+                          onTimeUpdate={handleTimeUpdate}
+                          forcePause={!!activeQuiz}
+                        />
+                      )}
+                    </PlayerFacade>
+                  )
+                })()
+              ) : (
+                <div className="placeholder-video">
+                  <div>
+                    <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
+                    <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
 
             <div className="video-sidebar">
               <div className="card">
@@ -828,7 +828,7 @@ function shapeVideo(row) {
                   {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
                     const left = partTrialsLeft(currentVideo, part)
-                    const cap  = partViewCap(currentVideo, part)
+                    const cap = partViewCap(currentVideo, part)
                     const outOfTrials = userRole !== 'admin' && left <= 0
                     const locked = (!!blocking && userRole !== 'admin') || outOfTrials
                     const isActive = selectedPart?.id === part.id
@@ -1015,7 +1015,7 @@ function shapeVideo(row) {
             </div>
             <h3 className="title-card mb-4" style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>المحتوى مغلق</h3>
             <p className="mb-6" style={{ lineHeight: '1.8', fontSize: '0.95rem' }}>
-              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة). 
+              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة).
               إذا قمت بالدفع بالفعل، يمكنك الانتظار أو تأكيد عملية الدفع من صفحة المدفوعات.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -1136,10 +1136,10 @@ const makeQuiz = () => ({
 })
 
 function BunnyUploader({ part, title, onChange }) {
-  const [file, setFile]      = useState(null)
-  const [pct, setPct]        = useState(0)
-  const [status, setStatus]  = useState(part.bunnyVideoId ? 'done' : 'idle')
-  const [error, setError]    = useState('')
+  const [file, setFile] = useState(null)
+  const [pct, setPct] = useState(0)
+  const [status, setStatus] = useState(part.bunnyVideoId ? 'done' : 'idle')
+  const [error, setError] = useState('')
 
   const startUpload = async () => {
     if (!file) return
@@ -1299,10 +1299,10 @@ function formatSecondsToTimestamp(sec) {
 
 function EditVideoModal({ video, onCancel, onSave }) {
   const [title, setTitle] = useState(video.title || '')
-  const [desc,  setDesc]  = useState(video.description || '')
+  const [desc, setDesc] = useState(video.description || '')
   const [grade, setGrade] = useState(video.grade || 'first-prep')
   const [hours, setHours] = useState(video.activeHours || 24)
-  const [busy,  setBusy]  = useState(false)
+  const [busy, setBusy] = useState(false)
 
   // Initialize parts state, preserving the database `id` of existing parts
   const [videoParts, setVideoParts] = useState(() => {
@@ -1580,17 +1580,17 @@ function EditVideoModal({ video, onCancel, onSave }) {
       quizzes: parsedQuizzes,
       parts: videoParts.map(p => {
         const src = p.source === 'drive' ? 'drive'
-                  : p.source === 'bunny' ? 'bunny'
-                  : 'youtube'
+          : p.source === 'bunny' ? 'bunny'
+            : 'youtube'
         const mins = parseFloat(p.durationMinutes)
         const libId = parseInt(p.bunnyLibraryId, 10)
 
         const formattedPart = {
           title: p.title.trim(),
           source: src,
-          youtube_id:       src === 'youtube' ? p.videoId.trim() : null,
-          drive_id:         src === 'drive'   ? p.driveId.trim() : null,
-          bunny_video_id:   src === 'bunny'   ? p.bunnyVideoId.trim() : null,
+          youtube_id: src === 'youtube' ? p.videoId.trim() : null,
+          drive_id: src === 'drive' ? p.driveId.trim() : null,
+          bunny_video_id: src === 'bunny' ? p.bunnyVideoId.trim() : null,
           bunny_library_id: src === 'bunny' && Number.isFinite(libId) && libId > 0 ? libId : null,
           duration_seconds: (src === 'drive' || src === 'bunny') && mins > 0
             ? Math.round(mins * 60)
@@ -2420,7 +2420,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
               <h4 style={{ color: '#8b5cf6', borderBottom: '1px solid rgba(139, 92, 246, 0.2)', paddingBottom: 6 }}>أجزاء المحاضرة:</h4>
               {previewData.parts.map((p, pidx) => (
                 <div key={pidx} style={{ fontSize: '0.85rem', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, marginBottom: 6 }}>
-                  <strong>جزء {pidx + 1}: {p.title}</strong> &middot; المصدر: <code>{p.source}</code> &middot; 
+                  <strong>جزء {pidx + 1}: {p.title}</strong> &middot; المصدر: <code>{p.source}</code> &middot;
                   {p.source === 'youtube' && ` معرّف: ${p.youtube_id}`}
                   {p.source === 'drive' && ` معرّف: ${p.drive_id}`}
                   {p.source === 'bunny' && ` معرّف Bunny: ${p.bunny_video_id}`}
@@ -2530,8 +2530,8 @@ function PlayerFacade({ part, children }) {
         fontSize: 12, fontWeight: 600,
       }}>
         {part.source === 'bunny' ? 'Bunny Stream' :
-         part.source === 'drive' ? 'Google Drive' :
-         'YouTube'}
+          part.source === 'drive' ? 'Google Drive' :
+            'YouTube'}
       </div>
     </button>
   )

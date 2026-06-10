@@ -32,12 +32,12 @@ import { useAuth } from '../contexts/AuthContext'
    ────────────────────────────────────────────────────────────── */
 
 const PREPS = [
-  { id: 'first',      nameAr: 'الصف الأول الإعدادي',  nameEn: 'First Prep',  icon: 'fa-seedling',         accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  { id: 'second',     nameAr: 'الصف الثاني الإعدادي', nameEn: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-  { id: 'third',      nameAr: 'الصف الثالث الإعدادي',  nameEn: 'Third Prep',  icon: 'fa-trophy',           accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-  { id: 'first-sec',  nameAr: 'الصف الأول الثانوي',   nameEn: 'First Sec',   icon: 'fa-graduation-cap',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
-  { id: 'second-sec', nameAr: 'الصف الثاني الثانوي',  nameEn: 'Second Sec',  icon: 'fa-user-graduate',    accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
-  { id: 'third-sec',  nameAr: 'الصف الثالث الثانوي',   nameEn: 'Third Sec',   icon: 'fa-award',            accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  { id: 'first', nameAr: 'الصف الأول الإعدادي', nameEn: 'First Prep', icon: 'fa-seedling', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  { id: 'second', nameAr: 'الصف الثاني الإعدادي', nameEn: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
+  { id: 'third', nameAr: 'الصف الثالث الإعدادي', nameEn: 'Third Prep', icon: 'fa-trophy', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  { id: 'first-sec', nameAr: 'الصف الأول الثانوي', nameEn: 'First Sec', icon: 'fa-graduation-cap', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
+  { id: 'second-sec', nameAr: 'الصف الثاني الثانوي', nameEn: 'Second Sec', icon: 'fa-user-graduate', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
+  { id: 'third-sec', nameAr: 'الصف الثالث الثانوي', nameEn: 'Third Sec', icon: 'fa-award', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
 ]
 
 const PLACEHOLDER_COVER =
@@ -144,12 +144,12 @@ export default function Homework() {
       setSubmissions({}); return
     }
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await getMySubmissionsBatch(rows.map(r => r.id), userId)
-        if (!cancelled) setSubmissions(res || {})
-      } catch { /* ignore */ }
-    })()
+      ; (async () => {
+        try {
+          const res = await getMySubmissionsBatch(rows.map(r => r.id), userId)
+          if (!cancelled) setSubmissions(res || {})
+        } catch { /* ignore */ }
+      })()
     return () => { cancelled = true }
   }, [rows, userId, userRole])
 
@@ -192,7 +192,7 @@ export default function Homework() {
 
   // ── Add modal lifecycle ──────────────────────────────────────
   const closeAddModal = () => {
-    if (form.cover_url) deleteR2Object({ url: form.cover_url }).catch(() => {})
+    if (form.cover_url) deleteR2Object({ url: form.cover_url }).catch(() => { })
     setModalOpen(false)
   }
   const openAddModal = () => {
@@ -296,9 +296,9 @@ export default function Homework() {
       await refresh({ force: true })
     } catch (err) {
       if (uploadedKey || uploadedUrl) {
-        deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => {})
+        deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => { })
       }
-      if (form.cover_url) deleteR2Object({ url: form.cover_url }).catch(() => {})
+      if (form.cover_url) deleteR2Object({ url: form.cover_url }).catch(() => { })
       flash(err.message || 'تعذر حفظ الواجب', 'warning')
     } finally {
       setSubmitting(false)
@@ -717,7 +717,7 @@ function SubmitModal({ homework, existing, onClose, onDone, onError }) {
   }, [key, existing])
 
   const [picks, setPicks] = useState(initial)
-  const [busy, setBusy]   = useState(false)
+  const [busy, setBusy] = useState(false)
   const answeredCount = picks.filter((p) => p != null).length
 
   const choose = (qIdx, optIdx) => {
@@ -848,20 +848,20 @@ function GradeModal({ homework, graderId, onClose, onFlash }) {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const rows = await listSubmissionsForHomework(homework.id)
-        if (cancelled) return
-        setSubs(rows)
-        const init = {}
-        for (const r of rows) init[r.id] = { score: r.score ?? '', feedback: r.feedback ?? '' }
-        setDraft(init)
-      } catch (e) {
-        if (!cancelled) onFlash(e.message || 'تعذر تحميل التسليمات', 'warning')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+      ; (async () => {
+        try {
+          const rows = await listSubmissionsForHomework(homework.id)
+          if (cancelled) return
+          setSubs(rows)
+          const init = {}
+          for (const r of rows) init[r.id] = { score: r.score ?? '', feedback: r.feedback ?? '' }
+          setDraft(init)
+        } catch (e) {
+          if (!cancelled) onFlash(e.message || 'تعذر تحميل التسليمات', 'warning')
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      })()
     return () => { cancelled = true }
   }, [homework.id, onFlash])
 
@@ -1168,10 +1168,9 @@ function ResponsesReview({ answerKey, responses }) {
           <span
             key={i}
             className={`hw-review-pill ${skipped ? 'is-skipped' : ok ? 'is-ok' : 'is-bad'}`}
-            title={`السؤال ${i + 1}: ${
-              skipped ? 'لم تُجَب' :
-              `أجاب ${OPT_LETTERS[pick] || pick} — الصواب ${OPT_LETTERS[correct] || correct}`
-            }`}
+            title={`السؤال ${i + 1}: ${skipped ? 'لم تُجَب' :
+                `أجاب ${OPT_LETTERS[pick] || pick} — الصواب ${OPT_LETTERS[correct] || correct}`
+              }`}
           >
             {i + 1}
           </span>

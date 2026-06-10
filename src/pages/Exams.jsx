@@ -11,12 +11,12 @@ import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 
 const PREP_META = {
-  first:        { ar: 'الصف الأول الإعدادي',  en: 'First Prep',  accent: 'green',  desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  second:       { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue',   desc: 'تعميق المفاهيم وبناء المهارات' },
-  third:        { ar: 'الصف الثالث الإعدادي', en: 'Third Prep',  accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-  'first-sec':  { ar: 'الصف الأول الثانوي',   en: 'First Sec',   accent: 'teal',   desc: 'بداية المرحلة الثانوية والتأسيس' },
-  'second-sec': { ar: 'الصف الثاني الثانوي',  en: 'Second Sec',  accent: 'pink',   desc: 'تحديد المسار وبناء المهارات' },
-  'third-sec':  { ar: 'الصف الثالث الثانوي',   en: 'Third Sec',   accent: 'red',    desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  first: { ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
+  third: { ar: 'الصف الثالث الإعدادي', en: 'Third Prep', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  'first-sec': { ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
+  'second-sec': { ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
+  'third-sec': { ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
 }
 
 export default function Exams() {
@@ -59,16 +59,16 @@ export default function Exams() {
   useEffect(() => {
     if (!userId || userRole === 'admin') { setOverridesMap(new Map()); return }
     let cancelled = false
-    ;(async () => {
-      try {
-        const grade = user?.grade
-        if (!grade) return
-        const rows = await listEffectiveOverrides({
-          studentId: userId, grade, group: user?.group || null, itemType: 'exam',
-        })
-        if (!cancelled) setOverridesMap(reduceEffective(rows))
-      } catch { /* ignore — defaults apply */ }
-    })()
+      ; (async () => {
+        try {
+          const grade = user?.grade
+          if (!grade) return
+          const rows = await listEffectiveOverrides({
+            studentId: userId, grade, group: user?.group || null, itemType: 'exam',
+          })
+          if (!cancelled) setOverridesMap(reduceEffective(rows))
+        } catch { /* ignore — defaults apply */ }
+      })()
     return () => { cancelled = true }
   }, [userId, userRole, user?.grade, user?.group])
 
@@ -83,22 +83,22 @@ export default function Exams() {
       setAttemptsMap({}); return
     }
     let cancelled = false
-    ;(async () => {
-      try {
-        // One request for all exam IDs instead of one per exam.
-        const sinceMap = {}
-        for (const e of rows) {
-          const o = overridesMap.get(e.id)
-          if (o?.updatedAt) sinceMap[e.id] = o.updatedAt
+      ; (async () => {
+        try {
+          // One request for all exam IDs instead of one per exam.
+          const sinceMap = {}
+          for (const e of rows) {
+            const o = overridesMap.get(e.id)
+            if (o?.updatedAt) sinceMap[e.id] = o.updatedAt
+          }
+          const counts = await countSubmittedAttemptsBatch(
+            rows.map((e) => e.id), userId, sinceMap
+          )
+          if (!cancelled) setAttemptsMap(Object.fromEntries(counts))
+        } catch {
+          if (!cancelled) setAttemptsMap({})
         }
-        const counts = await countSubmittedAttemptsBatch(
-          rows.map((e) => e.id), userId, sinceMap
-        )
-        if (!cancelled) setAttemptsMap(Object.fromEntries(counts))
-      } catch {
-        if (!cancelled) setAttemptsMap({})
-      }
-    })()
+      })()
     return () => { cancelled = true }
   }, [rows, userId, userRole, overridesMap])
 
@@ -398,7 +398,7 @@ export default function Exams() {
             </div>
             <h3 className="modal-title" style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '16px' }}>المحتوى مغلق</h3>
             <p className="modal-message" style={{ lineHeight: '1.8', fontSize: '0.95rem', marginBottom: '24px' }}>
-              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة). 
+              عذرًا، حسابك قيد المراجعة والموافقة حاليًا من قبل الإدارة. سيتم تفعيل حسابك قريبًا جدًا (خلال 24-48 ساعة).
               إذا قمت بالدفع بالفعل، يمكنك الانتظار أو تأكيد عملية الدفع من صفحة المدفوعات.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -446,14 +446,14 @@ export default function Exams() {
    Editing the questions array is intentionally NOT supported here —
    delete + recreate the exam if you need to change question content. */
 function EditExamModal({ exam, onCancel, onSave }) {
-  const [title, setTitle]    = useState(exam.title || '')
-  const [number, setNumber]  = useState(exam.number || '')
-  const [grade, setGrade]    = useState(exam.grade || 'first-prep')
-  const [duration, setDur]   = useState(exam.duration_minutes || 30)
-  const [maxAtt, setMaxAtt]  = useState(exam.max_attempts || 1)
-  const [hours, setHours]    = useState(exam.available_hours || 72)
-  const [reveal, setReveal]  = useState(!!exam.reveal_grades)
-  const [busy, setBusy]      = useState(false)
+  const [title, setTitle] = useState(exam.title || '')
+  const [number, setNumber] = useState(exam.number || '')
+  const [grade, setGrade] = useState(exam.grade || 'first-prep')
+  const [duration, setDur] = useState(exam.duration_minutes || 30)
+  const [maxAtt, setMaxAtt] = useState(exam.max_attempts || 1)
+  const [hours, setHours] = useState(exam.available_hours || 72)
+  const [reveal, setReveal] = useState(!!exam.reveal_grades)
+  const [busy, setBusy] = useState(false)
 
   // Initialize questions with a local id field for list rendering keys.
   const [questions, setQuestions] = useState(() => {
@@ -500,7 +500,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
   }
 
   const addOption = (id) => {
-    setQuestions(prev => prev.map(q => 
+    setQuestions(prev => prev.map(q =>
       q.id === id ? { ...q, options: [...q.options, ''] } : q
     ))
   }
@@ -534,7 +534,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
   }
 
   const toggleMultipleAnswers = (id) => {
-    setQuestions(prev => prev.map(q => 
+    setQuestions(prev => prev.map(q =>
       q.id === id ? { ...q, isMultiple: !q.isMultiple, answers: q.isMultiple ? [0] : q.answers } : q
     ))
   }
@@ -544,8 +544,8 @@ function EditExamModal({ exam, onCancel, onSave }) {
       if (q.id === id) {
         let newAnswers
         if (q.isMultiple) {
-          newAnswers = isChecked 
-            ? [...q.answers, answerIndex] 
+          newAnswers = isChecked
+            ? [...q.answers, answerIndex]
             : q.answers.filter(a => a !== answerIndex)
         } else {
           newAnswers = [answerIndex]
@@ -567,11 +567,11 @@ function EditExamModal({ exam, onCancel, onSave }) {
       notify('لم يتم العثور على أسئلة — تأكد من التنسيق والسطور الفارغة بين الأسئلة', { type: 'warning' })
       return
     }
-    
+
     // Merge or replace? We'll append them to the existing questions list
     const startId = questions.length === 0 ? 0 : Math.max(...questions.map(q => q.id)) + 1
     const withIds = parsedQuestions.map((q, idx) => ({ ...q, id: startId + idx }))
-    
+
     setQuestions(prev => [...prev, ...withIds])
     setQuestionsCopy('')
     setShowCopySection(false)
@@ -604,8 +604,8 @@ function EditExamModal({ exam, onCancel, onSave }) {
         let opt = lines[j]
         // Strip optional bullet markers like "- ", "1. ", "أ) "
         opt = opt.replace(/^[-•·]\s+/, '')
-                 .replace(/^[٠-٩\d]+[\.\)\-]\s*/, '')
-                 .replace(/^[a-zA-Zء-ي][\.\)\-]\s*/, '')
+          .replace(/^[٠-٩\d]+[\.\)\-]\s*/, '')
+          .replace(/^[a-zA-Zء-ي][\.\)\-]\s*/, '')
         const isCorrect = /^[\*★✓✔]\s*/.test(opt)
         if (isCorrect) opt = opt.replace(/^[\*★✓✔]\s*/, '').trim()
         if (!opt) continue
@@ -682,7 +682,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
     if (busy) return
     const payload = buildPayload()
     if (!payload) return
-    
+
     setBusy(true)
     try {
       await onSave(payload)
@@ -976,7 +976,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
                 {showCopySection ? 'إخفاء لوحة اللصق' : 'عرض لوحة اللصق'}
               </button>
             </div>
-            
+
             {showCopySection && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <textarea
@@ -1124,7 +1124,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
                 {q.image && <div style={{ marginTop: 10 }}><img src={q.image} alt="" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} /></div>}
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {q.options.map((opt, oIdx) => (
-                    <div 
+                    <div
                       key={oIdx}
                       className={`preview-option ${q.answers.includes(oIdx) ? 'correct' : ''}`}
                       style={{ margin: 0 }}
