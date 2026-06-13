@@ -1,6 +1,7 @@
 :root {
   color: #1a202c;
-  background-color: #f0f2f8;
+  --bg-color: #f0f2f8;
+  background-color: var(--bg-color);
   --primary: #7c3aed;
   --secondary: #06b6d4;
   --primary-hover: #6d28d9;
@@ -18,7 +19,7 @@ body {
   min-width: 320px;
   font-family: 'Tajawal', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
-  background: #f0f2f8;
+  background: var(--bg-color);
   color: #1a202c;
   transition: background 0.3s ease, color 0.3s ease;
   overflow-x: clip;
@@ -108,7 +109,7 @@ button:focus-visible {
 @media (prefers-color-scheme: light) {
   :root {
     color: #1a202c;
-    background-color: #f0f2f8;
+    background-color: var(--bg-color);
   }
   a:hover {
     color: #747bff;

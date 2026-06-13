@@ -24,8 +24,8 @@
   --shadow-elevated: 0 20px 25px -5px rgba(124, 58, 237, 0.1), 0 10px 10px -6px rgba(124, 58, 237, 0.1);
   --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.2);
   
-  --gradient-primary: linear-gradient(135deg, #764ba2, #667eea);
-  --gradient-accent: linear-gradient(90deg, #06b6d4, #764ba2);
+  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  --gradient-accent: linear-gradient(90deg, var(--secondary) 0%, var(--primary) 100%);
   --gradient-card: linear-gradient(145deg, rgba(124, 58, 237, 0.04), rgba(168, 85, 247, 0.02));
 }
 
@@ -37,10 +37,10 @@ body.dark {
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
   --border-primary: rgba(255, 255, 255, 0.08);
-  --border-accent: rgba(167, 139, 250, 0.3);
+  --border-accent: var(--primary-soft, rgba(167, 139, 250, 0.3));
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
   --shadow-elevated: 0 20px 40px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 0 35px rgba(167, 139, 250, 0.3);
+  --shadow-glow: 0 0 35px var(--primary-glow, rgba(167, 139, 250, 0.3));
   --gradient-card: linear-gradient(145deg, rgba(124, 58, 237, 0.12), rgba(168, 85, 247, 0.06));
 }
 
@@ -90,24 +90,15 @@ body.dark .videos-page::before {
 }
 
 .videos-page .btn-primary {
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: var(--gradient-primary);
   color: #ffffff;
-  box-shadow: 0 4px 15px rgba(118, 75, 162, 0.25);
-}
-
-body.dark .videos-page .btn-primary {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
-  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3);
+  box-shadow: 0 4px 15px var(--primary-glow, rgba(118, 75, 162, 0.25));
 }
 
 .videos-page .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(118, 75, 162, 0.4);
+  box-shadow: 0 8px 20px var(--primary-glow, rgba(118, 75, 162, 0.4));
   filter: brightness(1.05);
-}
-
-body.dark .videos-page .btn-primary:hover {
-  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.55);
 }
 
 .videos-page .btn-outline {
@@ -121,10 +112,6 @@ body.dark .videos-page .btn-primary:hover {
   color: #ffffff;
   border-color: transparent;
   transform: translateY(-1px);
-}
-
-body.dark .videos-page .btn-outline:hover {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
 }
 
 .videos-page .card {
@@ -171,19 +158,14 @@ body.dark .videos-page .card:hover {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: var(--gradient-primary);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
   flex-shrink: 0;
-  box-shadow: 0 8px 20px rgba(118, 75, 162, 0.2);
-}
-
-body.dark .vid-prep-icon {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
-  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.25);
+  box-shadow: 0 8px 20px var(--primary-glow, rgba(118, 75, 162, 0.2));
 }
 
 .vid-prep-head h1 {
@@ -504,10 +486,6 @@ body.dark .vc-card:hover {
   position: relative;
 }
 
-body.dark .vc-header {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-}
-
 .vc-play-btn {
   width: 58px;
   height: 58px;
@@ -696,17 +674,13 @@ body.dark .vc-footer {
 .placeholder-video {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: var(--gradient-primary);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   color: white;
-}
-
-body.dark .placeholder-video {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
 }
 
 .video-sidebar {
@@ -908,9 +882,6 @@ body.dark .note-item {
   box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
 }
 
-body.dark .note-time-badge {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
-}
 
 .note-time-badge:hover {
   transform: translateY(-1px);
@@ -1040,14 +1011,7 @@ body.dark .modal {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #764ba2, #667eea);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-body.dark .gradient-text {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

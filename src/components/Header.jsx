@@ -31,7 +31,7 @@ const ADMIN_ITEMS = [
 ]
 
 export default function Header() {
-  const { tenant, tenantSlug } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
   const brandLogo = !tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -146,9 +146,21 @@ export default function Header() {
     }, 1600)
   }
 
+  const filteredBase = NAV_ITEMS_BASE.filter(item => {
+    let key = null
+    if (item.to === '/videos') key = 'videos'
+    if (item.to === '/exams') key = 'exams'
+    if (item.to === '/homework') key = 'homework'
+    if (item.to === '/payments') key = 'payments'
+    if (item.to === '/report') key = 'reports'
+    return isFeatureEnabled(key || '')
+  })
+
+  const isChatEnabled = isFeatureEnabled('chat')
+
   const items = userRole === 'admin'
-    ? [...NAV_ITEMS_BASE, ...ADMIN_ITEMS]
-    : [...NAV_ITEMS_BASE, { to: '/chat', label: 'الدردشة', icon: 'fa-comments' }]
+    ? [...filteredBase, ...ADMIN_ITEMS]
+    : [...filteredBase, ...(isChatEnabled ? [{ to: '/chat', label: 'الدردشة', icon: 'fa-comments' }] : [])]
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 

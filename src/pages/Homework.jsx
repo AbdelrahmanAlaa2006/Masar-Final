@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './Homework.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
@@ -85,7 +86,12 @@ export default function Homework() {
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('homeworks')) }, [])
 
   const { user, role: userRole } = useAuth()
+  const { isGradeEnabled } = useTenant()
   const userId = user?.id || null
+
+  const filteredPreps = PREPS.filter(
+    p => isGradeEnabled(uiToDbGrade(p.id) || p.id)
+  )
 
   const [grade, setGrade] = useState(() => {
     if (user && user.role !== 'admin' && user.grade) {
@@ -199,7 +205,7 @@ export default function Homework() {
     setEditingId(null)
     setForm({
       title: '', desc: '', week: '',
-      cover_url: '', grade: grade || 'first',
+      cover_url: '', grade: grade || (filteredPreps[0]?.id || 'first'),
       due_at: '', max_score: 0,
       answer_key: [{ options: 4, correct: 0 }],   // start with one question
     })
@@ -220,7 +226,7 @@ export default function Homework() {
       desc: hw.desc || '',
       week: hw.week || '',
       cover_url: hw.cover || (hw.cover_url || ''),
-      grade: dbToUiGrade(hw.grade) || 'first',
+      grade: dbToUiGrade(hw.grade) || (filteredPreps[0]?.id || 'first'),
       due_at: due,
       max_score: hw.max_score ?? 0,
       answer_key: Array.isArray(hw.answer_key) ? hw.answer_key.map(q => ({ ...q })) : [],
@@ -335,7 +341,7 @@ export default function Homework() {
               </div>
             </div>
             <div className="prep-grid">
-              {PREPS.map((p, index) => (
+              {filteredPreps.map((p, index) => (
                 <PrepCard
                   key={p.id}
                   prep={p}

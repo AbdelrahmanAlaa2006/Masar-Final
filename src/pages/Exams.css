@@ -8,9 +8,9 @@
   --card-bg: #ffffff;
   --shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
   --shadow-hover: 0 12px 36px rgba(102, 126, 234, 0.18);
-  --primary: #667eea;
-  --secondary: #764ba2;
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary: var(--primary, #667eea);
+  --secondary: var(--secondary, #764ba2);
+  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   --success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   --border-radius: 16px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

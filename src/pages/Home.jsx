@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
 // old assets are kept on disk in case anywhere else still loads
@@ -14,7 +15,9 @@ import {
 export default function Home() {
   const navigate = useNavigate()
   const { user, role } = useAuth()
+  const { tenant, isFeatureEnabled } = useTenant()
   const username = user?.name || ''
+  const brandName = tenant?.name || 'مسار'
   const canvasRef = useRef(null)
 
   const handleHeroClick = (e) => {
@@ -292,13 +295,13 @@ export default function Home() {
       {/* Hero Section */}
       <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>
         <div className="hero-title-container">
-          <h1>{role === 'admin' ? 'لوحة إدارة منصة مسار' : 'طور مهاراتك مع منصة مسار'}</h1>
+          <h1>{role === 'admin' ? `لوحة إدارة ${brandName}` : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`)}</h1>
           <div className="hero-title-accent" />
         </div>
         <p>
           {role === 'admin'
             ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
-            : 'أكتشف مجموعة واسعة من الدورات التعليمية المصممة خصيصًا للطلاب، من البرمجة إلى التصميم الجرافيكي. كل ما تحتاجه لتطوير مهاراتك وتحقيق أهدافك المهنية.'}
+            : (tenant?.config?.branding?.hero_subtitle || 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.')}
         </p>
         <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
           <span>{role === 'admin' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن'}</span>
@@ -311,33 +314,19 @@ export default function Home() {
       {/* Cards Section */}
       <div className="container">
         <div id="cards" className="cards-grid">
-          <div className="card" onClick={() => goAndTrack('exams', '/exams')}>
-            <span className="home-card-icon" aria-hidden="true"><ExamsIcon /></span>
-            <h2>الامتحانات</h2>
-            <div className="card-title-accent" />
-            <p>{role === 'admin' ? 'إدارة الامتحانات ومتابعة نتائج الطلاب' : 'اختبارات التدريب والامتحانات السابقة'}</p>
-          </div>
-
-          <div className="card" onClick={() => goAndTrack('homeworks', '/homework')}>
-            <span className="home-card-icon" aria-hidden="true"><LecturesIcon /></span>
-            <h2>الواجبات</h2>
-            <div className="card-title-accent" />
-            <p>{role === 'admin' ? 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها' : 'حلّ واجباتك وارفع إجاباتك للمعلم'}</p>
-          </div>
-
-          <div className="card" onClick={() => goAndTrack('report', '/report')}>
-            <span className="home-card-icon" aria-hidden="true"><ReportsIcon /></span>
-            <h2>التقارير</h2>
-            <div className="card-title-accent" />
-            <p>{role === 'admin' ? 'تقارير أداء الطلاب وتحليلات المجموعات' : 'عرض تقارير الأداء والتقدم'}</p>
-          </div>
-
-          <div className="card" onClick={() => goAndTrack('videos', '/videos')}>
-            <span className="home-card-icon" aria-hidden="true"><VideosIcon /></span>
-            <h2>الفيديوهات</h2>
-            <div className="card-title-accent" />
-            <p>{role === 'admin' ? 'رفع الفيديوهات وضبط صلاحيات المشاهدة' : 'مشاهدة الفيديوهات التعليمية'}</p>
-          </div>
+          {[
+            { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
+            { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
+            { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
+            { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' }
+          ].filter(c => isFeatureEnabled(c.key)).map((card) => (
+            <div key={card.key} className="card" onClick={() => goAndTrack(card.key, card.route)}>
+              <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
+              <h2>{card.label}</h2>
+              <div className="card-title-accent" />
+              <p>{role === 'admin' ? card.descAdmin : card.descStudent}</p>
+            </div>
+          ))}
         </div>
       </div>
 

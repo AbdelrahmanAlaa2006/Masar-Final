@@ -124,11 +124,35 @@ export function TenantProvider({ children }) {
     window.location.href = url.toString()
   }
 
+  const isFeatureEnabled = (featureKey) => {
+    if (!tenant?.config?.features) return true
+    return tenant.config.features[featureKey] !== false
+  }
+
+  const isGradeEnabled = (gradeKey) => {
+    if (!tenant?.config?.grades) return true
+    // Support both standard enums (first-prep) and alternative conventions (grade_1_prep / grade_3_sec)
+    const legacyMap = {
+      'first-prep': 'grade_1_prep',
+      'second-prep': 'grade_2_prep',
+      'third-prep': 'grade_3_prep',
+      'first-sec': 'grade_1_sec',
+      'second-sec': 'grade_2_sec',
+      'third-sec': 'grade_3_sec',
+    }
+    const altKey = legacyMap[gradeKey]
+    if (tenant.config.grades[gradeKey] === false) return false
+    if (altKey && tenant.config.grades[altKey] === false) return false
+    return true
+  }
+
   const value = {
     tenant,
     tenantId: tenant?.id || null,
     tenantSlug: tenant?.slug || 'default',
     tenantName: tenant?.name || '',
+    isFeatureEnabled,
+    isGradeEnabled,
     loading
   }
 
@@ -169,7 +193,7 @@ export function TenantProvider({ children }) {
                 width: '24px',
                 height: '24px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #5BC2E7, #8b5cf6)',
+                background: 'linear-gradient(135deg, var(--secondary, #5BC2E7), var(--primary, #8b5cf6))',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',

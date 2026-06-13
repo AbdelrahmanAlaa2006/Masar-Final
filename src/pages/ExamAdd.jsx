@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade } from '@backend/examsApi'
@@ -8,11 +9,20 @@ import { invalidate as invalidateCache } from '../utils/cache'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
+  const { isGradeEnabled } = useTenant()
   const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
-  const [examGrade, setExamGrade] = useState(
-    localStorage.getItem('selectedGrade') || 'first'
-  )
+  const [examGrade, setExamGrade] = useState(() => {
+    const selected = localStorage.getItem('selectedGrade')
+    if (selected && isGradeEnabled(uiToDbGrade(selected) || selected)) {
+      return selected
+    }
+    const grades = ['first', 'second', 'third', 'first-sec', 'second-sec', 'third-sec']
+    for (const g of grades) {
+      if (isGradeEnabled(uiToDbGrade(g) || g)) return g
+    }
+    return 'first'
+  })
   const [duration, setDuration] = useState('')
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [examDurationHours, setExamDurationHours] = useState(72)
@@ -332,12 +342,12 @@ export default function ExamAdd() {
             value={examGrade}
             onChange={(e) => setExamGrade(e.target.value)}
           >
-            <option value="first">الصف الأول الإعدادي</option>
-            <option value="second">الصف الثاني الإعدادي</option>
-            <option value="third">الصف الثالث الإعدادي</option>
-            <option value="first-sec">الصف الأول الثانوي</option>
-            <option value="second-sec">الصف الثاني الثانوي</option>
-            <option value="third-sec">الصف الثالث الثانوي</option>
+            {isGradeEnabled('first-prep') && <option value="first">الصف الأول الإعدادي</option>}
+            {isGradeEnabled('second-prep') && <option value="second">الصف الثاني الإعدادي</option>}
+            {isGradeEnabled('third-prep') && <option value="third">الصف الثالث الإعدادي</option>}
+            {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
+            {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
+            {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
           </select>
         </div>
 

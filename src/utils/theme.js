@@ -15,6 +15,22 @@ export function applyTenantTheme(tenant) {
   root.style.setProperty('--primary', primary)
   root.style.setProperty('--secondary', secondary)
 
+  // Remove dynamic font family override (keep default)
+  const styleEl = document.getElementById('tenant-dynamic-font')
+  if (styleEl) styleEl.remove()
+  const fontLink = document.getElementById('tenant-font-link')
+  if (fontLink) fontLink.remove()
+
+  // Set background color variable
+  const bgColor = tenant.config?.bg_color || '#f0f2f8'
+  root.style.setProperty('--bg-color', bgColor)
+
+  // Add dynamic opacity-scaled variables for shadows, glows, and hover effects
+  root.style.setProperty('--primary-soft', primary + '1a') // 10% opacity
+  root.style.setProperty('--secondary-soft', secondary + '14') // 8% opacity
+  root.style.setProperty('--primary-glow', primary + '40') // 25% opacity
+
+
   // Dynamically compute hover color (darken primary by ~12%)
   const hoverColor = darkenColor(primary, 12)
   root.style.setProperty('--primary-hover', hoverColor)

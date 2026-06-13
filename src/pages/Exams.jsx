@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
@@ -24,7 +25,12 @@ export default function Exams() {
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
   const { user, role: userRole } = useAuth()
+  const { isGradeEnabled } = useTenant()
   const userId = user?.id || null
+
+  const filteredLevels = Object.keys(PREP_META).filter(
+    key => isGradeEnabled(uiToDbGrade(key) || key)
+  )
 
   const [currentLevel, setCurrentLevel] = useState(() => {
     if (user && user.role !== 'admin' && user.grade) {
@@ -364,7 +370,7 @@ export default function Exams() {
             </div>
           </div>
           <div className="prep-grid">
-            {Object.keys(PREP_META).map((key, index) => renderLevelCard(key, index))}
+            {filteredLevels.map((key, index) => renderLevelCard(key, index))}
           </div>
         </div>
       )}
@@ -929,12 +935,12 @@ function EditExamModal({ exam, onCancel, onSave }) {
             <div className="edit-field">
               <label>الصف الدراسي</label>
               <select className="edit-select" value={grade} onChange={(e) => setGrade(e.target.value)}>
-                <option value="first-prep">الصف الأول الإعدادي</option>
-                <option value="second-prep">الصف الثاني الإعدادي</option>
-                <option value="third-prep">الصف الثالث الإعدادي</option>
-                <option value="first-sec">الصف الأول الثانوي</option>
-                <option value="second-sec">الصف الثاني الثانوي</option>
-                <option value="third-sec">الصف الثالث الثانوي</option>
+                {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
+                {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
+                {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
+                {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
+                {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
+                {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
               </select>
             </div>
             <div className="edit-field">

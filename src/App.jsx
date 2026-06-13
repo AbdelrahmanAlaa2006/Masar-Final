@@ -290,7 +290,8 @@ function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isExamTaking = location.pathname === '/exam-taking'
-  const { user, isLoggedIn, loading } = useAuth()
+  const { user, isLoggedIn, loading, logout } = useAuth()
+  const { isFeatureEnabled, isGradeEnabled } = useTenant()
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
@@ -416,6 +417,74 @@ function AppContent() {
     return <PageLoader />
   }
 
+  const isUserGradeDisabled = isLoggedIn && user && user.role !== 'admin' && user.grade && !isGradeEnabled(user.grade)
+
+  if (isUserGradeDisabled && !isLoginPage) {
+    return (
+      <div className="pending-app-container" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
+        color: '#fff',
+        padding: '24px',
+        fontFamily: 'Tajawal, sans-serif'
+      }}>
+        <div className="pending-app-card" style={{
+          maxWidth: '520px',
+          width: '100%',
+          background: 'rgba(30, 41, 59, 0.45)',
+          backdropFilter: 'blur(20px)',
+          webkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '24px',
+          padding: '40px 32px',
+          textAlign: 'center',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2.5rem',
+            margin: '0 auto 24px'
+          }}>
+            <i className="fas fa-circle-exclamation"></i>
+          </div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '16px' }}>هذه المرحلة الدراسية غير متاحة حالياً</h2>
+          <p style={{ fontSize: '1.05rem', lineHeight: '1.8', color: '#cbd5e1', marginBottom: '32px' }}>
+            عذرًا، المرحلة الدراسية الخاصة بك غير مفعلة أو غير متاحة حاليًا على هذه المنصة. يرجى التواصل مع المعلم أو إدارة المنصة لمزيد من التفاصيل.
+          </p>
+          <button
+            onClick={async () => {
+              await logout()
+              window.location.href = '/login'
+            }}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: '#fff',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (isDevToolsOpen && ENABLE_DEVTOOLS_BLOCKER) {
     return <DevToolsBlocker />
   }
@@ -447,13 +516,13 @@ function AppContent() {
             <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
             {/* Old /lectures URLs redirect to the new /homework page so
                 shared links / browser bookmarks keep working. */}
-            <Route path="/homework" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute>} />
+            <Route path="/homework" element={isFeatureEnabled('homework') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute> : <Navigate to="/" replace />} />
             <Route path="/lectures" element={<Navigate to="/homework" replace />} />
-            <Route path="/exams" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute>} />
-            <Route path="/exam-taking" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute>} />
-            <Route path="/videos" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute>} />
-            <Route path="/payments" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Payments /></ProtectedRoute>} />
-            <Route path="/chat" element={<ProtectedRoute isLoggedIn={isLoggedIn}><StudentChat /></ProtectedRoute>} />
+            <Route path="/exams" element={isFeatureEnabled('exams') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/exam-taking" element={isFeatureEnabled('exams') ? <ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/videos" element={isFeatureEnabled('videos') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/payments" element={isFeatureEnabled('payments') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Payments /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/chat" element={isFeatureEnabled('chat') ? <ProtectedRoute isLoggedIn={isLoggedIn}><StudentChat /></ProtectedRoute> : <Navigate to="/" replace />} />
 
             {/* Student + Admin: solo reports */}
             <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />

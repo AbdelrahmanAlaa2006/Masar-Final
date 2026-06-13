@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
 import QuizRunner from '../components/QuizRunner'
@@ -27,8 +28,11 @@ import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 
 export default function Videos() {
   const navigate = useNavigate()
+  const { isGradeEnabled } = useTenant()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
+
+  const { user: currentUser, role: userRole } = useAuth()
 
   const GRADES = [
     { id: 'first-prep', ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -37,7 +41,7 @@ export default function Videos() {
     { id: 'first-sec', ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
     { id: 'second-sec', ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
     { id: 'third-sec', ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
-  ]
+  ].filter(p => isGradeEnabled(p.id))
 
   // Convert a DB video row (with embedded video_parts) into the shape the
   // rest of the page was built around (parts[], totalParts, quizzes[]).
@@ -68,8 +72,6 @@ export default function Videos() {
     }
   }
 
-
-  const { user: currentUser, role: userRole } = useAuth()
 
   const [currentGrade, setCurrentGrade] = useState(() => {
     if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
@@ -1939,12 +1941,12 @@ function EditVideoModal({ video, onCancel, onSave }) {
             <div className="edit-field">
               <label>الصف الدراسي</label>
               <select className="edit-select" value={grade} onChange={(e) => setGrade(e.target.value)}>
-                <option value="first-prep">الصف الأول الإعدادي</option>
-                <option value="second-prep">الصف الثاني الإعدادي</option>
-                <option value="third-prep">الصف الثالث الإعدادي</option>
-                <option value="first-sec">الصف الأول الثانوي</option>
-                <option value="second-sec">الصف الثاني الثانوي</option>
-                <option value="third-sec">الصف الثالث الثانوي</option>
+                {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
+                {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
+                {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
+                {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
+                {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
+                {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
               </select>
             </div>
           </div>

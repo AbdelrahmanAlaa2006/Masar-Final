@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './VideoAdd.css'
 import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
@@ -93,10 +94,9 @@ const makeQuiz = () => ({
 
 export default function VideoAdd() {
   const navigate = useNavigate()
+  const { isGradeEnabled } = useTenant()
   const [videoTitle, setVideoTitle] = useState('')
   const [videoDescription, setVideoDescription] = useState('')
-  const [videoGrade, setVideoGrade] = useState('first-prep')
-  const [activeHours, setActiveHours] = useState(24)
   const [videoParts, setVideoParts] = useState([])
   const [numParts, setNumParts] = useState('')
   const [quizzes, setQuizzes] = useState([])
@@ -105,7 +105,17 @@ export default function VideoAdd() {
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [selectedGrade] = useState(localStorage.getItem('selectedVideoGrade') || 'first-prep')
+  const [selectedGrade] = useState(() => {
+    const selected = localStorage.getItem('selectedVideoGrade') || 'first-prep'
+    if (isGradeEnabled(selected)) return selected
+    const grades = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
+    for (const g of grades) {
+      if (isGradeEnabled(g)) return g
+    }
+    return 'first-prep'
+  })
+  const [videoGrade, setVideoGrade] = useState(selectedGrade)
+  const [activeHours, setActiveHours] = useState(24)
 
   const addPart = () => {
     const nextId = `new_part_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -583,12 +593,12 @@ export default function VideoAdd() {
               <div className="form-group flex-1">
                 <label>الصف الدراسي</label>
                 <select value={videoGrade} onChange={(e) => setVideoGrade(e.target.value)}>
-                  <option value="first-prep">الصف الأول الإعدادي</option>
-                  <option value="second-prep">الصف الثاني الإعدادي</option>
-                  <option value="third-prep">الصف الثالث الإعدادي</option>
-                  <option value="first-sec">الصف الأول الثانوي</option>
-                  <option value="second-sec">الصف الثاني الثانوي</option>
-                  <option value="third-sec">الصف الثالث الثانوي</option>
+                  {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
+                  {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
+                  {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
+                  {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
+                  {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
+                  {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
                 </select>
               </div>
 

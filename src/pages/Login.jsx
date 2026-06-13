@@ -1,14 +1,7 @@
 // Login.jsx — MERGED VERSION
-// Combines the new "أ. عبدالرحمن علاء" landing design (top hero) with
-// your existing Masar auth logic (login, register, forgot password,
-// rate limiting, AuthContext, TenantContext, marketing sections, footer).
-//
-// SETUP:
-//   1. Replace your old src/.../Login.jsx with this file
-//   2. Put NewLogin.css next to it (already imported below)
-//   3. Drop teacher.png and teacher-hover.png in /public
-//   4. Make sure your existing Login.css is still imported (it powers
-//      the form fields, marketing sections, footer, modals).
+// Dynamic theme touches based on resolved tenant.
+// Renders the new teacher landing page layout for all tenants,
+// with chemistry assets for mona-chem and standard assets for default.
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -17,8 +10,8 @@ import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import masarLogo from '../assets/logo.white.png'
-import './Login.css'        // your existing styles (forms, marketing, footer, forgot modal)
-import './login-styles.css'     // NEW styles (navbar, hero, auth-modal, teacher portrait)
+import './Login.css'        // existing styles (forms, marketing, footer)
+import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
 
 /* ─────────── translations ─────────── */
 const translations = {
@@ -62,8 +55,8 @@ const translations = {
     login: 'Login', phone: 'Phone Number', name: 'Full Name', password: 'Password',
     remember: 'Remember me', forgot: 'Forgot password?',
     register: 'Create New Account', grade: 'Academic Grade',
-    'grade-first': 'First Preparatory', 'grade-second': 'Second Preparatory', 'grade-third': 'Third Preparatory',
-    'grade-sec-1': 'First Secondary', 'grade-sec-2': 'Second Secondary', 'grade-sec-3': 'Third Secondary',
+    'grade-first': 'First Preparatory Stage', 'grade-second': 'Second Preparatory Stage', 'grade-third': 'Third Preparatory Stage',
+    'grade-sec-1': 'First Secondary Stage', 'grade-sec-2': 'Second Secondary Stage', 'grade-sec-3': 'Third Secondary Stage',
     'confirm-password': 'Confirm Password',
     'have-account': 'Already have an account?', 'no-account': "Don't have an account?",
     'register-btn': 'Create Account', 'login-btn-link': 'Log In', 'register-btn-link': 'Register Now',
@@ -79,8 +72,9 @@ const translations = {
 
 export default function Login() {
   const { login } = useAuth()
-  const { tenant, tenantId, tenantSlug, tenantName } = useTenant()
+  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled } = useTenant()
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
+  const isChemistry = tenantSlug === 'mona-chem' || tenant?.config?.subject === 'chemistry'
   const brandLogo = isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
@@ -115,6 +109,61 @@ export default function Login() {
   const [portraitHover, setPortraitHover] = useState(false)
 
   const t = translations[lang]
+
+  const getLocalized = (val, arFallback, enFallback) => {
+    if (!val) return lang === 'ar' ? arFallback : enFallback
+    if (typeof val === 'object') {
+      return val[lang] || val['ar'] || arFallback
+    }
+    return val
+  }
+
+  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(tenant?.config?.branding?.brand_short, tenantName, tenantName)
+  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(tenant?.config?.branding?.hero_title_a, tenantName, tenantName)
+  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(tenant?.config?.branding?.hero_title_b, '', '')
+  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(tenant?.config?.branding?.hero_sub, '', '')
+
+  const teacherName = getLocalized(tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
+  const teacherRole = getLocalized(tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
+  const teacherBio = getLocalized(
+    tenant?.config?.teacher?.bio,
+    'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.',
+    'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'
+  )
+  const teacherQuote = getLocalized(
+    tenant?.config?.teacher?.quote,
+    '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»',
+    '“Arabic isn\'t hard — it just needs to be taught the right way.”'
+  )
+  const teacherImageBase = tenant?.config?.teacher?.image_base || "/images/profile.png"
+  const teacherImageHover = tenant?.config?.teacher?.image_hover || "/images/me.png"
+  const teacherExp = getLocalized(tenant?.config?.teacher?.experience, '+10', '+10')
+  const teacherStudents = getLocalized(tenant?.config?.teacher?.students_count, '+2,000', '+2,000')
+  const teacherSatisfaction = getLocalized(tenant?.config?.teacher?.satisfaction, '98%', '98%')
+
+  const socials = tenant?.config?.socials || {
+    facebook: 'https://www.facebook.com',
+    whatsapp: 'https://wa.me/',
+    instagram: 'https://www.instagram.com',
+    youtube: 'https://www.youtube.com',
+    tiktok: 'https://www.tiktok.com'
+  }
+
+  const locationKicker = getLocalized(tenant?.config?.location?.kicker, 'زورنا', 'Visit us')
+  const locationTitle = getLocalized(tenant?.config?.location?.title, 'موقعنا على الخريطة', 'Find Us on the Map')
+  const locationDesc = getLocalized(
+    tenant?.config?.location?.description,
+    'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.',
+    'Drop by our center in Damanhour — easy to find and easy to reach.'
+  )
+  const locationAddress = getLocalized(tenant?.config?.location?.address, 'دمنهور، البحيرة', 'Damanhour, Beheira')
+  const locationCountry = getLocalized(tenant?.config?.location?.country, 'جمهورية مصر العربية', 'Arab Republic of Egypt')
+  const locationMapUrl = tenant?.config?.location?.map_iframe_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+  const locationPhone = tenant?.config?.location?.phone || '+20 XXX XXX XXXX'
+  const locationHoursDays = getLocalized(tenant?.config?.location?.hours_days, 'السبت – الخميس', 'Sat – Thu')
+  const locationHoursTime = getLocalized(tenant?.config?.location?.hours_time, '٩ صباحًا – ٩ مساءً', '9 AM – 9 PM')
+  const locationDirectionsLink = tenant?.config?.location?.directions_link || "https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+  const locationWhatsappLink = tenant?.config?.location?.whatsapp_link || "https://wa.me/20XXXXXXXXXX"
 
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
@@ -168,15 +217,36 @@ export default function Login() {
     const ctx = canvas.getContext('2d')
     let width = 0, height = 0, raf = 0
     const mouse = { x: -9999, y: -9999, active: false }
-    const COLORS = ['#5cb8f0', '#7dd3fc', '#22d3ee', '#a78bfa', '#f0abfc', '#fbbf24']
-    const COUNT = Math.max(38, Math.floor((window.innerWidth * window.innerHeight) / 28000))
+    const COLORS = isChemistry 
+      ? ['#0d9488', '#06b6d4', '#14b8a6', '#22d3ee', '#38bdf8', '#8b5cf6']
+      : ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
+
+    const COUNT = Math.max(30, Math.floor((window.innerWidth * window.innerHeight) / 32000))
     const particles = []
     const resize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight }
     resize()
+
+    const FORMULAS = ['H₂O', 'CO₂', 'C₆H₆', 'HCl', 'NaOH', 'NH₃', 'CH₄', 'NaCl']
+
     for (let i = 0; i < COUNT; i++) {
+      let type = 'circle'
+      let text = ''
+      if (isChemistry) {
+        const rand = Math.random()
+        if (rand < 0.20) {
+          type = 'benzene'
+        } else if (rand < 0.40) {
+          type = 'flask'
+        } else if (rand < 0.70) {
+          type = 'formula'
+          text = FORMULAS[Math.floor(Math.random() * FORMULAS.length)]
+        }
+      }
+
       particles.push({
         x: Math.random() * width, y: Math.random() * height, vx: 0, vy: 0,
         r: 1.8 + Math.random() * 2.2, c: COLORS[Math.floor(Math.random() * COLORS.length)],
+        type, text
       })
     }
     const step = () => {
@@ -185,11 +255,22 @@ export default function Login() {
         if (mouse.active) {
           const dx = mouse.x - p.x, dy = mouse.y - p.y, d2 = dx * dx + dy * dy
           if (d2 < 220 * 220) {
-            const d = Math.sqrt(d2) || 1, f = (1 - d / 220) * 0.22
+            const d = Math.sqrt(d2) || 1, f = (1 - d / 220) * 0.08
             p.vx += (dx / d) * f; p.vy += (dy / d) * f
           }
         }
-        p.vx *= 0.89; p.vy *= 0.89; p.x += p.vx; p.y += p.vy
+        p.vx += (Math.random() - 0.5) * 0.02
+        p.vy += (Math.random() - 0.5) * 0.02
+
+        p.vx *= 0.95; p.vy *= 0.95
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
+        const maxSpeed = 0.35
+        if (speed > maxSpeed) {
+          p.vx = (p.vx / speed) * maxSpeed
+          p.vy = (p.vy / speed) * maxSpeed
+        }
+
+        p.x += p.vx; p.y += p.vy
         if (p.x < 0) p.x = width; if (p.x > width) p.x = 0
         if (p.y < 0) p.y = height; if (p.y > height) p.y = 0
       }
@@ -199,15 +280,52 @@ export default function Login() {
           const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy
           if (d2 < 130 * 130) {
             const alpha = 1 - Math.sqrt(d2) / 130
-            ctx.strokeStyle = `rgba(120, 200, 255, ${alpha * 0.35})`
+            ctx.strokeStyle = isChemistry 
+              ? (theme === 'dark' ? `rgba(120, 200, 255, ${alpha * 0.22})` : `rgba(13, 148, 136, ${alpha * 0.15})`)
+              : `rgba(168, 85, 247, ${alpha * 0.35})`
             ctx.lineWidth = 1
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
           }
         }
       }
       for (const p of particles) {
-        ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 12
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = p.c; ctx.strokeStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = theme === 'dark' ? 10 : 0
+        
+        if (isChemistry && p.type === 'benzene') {
+          ctx.beginPath()
+          const r = p.r * 5.5
+          for (let s = 0; s < 6; s++) {
+            const angle = (s * Math.PI) / 3
+            const px = p.x + r * Math.cos(angle)
+            const py = p.y + r * Math.sin(angle)
+            if (s === 0) ctx.moveTo(px, py)
+            else ctx.lineTo(px, py)
+          }
+          ctx.closePath()
+          ctx.lineWidth = 1.2
+          ctx.stroke()
+          
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2)
+          ctx.stroke()
+        } else if (isChemistry && p.type === 'flask') {
+          const size = p.r * 6
+          ctx.beginPath()
+          ctx.moveTo(p.x - size * 0.2, p.y - size * 0.6)
+          ctx.lineTo(p.x + size * 0.2, p.y - size * 0.6)
+          ctx.lineTo(p.x + size * 0.2, p.y - size * 0.2)
+          ctx.lineTo(p.x + size * 0.6, p.y + size * 0.6)
+          ctx.lineTo(p.x - size * 0.6, p.y + size * 0.6)
+          ctx.lineTo(p.x - size * 0.2, p.y - size * 0.2)
+          ctx.closePath()
+          ctx.lineWidth = 1.2
+          ctx.stroke()
+        } else if (isChemistry && p.type === 'formula') {
+          ctx.font = `${Math.round(p.r * 3.5)}px Tajawal, sans-serif`
+          ctx.fillText(p.text, p.x, p.y)
+        } else {
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
+        }
       }
       ctx.shadowBlur = 0
       raf = requestAnimationFrame(step)
@@ -224,7 +342,7 @@ export default function Login() {
       window.removeEventListener('mouseleave', onLeave)
       window.removeEventListener('resize', resize)
     }
-  }, [])
+  }, [theme, tenantSlug, tenant, isChemistry])
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -258,7 +376,7 @@ export default function Login() {
   }
   const clearFailures = () => { try { localStorage.removeItem(ATTEMPT_KEY) } catch { } }
 
-  /* ─────────── handlers (UNCHANGED from your old file) ─────────── */
+  /* ─────────── handlers ─────────── */
   const handleLogin = async e => {
     e.preventDefault(); setError('')
     const cooldown = getCooldownRemaining()
@@ -343,7 +461,7 @@ export default function Login() {
   const Arrow = lang === 'ar' ? '←' : '→'
 
   return (
-    <div className="aa-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`aa-page ${isChemistry ? 'aa-chem-theme' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <canvas ref={canvasRef} className="aa-particles" aria-hidden="true" />
 
       {/* ─────────── NEW NAVBAR ─────────── */}
@@ -351,7 +469,7 @@ export default function Login() {
         <div className="aa-nav-inner">
           <div className="aa-brand">
             <img src={brandLogo} alt="Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
-            <span className="aa-brand-name">{t.brand_short}</span>
+            <span className="aa-brand-name">{brandShort}</span>
           </div>
 
           <nav className="aa-nav-links">
@@ -377,13 +495,13 @@ export default function Login() {
         <div className="aa-hero-glow" />
         <div className="aa-hero-inner">
           <div className="aa-hero-text">
-            <span className="aa-badge">✨ {t.hero_badge}</span>
+            <span className="aa-badge">✨ {isDefaultTenant ? t.hero_badge : tenantName}</span>
             <h1 className="aa-h1">
-              {t.hero_title_a}
+              {heroTitleA}
               <br />
-              <span className="aa-h1-grad">{t.hero_title_b}</span>
+              <span className="aa-h1-grad">{heroTitleB}</span>
             </h1>
-            <p className="aa-sub">{t.hero_sub}</p>
+            <p className="aa-sub">{heroSub}</p>
             <div className="aa-cta-row">
               <button className="aa-btn aa-btn-primary aa-btn-lg" onClick={() => openAuth(true)}>
                 {t.cta_primary} <span>{Arrow}</span>
@@ -404,31 +522,31 @@ export default function Login() {
               onTouchEnd={() => setPortraitHover(false)}
             >
               <div className="aa-portrait-img">
-                <img src="/images/profile.png" alt="الأستاذ عبدالرحمن علاء" className={`aa-img-base ${portraitHover ? 'is-hidden' : ''}`} />
-                <img src="/images/me.png" alt="" aria-hidden="true" className={`aa-img-hover ${portraitHover ? 'is-shown' : ''}`} />
+                <img src={teacherImageBase} alt={lang === 'ar' ? `الأستاذ ${teacherName}` : `Mr. ${teacherName}`} className={`aa-img-base ${portraitHover ? 'is-hidden' : ''}`} />
+                <img src={teacherImageHover} alt="" aria-hidden="true" className={`aa-img-hover ${portraitHover ? 'is-shown' : ''}`} />
                 <div className="aa-portrait-vignette" />
                 <div className="aa-portrait-chips">
-                  <div className="aa-chip aa-chip-accent">اعتماد أكاديمي</div>
-                  <div className="aa-chip">+10 سنوات خبرة</div>
+                  <div className="aa-chip aa-chip-accent">{lang === 'ar' ? 'اعتماد أكاديمي' : 'Certified Lecturer'}</div>
+                  <div className="aa-chip">{teacherExp} {lang === 'ar' ? 'سنوات خبرة' : 'years experience'}</div>
                 </div>
               </div>
               <div className="aa-nameplate">
                 <div className="aa-nameplate-row">
                   <div>
-                    <div className="aa-kicker">الأستاذ المحاضر</div>
-                    <h3 className="aa-name">عبدالرحمن علاء</h3>
-                    <p className="aa-dept">قسم اللغة العربية</p>
+                    <div className="aa-kicker">{lang === 'ar' ? 'الأستاذ المحاضر' : 'Lecturer'}</div>
+                    <h3 className="aa-name">{teacherName}</h3>
+                    <p className="aa-dept">{teacherRole}</p>
                   </div>
-                  <div className="aa-grad-icon">🎓</div>
+                  <div className="aa-grad-icon"><i className="fas fa-graduation-cap"></i></div>
                 </div>
                 <div className="aa-metrics">
                   <div>
-                    <div className="aa-metric-label">التقييم</div>
+                    <div className="aa-metric-label">{lang === 'ar' ? 'التقييم' : 'Rating'}</div>
                     <div className="aa-metric-value">4.9 ★★★★☆</div>
                   </div>
                   <div>
-                    <div className="aa-metric-label">الحالة</div>
-                    <div className="aa-metric-value"><span className="aa-pulse" /> متاح الآن</div>
+                    <div className="aa-metric-label">{lang === 'ar' ? 'الحالة' : 'Status'}</div>
+                    <div className="aa-metric-value"><span className="aa-pulse" /> {lang === 'ar' ? 'متاح الآن' : 'Available now'}</div>
                   </div>
                 </div>
               </div>
@@ -436,9 +554,8 @@ export default function Login() {
           </div>
         </div>
       </section>
+
       {/* ─────────── ABOUT TEACHER ─────────── */}
-      {/* Paste this block in Login.jsx right AFTER the closing </section> of the hero
-    (around line 438) and BEFORE the <section id="features"> block. */}
       <section id="about" className="login-about">
         <div className="section-inner about-grid">
           <div className="about-text">
@@ -446,35 +563,33 @@ export default function Login() {
               {lang === 'ar' ? 'عن المعلم' : 'About the teacher'}
             </span>
             <h2 className="section-heading about-title">
-              {lang === 'ar' ? 'أ. عبدالرحمن علاء' : 'Mr. Abdelrahman Alaa'}
+              {lang === 'ar' ? `أ. ${teacherName}` : `Mr. ${teacherName}`}
             </h2>
             <p className="about-role">
-              {lang === 'ar' ? 'مدرّس اللغة العربية' : 'Arabic Language Teacher'}
+              {teacherRole}
             </p>
             <p className="about-bio">
-              {lang === 'ar'
-                ? 'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.'
-                : 'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'}
+              {teacherBio}
             </p>
 
             <div className="about-stats">
               <div className="about-stat">
                 <i className="fas fa-award"></i>
-                <div className="about-stat-value">+10</div>
+                <div className="about-stat-value">{teacherExp}</div>
                 <div className="about-stat-label">
                   {lang === 'ar' ? 'سنوات خبرة' : 'Years of experience'}
                 </div>
               </div>
               <div className="about-stat">
                 <i className="fas fa-users"></i>
-                <div className="about-stat-value">+2,000</div>
+                <div className="about-stat-value">{teacherStudents}</div>
                 <div className="about-stat-label">
                   {lang === 'ar' ? 'طالب وطالبة' : 'Students taught'}
                 </div>
               </div>
               <div className="about-stat">
                 <i className="fas fa-book-open"></i>
-                <div className="about-stat-value">98%</div>
+                <div className="about-stat-value">{teacherSatisfaction}</div>
                 <div className="about-stat-label">
                   {lang === 'ar' ? 'رضا الطلاب' : 'Student satisfaction'}
                 </div>
@@ -485,12 +600,10 @@ export default function Login() {
           <aside className="about-quote">
             <i className="fas fa-sparkles about-quote-icon"></i>
             <p className="about-quote-text">
-              {lang === 'ar'
-                ? '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»'
-                : '“Arabic isn\'t hard — it just needs to be taught the right way.”'}
+              {teacherQuote}
             </p>
             <p className="about-quote-author">
-              — {lang === 'ar' ? 'أ. عبدالرحمن علاء' : 'Mr. Abdelrahman Alaa'}
+              — {lang === 'ar' ? `أ. ${teacherName}` : `Mr. ${teacherName}`}
             </p>
           </aside>
         </div>
@@ -530,7 +643,6 @@ export default function Login() {
       </section>
 
       <section className="login-location" id="location">
-        {/* decorative background layers */}
         <div className="loc-bg-grid" aria-hidden="true"></div>
         <div className="loc-bg-blob loc-bg-blob--a" aria-hidden="true"></div>
         <div className="loc-bg-blob loc-bg-blob--b" aria-hidden="true"></div>
@@ -539,32 +651,28 @@ export default function Login() {
           <div className="loc-head">
             <span className="loc-kicker">
               <i className="fas fa-location-crosshairs"></i>
-              {lang === 'ar' ? 'زورنا' : 'Visit us'}
+              {locationKicker}
             </span>
             <h2 className="section-heading loc-title">
-              {lang === 'ar' ? 'موقعنا على الخريطة' : 'Find Us on the Map'}
+              {locationTitle}
             </h2>
             <p className="section-sub">
-              {lang === 'ar'
-                ? 'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.'
-                : 'Drop by our center in Damanhour — easy to find and easy to reach.'}
+              {locationDesc}
             </p>
           </div>
 
           <div className="location-grid">
-            {/* ── Map card ── */}
             <div className="location-map-wrapper">
               <div className="map-shell">
                 <iframe
-                  title="Masar Location"
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+                  title="Location Map"
+                  src={locationMapUrl}
                   className="location-map"
                   allowFullScreen=""
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 ></iframe>
 
-                {/* animated pin overlay */}
                 <div className="map-pin" aria-hidden="true">
                   <span className="map-pin__pulse"></span>
                   <span className="map-pin__pulse map-pin__pulse--2"></span>
@@ -573,18 +681,15 @@ export default function Login() {
                   </span>
                 </div>
 
-                {/* live badge */}
                 <div className="map-badge">
                   <span className="map-badge__dot"></span>
                   {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
                 </div>
 
-                {/* gradient frame */}
                 <div className="map-frame" aria-hidden="true"></div>
               </div>
             </div>
 
-            {/* ── Info column ── */}
             <div className="location-info">
               <div className="location-info-card">
                 <div className="location-info-icon">
@@ -592,8 +697,8 @@ export default function Login() {
                 </div>
                 <div className="loc-card-body">
                   <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
-                  <h4>{lang === 'ar' ? 'دمنهور، البحيرة' : 'Damanhour, Beheira'}</h4>
-                  <p>{lang === 'ar' ? 'جمهورية مصر العربية' : 'Arab Republic of Egypt'}</p>
+                  <h4>{locationAddress}</h4>
+                  <p>{locationCountry}</p>
                 </div>
               </div>
 
@@ -603,7 +708,7 @@ export default function Login() {
                 </div>
                 <div className="loc-card-body">
                   <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                  <h4 dir="ltr">+20 XXX XXX XXXX</h4>
+                  <h4 dir="ltr">{locationPhone}</h4>
                   <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
                 </div>
               </div>
@@ -614,14 +719,14 @@ export default function Login() {
                 </div>
                 <div className="loc-card-body">
                   <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
-                  <h4>{lang === 'ar' ? 'السبت – الخميس' : 'Sat – Thu'}</h4>
-                  <p>{lang === 'ar' ? '٩ صباحًا – ٩ مساءً' : '9 AM – 9 PM'}</p>
+                  <h4>{locationHoursDays}</h4>
+                  <p>{locationHoursTime}</p>
                 </div>
               </div>
 
               <div className="loc-actions">
                 <a
-                  href="https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+                  href={locationDirectionsLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="location-directions-btn"
@@ -632,7 +737,7 @@ export default function Login() {
                 </a>
 
                 <a
-                  href="https://wa.me/20XXXXXXXXXX"
+                  href={locationWhatsappLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="location-directions-btn location-directions-btn--ghost"
@@ -659,21 +764,31 @@ export default function Login() {
           </div>
 
           <div className="footer-socials">
-            <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
-              <i className="fab fa-facebook-f"></i>
-            </a>
-            <a href="https://wa.me/" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="WhatsApp">
-              <i className="fab fa-whatsapp"></i>
-            </a>
-            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
-              <i className="fab fa-instagram"></i>
-            </a>
-            <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="YouTube">
-              <i className="fab fa-youtube"></i>
-            </a>
-            <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="TikTok">
-              <i className="fab fa-tiktok"></i>
-            </a>
+            {socials.facebook && (
+              <a href={socials.facebook} target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
+                <i className="fab fa-facebook-f"></i>
+              </a>
+            )}
+            {socials.whatsapp && (
+              <a href={socials.whatsapp} target="_blank" rel="noopener noreferrer" className="social-link" aria-label="WhatsApp">
+                <i className="fab fa-whatsapp"></i>
+              </a>
+            )}
+            {socials.instagram && (
+              <a href={socials.instagram} target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
+                <i className="fab fa-instagram"></i>
+              </a>
+            )}
+            {socials.youtube && (
+              <a href={socials.youtube} target="_blank" rel="noopener noreferrer" className="social-link" aria-label="YouTube">
+                <i className="fab fa-youtube"></i>
+              </a>
+            )}
+            {socials.tiktok && (
+              <a href={socials.tiktok} target="_blank" rel="noopener noreferrer" className="social-link" aria-label="TikTok">
+                <i className="fab fa-tiktok"></i>
+              </a>
+            )}
           </div>
 
           <div className="footer-divider"></div>
@@ -711,14 +826,14 @@ export default function Login() {
                   <select value={grade} onChange={e => setGrade(e.target.value)} required
                     style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
                     <optgroup label={lang === 'ar' ? 'المرحلة الإعدادية' : 'Preparatory'}>
-                      <option value="first-prep">{t['grade-first']}</option>
-                      <option value="second-prep">{t['grade-second']}</option>
-                      <option value="third-prep">{t['grade-third']}</option>
+                      {isGradeEnabled('first-prep') && <option value="first-prep">{t['grade-first']}</option>}
+                      {isGradeEnabled('second-prep') && <option value="second-prep">{t['grade-second']}</option>}
+                      {isGradeEnabled('third-prep') && <option value="third-prep">{t['grade-third']}</option>}
                     </optgroup>
                     <optgroup label={lang === 'ar' ? 'المرحلة الثانوية' : 'Secondary'}>
-                      <option value="first-sec">{t['grade-sec-1']}</option>
-                      <option value="second-sec">{t['grade-sec-2']}</option>
-                      <option value="third-sec">{t['grade-sec-3']}</option>
+                      {isGradeEnabled('first-sec') && <option value="first-sec">{t['grade-sec-1']}</option>}
+                      {isGradeEnabled('second-sec') && <option value="second-sec">{t['grade-sec-2']}</option>}
+                      {isGradeEnabled('third-sec') && <option value="third-sec">{t['grade-sec-3']}</option>}
                     </optgroup>
                   </select>
                 </div>
@@ -790,7 +905,7 @@ export default function Login() {
         </div>
       )}
 
-      {/* ─────────── FORGOT PASSWORD MODAL (unchanged) ─────────── */}
+      {/* ─────────── FORGOT PASSWORD MODAL ─────────── */}
       {showForgotModal && (
         <div className="auth-modal-overlay" onClick={() => setShowForgotModal(false)}>
           <div className="auth-modal" onClick={e => e.stopPropagation()} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -835,7 +950,7 @@ export default function Login() {
   )
 }
 
-/* helper: toast (extracted from original showSuccessMessage) */
+/* helper: toast */
 function spawnToast(title, sub, lang) {
   const overlay = document.createElement('div')
   overlay.className = 'auth-overlay'
