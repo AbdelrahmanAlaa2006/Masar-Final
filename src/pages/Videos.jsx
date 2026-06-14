@@ -650,22 +650,31 @@ export default function Videos() {
       {/* Videos list */}
       {view === 'videos' && (
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            {userRole === 'admin' ? (
-              <button className="btn btn-outline" onClick={goBackToGrades}>
-                ← العودة للصفوف
-              </button>
-            ) : <div style={{ width: '120px' }} />}
-
-            <div className="text-center">
-              <h1 id="gradeTitle" className="title-main gradient-text">📺 الفيديوهات التعليمية</h1>
+          <div className="premium-page-header">
+            <div className="premium-header-content">
+              <span className="premium-pre-title">المحاضرات المرئية</span>
+              <h1 id="gradeTitle" className="premium-title-main">
+                الفيديوهات التعليمية
+                <span className="premium-title-accent">
+                  ({GRADES.find(g => g.id === currentGrade)?.ar || ''})
+                </span>
+              </h1>
+              <p className="premium-subtitle-desc">
+                شاهد المحاضرات والدروس المصورة المتاحة لمرحلتك الدراسية
+              </p>
             </div>
-
-            {userRole === 'admin' ? (
-              <button className="btn btn-primary" onClick={goToAddVideo}>
-                ➕ إضافة فيديو جديد
-              </button>
-            ) : <div style={{ width: '120px' }} />}
+            <div className="premium-header-actions">
+              {userRole === 'admin' && (
+                <button className="premium-back-btn" onClick={goBackToGrades}>
+                  <i className="fas fa-arrow-right"></i> العودة للصفوف
+                </button>
+              )}
+              {userRole === 'admin' && (
+                <button className="premium-action-btn btn-primary" onClick={goToAddVideo}>
+                  <i className="fas fa-plus"></i> إضافة فيديو جديد
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -1349,6 +1358,7 @@ function formatSecondsToTimestamp(sec) {
 }
 
 function EditVideoModal({ video, onCancel, onSave }) {
+  const { isGradeEnabled } = useTenant()
   const [title, setTitle] = useState(video.title || '')
   const [desc, setDesc] = useState(video.description || '')
   const [grade, setGrade] = useState(video.grade || 'first-prep')

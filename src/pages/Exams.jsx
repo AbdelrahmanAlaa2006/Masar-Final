@@ -321,21 +321,28 @@ export default function Exams() {
 
   const renderExamSection = (level) => (
     <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
-      {userRole === 'admin' && (
-        <button className="back-button" onClick={() => setCurrentLevel(null)}>
-          ← العودة للمستويات
-        </button>
-      )}
-      <div className="section-header">
-        <div className="section-title">
-          <span>{levelEmojis[level]}</span>
-          {levelTitles[level]}
+      <div className="premium-page-header">
+        <div className="premium-header-content">
+          <span className="premium-pre-title">التقييمات والاختبارات</span>
+          <h1 className="premium-title-main">
+            {levelTitles[level]}
+          </h1>
+          <p className="premium-subtitle-desc">
+            اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية
+          </p>
         </div>
-        {userRole === 'admin' && (
-          <button className="add-exam" onClick={() => addExam(level)}>
-            ➕ إضافة امتحان جديد
-          </button>
-        )}
+        <div className="premium-header-actions">
+          {userRole === 'admin' && (
+            <button className="premium-back-btn" onClick={() => setCurrentLevel(null)}>
+              <i className="fas fa-arrow-right"></i> العودة للمستويات
+            </button>
+          )}
+          {userRole === 'admin' && (
+            <button className="premium-action-btn btn-primary" onClick={() => addExam(level)}>
+              <i className="fas fa-plus"></i> إضافة امتحان جديد
+            </button>
+          )}
+        </div>
       </div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -452,6 +459,7 @@ export default function Exams() {
    Editing the questions array is intentionally NOT supported here —
    delete + recreate the exam if you need to change question content. */
 function EditExamModal({ exam, onCancel, onSave }) {
+  const { isGradeEnabled } = useTenant()
   const [title, setTitle] = useState(exam.title || '')
   const [number, setNumber] = useState(exam.number || '')
   const [grade, setGrade] = useState(exam.grade || 'first-prep')

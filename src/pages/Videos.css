@@ -390,44 +390,53 @@ body.dark .vid-prep-head h1 {
   display: flex;
   flex-direction: column;
   animation: fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes fadeInCard {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  position: relative;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .vc-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-8px) scale(1.01);
   box-shadow: var(--shadow-elevated);
-  border-color: rgba(118, 75, 162, 0.35);
+  border-color: rgba(124, 58, 237, 0.35);
 }
 
 body.dark .vc-card:hover {
   border-color: rgba(167, 139, 250, 0.4);
 }
 
+/* Glowing top accent border edge */
+.vc-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  opacity: 0.85;
+  z-index: 5;
+}
+
 /* Translucent Status Bar */
 .vc-status-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-size: 0.85rem;
+  gap: 10px;
+  padding: 16px 20px 8px;
+  font-size: 0.8rem;
   font-weight: 700;
   direction: rtl;
+  background: transparent !important;
+  border-bottom: none !important;
 }
 
 .vc-available {
-  background: rgba(16, 185, 129, 0.06);
   color: #10b981;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.08);
 }
 
 .vc-unavailable {
-  background: rgba(239, 68, 68, 0.06);
   color: #ef4444;
-  border-bottom: 1px solid rgba(239, 68, 68, 0.08);
 }
 
 .vc-status-dot {
@@ -438,13 +447,13 @@ body.dark .vc-card:hover {
 
 .vc-available .vc-status-dot {
   background: #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
   animation: statusPulse 2s ease-in-out infinite;
 }
 
 .vc-unavailable .vc-status-dot {
   background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 @keyframes statusPulse {
@@ -476,36 +485,41 @@ body.dark .vc-card:hover {
 
 /* Card Header */
 .vc-header {
-  background: var(--gradient-primary);
-  padding: 24px 20px;
+  background: rgba(124, 58, 237, 0.05);
+  padding: 18px 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   direction: rtl;
-  min-height: 130px;
-  position: relative;
+  border-bottom: 1px solid var(--border-primary);
+  min-height: auto;
+}
+
+body.dark .vc-header {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 
 .vc-play-btn {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.18);
-  border: 2px solid rgba(255,255,255,0.45);
-  color: #fff;
+  background: var(--gradient-primary) !important;
+  border: none !important;
+  color: #fff !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
 }
 
 .vc-card:hover .vc-play-btn {
-  transform: scale(1.15) rotate(5deg);
-  background: rgba(255,255,255,0.3);
+  transform: scale(1.1) rotate(5deg);
+  background: var(--gradient-primary) !important;
 }
 
 .vc-titles {
@@ -514,18 +528,18 @@ body.dark .vc-card:hover {
 }
 
 .vc-title {
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   font-weight: 800;
-  color: #fff;
-  line-height: 1.5;
-  margin-bottom: 6px;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 4px;
   letter-spacing: -0.01em;
 }
 
 .vc-desc {
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.8);
-  line-height: 1.55;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -536,10 +550,10 @@ body.dark .vc-card:hover {
   width: 38px;
   height: 38px;
   min-width: 38px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.18);
-  border: 1.5px solid rgba(255,255,255,0.4);
-  color: #fff;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  color: var(--educational-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -552,30 +566,45 @@ body.dark .vc-card:hover {
 .vc-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  background: rgba(124, 58, 237, 0.02);
+  gap: 10px;
+  padding: 16px 20px;
   direction: rtl;
-  border-bottom: 1px solid var(--border-primary);
-}
-
-body.dark .vc-stats {
-  background: rgba(255, 255, 255, 0.01);
+  background: transparent !important;
+  border-bottom: none !important;
 }
 
 .vc-stat {
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
   gap: 10px;
-  background: transparent;
-  border-right: 1px solid var(--border-primary);
+  background: rgba(124, 58, 237, 0.04) !important;
+  border: 1px solid rgba(124, 58, 237, 0.08) !important;
+  border-radius: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+body.dark .vc-stat {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.vc-stat:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.25) !important;
+  background: rgba(124, 58, 237, 0.08) !important;
 }
 
 .vc-stat:nth-child(2n) {
-  border-right: none;
+  border-right: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+body.dark .vc-stat:nth-child(2n) {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .vc-stat-icon {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 
@@ -586,13 +615,13 @@ body.dark .vc-stats {
 }
 
 .vc-stat-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .vc-stat-value {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: var(--text-primary);
 }

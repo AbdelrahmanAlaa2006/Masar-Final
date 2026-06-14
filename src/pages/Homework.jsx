@@ -356,39 +356,43 @@ export default function Homework() {
 
         {grade && (
           <>
-            <div className="hw-toolbar">
-              {userRole === 'admin' && (
-                <button className="hw-back" onClick={() => { setGrade(null); setSearch('') }}>
-                  <i className="fas fa-arrow-right"></i> العودة للمراحل
-                </button>
-              )}
-              <div className="hw-search-wrap">
-                <i className="fas fa-search"></i>
-                <input
-                  type="text"
-                  placeholder="ابحث بعنوان الواجب أو الأسبوع..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-                {search && (
-                  <button className="hw-search-clear" onClick={() => setSearch('')}>
-                    <i className="fas fa-times"></i>
+            <div className="premium-page-header">
+              <div className="premium-header-content">
+                <span className="premium-pre-title">المهام الدراسية والواجبات</span>
+                <h1 className="premium-title-main">
+                  واجبات {PREPS.find((p) => p.id === grade)?.nameAr}
+                  <span className="premium-title-accent">({filtered.length} واجب)</span>
+                </h1>
+                <p className="premium-subtitle-desc">
+                  أرسل إجاباتك وتابع تقييم المعلم لمهامك الدراسية بشكل مستمر
+                </p>
+              </div>
+              <div className="premium-header-actions">
+                {userRole === 'admin' && (
+                  <button className="premium-back-btn" onClick={() => { setGrade(null); setSearch('') }}>
+                    <i className="fas fa-arrow-right"></i> العودة للمراحل
+                  </button>
+                )}
+                <div className="hw-search-wrap" style={{ margin: 0, flex: 'initial', width: '260px' }}>
+                  <i className="fas fa-search"></i>
+                  <input
+                    type="text"
+                    placeholder="ابحث بالاسم أو الأسبوع..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  {search && (
+                    <button className="hw-search-clear" onClick={() => setSearch('')}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  )}
+                </div>
+                {userRole === 'admin' && (
+                  <button className="premium-action-btn btn-primary" onClick={openAddModal}>
+                    <i className="fas fa-plus"></i> واجب جديد
                   </button>
                 )}
               </div>
-              {userRole === 'admin' && (
-                <button className="hw-add-btn" onClick={openAddModal}>
-                  <i className="fas fa-plus"></i> واجب جديد
-                </button>
-              )}
-            </div>
-
-            <div className="hw-section-head">
-              <h2>
-                <i className="fas fa-layer-group"></i>
-                {' '}واجبات {PREPS.find((p) => p.id === grade)?.nameAr}
-              </h2>
-              <span className="hw-count-pill">{filtered.length} واجب</span>
             </div>
 
             {loading ? (

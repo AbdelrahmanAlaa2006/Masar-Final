@@ -4,6 +4,7 @@ import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
+import { getTenantThemeConfig } from '../utils/tenantThemes'
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
 // old assets are kept on disk in case anywhere else still loads
@@ -15,7 +16,8 @@ import {
 export default function Home() {
   const navigate = useNavigate()
   const { user, role } = useAuth()
-  const { tenant, isFeatureEnabled } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
+  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
   const username = user?.name || ''
   const brandName = tenant?.name || 'مسار'
   const canvasRef = useRef(null)
@@ -46,7 +48,7 @@ export default function Home() {
     let width = 0, height = 0, raf = 0
     const mouse = { x: -9999, y: -9999, active: false }
 
-    const COLORS = ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
+    const COLORS = themeConfig.particleColors || ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
     const COUNT = Math.max(25, Math.floor((window.innerWidth * window.innerHeight) / 38000))
     const particles = []
 
@@ -102,7 +104,10 @@ export default function Home() {
           const d2 = dx * dx + dy * dy
           if (d2 < 130 * 130) {
             const alpha = 1 - Math.sqrt(d2) / 130
-            ctx.strokeStyle = `rgba(168, 85, 247, ${alpha * 0.35})`
+            const currentTheme = localStorage.getItem('theme') || 'light'
+            ctx.strokeStyle = themeConfig.getLineColor
+              ? themeConfig.getLineColor(currentTheme, alpha)
+              : `rgba(168, 85, 247, ${alpha * 0.35})`
             ctx.lineWidth = 1
             ctx.beginPath()
             ctx.moveTo(a.x, a.y)
@@ -140,7 +145,7 @@ export default function Home() {
       window.removeEventListener('mouseleave', onLeave)
       window.removeEventListener('resize', resize)
     }
-  }, [])
+  }, [themeConfig])
 
   useEffect(() => {
     // Show cards on mount with animation

@@ -333,23 +333,21 @@ body.dark .hero-section h2 {
 .ec-status-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 18px;
-  font-size: 0.82rem;
-  font-weight: 600;
+  gap: 10px;
+  padding: 16px 20px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
   direction: rtl;
+  background: transparent !important;
+  border-bottom: none !important;
 }
 
 .ec-available {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 
 .ec-unavailable {
-  background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
-  border-bottom: 1px solid rgba(220, 38, 38, 0.15);
+  color: #ef4444;
 }
 
 .ec-status-dot {
@@ -361,11 +359,13 @@ body.dark .hero-section h2 {
 
 .ec-available .ec-status-dot {
   background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
   animation: ecPulse 2s ease-in-out infinite;
 }
 
 .ec-unavailable .ec-status-dot {
-  background: #dc2626;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 @keyframes ecPulse {
@@ -376,60 +376,98 @@ body.dark .hero-section h2 {
 
 .ec-delete-btn {
   margin-right: auto;
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
-  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 8px;
-  padding: 4px 12px;
+  padding: 5px 12px;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   font-family: 'Tajawal', sans-serif;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .ec-delete-btn:hover {
-  background: #dc2626;
+  background: #ef4444;
   color: #fff;
-  border-color: #dc2626;
+  border-color: #ef4444;
 }
 
 /* ── Exam Card ── */
 .ec-card {
   background: var(--card-bg);
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: var(--transition);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   animation: fadeIn 0.6s ease-out both;
   display: flex;
   flex-direction: column;
+  position: relative;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+body:not(.dark) .ec-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.dark .ec-card {
+  background: rgba(30, 41, 59, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .ec-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-8px) scale(1.01);
   box-shadow: var(--shadow-hover);
+  border-color: rgba(102, 126, 234, 0.35);
+}
+
+body.dark .ec-card:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+/* Glowing top accent border edge */
+.ec-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-gradient);
+  opacity: 0.85;
+  z-index: 5;
 }
 
 /* Header */
 .ec-header {
-  background: var(--primary-gradient);
-  padding: 20px 22px;
+  background: rgba(102, 126, 234, 0.05);
+  padding: 18px 20px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   direction: rtl;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+body.dark .ec-header {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 
 .ec-badge {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.22);
-  border: 2px solid rgba(255,255,255,0.45);
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  background: var(--primary-gradient);
+  border: none;
   color: #fff;
   display: flex;
   align-items: center;
@@ -437,7 +475,7 @@ body.dark .hero-section h2 {
   font-weight: 800;
   font-size: 1rem;
   flex-shrink: 0;
-  margin-top: 2px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
 }
 
 .ec-titles {
@@ -446,26 +484,26 @@ body.dark .hero-section h2 {
 }
 
 .ec-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.45;
-  margin-bottom: 5px;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--text-color);
+  line-height: 1.4;
+  margin-bottom: 4px;
 }
 
 .ec-lecture {
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.78);
+  color: var(--text-secondary);
 }
 
 /* Stats Grid */
 .ec-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: rgba(102,126,234,0.1);
-  padding: 0;
+  gap: 10px;
+  padding: 16px 20px;
   direction: rtl;
+  background: transparent !important;
 }
 
 .ec-stat {
@@ -474,26 +512,40 @@ body.dark .hero-section h2 {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 16px 10px;
-  gap: 5px;
-  background: var(--card-bg);
+  padding: 12px 6px;
+  gap: 6px;
+  background: rgba(102, 126, 234, 0.04) !important;
+  border: 1px solid rgba(102, 126, 234, 0.08) !important;
+  border-radius: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+body.dark .ec-stat {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.ec-stat:hover {
+  transform: translateY(-2px);
+  border-color: rgba(102, 126, 234, 0.25) !important;
+  background: rgba(102, 126, 234, 0.08) !important;
 }
 
 .ec-stat-icon {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   line-height: 1;
 }
 
 .ec-stat-label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .ec-stat-value {
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 800;
   color: var(--text-color);
 }
 
@@ -502,10 +554,10 @@ body.dark .hero-section h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 20px;
-  background: rgba(255,193,7,0.08);
-  border-top: 1px solid rgba(255,193,7,0.18);
-  font-size: 0.82rem;
+  padding: 12px 20px;
+  background: rgba(255, 193, 7, 0.05);
+  border-top: 1px solid rgba(255, 193, 7, 0.12);
+  font-size: 0.8rem;
   color: var(--text-secondary);
   direction: rtl;
   margin-top: auto;

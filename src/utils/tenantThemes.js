@@ -893,14 +893,14 @@ export const tenantThemes = {
   default: {
     themeClass: 'aa-default-theme',
     canvasFont: '"Aref Ruqaa", serif',
-    primaryColor: '#7c3aed',
-    secondaryColor: '#a855f7',
-    particleColors: ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981'],
+    primaryColor: '#764ba2',
+    secondaryColor: '#667eea',
+    particleColors: ['#764ba2', '#667eea', '#06b6d4', '#ec4899', '#f59e0b', '#10b981'],
     formulas: ['ض', 'الضاد', 'لغة الضاد', 'أ', 'ب', 'ت', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي', 'ـَ', 'ـُ', 'ـِ', 'ـّ'],
     getLineColor: (theme, alpha) => {
       return theme === 'dark'
-        ? `rgba(168, 85, 247, ${alpha * 0.35})`
-        : `rgba(124, 58, 237, ${alpha * 0.25})`
+        ? `rgba(102, 126, 234, ${alpha * 0.35})`
+        : `rgba(118, 75, 162, ${alpha * 0.25})`
     },
     drawCustomShape: (ctx, p, size) => {
       const type = p.type || p.shapeType
