@@ -938,6 +938,8 @@ body.dark .hw-card-title-pill { color: #1a202c; }
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.4);
 }
+/* .hw-pdf-frame — kept for reference; iframe now uses inline absolute
+   positioning inside the clipping wrapper so this class is not applied. */
 .hw-pdf-frame {
   flex: 1;
   width: 100%;
@@ -1450,4 +1452,98 @@ body.dark .hw-split-pdf { background: #111827; border-color: #374151; }
 @keyframes fadeInCard {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Premium Glassmorphic Cards & Top Ribbons ── */
+.hw-page {
+  position: relative;
+  overflow: hidden;
+}
+.hw-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+body.dark .hw-page::before {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+.hw-page::after {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.dark .hw-search-wrap input {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+}
+body.dark .hw-search-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.hw-card {
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease !important;
+}
+.hw-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2;
+  pointer-events: none;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  background: linear-gradient(90deg, var(--primary, #7c3aed) 0%, transparent 100%);
+}
+.hw-card:hover {
+  transform: translateY(-5px) scale(1.01) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12), 0 0 18px rgba(124, 58, 237, 0.15) !important;
+}
+body.dark .hw-card {
+  background: rgba(30, 41, 59, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+body.dark .hw-card:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(167, 139, 250, 0.25) !important;
+}
+body.dark .hw-card-title {
+  color: #f1f5f9;
+}
+body.dark .hw-card-desc {
+  color: #94a3b8;
+}
+body.dark .hw-card-meta {
+  color: #94a3b8;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+body.dark .hw-tag {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+body.dark .hw-tag-subject {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+}
+body.dark .hw-tag-subject i {
+  color: #34d399;
 }

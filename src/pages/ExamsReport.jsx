@@ -268,64 +268,56 @@ export default function ExamsReport() {
   const letters = ['أ', 'ب', 'ج', 'د']
 
   return (
-    <main className="er-page">
-      <div className="er-container">
+    <main className="cp-page">
+      <div className="cp-container">
 
         {/* Back button */}
-        <button className="er-back-btn" onClick={() => navigate(-1)}>
+        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
-          رجوع
+          <span>رجوع</span>
         </button>
 
         {/* Page Header */}
-        <div className="er-header">
-          <div className="er-header-icon">
+        <div className="cp-page-header">
+          <div className="cp-page-header-text">
+            <h1>تقرير الامتحانات</h1>
+            <p>سجل الامتحانات والنتائج التفصيلية للطلاب</p>
+          </div>
+          <div className="cp-page-icon">
             <i className="fas fa-file-alt"></i>
           </div>
-          <h1>تقرير الامتحانات</h1>
-          <p>سجل الامتحانات والنتائج التفصيلية</p>
         </div>
+        <div className="cp-header-divider"></div>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
+          <div style={{ textAlign: 'center', padding: 16, color: 'var(--cp-text-muted)' }}>
             <i className="fas fa-spinner fa-spin"></i> جارٍ تحميل التقرير...
           </div>
         )}
         {loadError && (
-          <div style={{ textAlign: 'center', padding: 16, color: '#c53030' }}>
+          <div style={{ textAlign: 'center', padding: 16, color: '#ef4444' }}>
             <i className="fas fa-exclamation-triangle"></i> {loadError}
           </div>
         )}
 
         {/* Student Info Card */}
         {studentName && (
-          <div className="er-student-card">
-            <div className="er-student-avatar">
+          <div className="cp-target-banner">
+            <div className="cp-avatar cp-avatar-purple">
               <i className="fas fa-user-graduate"></i>
             </div>
-            <div className="er-student-info">
-              <table className="er-student-table">
-                <tbody>
-                  <tr>
-                    <td className="er-info-label"><i className="fas fa-user"></i> الاسم</td>
-                    <td className="er-info-value">{studentName}</td>
-                  </tr>
-                  {studentId && (
-                    <tr>
-                      <td className="er-info-label"><i className="fas fa-id-badge"></i> رقم الطالب</td>
-                      <td className="er-info-value">{studentId}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="er-info-label"><i className="fas fa-chart-line"></i> المتوسط</td>
-                    <td className="er-info-value">{revealed.length > 0 ? `${avgScore}%` : '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="er-info-label"><i className="fas fa-tasks"></i> الإكمال</td>
-                    <td className="er-info-value">{completed} من {total} امتحان</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="cp-target-banner-body">
+              <div className="cp-target-banner-label">
+                <i className="fas fa-bullseye"></i> الطالب المستهدف
+              </div>
+              <div className="cp-target-banner-name">{studentName}</div>
+              <div className="cp-target-banner-meta">
+                {studentId && (
+                  <span className="cp-id-pill"><i className="fas fa-id-badge"></i> {studentId}</span>
+                )}
+                <span><i className="fas fa-chart-line"></i> المتوسط: {revealed.length > 0 ? `${avgScore}%` : '—'}</span>
+                <span><i className="fas fa-tasks"></i> الإكمال: {completed} من {total} امتحان</span>
+              </div>
             </div>
           </div>
         )}
@@ -335,37 +327,47 @@ export default function ExamsReport() {
         )}
 
         {/* Stats Strip */}
-        <div className="er-stats">
-          <div className="er-stat-card">
-            <i className="fas fa-list-ol er-stat-icon" style={{color: 'var(--primary)'}}></i>
-            <span className="er-stat-value" style={{color: 'var(--primary)'}}>{total}</span>
-            <span className="er-stat-label">إجمالي</span>
+        <div className="cp-stats-row">
+          <div className="cp-stat">
+            <i className="fas fa-list-ol" style={{ color: 'var(--cp-primary)' }}></i>
+            <div>
+              <div className="cp-stat-val">{total}</div>
+              <div className="cp-stat-lbl">إجمالي الامتحانات</div>
+            </div>
           </div>
-          <div className="er-stat-card">
-            <i className="fas fa-check-circle er-stat-icon" style={{color: '#48bb78'}}></i>
-            <span className="er-stat-value" style={{color: '#48bb78'}}>{completed}</span>
-            <span className="er-stat-label">مُكتملة</span>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-check-circle"></i>
+            <div>
+              <div className="cp-stat-val">{completed}</div>
+              <div className="cp-stat-lbl">مُكتملة</div>
+            </div>
           </div>
-          <div className="er-stat-card">
-            <i className="fas fa-clock er-stat-icon" style={{color: '#a0aec0'}}></i>
-            <span className="er-stat-value" style={{color: '#a0aec0'}}>{pending}</span>
-            <span className="er-stat-label">لم تُؤدَّ</span>
+          <div className="cp-stat cp-stat-neutral">
+            <i className="fas fa-clock"></i>
+            <div>
+              <div className="cp-stat-val">{pending}</div>
+              <div className="cp-stat-lbl">لم تُؤدَّ</div>
+            </div>
           </div>
-          <div className="er-stat-card">
-            <i className="fas fa-trophy er-stat-icon" style={{color: '#38a169'}}></i>
-            <span className="er-stat-value" style={{color: '#38a169'}}>{passed}</span>
-            <span className="er-stat-label">ناجح</span>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-trophy" style={{ color: '#10b981' }}></i>
+            <div>
+              <div className="cp-stat-val" style={{ color: '#10b981' }}>{passed}</div>
+              <div className="cp-stat-lbl">ناجح</div>
+            </div>
           </div>
-          <div className="er-stat-card">
-            <i className="fas fa-percentage er-stat-icon" style={{color: '#ed8936'}}></i>
-            <span className="er-stat-value" style={{color: '#ed8936'}}>{revealed.length > 0 ? `${avgScore}%` : '—'}</span>
-            <span className="er-stat-label">المتوسط</span>
+          <div className="cp-stat cp-stat-warning">
+            <i className="fas fa-percentage"></i>
+            <div>
+              <div className="cp-stat-val">{revealed.length > 0 ? `${avgScore}%` : '—'}</div>
+              <div className="cp-stat-lbl">المتوسط</div>
+            </div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="er-controls">
-          <div className="er-filter-group">
+        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="cp-filter-group" style={{ display: 'flex', gap: 8 }}>
             {[
               { key: 'all', label: 'الكل', icon: 'fa-th-list' },
               { key: 'passed', label: 'ناجح', icon: 'fa-check' },
@@ -375,8 +377,9 @@ export default function ExamsReport() {
             ].map(({ key, label, icon }) => (
               <button
                 key={key}
-                className={`er-filter-btn ${currentFilter === key ? 'active' : ''}`}
+                className={`cp-btn ${currentFilter === key ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                 onClick={() => setCurrentFilter(key)}
+                style={{ borderRadius: 8 }}
               >
                 <i className={`fas ${icon}`}></i> {label}
               </button>
@@ -384,35 +387,37 @@ export default function ExamsReport() {
           </div>
 
           {isAdmin && (
-            <div className="er-view-toggle">
-              <button className={`er-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className={`cp-btn ${viewMode === 'table' ? 'cp-btn-info-active' : 'cp-btn-ghost'}`} onClick={() => setViewMode('table')} style={{ borderRadius: 8 }}>
                 <i className="fas fa-table"></i> جدول
               </button>
-              <button className={`er-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
+              <button className={`cp-btn ${viewMode === 'cards' ? 'cp-btn-info-active' : 'cp-btn-ghost'}`} onClick={() => setViewMode('cards')} style={{ borderRadius: 8 }}>
                 <i className="fas fa-th-large"></i> بطاقات
               </button>
             </div>
           )}
         </div>
 
-        <div className="er-results-count">
+        <div style={{ margin: '1rem 0', fontSize: '0.88rem', color: 'var(--cp-text-muted)', direction: 'rtl' }}>
           عرض <strong>{filteredExams.length}</strong> امتحان من أصل {total}
         </div>
 
         {/* TABLE VIEW — admin only (the detailed report card) */}
         {isAdmin && viewMode === 'table' && (
-          <div className="er-card" id="er-reportTable">
-            <div className="er-table-header">
-              <h2 className="er-card-title"><i className="fas fa-clipboard-list"></i> تقرير النتائج التفصيلي</h2>
+          <div className="cp-table-card" id="er-reportTable">
+            <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}><i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> تقرير النتائج التفصيلي</h2>
+              </div>
               {isAdmin && (
-                <button className="er-print-btn" onClick={() => window.print()}>
+                <button className="cp-crumbs-back" onClick={() => window.print()} style={{ padding: '6px 12px', background: 'transparent' }}>
                   <i className="fas fa-print"></i> طباعة
                 </button>
               )}
             </div>
 
-            <div className="er-table-container">
-              <table className="er-table">
+            <div className="cp-table-container">
+              <table className="cp-table">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -429,60 +434,60 @@ export default function ExamsReport() {
                 <tbody>
                   {filteredExams.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="er-empty-row">لا توجد امتحانات تطابق هذا الفلتر</td>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: 24, color: 'var(--cp-text-muted)' }}>لا توجد امتحانات تطابق هذا الفلتر</td>
                     </tr>
                   ) : (
                     filteredExams.map((exam, index) => (
-                      <tr key={exam.id} className="er-tr">
-                        <td className="er-td-num">{index + 1}</td>
-                        <td className="er-td-title">
-                          <i className={`fas ${getExamIcon(exam.subject)} er-row-icon`}></i>
+                      <tr key={exam.id}>
+                        <td>{index + 1}</td>
+                        <td style={{ fontWeight: 700 }}>
+                          <i className={`fas ${getExamIcon(exam.subject)}`} style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
                           {exam.title}
                         </td>
                         <td>{exam.subject}</td>
                         <td>{exam.date}</td>
                         <td>
                           {exam.status === 'pending' ? (
-                            <span className="er-text-muted">—</span>
+                            <span>—</span>
                           ) : (
-                            <span className="er-attempts">{exam.attempts}/{exam.maxAttempts}</span>
+                            <span style={{ color: 'var(--cp-text-muted)' }}>{exam.attempts}/{exam.maxAttempts}</span>
                           )}
                         </td>
                         <td>
                           {exam.status === 'pending' ? (
-                            <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
+                            <span className="cp-badge cp-badge-danger"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
                           ) : (
-                            <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> مُكتمل</span>
+                            <span className="cp-badge cp-badge-success"><i className="fas fa-check-circle"></i> مُكتمل</span>
                           )}
                         </td>
                         <td>
                           {exam.status === 'pending' ? (
-                            <span className="er-text-muted">—</span>
+                            <span>—</span>
                           ) : exam.gradesRevealed ? (
-                            <div className="er-td-score-wrap">
-                              <div className="er-mini-bar">
-                                <div className="er-mini-fill" style={{ width: `${exam.score}%`, background: getScoreColor(exam.score) }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 60, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${exam.score}%`, height: '100%', background: getScoreColor(exam.score), borderRadius: 3 }} />
                               </div>
-                              <span className="er-score-text" style={{ color: getScoreColor(exam.score) }}>{exam.score}/{exam.maxScore}</span>
+                              <span style={{ color: getScoreColor(exam.score), fontWeight: 700 }}>{exam.score}/{exam.maxScore}</span>
                             </div>
                           ) : (
-                            <span className="er-badge er-badge-hidden"><i className="fas fa-lock"></i> لم تُعلَن</span>
+                            <span className="cp-badge cp-badge-neutral"><i className="fas fa-lock"></i> لم تُعلَن</span>
                           )}
                         </td>
                         <td>
                           {exam.status !== 'pending' && exam.gradesRevealed ? (
-                            <span className={`er-rating ${getRatingClass(exam.score)}`}>{getRating(exam.score)}</span>
+                            <span className={`cp-badge ${exam.score >= 80 ? 'cp-badge-success' : exam.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(exam.score)}</span>
                           ) : (
-                            <span className="er-text-muted">—</span>
+                            <span>—</span>
                           )}
                         </td>
                         <td>
-                          <div className="er-actions">
-                            <button className="er-btn-detail" onClick={() => openDetail(exam)}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="cp-crumbs-back" onClick={() => openDetail(exam)} style={{ padding: '4px 10px', fontSize: '0.75rem', background: 'transparent' }}>
                               <i className="fas fa-info-circle"></i> تفاصيل
                             </button>
                             {exam.status === 'completed' && exam.gradesRevealed && exam.questions.length > 0 && (
-                              <button className="er-btn-review" onClick={() => openReview(exam)}>
+                              <button className="cp-crumbs-back" onClick={() => openReview(exam)} style={{ padding: '4px 10px', fontSize: '0.75rem', background: 'transparent' }}>
                                 <i className="fas fa-eye"></i> مراجعة
                               </button>
                             )}
@@ -499,59 +504,59 @@ export default function ExamsReport() {
 
         {/* CARDS VIEW */}
         {viewMode === 'cards' && (
-          <div className="er-cards-grid">
+          <div className="cp-home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {filteredExams.length === 0 ? (
-              <div className="er-no-results">لا توجد امتحانات تطابق هذا الفلتر</div>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--cp-text-muted)' }}>لا توجد امتحانات تطابق هذا الفلتر</div>
             ) : (
               filteredExams.map((exam) => (
-                <div key={exam.id} className={`er-exam-card ${exam.status === 'pending' ? 'er-card-pending' : ''}`}>
-                  <div className="er-card-top">
-                    <div className="er-card-icon-wrap">
+                <div key={exam.id} className="cp-section-card cp-accent-indigo" style={{ display: 'block', padding: '1.25rem', opacity: exam.status === 'pending' ? 0.75 : 1, textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div className="cp-section-icon" style={{ width: 40, height: 40, borderRadius: 10, margin: 0 }}>
                       <i className={`fas ${getExamIcon(exam.subject)}`}></i>
                     </div>
                     {exam.status === 'pending' ? (
-                      <span className="er-badge er-badge-pending"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
+                      <span className="cp-badge cp-badge-danger"><i className="fas fa-hourglass-half"></i> لم يُؤدَّ</span>
                     ) : (
-                      <span className="er-badge er-badge-done"><i className="fas fa-check-circle"></i> مُكتمل</span>
+                      <span className="cp-badge cp-badge-success"><i className="fas fa-check-circle"></i> مُكتمل</span>
                     )}
                   </div>
 
-                  <h3 className="er-card-name">{exam.title}</h3>
-                  <p className="er-card-subject">{exam.subject}</p>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 6px', color: 'var(--cp-text-main)' }}>{exam.title}</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 12px' }}>{exam.subject}</p>
 
                   {exam.status !== 'pending' && (
-                    <div className="er-card-score-area">
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '16px 0' }}>
                       {exam.gradesRevealed ? (
                         <>
-                          <div className="er-score-ring" style={{ background: `conic-gradient(${getScoreColor(exam.score)} ${exam.score}%, rgba(102,126,234,0.1) 0%)` }}>
-                            <div className="er-ring-inner">
-                              <span className="er-ring-num" style={{ color: getScoreColor(exam.score) }}>{exam.score}</span>
-                              <span className="er-ring-max">/{exam.maxScore}</span>
+                          <div style={{ width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${getScoreColor(exam.score)} ${exam.score}%, var(--cp-divider) 0%)` }}>
+                            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--cp-card-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: getScoreColor(exam.score) }}>{exam.score}</span>
+                              <span style={{ fontSize: '0.6rem', color: 'var(--cp-text-muted)' }}>/{exam.maxScore}</span>
                             </div>
                           </div>
-                          <span className={`er-rating ${getRatingClass(exam.score)}`}>{getRating(exam.score)}</span>
+                          <span className={`cp-badge ${exam.score >= 80 ? 'cp-badge-success' : exam.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(exam.score)}</span>
                         </>
                       ) : (
-                        <div className="er-grades-pending-box">
-                          <i className="fas fa-lock er-grades-lock-icon"></i>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cp-hover-bg)', borderRadius: 8, padding: '0.6rem 0.9rem', border: '1px dashed var(--cp-divider)', fontSize: '0.82rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>
+                          <i className="fas fa-lock" style={{ color: '#5bc2e7' }}></i>
                           <span>الدرجات لم تُعلَن بعد</span>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div className="er-card-meta">
-                    <span><i className="fas fa-clock"></i> {exam.duration}</span>
-                    <span><i className="fas fa-calendar-alt"></i> {exam.date}</span>
-                    <span><i className="fas fa-redo-alt"></i> محاولات: {exam.attempts}/{exam.maxAttempts}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: '0.78rem', color: 'var(--cp-text-muted)', marginBottom: 12 }}>
+                    <span><i className="fas fa-clock" style={{ marginLeft: 4 }}></i> {exam.duration}</span>
+                    <span><i className="fas fa-calendar-alt" style={{ marginLeft: 4 }}></i> {exam.date}</span>
+                    <span><i className="fas fa-redo-alt" style={{ marginLeft: 4 }}></i> محاولات: {exam.attempts}/{exam.maxAttempts}</span>
                   </div>
 
-                  <div className="er-card-actions">
-                    <button className="er-btn-detail" onClick={() => openDetail(exam)}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="cp-crumbs-back" onClick={() => openDetail(exam)} style={{ flex: 1, padding: '6px', justifyContent: 'center', background: 'transparent' }}>
                       <i className="fas fa-info-circle"></i> تفاصيل
                     </button>
                     {exam.status === 'completed' && exam.gradesRevealed && exam.questions.length > 0 && (
-                      <button className="er-btn-review" onClick={() => openReview(exam)}>
+                      <button className="cp-crumbs-back" onClick={() => openReview(exam)} style={{ flex: 1, padding: '6px', justifyContent: 'center', background: 'transparent' }}>
                         <i className="fas fa-eye"></i> مراجعة
                       </button>
                     )}
@@ -565,143 +570,190 @@ export default function ExamsReport() {
 
       {/* DETAIL MODAL */}
       {showDetailModal && selectedExam && (
-        <div className="er-modal-overlay" onClick={closeAll}>
-          <div className="er-modal er-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="er-modal-close" onClick={closeAll}><i className="fas fa-times"></i></button>
-
-            <div className="er-modal-icon-wrap">
-              <i className={`fas ${getExamIcon(selectedExam.subject)}`}></i>
-            </div>
-            <h2 className="er-modal-title">{selectedExam.title}</h2>
-            <p className="er-modal-subject">{selectedExam.subject}</p>
-
-            {selectedExam.status !== 'pending' && selectedExam.gradesRevealed ? (
-              <div className="er-detail-ring" style={{ background: `conic-gradient(${getScoreColor(selectedExam.score)} ${selectedExam.score}%, rgba(102,126,234,0.1) 0%)` }}>
-                <div className="er-ring-inner-lg">
-                  <span className="er-ring-num-lg" style={{ color: getScoreColor(selectedExam.score) }}>{selectedExam.score}</span>
-                  <span className="er-ring-max-lg">من {selectedExam.maxScore}</span>
-                </div>
+        <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 480 }}>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
+                <i className={`fas ${getExamIcon(selectedExam.subject)}`}></i>
               </div>
-            ) : selectedExam.status !== 'pending' ? (
-              <div className="er-grades-pending-box er-grades-box-lg">
-                <i className="fas fa-lock er-grades-lock-icon"></i>
-                <span>الدرجات لم تُعلَن بعد</span>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>{selectedExam.title}</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>{selectedExam.subject}</p>
               </div>
-            ) : null}
-
-            <div className="er-modal-rows">
-              <div className="er-modal-row">
-                <span className="er-modal-label">الحالة</span>
-                <span>{selectedExam.status === 'pending' ? 'لم يُؤدَّ بعد' : 'مُكتمل'}</span>
-              </div>
-              {selectedExam.status !== 'pending' && selectedExam.gradesRevealed && (
-                <div className="er-modal-row">
-                  <span className="er-modal-label">التقييم</span>
-                  <span className={`er-rating ${getRatingClass(selectedExam.score)}`}>{getRating(selectedExam.score)}</span>
-                </div>
-              )}
-              <div className="er-modal-row">
-                <span className="er-modal-label">المدة</span>
-                <span>{selectedExam.duration}</span>
-              </div>
-              <div className="er-modal-row">
-                <span className="er-modal-label">المحاولات</span>
-                <span>{selectedExam.attempts} / {selectedExam.maxAttempts}</span>
-              </div>
-              <div className="er-modal-row">
-                <span className="er-modal-label">التاريخ</span>
-                <span>{selectedExam.date}</span>
-              </div>
-            </div>
-
-            {selectedExam.status === 'completed' && selectedExam.gradesRevealed && selectedExam.questions.length > 0 && (
-              <button className="er-btn-review er-review-full" onClick={() => { setShowDetailModal(false); setShowReviewModal(true) }}>
-                <i className="fas fa-eye"></i> مراجعة الإجابات التفصيلية
+              <button className="rp-modal-close" onClick={closeAll} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
               </button>
-            )}
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              {selectedExam.status !== 'pending' && selectedExam.gradesRevealed ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+                  <div style={{ width: 100, height: 100, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${getScoreColor(selectedExam.score)} ${selectedExam.score}%, var(--cp-divider) 0%)` }}>
+                    <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'var(--cp-card-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: getScoreColor(selectedExam.score) }}>{selectedExam.score}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>من {selectedExam.maxScore}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedExam.status !== 'pending' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 20, borderRadius: 12, background: 'var(--cp-hover-bg)', color: 'var(--cp-text-muted)', fontSize: '0.95rem', border: '1px dashed var(--cp-divider)', margin: '20px 0' }}>
+                  <i className="fas fa-lock" style={{ fontSize: '1.3rem', color: '#5bc2e7' }}></i>
+                  <span>الدرجات لم تُعلَن بعد</span>
+                </div>
+              ) : null}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>الحالة</span>
+                  <span className={`cp-badge ${selectedExam.status === 'pending' ? 'cp-badge-danger' : 'cp-badge-success'}`}>{selectedExam.status === 'pending' ? 'لم يُؤدَّ بعد' : 'مُكتمل'}</span>
+                </div>
+                {selectedExam.status !== 'pending' && selectedExam.gradesRevealed && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                    <span style={{ color: 'var(--cp-text-muted)' }}>التقييم</span>
+                    <span className={`cp-badge ${selectedExam.score >= 80 ? 'cp-badge-success' : selectedExam.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(selectedExam.score)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>المدة</span>
+                  <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedExam.duration}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>المحاولات</span>
+                  <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedExam.attempts} / {selectedExam.maxAttempts}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: 'none' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>التاريخ</span>
+                  <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedExam.date}</span>
+                </div>
+              </div>
+
+              {selectedExam.status === 'completed' && selectedExam.gradesRevealed && selectedExam.questions.length > 0 && (
+                <button className="cp-btn cp-btn-success" onClick={() => { setShowDetailModal(false); setShowReviewModal(true) }} style={{ width: '100%', marginTop: 18, padding: 12, borderRadius: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  <i className="fas fa-eye"></i> مراجعة الإجابات التفصيلية
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ANSWER REVIEW MODAL */}
       {showReviewModal && selectedExam && (
-        <div className="er-modal-overlay" onClick={closeAll}>
-          <div className="er-modal er-review-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="er-modal-close" onClick={closeAll}><i className="fas fa-times"></i></button>
-
-            <div className="er-review-header">
-              <div className="er-review-icon-wrap">
+        <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 640 }}>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
                 <i className={`fas ${getExamIcon(selectedExam.subject)}`}></i>
               </div>
-              <div>
-                <h2 className="er-review-title">مراجعة الإجابات</h2>
-                <p className="er-review-exam-name">{selectedExam.title}</p>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>مراجعة الإجابات</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>{selectedExam.title}</p>
               </div>
+              <button className="rp-modal-close" onClick={closeAll} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
 
-            <div className="er-review-summary">
-              <div className="er-sum-item er-sum-correct">
-                <span className="er-sum-val">{correctCount(selectedExam)}</span>
-                <span className="er-sum-lbl">إجابة صحيحة</span>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, borderRadius: 14, background: 'var(--cp-hover-bg)', padding: 14, border: '1px solid var(--cp-divider)', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#10b981' }}>{correctCount(selectedExam)}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>إجابة صحيحة</span>
+                </div>
+                <div style={{ width: 1, background: 'var(--cp-divider)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ef4444' }}>{wrongCount(selectedExam)}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>إجابة خاطئة</span>
+                </div>
+                <div style={{ width: 1, background: 'var(--cp-divider)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: getScoreColor(selectedExam.score) }}>{selectedExam.score}%</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>الدرجة النهائية</span>
+                </div>
               </div>
-              <div className="er-sum-divider" />
-              <div className="er-sum-item er-sum-wrong">
-                <span className="er-sum-val">{wrongCount(selectedExam)}</span>
-                <span className="er-sum-lbl">إجابة خاطئة</span>
-              </div>
-              <div className="er-sum-divider" />
-              <div className="er-sum-item er-sum-score">
-                <span className="er-sum-val" style={{ color: getScoreColor(selectedExam.score) }}>{selectedExam.score}%</span>
-                <span className="er-sum-lbl">الدرجة النهائية</span>
-              </div>
-            </div>
 
-            <div className="er-review-questions">
-              {selectedExam.questions.map((q, qi) => {
-                const isCorrect = q.studentAnswer === q.correct
-                return (
-                  <div key={qi} className={`er-review-q ${isCorrect ? 'er-q-correct' : 'er-q-wrong'}`}>
-                    <div className="er-q-header">
-                      <span className="er-q-num">س{qi + 1}</span>
-                      <span className={`er-q-result ${isCorrect ? 'er-res-correct' : 'er-res-wrong'}`}>
-                        {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
-                      </span>
-                    </div>
-                    <p className="er-q-text">{q.text}</p>
-                    <div className="er-q-options">
-                      {q.options.map((opt, oi) => {
-                        const isStudentPick = oi === q.studentAnswer
-                        const isCorrectOpt = oi === q.correct
-                        let cls = 'er-opt'
-                        if (isCorrectOpt) cls += ' er-opt-correct'
-                        else if (isStudentPick && !isCorrectOpt) cls += ' er-opt-wrong'
-                        return (
-                          <div key={oi} className={cls}>
-                            <span className="er-opt-letter">{letters[oi]}</span>
-                            <span className="er-opt-text">{opt}</span>
-                            <span className="er-opt-indicator">
-                              {isCorrectOpt && <i className="fas fa-check-circle" style={{color:'#48bb78'}}></i>}
-                              {isStudentPick && !isCorrectOpt && <i className="fas fa-times-circle" style={{color:'#ef4444'}}></i>}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {!isCorrect && (
-                      <div className="er-q-correction">
-                        <i className="fas fa-lightbulb"></i>
-                        <span> الإجابة الصحيحة: </span>
-                        <strong>{letters[q.correct]}. {q.options[q.correct]}</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '50vh', overflowY: 'auto', paddingLeft: 4, paddingRight: 4 }}>
+                {selectedExam.questions.map((q, qi) => {
+                  const isCorrect = q.studentAnswer === q.correct
+                  return (
+                    <div key={qi} style={{
+                      borderRadius: 14,
+                      padding: 16,
+                      border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                      background: isCorrect ? 'rgba(16, 185, 129, 0.02)' : 'rgba(239, 68, 68, 0.02)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cp-text-muted)', background: 'var(--cp-hover-bg)', padding: '3px 10px', borderRadius: 8 }}>س{qi + 1}</span>
+                        <span className={`cp-badge ${isCorrect ? 'cp-badge-success' : 'cp-badge-danger'}`}>
+                          {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                      <p style={{ color: 'var(--cp-text-main)', fontSize: '0.92rem', margin: '0 0 12px', lineHeight: 1.6 }}>{q.text}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {q.options.map((opt, oi) => {
+                          const isStudentPick = oi === q.studentAnswer
+                          const isCorrectOpt = oi === q.correct
+                          let bg = 'var(--cp-hover-bg)'
+                          let border = '1px solid var(--cp-divider)'
+                          let color = 'var(--cp-text-muted)'
+                          if (isCorrectOpt) {
+                            bg = 'rgba(16, 185, 129, 0.1)'
+                            border = '1px solid rgba(16, 185, 129, 0.3)'
+                            color = '#10b981'
+                          } else if (isStudentPick && !isCorrectOpt) {
+                            bg = 'rgba(239, 68, 68, 0.08)'
+                            border = '1px solid rgba(239, 68, 68, 0.2)'
+                            color = '#ef4444'
+                          }
+                          return (
+                            <div key={oi} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              padding: '8px 12px',
+                              borderRadius: 10,
+                              background: bg,
+                              border: border,
+                              fontSize: '0.85rem',
+                              color: color
+                            }}>
+                              <span style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}>{letters[oi] || oi + 1}</span>
+                              <span style={{ flex: 1, color: isCorrectOpt || isStudentPick ? 'inherit' : 'var(--cp-text-main)' }}>{opt}</span>
+                              <span style={{ flexShrink: 0, fontSize: '0.9rem' }}>
+                                {isCorrectOpt && <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>}
+                                {isStudentPick && !isCorrectOpt && <i className="fas fa-times-circle" style={{ color: '#ef4444' }}></i>}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {!isCorrect && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', fontSize: '0.82rem' }}>
+                          <i className="fas fa-lightbulb"></i>
+                          <span> الإجابة الصحيحة: </span>
+                          <strong>{letters[q.correct] || q.correct + 1}. {q.options[q.correct]}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
 
-            <button className="er-close-review-btn" onClick={closeAll}>
-              <i className="fas fa-times"></i> إغلاق المراجعة
-            </button>
+              <button className="cp-btn cp-btn-ghost" onClick={closeAll} style={{ width: '100%', marginTop: 20, padding: 12, borderRadius: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                <i className="fas fa-times"></i> إغلاق المراجعة
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -770,9 +822,9 @@ function ExamsDashboard({ examsData }) {
   }
 
   return (
-    <div className="er-dashboard-card card">
-      <h2 className="er-dashboard-title">
-        <i className="fas fa-chart-line"></i> لوحة تحليل نتائج الامتحانات ومستوى التحصيل
+    <div className="cp-panel" style={{ padding: '1.6rem', marginBottom: 24 }}>
+      <h2 className="cp-panel-header" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.2rem', fontWeight: 700, margin: '0 0 20px' }}>
+        <i className="fas fa-chart-line" style={{ color: '#818cf8' }}></i> لوحة تحليل نتائج الامتحانات ومستوى التحصيل
       </h2>
 
       <div className="er-dashboard-layout">
@@ -780,47 +832,50 @@ function ExamsDashboard({ examsData }) {
         <div className="er-dashboard-donut-wrap">
           <div className="er-dashboard-donut-inner">
             <svg viewBox="0 0 100 100" className="er-donut-svg">
-              <circle cx="50" cy="50" r="40" className="er-donut-bg" />
+              <circle cx="50" cy="50" r="40" className="er-donut-bg" style={{ fill: 'none', stroke: 'var(--cp-divider)', strokeWidth: 8 }} />
               <circle 
                 cx="50" 
                 cy="50" 
                 r="40" 
                 className="er-donut-fill"
                 style={{
+                  fill: 'none',
+                  strokeWidth: 8,
+                  strokeLinecap: 'round',
                   strokeDasharray: `${strokeDash} 251.2`,
                   transform: 'rotate(-90deg)',
                   transformOrigin: '50% 50%',
-                  stroke: passingRate >= 60 ? '#818cf8' : '#ef4444'
+                  stroke: passingRate >= 60 ? '#10b981' : '#ef4444'
                 }}
               />
             </svg>
             <div className="er-donut-text">
-              <span className="er-donut-num">{passingRate}%</span>
-              <span className="er-donut-lbl">نسبة النجاح</span>
+              <span className="er-donut-num" style={{ color: 'var(--cp-text-main)', fontSize: '1.6rem', fontWeight: 800 }}>{passingRate}%</span>
+              <span className="er-donut-lbl" style={{ color: 'var(--cp-text-muted)', fontSize: '0.72rem' }}>نسبة النجاح</span>
             </div>
           </div>
-          <div className="er-donut-legend">
-            <div><span className="legend-dot legend-passed"></span> اجتياز ({passed})</div>
-            <div><span className="legend-dot legend-failed"></span> إخفاق ({failed})</div>
+          <div className="er-donut-legend" style={{ display: 'flex', gap: 16, fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>
+            <div><span className="legend-dot legend-passed" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10b981', marginInlineEnd: 6 }}></span> اجتياز ({passed})</div>
+            <div><span className="legend-dot legend-failed" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--cp-divider)', marginInlineEnd: 6 }}></span> إخفاق ({failed})</div>
           </div>
         </div>
 
         {/* Right: Trend line of scores over exams */}
         <div className="er-dashboard-chart-wrap">
-          <h3 className="er-chart-header">منحنى أداء وتطوّر الدرجات</h3>
+          <h3 className="er-chart-header" style={{ color: 'var(--cp-text-main)', fontSize: '0.95rem', fontWeight: 700, margin: '0 0 16px' }}>منحنى أداء وتطوّر الدرجات</h3>
           {revealed.length === 0 ? (
-            <div className="er-chart-placeholder">
-              <i className="fas fa-chart-line"></i>
+            <div className="er-chart-placeholder" style={{ border: '1px dashed var(--cp-divider)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', color: 'var(--cp-text-muted)' }}>
+              <i className="fas fa-chart-line" style={{ fontSize: '1.8rem', marginBottom: 8 }}></i>
               <p>ستظهر إحصائيات ومنحنيات درجاتك هنا فور إعلان نتائج امتحاناتك الأولى</p>
             </div>
           ) : chronological.length === 1 ? (
-            <div className="er-chart-placeholder">
-              <i className="fas fa-chart-line"></i>
+            <div className="er-chart-placeholder" style={{ border: '1px dashed var(--cp-divider)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', color: 'var(--cp-text-muted)' }}>
+              <i className="fas fa-chart-line" style={{ fontSize: '1.8rem', marginBottom: 8 }}></i>
               <p>يتطلب رسم منحنى الأداء أداء امتحانين على الأقل. لديك حالياً امتحان واحد مصحح بدرجة ({chronological[0].score}%)</p>
             </div>
           ) : (
-            <div className="er-svg-chart-container">
-              <svg viewBox="0 0 100 50" className="er-line-svg" preserveAspectRatio="none">
+            <div className="er-svg-chart-container" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid var(--cp-divider)', borderRadius: 12, padding: '16px 12px 6px' }}>
+              <svg viewBox="0 0 100 50" className="er-line-svg" preserveAspectRatio="none" style={{ width: '100%', height: '150px' }}>
                 <defs>
                   {/* Grid / Line Gradient */}
                   <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
@@ -833,8 +888,8 @@ function ExamsDashboard({ examsData }) {
                   const y = 40 - (grid * 0.35)
                   return (
                     <g key={gi}>
-                      <line x1="8" y1={y} x2="95" y2={y} className="er-chart-gridline" />
-                      <text x="3" y={y + 1} className="er-chart-gridtext">{grid}%</text>
+                      <line x1="8" y1={y} x2="95" y2={y} className="er-chart-gridline" style={{ stroke: 'var(--cp-divider)', strokeWidth: 0.3 }} />
+                      <text x="3" y={y + 1} className="er-chart-gridtext" style={{ fill: 'var(--cp-text-muted)', fontSize: 3, fontFamily: 'inherit' }}>{grid}%</text>
                     </g>
                   )
                 })}
@@ -843,7 +898,7 @@ function ExamsDashboard({ examsData }) {
                 <path d={fillPath} className="er-chart-fill-path" fill="url(#area-grad)" />
 
                 {/* Main Trend Line */}
-                <path d={linePath} className="er-chart-line-path" />
+                <path d={linePath} className="er-chart-line-path" style={{ stroke: '#818cf8', strokeWidth: 1.2, fill: 'none' }} />
 
                 {/* Data point glowing circles */}
                 {points.map((p, idx) => {
@@ -866,6 +921,7 @@ function ExamsDashboard({ examsData }) {
                         textAnchor="middle" 
                         className="er-chart-score-label"
                         fill={color}
+                        style={{ fontSize: '3.2px', fontWeight: 800 }}
                       >
                         {exam.score}%
                       </text>
@@ -874,6 +930,7 @@ function ExamsDashboard({ examsData }) {
                         y="45" 
                         textAnchor="middle" 
                         className="er-chart-x-label"
+                        style={{ fill: 'var(--cp-text-muted)', fontSize: 3 }}
                       >
                         {exam.title.length > 5 ? exam.title.slice(0, 5) + '..' : exam.title}
                       </text>
@@ -886,13 +943,31 @@ function ExamsDashboard({ examsData }) {
         </div>
       </div>
 
-      <div className={`er-dashboard-insight ${getInsightClass()}`}>
-        <div className="er-insight-icon-wrap">
+      <div className={`er-dashboard-insight ${getInsightClass()}`} style={{
+        display: 'flex',
+        gap: 14,
+        padding: 16,
+        borderRadius: 12,
+        marginTop: 20,
+        background: avgScore >= 80 ? 'rgba(16, 185, 129, 0.08)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+        border: `1px solid ${avgScore >= 80 ? 'rgba(16, 185, 129, 0.15)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`
+      }}>
+        <div className="er-insight-icon-wrap" style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: avgScore >= 80 ? 'rgba(16, 185, 129, 0.15)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+          color: avgScore >= 80 ? '#10b981' : avgScore >= 60 ? '#f59e0b' : '#ef4444',
+          flexShrink: 0
+        }}>
           <i className={`fas ${getInsightIcon()}`}></i>
         </div>
-        <div className="er-insight-content">
-          <h4>ملاحظات الأداء العام</h4>
-          <p>{getInsightMessage()}</p>
+        <div className="er-insight-content" style={{ flex: 1 }}>
+          <h4 style={{ color: 'var(--cp-text-main)', fontSize: '0.95rem', fontWeight: 700, margin: '0 0 4px' }}>ملاحظات الأداء العام</h4>
+          <p style={{ color: 'var(--cp-text-muted)', fontSize: '0.88rem', margin: 0 }}>{getInsightMessage()}</p>
         </div>
       </div>
     </div>

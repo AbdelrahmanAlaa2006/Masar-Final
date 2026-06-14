@@ -10,13 +10,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 async function main() {
   const { data, error } = await supabase
-    .from('tenants')
-    .select('*')
+    .from('videos')
+    .insert({ title: 'Test PDF Column Check Temp', grade: 'first-sec', active_hours: 1 })
+    .select()
 
-  if (error) {
-    console.error('Error selecting tenants:', error)
-  } else {
-    console.log('Tenants in DB:', JSON.stringify(data, null, 2))
+  console.log('Insert attempt output:', { data, error })
+  
+  if (data && data.length > 0) {
+    await supabase.from('videos').delete().eq('id', data[0].id)
   }
 }
 

@@ -231,23 +231,26 @@ export default function HomeworkReport() {
   const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي']
 
   return (
-    <main className="hr-page">
-      <div className="hr-container">
+    <main className="cp-page">
+      <div className="cp-container">
 
         {/* Back button */}
-        <button className="hr-back-btn" onClick={() => navigate(-1)}>
+        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
-          رجوع
+          <span>رجوع</span>
         </button>
 
         {/* Page Header */}
-        <div className="hr-header">
-          <div className="hr-header-icon">
+        <div className="cp-page-header">
+          <div className="cp-page-header-text">
+            <h1>تقرير الواجبات</h1>
+            <p>سجل الواجبات والدرجات التفصيلية للطلاب</p>
+          </div>
+          <div className="cp-page-icon">
             <i className="fas fa-book-open"></i>
           </div>
-          <h1>تقرير الواجبات</h1>
-          <p>سجل الواجبات والدرجات التفصيلية</p>
         </div>
+        <div className="cp-header-divider"></div>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 16, color: 'var(--muted, #666)' }}>
@@ -262,33 +265,22 @@ export default function HomeworkReport() {
 
         {/* Student Info Card */}
         {studentName && (
-          <div className="hr-student-card">
-            <div className="hr-student-avatar">
+          <div className="cp-target-banner">
+            <div className="cp-avatar cp-avatar-purple">
               <i className="fas fa-user-graduate"></i>
             </div>
-            <div className="hr-student-info">
-              <table className="hr-student-table">
-                <tbody>
-                  <tr>
-                    <td className="hr-info-label"><i className="fas fa-user"></i> الاسم</td>
-                    <td className="hr-info-value">{studentName}</td>
-                  </tr>
-                  {studentId && (
-                    <tr>
-                      <td className="hr-info-label"><i className="fas fa-id-badge"></i> رقم الطالب</td>
-                      <td className="hr-info-value">{studentId}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="hr-info-label"><i className="fas fa-chart-line"></i> المتوسط</td>
-                    <td className="hr-info-value">{revealed.length > 0 ? `${avgScore}%` : '—'}</td>
-                  </tr>
-                  <tr>
-                    <td className="hr-info-label"><i className="fas fa-tasks"></i> الإكمال</td>
-                    <td className="hr-info-value">{submitted} من {total} واجب</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="cp-target-banner-body">
+              <div className="cp-target-banner-label">
+                <i className="fas fa-bullseye"></i> الطالب المستهدف
+              </div>
+              <div className="cp-target-banner-name">{studentName}</div>
+              <div className="cp-target-banner-meta">
+                {studentId && (
+                  <span className="cp-id-pill"><i className="fas fa-id-badge"></i> {studentId}</span>
+                )}
+                <span><i className="fas fa-chart-line"></i> المتوسط: {revealed.length > 0 ? `${avgScore}%` : '—'}</span>
+                <span><i className="fas fa-tasks"></i> الإكمال: {submitted} من {total} واجب</span>
+              </div>
             </div>
           </div>
         )}
@@ -298,32 +290,40 @@ export default function HomeworkReport() {
         )}
 
         {/* Stats Strip */}
-        <div className="hr-stats">
-          <div className="hr-stat-card">
-            <i className="fas fa-list-ol hr-stat-icon" style={{color: '#10b981'}}></i>
-            <span className="hr-stat-value" style={{color: '#10b981'}}>{total}</span>
-            <span className="hr-stat-label">إجمالي</span>
+        <div className="cp-stats-row">
+          <div className="cp-stat">
+            <i className="fas fa-list-ol" style={{color: '#5bc2e7', background: 'rgba(91, 194, 231, 0.1)'}}></i>
+            <div>
+              <div className="cp-stat-val">{total}</div>
+              <div className="cp-stat-lbl">إجمالي الواجبات</div>
+            </div>
           </div>
-          <div className="hr-stat-card">
-            <i className="fas fa-check-circle hr-stat-icon" style={{color: '#48bb78'}}></i>
-            <span className="hr-stat-value" style={{color: '#48bb78'}}>{submitted}</span>
-            <span className="hr-stat-label">مُسلّمة</span>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-check-circle"></i>
+            <div>
+              <div className="cp-stat-val">{submitted}</div>
+              <div className="cp-stat-lbl">مُسلّمة</div>
+            </div>
           </div>
-          <div className="hr-stat-card">
-            <i className="fas fa-clock hr-stat-icon" style={{color: '#a0aec0'}}></i>
-            <span className="hr-stat-value" style={{color: '#a0aec0'}}>{pending}</span>
-            <span className="hr-stat-label">لم تُسلَّم</span>
+          <div className="cp-stat cp-stat-bad">
+            <i className="fas fa-clock"></i>
+            <div>
+              <div className="cp-stat-val">{pending}</div>
+              <div className="cp-stat-lbl">لم تُسلَّم</div>
+            </div>
           </div>
-          <div className="hr-stat-card">
-            <i className="fas fa-percentage hr-stat-icon" style={{color: '#ed8936'}}></i>
-            <span className="hr-stat-value" style={{color: '#ed8936'}}>{revealed.length > 0 ? `${avgScore}%` : '—'}</span>
-            <span className="hr-stat-label">المتوسط</span>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-percentage"></i>
+            <div>
+              <div className="cp-stat-val">{revealed.length > 0 ? `${avgScore}%` : '—'}</div>
+              <div className="cp-stat-lbl">المتوسط</div>
+            </div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="hr-controls">
-          <div className="hr-filter-group">
+        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="cp-filter-group" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[
               { key: 'all', label: 'الكل', icon: 'fa-th-list' },
               { key: 'submitted', label: 'مُسلّمة', icon: 'fa-check' },
@@ -333,8 +333,9 @@ export default function HomeworkReport() {
             ].map(({ key, label, icon }) => (
               <button
                 key={key}
-                className={`hr-filter-btn ${currentFilter === key ? 'active' : ''}`}
+                className={`cp-btn ${currentFilter === key ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                 onClick={() => setCurrentFilter(key)}
+                style={{ borderRadius: 8 }}
               >
                 <i className={`fas ${icon}`}></i> {label}
               </button>
@@ -342,27 +343,29 @@ export default function HomeworkReport() {
           </div>
 
           {isAdmin && (
-            <div className="hr-view-toggle">
-              <button className={`hr-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className={`cp-btn ${viewMode === 'table' ? 'cp-btn-info-active' : 'cp-btn-ghost'}`} onClick={() => setViewMode('table')} style={{ borderRadius: 8 }}>
                 <i className="fas fa-table"></i> جدول
               </button>
-              <button className={`hr-view-btn ${viewMode === 'cards' ? 'active' : ''}`} onClick={() => setViewMode('cards')}>
+              <button className={`cp-btn ${viewMode === 'cards' ? 'cp-btn-info-active' : 'cp-btn-ghost'}`} onClick={() => setViewMode('cards')} style={{ borderRadius: 8 }}>
                 <i className="fas fa-th-large"></i> بطاقات
               </button>
             </div>
           )}
         </div>
 
-        <div className="hr-results-count">
+        <div style={{ margin: '1rem 0', fontSize: '0.88rem', color: 'var(--cp-text-muted)', direction: 'rtl' }}>
           عرض <strong>{filteredHw.length}</strong> واجب من أصل {total}
         </div>
 
         {/* TABLE VIEW — admin only */}
         {isAdmin && viewMode === 'table' && (
-          <div className="hr-card" id="hr-reportTable">
-            <div className="hr-table-header">
-              <h2 className="hr-card-title"><i className="fas fa-clipboard-list"></i> تقرير الواجبات التفصيلي</h2>
-              <button className="hr-print-btn" onClick={() => window.print()}>
+          <div className="cp-table-card" id="hr-reportTable">
+            <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}><i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> تقرير الواجبات التفصيلي</h2>
+              </div>
+              <button className="cp-crumbs-back" onClick={() => window.print()} style={{ padding: '6px 12px', background: 'transparent' }}>
                 <i className="fas fa-print"></i> طباعة
               </button>
             </div>
@@ -385,14 +388,14 @@ export default function HomeworkReport() {
                 <tbody>
                   {filteredHw.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="hr-empty-row">لا توجد واجبات تطابق هذا الفلتر</td>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: 24, color: 'var(--cp-text-muted)' }}>لا توجد واجبات تطابق هذا الفلتر</td>
                     </tr>
                   ) : (
                     filteredHw.map((hw, index) => (
-                      <tr key={hw.id} className="hr-tr">
-                        <td className="hr-td-num">{index + 1}</td>
-                        <td className="hr-td-title">
-                          <i className="fas fa-book-open"></i>
+                      <tr key={hw.id}>
+                        <td>{index + 1}</td>
+                        <td style={{ fontWeight: 700 }}>
+                          <i className="fas fa-book-open" style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
                           {hw.title}
                         </td>
                         <td>{hw.week || '—'}</td>
@@ -400,39 +403,39 @@ export default function HomeworkReport() {
                         <td>{hw.status === 'submitted' ? hw.submitDate : '—'}</td>
                         <td>
                           {hw.status === 'pending' ? (
-                            <span className="hr-badge hr-badge-pending"><i className="fas fa-hourglass-half"></i> لم تُسلَّم</span>
+                            <span className="cp-badge cp-badge-danger"><i className="fas fa-hourglass-half"></i> لم تُسلَّم</span>
                           ) : (
-                            <span className="hr-badge hr-badge-done"><i className="fas fa-check-circle"></i> مُسلّمة</span>
+                            <span className="cp-badge cp-badge-success"><i className="fas fa-check-circle"></i> مُسلّمة</span>
                           )}
                         </td>
                         <td>
                           {hw.status === 'pending' ? (
-                            <span className="hr-text-muted">—</span>
+                            <span>—</span>
                           ) : hw.gradesRevealed ? (
-                            <div className="hr-td-score-wrap">
-                              <div className="hr-mini-bar">
-                                <div className="hr-mini-fill" style={{ width: `${hw.score}%`, background: getScoreColor(hw.score) }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 60, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${hw.score}%`, height: '100%', background: getScoreColor(hw.score), borderRadius: 3 }} />
                               </div>
-                              <span className="hr-score-text" style={{ color: getScoreColor(hw.score) }}>{hw.rawScore}/{hw.maxScore}</span>
+                              <span style={{ color: getScoreColor(hw.score), fontWeight: 700 }}>{hw.rawScore}/{hw.maxScore}</span>
                             </div>
                           ) : (
-                            <span className="hr-badge hr-badge-hidden"><i className="fas fa-lock"></i> لم تُعلَن</span>
+                            <span className="cp-badge cp-badge-neutral"><i className="fas fa-lock"></i> لم تُعلَن</span>
                           )}
                         </td>
                         <td>
                           {hw.status !== 'pending' && hw.gradesRevealed ? (
-                            <span className={`hr-rating ${getRatingClass(hw.score)}`}>{getRating(hw.score)}</span>
+                            <span className={`cp-badge ${hw.score >= 80 ? 'cp-badge-success' : hw.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(hw.score)}</span>
                           ) : (
-                            <span className="hr-text-muted">—</span>
+                            <span>—</span>
                           )}
                         </td>
                         <td>
-                          <div className="hr-actions">
-                            <button className="hr-btn-detail" onClick={() => openDetail(hw)}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="cp-crumbs-back" onClick={() => openDetail(hw)} style={{ padding: '4px 10px', fontSize: '0.75rem', background: 'transparent' }}>
                               <i className="fas fa-info-circle"></i> تفاصيل
                             </button>
                             {hw.status === 'submitted' && hw.gradesRevealed && hw.questions.length > 0 && (
-                              <button className="hr-btn-review" onClick={() => openReview(hw)}>
+                              <button className="cp-crumbs-back" onClick={() => openReview(hw)} style={{ padding: '4px 10px', fontSize: '0.75rem', background: 'transparent' }}>
                                 <i className="fas fa-eye"></i> مراجعة
                               </button>
                             )}
@@ -449,59 +452,59 @@ export default function HomeworkReport() {
 
         {/* CARDS VIEW */}
         {viewMode === 'cards' && (
-          <div className="hr-cards-grid">
+          <div className="cp-home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
             {filteredHw.length === 0 ? (
-              <div className="hr-no-results">لا توجد واجبات تطابق هذا الفلتر</div>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--cp-text-muted)' }}>لا توجد واجبات تطابق هذا الفلتر</div>
             ) : (
               filteredHw.map((hw) => (
-                <div key={hw.id} className={`hr-hw-card ${hw.status === 'pending' ? 'hr-card-pending' : ''}`}>
-                  <div className="hr-card-top">
-                    <div className="hr-card-icon-wrap">
+                <div key={hw.id} className="cp-section-card cp-accent-teal" style={{ display: 'block', padding: '1.25rem', opacity: hw.status === 'pending' ? 0.75 : 1, textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div className="cp-section-icon" style={{ width: 40, height: 40, borderRadius: 10, margin: 0 }}>
                       <i className="fas fa-book-open"></i>
                     </div>
                     {hw.status === 'pending' ? (
-                      <span className="hr-badge hr-badge-pending"><i className="fas fa-hourglass-half"></i> لم تُسلَّم</span>
+                      <span className="cp-badge cp-badge-danger"><i className="fas fa-hourglass-half"></i> لم تُسلَّم</span>
                     ) : (
-                      <span className="hr-badge hr-badge-done"><i className="fas fa-check-circle"></i> مُسلّمة</span>
+                      <span className="cp-badge cp-badge-success"><i className="fas fa-check-circle"></i> مُسلّمة</span>
                     )}
                   </div>
 
-                  <h3 className="hr-card-name">{hw.title}</h3>
-                  <p className="hr-card-subject">{hw.subject}</p>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 6px', color: 'var(--cp-text-main)' }}>{hw.title}</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 12px' }}>{hw.subject}</p>
 
                   {hw.status !== 'pending' && (
-                    <div className="hr-card-score-area">
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '16px 0' }}>
                       {hw.gradesRevealed ? (
                         <>
-                          <div className="hr-score-ring" style={{ background: `conic-gradient(${getScoreColor(hw.score)} ${hw.score}%, rgba(16,185,129,0.1) 0%)` }}>
-                            <div className="hr-ring-inner">
-                              <span className="hr-ring-num" style={{ color: getScoreColor(hw.score) }}>{hw.score}</span>
-                              <span className="hr-ring-max">/100</span>
+                          <div style={{ width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${getScoreColor(hw.score)} ${hw.score}%, var(--cp-divider) 0%)` }}>
+                            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--cp-card-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: getScoreColor(hw.score) }}>{hw.score}</span>
+                              <span style={{ fontSize: '0.6rem', color: 'var(--cp-text-muted)' }}>/100</span>
                             </div>
                           </div>
-                          <span className={`hr-rating ${getRatingClass(hw.score)}`}>{getRating(hw.score)}</span>
+                          <span className={`cp-badge ${hw.score >= 80 ? 'cp-badge-success' : hw.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(hw.score)}</span>
                         </>
                       ) : (
-                        <div className="hr-grades-pending-box">
-                          <i className="fas fa-lock hr-grades-lock-icon"></i>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--cp-hover-bg)', borderRadius: 8, padding: '0.6rem 0.9rem', border: '1px dashed var(--cp-divider)', fontSize: '0.82rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>
+                          <i className="fas fa-lock" style={{ color: '#5bc2e7' }}></i>
                           <span>الدرجات لم تُعلَن بعد</span>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div className="hr-card-meta">
-                    {hw.week && <span><i className="fas fa-calendar-week"></i> {hw.week}</span>}
-                    <span><i className="fas fa-calendar-alt"></i> {hw.dueDate}</span>
-                    {hw.status === 'submitted' && <span><i className="fas fa-paper-plane"></i> {hw.submitDate}</span>}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: '0.78rem', color: 'var(--cp-text-muted)', marginBottom: 12 }}>
+                    {hw.week && <span><i className="fas fa-calendar-week" style={{ marginLeft: 4 }}></i> {hw.week}</span>}
+                    <span><i className="fas fa-calendar-alt" style={{ marginLeft: 4 }}></i> {hw.dueDate}</span>
+                    {hw.status === 'submitted' && <span><i className="fas fa-paper-plane" style={{ marginLeft: 4 }}></i> {hw.submitDate}</span>}
                   </div>
 
-                  <div className="hr-card-actions">
-                    <button className="hr-btn-detail" onClick={() => openDetail(hw)}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="cp-crumbs-back" onClick={() => openDetail(hw)} style={{ flex: 1, padding: '6px', justifyContent: 'center', background: 'transparent' }}>
                       <i className="fas fa-info-circle"></i> تفاصيل
                     </button>
                     {hw.status === 'submitted' && hw.gradesRevealed && hw.questions.length > 0 && (
-                      <button className="hr-btn-review" onClick={() => openReview(hw)}>
+                      <button className="cp-crumbs-back" onClick={() => openReview(hw)} style={{ flex: 1, padding: '6px', justifyContent: 'center', background: 'transparent' }}>
                         <i className="fas fa-eye"></i> مراجعة
                       </button>
                     )}
@@ -515,171 +518,218 @@ export default function HomeworkReport() {
 
       {/* DETAIL MODAL */}
       {showDetailModal && selectedHw && (
-        <div className="hr-modal-overlay" onClick={closeAll}>
-          <div className="hr-modal hr-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="hr-modal-close" onClick={closeAll}><i className="fas fa-times"></i></button>
-
-            <div className="hr-modal-icon-wrap">
-              <i className="fas fa-book-open"></i>
-            </div>
-            <h2 className="hr-modal-title">{selectedHw.title}</h2>
-            <p className="hr-modal-subject">{selectedHw.subject}</p>
-
-            {selectedHw.status !== 'pending' && selectedHw.gradesRevealed ? (
-              <div className="hr-detail-ring" style={{ background: `conic-gradient(${getScoreColor(selectedHw.score)} ${selectedHw.score}%, rgba(16,185,129,0.1) 0%)` }}>
-                <div className="hr-ring-inner-lg">
-                  <span className="hr-ring-num-lg" style={{ color: getScoreColor(selectedHw.score) }}>{selectedHw.score}</span>
-                  <span className="hr-ring-max-lg">من 100</span>
-                </div>
+        <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 480 }}>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                <i className="fas fa-book-open"></i>
               </div>
-            ) : selectedHw.status !== 'pending' ? (
-              <div className="hr-grades-pending-box hr-grades-box-lg">
-                <i className="fas fa-lock hr-grades-lock-icon"></i>
-                <span>الدرجات لم تُعلَن بعد</span>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>{selectedHw.title}</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>{selectedHw.subject}</p>
               </div>
-            ) : null}
-
-            <div className="hr-modal-rows">
-              <div className="hr-modal-row">
-                <span className="hr-modal-label">الحالة</span>
-                <span>{selectedHw.status === 'pending' ? 'لم تُسلَّم بعد' : 'مُسلّمة'}</span>
-              </div>
-              {selectedHw.status !== 'pending' && selectedHw.gradesRevealed && (
-                <div className="hr-modal-row">
-                  <span className="hr-modal-label">التقييم</span>
-                  <span className={`hr-rating ${getRatingClass(selectedHw.score)}`}>{getRating(selectedHw.score)}</span>
-                </div>
-              )}
-              {selectedHw.week && (
-                <div className="hr-modal-row">
-                  <span className="hr-modal-label">الأسبوع</span>
-                  <span>{selectedHw.week}</span>
-                </div>
-              )}
-              <div className="hr-modal-row">
-                <span className="hr-modal-label">الموعد النهائي</span>
-                <span>{selectedHw.dueDate}</span>
-              </div>
-              {selectedHw.status === 'submitted' && (
-                <div className="hr-modal-row">
-                  <span className="hr-modal-label">تاريخ التسليم</span>
-                  <span>{selectedHw.submitDate}</span>
-                </div>
-              )}
-              <div className="hr-modal-row">
-                <span className="hr-modal-label">عدد الأسئلة</span>
-                <span>{selectedHw.totalQuestions}</span>
-              </div>
-              {selectedHw.status !== 'pending' && selectedHw.gradesRevealed && (
-                <div className="hr-modal-row">
-                  <span className="hr-modal-label">الدرجة</span>
-                  <span style={{ color: getScoreColor(selectedHw.score), fontWeight: 700 }}>{selectedHw.rawScore} / {selectedHw.maxScore}</span>
-                </div>
-              )}
-            </div>
-
-            {selectedHw.feedback && selectedHw.gradesRevealed && (
-              <div className="hr-note-box">
-                <i className="fas fa-comment-dots"></i>
-                <span>{selectedHw.feedback}</span>
-              </div>
-            )}
-
-            {selectedHw.status === 'submitted' && selectedHw.gradesRevealed && selectedHw.questions.length > 0 && (
-              <button className="hr-btn-review hr-review-full" onClick={() => { setShowDetailModal(false); setShowReviewModal(true) }}>
-                <i className="fas fa-eye"></i> مراجعة الإجابات التفصيلية
+              <button className="rp-modal-close" onClick={closeAll} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
               </button>
-            )}
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              {selectedHw.status !== 'pending' && selectedHw.gradesRevealed ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+                  <div style={{ width: 100, height: 100, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${getScoreColor(selectedHw.score)} ${selectedHw.score}%, var(--cp-divider) 0%)` }}>
+                    <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'var(--cp-card-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: getScoreColor(selectedHw.score) }}>{selectedHw.score}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>من 100</span>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedHw.status !== 'pending' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 20, borderRadius: 12, background: 'var(--cp-hover-bg)', color: 'var(--cp-text-muted)', fontSize: '0.95rem', border: '1px dashed var(--cp-divider)', margin: '20px 0' }}>
+                  <i className="fas fa-lock" style={{ fontSize: '1.3rem', color: '#5bc2e7' }}></i>
+                  <span>الدرجات لم تُعلَن بعد</span>
+                </div>
+              ) : null}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>الحالة</span>
+                  <span className={`cp-badge ${selectedHw.status === 'pending' ? 'cp-badge-danger' : 'cp-badge-success'}`}>{selectedHw.status === 'pending' ? 'لم تُسلَّم بعد' : 'مُسلّمة'}</span>
+                </div>
+                {selectedHw.status !== 'pending' && selectedHw.gradesRevealed && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                    <span style={{ color: 'var(--cp-text-muted)' }}>التقييم</span>
+                    <span className={`cp-badge ${selectedHw.score >= 80 ? 'cp-badge-success' : selectedHw.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>{getRating(selectedHw.score)}</span>
+                  </div>
+                )}
+                {selectedHw.week && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                    <span style={{ color: 'var(--cp-text-muted)' }}>الأسبوع</span>
+                    <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedHw.week}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>الموعد النهائي</span>
+                  <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedHw.dueDate}</span>
+                </div>
+                {selectedHw.status === 'submitted' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                    <span style={{ color: 'var(--cp-text-muted)' }}>تاريخ التسليم</span>
+                    <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedHw.submitDate}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--cp-divider)' }}>
+                  <span style={{ color: 'var(--cp-text-muted)' }}>عدد الأسئلة</span>
+                  <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>{selectedHw.totalQuestions}</span>
+                </div>
+                {selectedHw.status !== 'pending' && selectedHw.gradesRevealed && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: 'none' }}>
+                    <span style={{ color: 'var(--cp-text-muted)' }}>الدرجة</span>
+                    <span style={{ color: getScoreColor(selectedHw.score), fontWeight: 700 }}>{selectedHw.rawScore} / {selectedHw.maxScore}</span>
+                  </div>
+                )}
+              </div>
+
+              {selectedHw.feedback && selectedHw.gradesRevealed && (
+                <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--cp-hover-bg)', color: 'var(--cp-text-muted)', fontSize: '0.85rem', marginTop: 16, border: '1px solid var(--cp-divider)' }}>
+                  <i className="fas fa-comment-dots" style={{ color: '#10b981', marginTop: 3 }}></i>
+                  <span>{selectedHw.feedback}</span>
+                </div>
+              )}
+
+              {selectedHw.status === 'submitted' && selectedHw.gradesRevealed && selectedHw.questions.length > 0 && (
+                <button className="cp-btn cp-btn-success" onClick={() => { setShowDetailModal(false); setShowReviewModal(true) }} style={{ width: '100%', marginTop: 18, padding: 12, borderRadius: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  <i className="fas fa-eye"></i> مراجعة الإجابات التفصيلية
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ANSWER REVIEW MODAL */}
       {showReviewModal && selectedHw && (
-        <div className="hr-modal-overlay" onClick={closeAll}>
-          <div className="hr-modal hr-review-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="hr-modal-close" onClick={closeAll}><i className="fas fa-times"></i></button>
-
-            <div className="hr-review-header">
-              <div className="hr-review-icon-wrap">
+        <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 640 }}>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
                 <i className="fas fa-book-open"></i>
               </div>
-              <div>
-                <h2 className="hr-review-title">مراجعة الإجابات</h2>
-                <p className="hr-review-exam-name">{selectedHw.title}</p>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>مراجعة الإجابات</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>{selectedHw.title}</p>
               </div>
+              <button className="rp-modal-close" onClick={closeAll} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
 
-            <div className="hr-review-summary">
-              <div className="hr-sum-item hr-sum-correct">
-                <span className="hr-sum-val">{selectedHw.correctCount}</span>
-                <span className="hr-sum-lbl">إجابة صحيحة</span>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, borderRadius: 14, background: 'var(--cp-hover-bg)', padding: 14, border: '1px solid var(--cp-divider)', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#10b981' }}>{selectedHw.correctCount}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>إجابة صحيحة</span>
+                </div>
+                <div style={{ width: 1, background: 'var(--cp-divider)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ef4444' }}>{selectedHw.totalQuestions - selectedHw.correctCount}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>إجابة خاطئة</span>
+                </div>
+                <div style={{ width: 1, background: 'var(--cp-divider)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1 }}>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: getScoreColor(selectedHw.score) }}>{selectedHw.score}%</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>الدرجة النهائية</span>
+                </div>
               </div>
-              <div className="hr-sum-divider" />
-              <div className="hr-sum-item hr-sum-wrong">
-                <span className="hr-sum-val">{selectedHw.totalQuestions - selectedHw.correctCount}</span>
-                <span className="hr-sum-lbl">إجابة خاطئة</span>
-              </div>
-              <div className="hr-sum-divider" />
-              <div className="hr-sum-item hr-sum-score">
-                <span className="hr-sum-val" style={{ color: getScoreColor(selectedHw.score) }}>{selectedHw.score}%</span>
-                <span className="hr-sum-lbl">الدرجة النهائية</span>
-              </div>
-            </div>
 
-            <div className="hr-review-questions">
-              {selectedHw.questions.map((q, qi) => {
-                const isCorrect = q.studentAnswer === q.correct
-                return (
-                  <div key={qi} className={`hr-review-q ${isCorrect ? 'hr-q-correct' : 'hr-q-wrong'}`}>
-                    <div className="hr-q-header">
-                      <span className="hr-q-num">س{qi + 1}</span>
-                      <span className={`hr-q-result ${isCorrect ? 'hr-res-correct' : 'hr-res-wrong'}`}>
-                        {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
-                      </span>
-                    </div>
-                    <p className="hr-q-text">{q.text}</p>
-                    <div className="hr-q-options">
-                      {q.options.map((opt, oi) => {
-                        const isStudentPick = oi === q.studentAnswer
-                        const isCorrectOpt = oi === q.correct
-                        let cls = 'hr-opt'
-                        if (isCorrectOpt) cls += ' hr-opt-correct'
-                        else if (isStudentPick && !isCorrectOpt) cls += ' hr-opt-wrong'
-                        return (
-                          <div key={oi} className={cls}>
-                            <span className="hr-opt-letter">{letters[oi] || oi + 1}</span>
-                            <span className="hr-opt-text">{opt}</span>
-                            <span className="hr-opt-indicator">
-                              {isCorrectOpt && <i className="fas fa-check-circle" style={{color:'#48bb78'}}></i>}
-                              {isStudentPick && !isCorrectOpt && <i className="fas fa-times-circle" style={{color:'#ef4444'}}></i>}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {!isCorrect && (
-                      <div className="hr-q-correction">
-                        <i className="fas fa-lightbulb"></i>
-                        <span> الإجابة الصحيحة: </span>
-                        <strong>{letters[q.correct] || q.correct + 1}. {q.options[q.correct]}</strong>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '50vh', overflowY: 'auto', paddingLeft: 4, paddingRight: 4 }}>
+                {selectedHw.questions.map((q, qi) => {
+                  const isCorrect = q.studentAnswer === q.correct
+                  return (
+                    <div key={qi} style={{
+                      borderRadius: 14,
+                      padding: 16,
+                      border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                      background: isCorrect ? 'rgba(16, 185, 129, 0.02)' : 'rgba(239, 68, 68, 0.02)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cp-text-muted)', background: 'var(--cp-hover-bg)', padding: '3px 10px', borderRadius: 8 }}>س{qi + 1}</span>
+                        <span className={`cp-badge ${isCorrect ? 'cp-badge-success' : 'cp-badge-danger'}`}>
+                          {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            {selectedHw.feedback && (
-              <div className="hr-note-box" style={{ marginTop: 16 }}>
-                <i className="fas fa-comment-dots"></i>
-                <span>{selectedHw.feedback}</span>
+                      <p style={{ color: 'var(--cp-text-main)', fontSize: '0.92rem', margin: '0 0 12px', lineHeight: 1.6 }}>{q.text}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {q.options.map((opt, oi) => {
+                          const isStudentPick = oi === q.studentAnswer
+                          const isCorrectOpt = oi === q.correct
+                          let bg = 'var(--cp-hover-bg)'
+                          let border = '1px solid var(--cp-divider)'
+                          let color = 'var(--cp-text-muted)'
+                          if (isCorrectOpt) {
+                            bg = 'rgba(16, 185, 129, 0.1)'
+                            border = '1px solid rgba(16, 185, 129, 0.3)'
+                            color = '#10b981'
+                          } else if (isStudentPick && !isCorrectOpt) {
+                            bg = 'rgba(239, 68, 68, 0.08)'
+                            border = '1px solid rgba(239, 68, 68, 0.2)'
+                            color = '#ef4444'
+                          }
+                          return (
+                            <div key={oi} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              padding: '8px 12px',
+                              borderRadius: 10,
+                              background: bg,
+                              border: border,
+                              fontSize: '0.85rem',
+                              color: color
+                            }}>
+                              <span style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                flexShrink: 0
+                              }}>{letters[oi] || oi + 1}</span>
+                              <span style={{ flex: 1, color: isCorrectOpt || isStudentPick ? 'inherit' : 'var(--cp-text-main)' }}>{opt}</span>
+                              <span style={{ flexShrink: 0, fontSize: '0.9rem' }}>
+                                {isCorrectOpt && <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>}
+                                {isStudentPick && !isCorrectOpt && <i className="fas fa-times-circle" style={{ color: '#ef4444' }}></i>}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {!isCorrect && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', fontSize: '0.82rem' }}>
+                          <i className="fas fa-lightbulb"></i>
+                          <span> الإجابة الصحيحة: </span>
+                          <strong>{letters[q.correct] || q.correct + 1}. {q.options[q.correct]}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )}
 
-            <button className="hr-close-review-btn" onClick={closeAll}>
-              <i className="fas fa-times"></i> إغلاق المراجعة
-            </button>
+              {selectedHw.feedback && (
+                <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(99, 102, 241, 0.08)', color: '#a5b4fc', fontSize: '0.85rem', marginTop: 16, border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                  <i className="fas fa-comment-dots" style={{ marginTop: 3, flexShrink: 0 }}></i>
+                  <span>{selectedHw.feedback}</span>
+                </div>
+              )}
+
+              <button className="cp-btn cp-btn-ghost" onClick={closeAll} style={{ width: '100%', marginTop: 20, padding: 12, borderRadius: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                <i className="fas fa-times"></i> إغلاق المراجعة
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -731,9 +781,9 @@ function HomeworkDashboard({ hwData }) {
   }
 
   return (
-    <div className="hr-dashboard-card card">
-      <h2 className="hr-dashboard-title">
-        <i className="fas fa-chart-pie"></i> لوحة تحليل الأداء والتقدم الدراسي
+    <div className="cp-panel" style={{ padding: '1.6rem', marginBottom: 24 }}>
+      <h2 className="cp-panel-header" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.2rem', fontWeight: 700, margin: '0 0 20px' }}>
+        <i className="fas fa-chart-pie" style={{ color: '#10b981' }}></i> لوحة تحليل الأداء والتقدم الدراسي
       </h2>
 
       <div className="hr-dashboard-layout">
@@ -741,47 +791,51 @@ function HomeworkDashboard({ hwData }) {
         <div className="hr-dashboard-donut-wrap">
           <div className="hr-dashboard-donut-inner">
             <svg viewBox="0 0 100 100" className="hr-donut-svg">
-              <circle cx="50" cy="50" r="40" className="hr-donut-bg" />
+              <circle cx="50" cy="50" r="40" className="hr-donut-bg" style={{ fill: 'none', stroke: 'var(--cp-divider)', strokeWidth: 8 }} />
               <circle 
                 cx="50" 
                 cy="50" 
                 r="40" 
                 className="hr-donut-fill"
                 style={{
+                  fill: 'none',
+                  strokeWidth: 8,
+                  strokeLinecap: 'round',
                   strokeDasharray: `${strokeDash} 251.2`,
                   transform: 'rotate(-90deg)',
-                  transformOrigin: '50% 50%'
+                  transformOrigin: '50% 50%',
+                  stroke: '#10b981'
                 }}
               />
             </svg>
             <div className="hr-donut-text">
-              <span className="hr-donut-num">{completionRate}%</span>
-              <span className="hr-donut-lbl">نسبة الإكمال</span>
+              <span className="hr-donut-num" style={{ color: 'var(--cp-text-main)', fontSize: '1.6rem', fontWeight: 800 }}>{completionRate}%</span>
+              <span className="hr-donut-lbl" style={{ color: 'var(--cp-text-muted)', fontSize: '0.72rem' }}>نسبة الإكمال</span>
             </div>
           </div>
-          <div className="hr-donut-legend">
-            <div><span className="legend-dot legend-submitted"></span> مُسلّم ({submitted})</div>
-            <div><span className="legend-dot legend-pending"></span> غير مُسلّم ({pending})</div>
+          <div className="hr-donut-legend" style={{ display: 'flex', gap: 16, fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>
+            <div><span className="legend-dot legend-submitted" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10b981', marginInlineEnd: 6 }}></span> مُسلّم ({submitted})</div>
+            <div><span className="legend-dot legend-pending" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--cp-divider)', marginInlineEnd: 6 }}></span> غير مُسلّم ({pending})</div>
           </div>
         </div>
 
         {/* Right column: Recent Scores Chart */}
         <div className="hr-dashboard-chart-wrap">
-          <h3 className="hr-chart-header">درجات آخر الواجبات المقيّمة</h3>
+          <h3 className="hr-chart-header" style={{ color: 'var(--cp-text-main)', fontSize: '0.95rem', fontWeight: 700, margin: '0 0 16px' }}>درجات آخر الواجبات المقيّمة</h3>
           {recentGraded.length === 0 ? (
-            <div className="hr-chart-placeholder">
-              <i className="fas fa-chart-bar"></i>
+            <div className="hr-chart-placeholder" style={{ border: '1px dashed var(--cp-divider)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', color: 'var(--cp-text-muted)' }}>
+              <i className="fas fa-chart-bar" style={{ fontSize: '1.8rem', marginBottom: 8 }}></i>
               <p>ستظهر درجاتك هنا بمجرد تصحيح المعلم لواجباتك وإعلانها</p>
             </div>
           ) : (
-            <div className="hr-svg-chart-container">
-              <svg viewBox="0 0 100 65" className="hr-bar-svg" preserveAspectRatio="none">
+            <div className="hr-svg-chart-container" style={{ background: 'rgba(15, 23, 42, 0.3)', border: '1px solid var(--cp-divider)', borderRadius: 12, padding: '16px 12px 6px' }}>
+              <svg viewBox="0 0 100 65" className="hr-bar-svg" preserveAspectRatio="none" style={{ width: '100%', height: '150px' }}>
                 {[0, 25, 50, 75, 100].map((grid, gi) => {
                   const y = 50 - (grid * 0.45);
                   return (
                     <g key={gi}>
-                      <line x1="8" y1={y} x2="95" y2={y} className="hr-chart-gridline" />
-                      <text x="3" y={y + 1} className="hr-chart-gridtext">{grid}%</text>
+                      <line x1="8" y1={y} x2="95" y2={y} className="hr-chart-gridline" style={{ stroke: 'var(--cp-divider)', strokeWidth: 0.3 }} />
+                      <text x="3" y={y + 1} className="hr-chart-gridtext" style={{ fill: 'var(--cp-text-muted)', fontSize: 3, fontFamily: 'inherit' }}>{grid}%</text>
                     </g>
                   )
                 })}
@@ -814,6 +868,7 @@ function HomeworkDashboard({ hwData }) {
                         textAnchor="middle" 
                         className="hr-chart-bar-score"
                         fill={color}
+                        style={{ fontSize: '3.2px', fontWeight: 800 }}
                       >
                         {hw.score}%
                       </text>
@@ -822,6 +877,7 @@ function HomeworkDashboard({ hwData }) {
                         y="55" 
                         textAnchor="middle" 
                         className="hr-chart-bar-label"
+                        style={{ fill: 'var(--cp-text-muted)', fontSize: 3 }}
                       >
                         {hw.title.length > 5 ? hw.title.slice(0, 5) + '..' : hw.title}
                       </text>
@@ -834,15 +890,34 @@ function HomeworkDashboard({ hwData }) {
         </div>
       </div>
 
-      <div className={`hr-dashboard-insight ${getInsightClass()}`}>
-        <div className="hr-insight-icon-wrap">
+      <div className={`hr-dashboard-insight ${getInsightClass()}`} style={{
+        display: 'flex',
+        gap: 14,
+        padding: 16,
+        borderRadius: 12,
+        marginTop: 20,
+        background: avgScore >= 80 ? 'rgba(16, 185, 129, 0.08)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+        border: `1px solid ${avgScore >= 80 ? 'rgba(16, 185, 129, 0.15)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`
+      }}>
+        <div className="hr-insight-icon-wrap" style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: avgScore >= 80 ? 'rgba(16, 185, 129, 0.15)' : avgScore >= 60 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+          color: avgScore >= 80 ? '#10b981' : avgScore >= 60 ? '#f59e0b' : '#ef4444',
+          flexShrink: 0
+        }}>
           <i className={`fas ${getInsightIcon()}`}></i>
         </div>
-        <div className="hr-insight-content">
-          <h4>ملاحظات الأداء العام</h4>
-          <p>{getInsightMessage()}</p>
+        <div className="hr-insight-content" style={{ flex: 1 }}>
+          <h4 style={{ color: 'var(--cp-text-main)', fontSize: '0.95rem', fontWeight: 700, margin: '0 0 4px' }}>ملاحظات الأداء العام</h4>
+          <p style={{ color: 'var(--cp-text-muted)', fontSize: '0.88rem', margin: 0 }}>{getInsightMessage()}</p>
         </div>
       </div>
     </div>
   )
 }
+

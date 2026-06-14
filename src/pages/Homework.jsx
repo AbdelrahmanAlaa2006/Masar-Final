@@ -990,31 +990,36 @@ function PdfPicker({ file, setFile, pct, disabled, accept = 'application/pdf,.pd
 }
 
 /* Inline PDF viewer used inside the student SubmitModal so the questions
-   live next to the answer form (no new tab). On mobile we route through
-   gview because Chrome / Safari for Android+iOS won't render an
-   <iframe src=foo.pdf> directly — they show a "Download" prompt. */
+   live next to the answer form (no new tab).
+   We route through Google Docs Viewer on every platform — this prevents
+   the browser's native PDF viewer (which has download/print toolbars) from
+   activating. The wrapper clips Google's own toolbar row (≈48px) off the
+   top by combining overflow-hidden + a negative top offset on the iframe. */
 function PdfInline({ url, title }) {
-  const isMobile = typeof navigator !== 'undefined' &&
-    /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
-  const src = isMobile
-    ? `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
-    : url
+  const src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
+  const CLIP = 48
   return (
-    <iframe
-      src={src}
-      title={title}
-      className="hw-pdf-inline"
-      referrerPolicy="no-referrer"
-    />
+    <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      <iframe
+        src={src}
+        title={title}
+        style={{
+          position: 'absolute', top: -CLIP, left: 0,
+          width: '100%', height: `calc(100% + ${CLIP}px)`,
+          border: 0, display: 'block',
+        }}
+        referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+      />
+    </div>
   )
 }
 
 function PdfViewerModal({ viewer, onClose }) {
-  const isMobile = typeof navigator !== 'undefined' &&
-    /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
-  const iframeSrc = isMobile
-    ? `https://docs.google.com/gview?url=${encodeURIComponent(viewer.url)}&embedded=true`
-    : viewer.url
+  // Always use Google Docs Viewer — bypasses the native PDF viewer's
+  // download toolbar on desktop. The 48-px clip hides Google's own header.
+  const iframeSrc = `https://docs.google.com/gview?url=${encodeURIComponent(viewer.url)}&embedded=true`
+  const CLIP = 48
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -1029,7 +1034,20 @@ function PdfViewerModal({ viewer, onClose }) {
             <i className="fas fa-xmark"></i>
           </button>
         </header>
-        <iframe className="hw-pdf-frame" src={iframeSrc} title={viewer.title} referrerPolicy="no-referrer" />
+        {/* overflow-hidden wrapper clips the Google Docs toolbar off-screen */}
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <iframe
+            src={iframeSrc}
+            title={viewer.title}
+            style={{
+              position: 'absolute', top: -CLIP, left: 0,
+              width: '100%', height: `calc(100% + ${CLIP}px)`,
+              border: 0, display: 'block', background: 'inherit',
+            }}
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-forms"
+          />
+        </div>
       </div>
     </div>
   )

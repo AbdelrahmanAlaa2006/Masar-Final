@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* VideosReport */
 
 .vr-page {
@@ -544,13 +546,7 @@
 .vr-modal-label { font-weight: 600; color: var(--text-muted, #718096); }
 .vr-modal-val { font-weight: 700; color: var(--text-color); }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden; }
-  #vr-reportTable, #vr-reportTable * { visibility: visible; }
-  #vr-reportTable { position: absolute; inset: 0; background: white; color: black; padding: 20px; }
-  .vr-print-btn, .vr-back-btn, .vr-controls, .vr-stats, .vr-student-card { display: none; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 
 /* ── Videos Dashboard & Charts ── */

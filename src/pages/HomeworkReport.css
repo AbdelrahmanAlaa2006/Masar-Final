@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* ── Homework Report — hr- prefix ─────────────────────────── */
 
 .hr-page {
@@ -369,13 +371,7 @@
 }
 .hr-note-box i { margin-top: 3px; flex-shrink: 0; }
 
-/* Print styles */
-@media print {
-  .hr-page { background: #fff !important; padding: 10px; }
-  .hr-back-btn, .hr-filter-btn, .hr-view-btn, .hr-print-btn,
-  .hr-btn-detail, .hr-btn-review { display: none !important; }
-  .hr-table th, .hr-table td { color: #000; border-color: #ccc; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 
 /* ── Light Mode Overrides for HomeworkReport ── */

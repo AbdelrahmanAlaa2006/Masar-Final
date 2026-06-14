@@ -940,6 +940,8 @@ body.dark .lec-card-title-pill { color: #1a202c; }
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.4);
 }
+/* .lec-pdf-frame — kept for reference; iframe now uses inline absolute
+   positioning inside the clipping wrapper so this class is not applied. */
 .lec-pdf-frame {
   flex: 1;
   width: 100%;

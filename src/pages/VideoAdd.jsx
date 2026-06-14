@@ -6,6 +6,7 @@ import { notify } from '../utils/notify'
 import { createVideo } from '@backend/videosApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { invalidate as invalidateCache } from '../utils/cache'
+import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
 
 // Pull a YouTube video id out of any common share URL. If the user already
 // pasted a bare 11-char id, keep it as-is.
@@ -116,6 +117,9 @@ export default function VideoAdd() {
   })
   const [videoGrade, setVideoGrade] = useState(selectedGrade)
   const [activeHours, setActiveHours] = useState(24)
+  const [pdfFile, setPdfFile] = useState(null)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
 
   const addPart = () => {
     const nextId = `new_part_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -443,7 +447,23 @@ export default function VideoAdd() {
       createdBy = u?.id || null
     } catch { /* ignore */ }
 
+    setSubmitting(true)
+    let uploadedKey = null
+    let uploadedUrl = null
+
     try {
+      if (pdfFile) {
+        if (pdfFile.type && pdfFile.type !== 'application/pdf') {
+          throw new Error('الملف يجب أن يكون بصيغة PDF')
+        }
+        setUploadPct(1)
+        const { key, publicUrl } = await uploadLecturePdf(pdfFile, {
+          onProgress: (p) => setUploadPct(Math.max(1, p)),
+        })
+        uploadedKey = key
+        uploadedUrl = publicUrl
+      }
+
       await createVideo({
         title: videoTitle.trim(),
         description: videoDescription.trim() || null,
@@ -451,6 +471,8 @@ export default function VideoAdd() {
         active_hours: activeHours,
         quizzes: parsedQuizzes,
         created_by: createdBy,
+        pdf_url: uploadedUrl,
+        pdf_key: uploadedKey,
         parts: videoParts.map(p => {
           const src = p.source === 'drive' ? 'drive'
                     : p.source === 'bunny' ? 'bunny'
@@ -478,7 +500,13 @@ export default function VideoAdd() {
         resetForm()
       }, 3000)
     } catch (err) {
+      if (uploadedKey || uploadedUrl) {
+        deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => {})
+      }
       notify(err.message || 'تعذر حفظ الفيديو', { type: 'warning' })
+    } finally {
+      setSubmitting(false)
+      setUploadPct(0)
     }
   }
 
@@ -490,6 +518,7 @@ export default function VideoAdd() {
     setNumParts('')
     setQuizzes([])
     setShowPreview(false)
+    setPdfFile(null)
   }
 
   const showVideoPreview = () => {
@@ -587,6 +616,56 @@ export default function VideoAdd() {
                 onChange={(e) => setVideoDescription(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            <div className="form-group">
+              <label>مذكرة / ملخص المحاضرة (ملف PDF) - اختياري</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label htmlFor="pdf-file-input" style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                  border: '1.5px dashed rgba(167, 139, 250, 0.25)', borderRadius: 12, background: 'rgba(255,255,255,0.02)',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  flex: 1,
+                  color: 'var(--text-primary)', fontWeight: 500,
+                }}>
+                  <i className="fas fa-file-pdf" style={{ color: '#ef4444', fontSize: '1.2rem' }}></i>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {pdfFile ? pdfFile.name : 'اختر ملف PDF للمحاضرة'}
+                  </span>
+                  {pdfFile && (
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {(pdfFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </span>
+                  )}
+                </label>
+                <input
+                  id="pdf-file-input"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                  style={{ display: 'none' }}
+                  disabled={submitting}
+                />
+                {pdfFile && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setPdfFile(null)}
+                    style={{ borderColor: '#ef4444', color: '#ef4444', background: 'transparent', padding: '10px 16px', margin: 0 }}
+                    disabled={submitting}
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </div>
+              {uploadPct > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ height: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ width: `${uploadPct}%`, height: '100%', background: 'var(--gradient-primary)', transition: 'width .15s ease' }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>جاري رفع المذكرة... {uploadPct}%</span>
+                </div>
+              )}
             </div>
 
             <div className="form-row">
@@ -1124,15 +1203,15 @@ export default function VideoAdd() {
 
             {/* Action Buttons */}
             <div className="action-buttons">
-              <button className="btn btn-success" onClick={saveVideo}>
-                <i className="fas fa-floppy-disk"></i>
-                <span>حفظ الفيديو</span>
+              <button className="btn btn-success" onClick={saveVideo} disabled={submitting}>
+                <i className={submitting ? "fas fa-spinner fa-spin" : "fas fa-floppy-disk"}></i>
+                <span>{submitting ? "جاري الحفظ..." : "حفظ الفيديو"}</span>
               </button>
-              <button className="btn btn-warning" onClick={showVideoPreview}>
+              <button className="btn btn-warning" onClick={showVideoPreview} disabled={submitting}>
                 <i className="fas fa-magnifying-glass"></i>
                 <span>معاينة الفيديو</span>
               </button>
-              <button className="btn btn-danger" onClick={resetForm}>
+              <button className="btn btn-danger" onClick={resetForm} disabled={submitting}>
                 <i className="fas fa-arrows-rotate"></i>
                 <span>إعادة تعيين</span>
               </button>

@@ -237,14 +237,20 @@ export default function Payments() {
           setRotateDeg={setRotateDeg}
         />
       ) : (
-        <div className="paypg" dir="rtl">
-        <div className="paypg-container">
+        <main className="cp-page" dir="rtl">
+        <div className="cp-container">
         
         {/* Page Head */}
-        <header className="paypg-head">
-          <h1 className="paypg-title">بوابة تأكيد الدفع</h1>
-          <p className="paypg-subtitle">اختر وسيلة الدفع المفضلة لديك، قم بالتحويل، ثم ارفع لقطة الشاشة لتأكيد اشتراكك.</p>
-        </header>
+        <div className="cp-page-header">
+          <div className="cp-page-header-text">
+            <h1>بوابة تأكيد الدفع</h1>
+            <p>اختر وسيلة الدفع المفضلة لديك، قم بالتحويل، ثم ارفع لقطة الشاشة لتأكيد اشتراكك</p>
+          </div>
+          <div className="cp-page-icon">
+            <i className="fas fa-wallet"></i>
+          </div>
+        </div>
+        <div className="cp-header-divider"></div>
 
         {/* Inactive Student Warning Banner */}
         {user?.role === 'student' && user?.is_active === false && (
@@ -364,8 +370,10 @@ export default function Payments() {
           
           {/* ─────────── Submission Form ─────────── */}
           <section className="paypg-form-section">
-            <div className="paypg-widget-card">
-              <h2 className="paypg-widget-title"><i className="fas fa-file-invoice-dollar"></i> تأكيد إيصال الدفع</h2>
+            <div className="cp-panel">
+              <div className="cp-panel-header">
+                <h2><i className="fas fa-file-invoice-dollar" style={{ marginLeft: 8, color: '#5bc2e7' }}></i> تأكيد إيصال الدفع</h2>
+              </div>
               <form onSubmit={handleSubmit} className="paypg-form">
                 
                 <div className="form-group">
@@ -417,16 +425,7 @@ export default function Payments() {
                         onClick={() => setShowStudentPkgDropdown(false)}
                         style={{ position: 'fixed', inset: 0, zIndex: 998 }}
                       />
-                      <div 
-                        style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0,
-                          background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border, rgba(0,0,0,0.1))',
-                          borderRadius: 12, boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-                          maxHeight: 180, overflowY: 'auto', zIndex: 999, marginTop: 4, padding: 6,
-                          animation: 'fadeInDown 0.15s ease-out',
-                          overscrollBehavior: 'contain'
-                        }}
-                      >
+                      <div className="paypg-package-dropdown">
                         {studentPackages.map(p => (
                           <div
                             key={p}
@@ -434,13 +433,7 @@ export default function Payments() {
                               setPackageName(p)
                               setShowStudentPkgDropdown(false)
                             }}
-                            style={{
-                              padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-                              color: 'var(--text-color, #1e1b4b)', fontWeight: 600, fontSize: '0.9rem',
-                              transition: 'background 0.2s', textAlign: 'right'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg, rgba(124, 58, 237, 0.08))'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            className="paypg-package-dropdown-item"
                           >
                             {p}
                           </div>
@@ -520,8 +513,10 @@ export default function Payments() {
 
           {/* ─────────── Payment History (Report) ─────────── */}
           <section className="paypg-history-section">
-            <div className="paypg-widget-card">
-              <h2 className="paypg-widget-title"><i className="fas fa-receipt"></i> سجل وتقرير مدفوعاتك</h2>
+            <div className="cp-panel">
+              <div className="cp-panel-header">
+                <h2><i className="fas fa-receipt" style={{ marginLeft: 8, color: '#5bc2e7' }}></i> سجل وتقرير مدفوعاتك</h2>
+              </div>
               
               {loadingHistory ? (
                 <div className="paypg-loader">
@@ -595,53 +590,40 @@ export default function Payments() {
           </section>
 
         </div>
-      </div>
-    </div>
-  )}
+        </div>
+        </main>
+      )}
       
       {/* ─────────── Receipt Full Screen Zoom Lightbox Modal (Shared by Student and Admin) ─────────── */}
       {previewUrl && (
-        <div 
-          onClick={() => setPreviewUrl(null)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
-            zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 24,
-            animation: 'fadeInDown 0.25s ease-out'
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#ffffff', borderRadius: 24, width: '100%', maxWidth: 550,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
-            }}
-          >
+        <div className="rp-modal-overlay" onClick={() => setPreviewUrl(null)} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 550 }}>
             
             {/* Modal Header */}
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Tajawal', color: '#1e1b4b' }}>
-              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>مراجعة إيصال التحويل</h4>
-              <div style={{ display: 'flex', gap: 10 }}>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>
+                <i className="fas fa-file-image"></i>
+              </div>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>مراجعة إيصال التحويل</h3>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginInlineStart: 'auto' }}>
                 <button 
                   type="button"
                   onClick={() => setRotateDeg(d => (d + 90) % 360)} 
-                  className="paypg-admin-btn-outline"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                  className="cp-btn cp-btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 8 }}
                 >
-                  <i className="fas fa-rotate-right"></i> تدوير الصورة
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setPreviewUrl(null)}
-                  className="paypg-admin-btn-outline"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-                >
-                  <i className="fas fa-xmark"></i> إغلاق
+                  <i className="fas fa-rotate-right"></i> تدوير
                 </button>
               </div>
+              <button className="rp-modal-close" onClick={() => setPreviewUrl(null)} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
 
             {/* Modal Image Body with Rotation transition */}
-            <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fafafa', minHeight: 320, overflow: 'hidden' }}>
+            <div style={{ padding: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--cp-hover-bg)', minHeight: 320, overflow: 'hidden' }}>
               <img 
                 src={previewUrl} 
                 alt="Receipt screenshot" 
@@ -983,35 +965,40 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   }
 
   return (
-    <div className="paypg paypg-admin" dir="rtl">
-      <div className="paypg-container" style={{ maxWidth: 1280 }}>
+    <main className="cp-page paypg-admin" dir="rtl">
+      <div className="cp-container" style={{ maxWidth: 1280 }}>
         
         {/* Dashboard Header */}
-        <header className="paypg-head" style={{ marginBottom: 32, textAlign: 'right', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <h1 className="paypg-title" style={{ fontSize: '2.4rem', fontWeight: 800 }}>تقرير كشف المدفوعات</h1>
-            <p className="paypg-subtitle" style={{ margin: '8px 0 0 0', fontSize: '1rem', maxWidth: 'none' }}>
-              استعرض وتابع حالة اشتراكات الطلاب والتحويلات المالية الواردة للمنصة وفعّل الحسابات فورًا.
-            </p>
+        <div className="cp-page-header" style={{ marginBottom: '1.5rem' }}>
+          <div className="cp-page-header-text">
+            <h1>تقرير كشف المدفوعات</h1>
+            <p>استعرض وتابع حالة اشتراكات الطلاب والتحويلات المالية الواردة للمنصة وفعّل الحسابات فورًا</p>
           </div>
-          
-          <button 
-            type="button"
-            onClick={() => setShowConfigEditor(!showConfigEditor)}
-            className="paypg-admin-btn-outline"
-            style={{ padding: '10px 20px', borderRadius: 14, fontWeight: 700, gap: 8, height: 44, cursor: 'pointer' }}
-          >
-            <i className="fas fa-cog"></i> 
-            {showConfigEditor ? 'إخفاء الإعدادات' : 'تعديل بيانات الدفع ⚙️'}
-          </button>
-        </header>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button 
+              type="button"
+              onClick={() => setShowConfigEditor(!showConfigEditor)}
+              className="cp-btn cp-btn-ghost"
+              style={{ borderRadius: 10 }}
+            >
+              <i className="fas fa-cog"></i> 
+              <span>{showConfigEditor ? 'إخفاء الإعدادات' : 'تعديل بيانات الدفع ⚙️'}</span>
+            </button>
+            <div className="cp-page-icon" style={{ marginInlineStart: 12 }}>
+              <i className="fas fa-sack-dollar"></i>
+            </div>
+          </div>
+        </div>
+        <div className="cp-header-divider"></div>
 
         {/* Collapsible Config Editor Card */}
         {showConfigEditor && (
-          <div className="paypg-widget-card paypg-config-card" style={{ marginBottom: 32, border: '2px solid #7c3aed', background: 'rgba(124, 58, 237, 0.01)', animation: 'fadeInDown 0.3s ease-out' }}>
-            <h3 className="paypg-widget-title" style={{ color: '#7c3aed', marginBottom: 12, fontSize: '1.25rem' }}>
-              <i className="fas fa-gears" style={{ color: '#7c3aed' }}></i> إعدادات الحسابات البنكية ومحافظ التحويل والباقات
-            </h3>
+          <div className="cp-panel" style={{ marginBottom: 32, border: '1px solid rgba(124, 58, 237, 0.3)', background: 'rgba(124, 58, 237, 0.02)', animation: 'fadeInDown 0.3s ease-out' }}>
+            <div className="cp-panel-header" style={{ marginBottom: 12 }}>
+              <h2 style={{ fontSize: '1.25rem', color: '#8c72db', margin: 0 }}>
+                <i className="fas fa-gears" style={{ marginLeft: 8, color: '#8c72db' }}></i> إعدادات الحسابات البنكية ومحافظ التحويل والباقات
+              </h2>
+            </div>
             <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: 24 }}>
               قم بتعديل بيانات InstaPay ورقم Vodafone Cash والباقات المتاحة للاشتراك مباشرة من هنا. سيتم تطبيق هذه القيم فورًا لجميع الطلاب.
             </p>
@@ -1068,11 +1055,11 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               </div>
 
 
-              <div className="paypg-span-2" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div className="paypg-span-2" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%', marginTop: 16 }}>
                 <button 
                   type="submit" 
                   disabled={savingConfig}
-                  className="paypg-admin-btn"
+                  className="cp-btn cp-btn-success"
                   style={{ height: 44, flex: 1, justifyContent: 'center' }}
                 >
                   {savingConfig ? (
@@ -1084,8 +1071,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <button 
                   type="button"
                   onClick={() => setShowConfigEditor(false)}
-                  className="paypg-admin-btn-outline"
-                  style={{ height: 44, padding: '0 16px', cursor: 'pointer' }}
+                  className="cp-btn cp-btn-ghost"
+                  style={{ height: 44, padding: '0 24px', cursor: 'pointer' }}
                 >
                   إلغاء
                 </button>
@@ -1096,84 +1083,68 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         )}
 
         {/* ─────────── Premium KPI Statistics Widgets ─────────── */}
-        <section className="paypg-admin-stats">
+        <section className="cp-stats-row">
           
           {/* Total Approved Amount */}
-          <div className="paypg-admin-stat" style={{ borderLeft: '4px solid #10b981' }}>
-            <div className="paypg-admin-stat-icon" style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
-              <i className="fas fa-sack-dollar"></i>
-            </div>
-            <div className="paypg-admin-stat-info">
-              <div className="paypg-admin-stat-value">{stats.approvedSum.toLocaleString()} ج.م</div>
-              <div className="paypg-admin-stat-label">إجمالي المدفوعات الواردة</div>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-sack-dollar"></i>
+            <div>
+              <div className="cp-stat-val">{stats.approvedSum.toLocaleString()} ج.م</div>
+              <div className="cp-stat-lbl">إجمالي المدفوعات الواردة</div>
             </div>
           </div>
 
           {/* Pending payments count */}
-          <div className="paypg-admin-stat" style={{ borderLeft: '4px solid #f59e0b' }}>
-            <div className="paypg-admin-stat-icon" style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b' }}>
-              <i className="fas fa-hourglass-half"></i>
-            </div>
-            <div className="paypg-admin-stat-info">
-              <div className="paypg-admin-stat-value">{stats.pendingCount}</div>
-              <div className="paypg-admin-stat-label">طلبات معلقة قيد المراجعة</div>
+          <div className="cp-stat cp-stat-warning">
+            <i className="fas fa-hourglass-half"></i>
+            <div>
+              <div className="cp-stat-val">{stats.pendingCount}</div>
+              <div className="cp-stat-lbl">طلبات معلقة قيد المراجعة</div>
             </div>
           </div>
 
           {/* Approved payments count */}
-          <div className="paypg-admin-stat" style={{ borderLeft: '4px solid #7c3aed' }}>
-            <div className="paypg-admin-stat-icon" style={{ background: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' }}>
-              <i className="fas fa-circle-check"></i>
-            </div>
-            <div className="paypg-admin-stat-info">
-              <div className="paypg-admin-stat-value">{stats.approvedCount}</div>
-              <div className="paypg-admin-stat-label">طلبات مقبولة ومفعّلة</div>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-circle-check"></i>
+            <div>
+              <div className="cp-stat-val">{stats.approvedCount}</div>
+              <div className="cp-stat-lbl">طلبات مقبولة ومفعّلة</div>
             </div>
           </div>
 
           {/* Rejected payments count */}
-          <div className="paypg-admin-stat" style={{ borderLeft: '4px solid #ef4444' }}>
-            <div className="paypg-admin-stat-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
-              <i className="fas fa-circle-xmark"></i>
-            </div>
-            <div className="paypg-admin-stat-info">
-              <div className="paypg-admin-stat-value">{stats.rejectedCount}</div>
-              <div className="paypg-admin-stat-label">طلبات مرفوضة</div>
+          <div className="cp-stat cp-stat-bad">
+            <i className="fas fa-circle-xmark"></i>
+            <div>
+              <div className="cp-stat-val">{stats.rejectedCount}</div>
+              <div className="cp-stat-lbl">طلبات مرفوضة</div>
             </div>
           </div>
 
         </section>
 
         {/* ─────────── Filters and toolbar section ─────────── */}
-        <div className="paypg-widget-card" style={{ padding: 28 }}>
+        <div className="cp-panel" style={{ padding: 28 }}>
           
           <div className="paypg-admin-filter-bar">
             
             {/* Status tabs */}
-            <div style={{ display: 'flex', gap: 8, background: 'rgba(124, 58, 237, 0.04)', padding: 5, borderRadius: 14, flexWrap: 'wrap' }}>
+            <div className="cp-filter-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {['pending', 'approved', 'rejected', 'all'].map((tab) => {
                 const isActive = activeTab === tab
                 const label = tab === 'all' ? 'الكل' : tab === 'pending' ? 'المعلقة' : tab === 'approved' ? 'المقبولة' : 'المرفوضة'
-                const themeColor = tab === 'all' ? '#64748b' : tab === 'pending' ? '#f59e0b' : tab === 'approved' ? '#10b981' : '#ef4444'
                 const count = tab === 'all' ? stats.totalCount : tab === 'pending' ? stats.pendingCount : tab === 'approved' ? stats.approvedCount : stats.rejectedCount
+                const btnClass = isActive ? 'cp-btn-info-active' : 'cp-btn-ghost'
 
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    style={{
-                      border: 'none', padding: '8px 18px', borderRadius: 10,
-                      background: isActive ? '#ffffff' : 'transparent',
-                      color: isActive ? themeColor : '#64748b',
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'Tajawal', fontSize: '0.85rem',
-                      boxShadow: isActive ? '0 4px 10px rgba(0,0,0,0.04)' : 'none',
-                      display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s'
-                    }}
+                    className={`cp-btn ${btnClass}`}
+                    style={{ borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
                   >
                     {label}
-                    <span style={{
-                      padding: '2px 8px', borderRadius: 999, background: `${themeColor}15`, color: themeColor, fontSize: '0.75rem', fontWeight: 700
-                    }}>
+                    <span className="cp-id-pill cp-id-pill-sm" style={isActive ? { background: 'rgba(255, 255, 255, 0.25)', color: '#fff' } : {}}>
                       {count}
                     </span>
                   </button>
@@ -1218,7 +1189,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               {/* Refresh Button */}
               <button 
                 onClick={onRefresh}
-                className="paypg-admin-btn"
+                className="cp-btn cp-btn-info"
                 style={{ height: 42 }}
               >
                 <i className={`fas fa-rotate ${loading ? 'fa-spin' : ''}`}></i> تحديث البيانات
@@ -1267,7 +1238,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <button
                   type="button"
                   onClick={() => { setStartDate(''); setEndDate(''); }}
-                  className="paypg-admin-btn-outline"
+                  className="cp-btn cp-btn-ghost"
                   style={{ height: 38, padding: '0 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)', cursor: 'pointer' }}
                 >
                   <i className="fas fa-times"></i> مسح التواريخ
@@ -1280,31 +1251,39 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               <button
                 type="button"
                 onClick={handleOpenCashModal}
-                className="paypg-admin-btn"
-                style={{ height: 38, background: '#7c3aed', padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
+                className="cp-btn cp-btn-success"
+                style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
               >
                 <i className="fas fa-plus"></i> تسجيل دفع نقدي يدوي 💵
               </button>
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="paypg-admin-btn-outline"
+                className="cp-btn cp-btn-ghost"
                 style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
               >
                 <i className="fas fa-file-excel"></i> تصدير البيانات 📊
               </button>
             </div>
           </div>
+        </div>
 
-          {/* ─────────── Main Data Table ─────────── */}
+        {/* ─────────── Main Data Table / Report Card ─────────── */}
+        <div className="cp-table-card" style={{ marginTop: 24 }}>
+          <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+              <i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> كشف تفاصيل عمليات الدفع والاشتراكات
+            </h2>
+          </div>
+
           {loading ? (
             <div className="paypg-loader" style={{ padding: '60px 0' }}>
               <i className="fas fa-circle-notch fa-spin"></i>
               <span>جاري تحميل تقرير المدفوعات...</span>
             </div>
           ) : filteredPayments.length > 0 ? (
-            <div className="paypg-admin-table-container">
-              <table className="paypg-admin-table">
+            <div className="cp-table-container">
+              <table className="cp-table">
                 <thead>
                   <tr>
                     <th>الطالب والمرحلة</th>
@@ -1370,8 +1349,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                             onClick={() => { setRotateDeg(0); setPreviewUrl(p.screenshot_url); }}
                             className="paypg-thumb-container"
                             style={{
-                              width: 48, height: 48, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)',
-                              cursor: 'zoom-in', background: '#fafafa', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                              width: 48, height: 48, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--cp-card-border)',
+                              cursor: 'zoom-in', background: 'var(--cp-hover-bg)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}
                             title="اضغط للتكبير والمراجعة"
                           >
@@ -1424,16 +1403,16 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                               <button
                                 onClick={() => handleResolve(p.id, 'approved', p.student_id)}
                                 disabled={resolvingId !== null}
-                                className="paypg-admin-btn"
-                                style={{ padding: '6px 12px', fontSize: '0.8rem', flex: 1, background: '#10b981' }}
+                                className="cp-btn cp-btn-success"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem', flex: 1, justifyContent: 'center' }}
                               >
                                 {resolvingId === p.id ? <i className="fas fa-spinner fa-spin"></i> : 'قبول وتفعيل'}
                               </button>
                               <button
                                 onClick={() => handleResolve(p.id, 'rejected', p.student_id)}
                                 disabled={resolvingId !== null}
-                                className="paypg-admin-btn"
-                                style={{ padding: '6px 12px', fontSize: '0.8rem', flex: 1, background: '#ef4444' }}
+                                className="cp-btn cp-btn-danger"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem', flex: 1, justifyContent: 'center' }}
                               >
                                 رفض
                               </button>
@@ -1475,40 +1454,33 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
       {/* ─────────── Record Cash Payment Modal ─────────── */}
       {showCashModal && (
-        <div 
-          onClick={() => setShowCashModal(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
-            zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 24,
-            animation: 'fadeInDown 0.25s ease-out', overflowY: 'auto'
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="paypg-modal"
-          >
+        <div className="rp-modal-overlay" onClick={() => setShowCashModal(false)} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 500 }}>
+            
             {/* Modal Header */}
-            <div className="paypg-modal-header">
-              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>تسجيل دفع نقدي يدوي وتفعيل الحساب</h4>
-              <button 
-                type="button"
-                onClick={() => setShowCashModal(false)}
-                style={{ border: 'none', background: 'transparent', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}
-              >
-                <i className="fas fa-xmark"></i>
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                <i className="fas fa-money-bill-wave"></i>
+              </div>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>تسجيل دفع نقدي يدوي</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>تسجيل وتفعيل اشتراك الطالب فوراً</p>
+              </div>
+              <button className="rp-modal-close" onClick={() => setShowCashModal(false)} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
               </button>
             </div>
 
             {/* Modal Body / Form */}
-            <form onSubmit={handleSaveCash} style={{ padding: 24 }}>
+            <form onSubmit={handleSaveCash} style={{ padding: 20 }}>
               
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label className="paypg-modal-label">البحث عن الطالب واختياره *</label>
                 {cashStudentId ? (
                   <div className="paypg-modal-selected-student">
                     <div>
-                      <strong style={{ color: 'var(--text, #1e293b)' }}>{studentsList.find(s => s.id === cashStudentId)?.name}</strong>
-                      <span style={{ fontSize: '0.8rem', color: '#64748b', marginRight: 10 }}>
+                      <strong style={{ color: 'var(--cp-text-main)' }}>{studentsList.find(s => s.id === cashStudentId)?.name}</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', marginRight: 10 }}>
                         ({GRADE_SHORT[studentsList.find(s => s.id === cashStudentId)?.grade] || studentsList.find(s => s.id === cashStudentId)?.grade || ''})
                       </span>
                     </div>
@@ -1639,7 +1611,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <button 
                   type="button" 
                   onClick={() => setShowCashModal(false)} 
-                  className="paypg-admin-btn-outline"
+                  className="cp-btn cp-btn-ghost"
                   style={{ padding: '8px 16px', fontSize: '0.9rem', cursor: 'pointer' }}
                 >
                   إلغاء
@@ -1647,8 +1619,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <button 
                   type="submit" 
                   disabled={savingCash}
-                  className="paypg-admin-btn"
-                  style={{ padding: '8px 24px', fontSize: '0.9rem', background: '#10b981' }}
+                  className="cp-btn cp-btn-success"
+                  style={{ padding: '8px 24px', fontSize: '0.9rem', justifyContent: 'center' }}
                 >
                   {savingCash ? <><i className="fas fa-spinner fa-spin"></i> جاري الحفظ...</> : <><i className="fas fa-check"></i> تسجيل وتفعيل</>}
                 </button>
@@ -1658,7 +1630,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
 

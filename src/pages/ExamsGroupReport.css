@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* ExamsGroupReport */
 
 .egr-page {
@@ -445,21 +447,7 @@
   color: var(--text-color);
 }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden; }
-  #egr-reportTable, #egr-reportTable * { visibility: visible; }
-  #egr-reportTable {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    box-shadow: none;
-    background: white;
-    color: black;
-  }
-  .egr-print-btn { display: none; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

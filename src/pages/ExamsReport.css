@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* ExamsReport */
 
 .er-page {
@@ -812,13 +814,7 @@
 }
 .er-close-review-btn:hover { opacity: 0.9; }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden; }
-  #er-reportTable, #er-reportTable * { visibility: visible; }
-  #er-reportTable { position: absolute; inset: 0; background: white; color: black; padding: 20px; }
-  .er-print-btn, .er-back-btn, .er-controls, .er-stats, .er-student-card { display: none; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 
 /* ── Exams Dashboard & Charts ── */

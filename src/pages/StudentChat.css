@@ -622,3 +622,62 @@ body:not(.dark) .sc-chat-messages-body::-webkit-scrollbar-thumb {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* ── Premium Glassmorphic Cards & Top Ribbons ── */
+.sc-page {
+  position: relative;
+  overflow: hidden;
+}
+.sc-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+body:not(.dark) .sc-page::before {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+.sc-page::after {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sc-sidebar-card,
+.sc-chat-area {
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.sc-sidebar-card::after,
+.sc-chat-area::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  z-index: 2;
+  pointer-events: none;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  background: linear-gradient(90deg, var(--primary, #6366f1) 0%, transparent 100%);
+}
+.sc-sidebar-card:hover,
+.sc-chat-area:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 0 20px rgba(99, 102, 241, 0.15);
+}
+body:not(.dark) .sc-sidebar-card:hover,
+body:not(.dark) .sc-chat-area:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08), 0 0 20px rgba(99, 102, 241, 0.1);
+}
+

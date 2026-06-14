@@ -18,6 +18,10 @@ const GRADE_LABEL = {
 }
 const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
 
+const initials = (name = '') => {
+  return name.trim().split(' ').map(n => n[0]).slice(0, 2).join('')
+}
+
 export default function VideosGroupReport() {
   const navigate = useNavigate()
 
@@ -215,11 +219,11 @@ export default function VideosGroupReport() {
 
   if (loading) {
     return (
-      <main className="vgr-page">
-        <div className="vgr-container">
-          <div className="vgr-header" style={{textAlign:'center', padding:'40px'}}>
+      <main className="cp-page">
+        <div className="cp-container">
+          <div style={{textAlign:'center', padding:'40px', color: 'var(--cp-text-muted)'}}>
             <i className="fas fa-spinner fa-spin" style={{fontSize:'2rem'}}></i>
-            <p>جاري التحميل...</p>
+            <p style={{ marginTop: 12 }}>جاري التحميل...</p>
           </div>
         </div>
       </main>
@@ -227,26 +231,29 @@ export default function VideosGroupReport() {
   }
 
   return (
-    <main className="vgr-page">
-      <div className="vgr-container">
+    <main className="cp-page">
+      <div className="cp-container">
 
         {/* Back */}
-        <button className="vgr-back-btn" onClick={() => navigate(-1)}>
+        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
-          رجوع
+          <span>رجوع</span>
         </button>
 
         {/* Header */}
-        <div className="vgr-header">
-          <div className="vgr-header-icon">
+        <div className="cp-page-header">
+          <div className="cp-page-header-text">
+            <h1>التقرير الجماعي للفيديوهات</h1>
+            <p>متابعة مشاهدات الطلاب المسجلين وتحليل نشاط الصفوف</p>
+          </div>
+          <div className="cp-page-icon">
             <i className="fas fa-chart-line"></i>
           </div>
-          <h1>التقرير الجماعي للفيديوهات</h1>
-          <p>متابعة مشاهدات الطلاب المسجلين وتحليل نشاط الصفوف</p>
         </div>
+        <div className="cp-header-divider"></div>
 
         {loadError && (
-          <div className="vgr-header" style={{background:'#fee2e2', color:'#991b1b', padding:'12px', borderRadius:12}}>
+          <div style={{background:'#fee2e2', color:'#991b1b', padding:'12px', borderRadius:12, marginBottom: 20}}>
             <p style={{margin:0}}>{loadError}</p>
           </div>
         )}
@@ -269,100 +276,120 @@ export default function VideosGroupReport() {
         </div>
 
         {/* Grade */}
-        <div className="vgr-section">
-          <h2 className="vgr-section-title">
-            <i className="fas fa-school"></i>
-            اختر الصف الدراسي
+        <div className="cp-panel" style={{ padding: '1.6rem' }}>
+          <h2 className="cp-panel-header" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <i className="fas fa-school" style={{ color: '#5bc2e7' }}></i>
+            <span>اختر الصف الدراسي</span>
           </h2>
           {availableGrades.length === 0 ? (
-            <p style={{textAlign:'center', color:'#6b7280'}}>لا يوجد طلاب مسجلون بعد.</p>
+            <p style={{textAlign:'center', color:'var(--cp-text-muted)'}}>لا يوجد طلاب مسجلون بعد.</p>
           ) : (
-            <div className="vgr-chips">
-              {availableGrades.map((grade) => (
-                <button
-                  key={grade}
-                  className={`vgr-chip ${currentGrade === grade ? 'active' : ''}`}
-                  onClick={() => selectGrade(grade)}
-                >
-                  <i className="fas fa-graduation-cap"></i>
-                  {GRADE_LABEL[grade]}
-                  <span className="vgr-count-badge" style={{marginInlineStart:8}}>
-                    {students.filter(s => s.grade === grade).length}
-                  </span>
-                </button>
-              ))}
+            <div className="cp-group-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {availableGrades.map((grade) => {
+                const active = currentGrade === grade
+                const count = students.filter(s => s.grade === grade).length
+                return (
+                  <button
+                    key={grade}
+                    className={`cp-btn ${active ? 'cp-btn-success' : 'cp-btn-ghost'}`}
+                    onClick={() => selectGrade(grade)}
+                    style={{ borderRadius: 999 }}
+                  >
+                    <i className="fas fa-graduation-cap"></i>
+                    <span>{GRADE_LABEL[grade]}</span>
+                    <span className="cp-id-pill cp-id-pill-sm" style={{ marginInlineStart: 6, background: active ? 'rgba(255, 255, 255, 0.2)' : 'rgba(91, 194, 231, 0.1)', color: active ? '#fff' : '#5bc2e7' }}>
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
 
-        {/* Group — only when the chosen grade actually has groups defined.
-            We keep this step optional: an "الكل" chip lets the admin run
-            the report on every student in the grade, matching the old
-            behaviour for grades that don't use groups yet. */}
+        {/* Group */}
         {currentGrade && groupsForGrade.length > 0 && (
-          <div className="vgr-section">
-            <h2 className="vgr-section-title">
-              <i className="fas fa-user-group"></i>
-              اختر المجموعة
+          <div className="cp-panel" style={{ padding: '1.6rem' }}>
+            <h2 className="cp-panel-header" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-user-group" style={{ color: '#5bc2e7' }}></i>
+              <span>اختر المجموعة</span>
             </h2>
-            <div className="vgr-chips">
+            <div className="cp-group-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <button
-                className={`vgr-chip ${currentGroup === '' ? 'active' : ''}`}
+                className={`cp-btn ${currentGroup === '' ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                 onClick={() => selectGroup('')}
+                style={{ borderRadius: 999 }}
               >
                 <i className="fas fa-layer-group"></i>
-                كل المجموعات
-                <span className="vgr-count-badge" style={{marginInlineStart:8}}>
+                <span>كل المجموعات</span>
+                <span className="cp-id-pill cp-id-pill-sm" style={{ marginInlineStart: 6, background: currentGroup === '' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(91, 194, 231, 0.1)', color: currentGroup === '' ? '#fff' : '#5bc2e7' }}>
                   {studentsInGrade.length}
                 </span>
               </button>
-              {groupsForGrade.map((g) => (
-                <button
-                  key={g}
-                  className={`vgr-chip ${currentGroup === g ? 'active' : ''}`}
-                  onClick={() => selectGroup(g)}
-                >
-                  <i className="fas fa-user-group"></i>
-                  {g}
-                  <span className="vgr-count-badge" style={{marginInlineStart:8}}>
-                    {studentsInGrade.filter(s => (s.group || '').trim() === g).length}
-                  </span>
-                </button>
-              ))}
+              {groupsForGrade.map((g) => {
+                const active = currentGroup === g
+                const count = studentsInGrade.filter(s => (s.group || '').trim() === g).length
+                return (
+                  <button
+                    key={g}
+                    className={`cp-btn ${active ? 'cp-btn-success' : 'cp-btn-ghost'}`}
+                    onClick={() => selectGroup(g)}
+                    style={{ borderRadius: 999 }}
+                  >
+                    <i className="fas fa-user-group"></i>
+                    <span>{g}</span>
+                    <span className="cp-id-pill cp-id-pill-sm" style={{ marginInlineStart: 6, background: active ? 'rgba(255, 255, 255, 0.2)' : 'rgba(91, 194, 231, 0.1)', color: active ? '#fff' : '#5bc2e7' }}>
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* Video */}
         {currentGrade && (
-          <div className="vgr-section">
-            <h2 className="vgr-section-title">
-              <i className="fas fa-play-circle"></i>
-              اختر الفيديو
+          <div className="cp-panel" style={{ padding: '1.6rem' }}>
+            <h2 className="cp-panel-header" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-play-circle" style={{ color: '#5bc2e7' }}></i>
+              <span>اختر الفيديو</span>
             </h2>
             {videosForGrade.length === 0 ? (
-              <p style={{textAlign:'center', color:'#6b7280'}}>لا توجد فيديوهات منشورة لهذا الصف.</p>
+              <p style={{textAlign:'center', color:'var(--cp-text-muted)'}}>لا توجد فيديوهات منشورة لهذا الصف.</p>
             ) : (
-              <div className="vgr-select-wrap">
-                <i className="fas fa-film vgr-select-icon"></i>
+              <div className="cp-search" style={{ margin: 0, maxWidth: 500 }}>
+                <i className="fas fa-film" style={{ right: 14, color: 'var(--cp-text-muted)' }}></i>
                 <select
-                  className="vgr-select"
                   value={currentVideo}
                   onChange={(e) => handleVideoChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.8rem 2.5rem 0.8rem 1.5rem',
+                    borderRadius: 10,
+                    border: '1px solid var(--cp-input-border)',
+                    background: 'var(--cp-input-bg)',
+                    color: 'var(--cp-text-main)',
+                    fontFamily: 'Tajawal, sans-serif',
+                    fontSize: '0.92rem',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none'
+                  }}
                 >
-                  <option value="">-- اختر الفيديو --</option>
+                  <option value="" style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>-- اختر الفيديو --</option>
                   {videosForGrade.map((video) => (
-                    <option key={video.id} value={video.id}>{video.title}</option>
+                    <option key={video.id} value={video.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>{video.title}</option>
                   ))}
                 </select>
-                <i className="fas fa-chevron-down vgr-select-arrow"></i>
+                <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
               </div>
             )}
           </div>
         )}
 
         {reportLoading && (
-          <div style={{textAlign:'center', padding:'20px'}}>
+          <div style={{textAlign:'center', padding:'20px', color: 'var(--cp-text-muted)'}}>
             <i className="fas fa-spinner fa-spin"></i>
             <span style={{marginInlineStart:8}}>جاري حساب التقرير...</span>
           </div>
@@ -370,90 +397,108 @@ export default function VideosGroupReport() {
 
         {/* Summary */}
         {displayedStudents.length > 0 && (
-          <div className="vgr-summary">
-            <div className="vgr-sum-card">
-              <i className="fas fa-users vgr-sum-icon" style={{color:'var(--primary)'}}></i>
-              <span className="vgr-sum-val" style={{color:'var(--primary)'}}>{totalStudents}</span>
-              <span className="vgr-sum-lbl">إجمالي الطلاب</span>
+          <div className="cp-stats-row" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 20 }}>
+            <div className="cp-stat">
+              <i className="fas fa-users" style={{ color: '#5bc2e7', background: 'rgba(91, 194, 231, 0.1)' }}></i>
+              <div>
+                <div className="cp-stat-val">{totalStudents}</div>
+                <div className="cp-stat-lbl">إجمالي الطلاب</div>
+              </div>
             </div>
-            <div className="vgr-sum-card">
-              <i className="fas fa-check-circle vgr-sum-icon" style={{color:'#48bb78'}}></i>
-              <span className="vgr-sum-val" style={{color:'#48bb78'}}>{completeCount}</span>
-              <span className="vgr-sum-lbl">شاهدوا كامل</span>
+            <div className="cp-stat cp-stat-good">
+              <i className="fas fa-check-circle"></i>
+              <div>
+                <div className="cp-stat-val">{completeCount}</div>
+                <div className="cp-stat-lbl">شاهدوا كامل</div>
+              </div>
             </div>
-            <div className="vgr-sum-card">
-              <i className="fas fa-adjust vgr-sum-icon" style={{color:'#ed8936'}}></i>
-              <span className="vgr-sum-val" style={{color:'#ed8936'}}>{partialCount}</span>
-              <span className="vgr-sum-lbl">جزئياً</span>
+            <div className="cp-stat cp-stat-info">
+              <i className="fas fa-adjust"></i>
+              <div>
+                <div className="cp-stat-val">{partialCount}</div>
+                <div className="cp-stat-lbl">جزئياً</div>
+              </div>
             </div>
-            <div className="vgr-sum-card">
-              <i className="fas fa-times-circle vgr-sum-icon" style={{color:'#ef4444'}}></i>
-              <span className="vgr-sum-val" style={{color:'#ef4444'}}>{noneCount}</span>
-              <span className="vgr-sum-lbl">لم يشاهدوا</span>
+            <div className="cp-stat cp-stat-bad">
+              <i className="fas fa-times-circle"></i>
+              <div>
+                <div className="cp-stat-val">{noneCount}</div>
+                <div className="cp-stat-lbl">لم يشاهدوا</div>
+              </div>
             </div>
-            <div className="vgr-sum-card">
-              <i className="fas fa-percentage vgr-sum-icon" style={{color:'var(--secondary)'}}></i>
-              <span className="vgr-sum-val" style={{color:'var(--secondary)'}}>{avgProgress}%</span>
-              <span className="vgr-sum-lbl">متوسط التقدم</span>
+            <div className="cp-stat cp-stat-good">
+              <i className="fas fa-percentage" style={{ color: 'var(--cp-text-main)', background: 'var(--cp-hover-bg)' }}></i>
+              <div>
+                <div className="cp-stat-val">{avgProgress}%</div>
+                <div className="cp-stat-lbl">متوسط التقدم</div>
+              </div>
             </div>
-            <div className="vgr-sum-card">
-              <i className="fas fa-trophy vgr-sum-icon" style={{color:'#f59e0b'}}></i>
-              <span className="vgr-sum-val" style={{color:'#f59e0b'}}>{completeRate}%</span>
-              <span className="vgr-sum-lbl">نسبة الإكمال</span>
+            <div className="cp-stat cp-stat-good">
+              <i className="fas fa-trophy" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)' }}></i>
+              <div>
+                <div className="cp-stat-val">{completeRate}%</div>
+                <div className="cp-stat-lbl">نسبة الإكمال</div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Filters */}
         {currentVideo && allStudentsData.length > 0 && (
-          <div className="vgr-section">
-            <h2 className="vgr-section-title">
-              <i className="fas fa-filter"></i>
-              تصفية النتائج
+          <div className="cp-panel" style={{ padding: '1.6rem' }}>
+            <h2 className="cp-panel-header" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-filter" style={{ color: '#5bc2e7' }}></i>
+              <span>تصفية النتائج</span>
             </h2>
-            <div className="vgr-chips">
+            <div className="cp-group-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {[
                 { key: 'all', label: 'الجميع', icon: 'fa-th-list' },
                 { key: 'complete', label: 'شاهدوا كامل (≥75%)', icon: 'fa-check' },
                 { key: 'partial', label: 'نصف أو أقل (≤50%)', icon: 'fa-adjust' },
                 { key: 'none', label: 'لم يشاهدوا', icon: 'fa-times' },
-              ].map(({ key, label, icon }) => (
-                <button
-                  key={key}
-                  className={`vgr-chip vgr-filter-chip ${currentFilter === key ? 'active' : ''}`}
-                  onClick={() => filterStudents(key)}
-                >
-                  <i className={`fas ${icon}`}></i>
-                  {label}
-                </button>
-              ))}
+              ].map(({ key, label, icon }) => {
+                const active = currentFilter === key
+                return (
+                  <button
+                    key={key}
+                    className={`cp-btn ${active ? 'cp-btn-success' : 'cp-btn-ghost'}`}
+                    onClick={() => filterStudents(key)}
+                    style={{ borderRadius: 8 }}
+                  >
+                    <i className={`fas ${icon}`}></i>
+                    <span>{label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* Report Table */}
         {displayedStudents.length > 0 && (
-          <div className="vgr-card" id="vgr-reportTable">
-            <div className="vgr-card-header">
-              <h2 className="vgr-card-title">
-                <i className="fas fa-clipboard-list"></i>
-                تقرير المشاهدة التفصيلي
-                <span className="vgr-count-badge">{displayedStudents.length}</span>
-              </h2>
-              <button onClick={() => window.print()} className="vgr-print-btn">
+          <div className="cp-table-card" id="vgr-reportTable">
+            <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+                  <i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
+                  تقرير المشاهدة التفصيلي
+                  <span className="cp-id-pill" style={{ marginInlineStart: 8 }}>{displayedStudents.length}</span>
+                </h2>
+              </div>
+              <button onClick={() => window.print()} className="cp-crumbs-back" style={{ padding: '6px 12px', background: 'transparent' }}>
                 <i className="fas fa-print"></i>
-                طباعة التقرير
+                <span>طباعة التقرير</span>
               </button>
             </div>
 
-            <div className="vgr-table-container">
-              <table className="vgr-table">
+            <div className="cp-table-container">
+              <table className="cp-table">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>اسم الطالب</th>
                     <th>رقم الطالب</th>
-                    <th>الصف</th>
+                    <th>الصف / المجموعة</th>
                     <th>آخر مشاهدة</th>
                     <th>الحالة</th>
                     <th>نسبة المشاهدة</th>
@@ -462,40 +507,41 @@ export default function VideosGroupReport() {
                 </thead>
                 <tbody>
                   {displayedStudents.map((student, index) => (
-                    <tr key={student.id + index} className="vgr-tr">
-                      <td className="vgr-td-num">{index + 1}</td>
-                      <td className="vgr-td-name">
-                        <div className="vgr-name-cell">
-                          <div className="vgr-mini-avatar">
-                            <i className="fas fa-user"></i>
+                    <tr key={student.id + index}>
+                      <td>{index + 1}</td>
+                      <td style={{ fontWeight: 700 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="cp-avatar cp-avatar-purple" style={{ width: 28, height: 28, fontSize: '0.7rem' }}>
+                            {initials(student.name)}
                           </div>
                           <span>{student.name}</span>
                         </div>
                       </td>
-                      <td><span className="vgr-id-pill">{student.id}</span></td>
+                      <td><span className="cp-id-pill">{student.id}</span></td>
                       <td>{student.group}</td>
                       <td>{student.date}</td>
                       <td>
-                        <span className={`vgr-badge ${student.percentage >= 75 ? 'vgr-badge-complete' : 'vgr-badge-incomplete'}`}>
+                        <span className={`cp-badge ${student.percentage >= 75 ? 'cp-badge-success' : student.percentage > 0 ? 'cp-badge-warning' : 'cp-badge-danger'}`}>
                           <i className={`fas ${student.percentage >= 75 ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                           {student.status}
                         </span>
                       </td>
                       <td>
-                        <div className="vgr-score-cell">
-                          <div className="vgr-progress-bar">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
                             <div
-                              className={`vgr-progress-fill ${
-                                student.percentage >= 75 ? 'vgr-prog-high' :
-                                student.percentage >= 50 ? 'vgr-prog-medium' : 'vgr-prog-low'
-                              }`}
-                              style={{ width: `${student.percentage}%` }}
+                              style={{ 
+                                width: `${student.percentage}%`,
+                                height: '100%',
+                                background: student.percentage >= 75 ? '#10b981' : student.percentage >= 50 ? '#e2873d' : '#ef4444',
+                                borderRadius: 3
+                              }}
                             ></div>
                           </div>
-                          <span className="vgr-pct-text">{student.percentage}%</span>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{student.percentage}%</span>
                         </div>
                       </td>
-                      <td className="vgr-time-cell">{student.watchedTime} / {student.totalTime}</td>
+                      <td>{student.watchedTime} / {student.totalTime}</td>
                     </tr>
                   ))}
                 </tbody>

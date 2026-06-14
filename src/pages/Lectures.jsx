@@ -622,15 +622,12 @@ export default function Lectures() {
    every mobile browser. Desktop browsers can stream the PDF directly,
    so we keep the bare URL there for full fidelity. */
 function PdfViewerModal({ viewer, onClose }) {
-  const isMobile = typeof navigator !== 'undefined' &&
-    /Mobi|Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent)
-
-  // Google's embed-viewer URL works for any publicly-readable PDF.
-  // We keep `embedded=true` so the toolbar doesn't show the
-  // "Open in Drive" buttons — students should stay in our shell.
-  const iframeSrc = isMobile
-    ? `https://docs.google.com/gview?url=${encodeURIComponent(viewer.url)}&embedded=true`
-    : viewer.url
+  // Always use Google Docs Viewer — prevents the browser's native PDF viewer
+  // (which ships with download/print toolbars) from activating on desktop.
+  // The 48-px clip wrapper hides Google's own top toolbar (which has a
+  // "pop-out in new tab" button) by pushing the iframe above the fold.
+  const iframeSrc = `https://docs.google.com/gview?url=${encodeURIComponent(viewer.url)}&embedded=true`
+  const CLIP = 48
 
   // Esc-to-close for keyboard users / desktop.
   useEffect(() => {
@@ -657,13 +654,20 @@ function PdfViewerModal({ viewer, onClose }) {
             <i className="fas fa-xmark"></i>
           </button>
         </header>
-        <iframe
-          className="lec-pdf-frame"
-          src={iframeSrc}
-          title={viewer.title}
-          // On mobile we route through gview; allow it to load freely.
-          referrerPolicy="no-referrer"
-        />
+        {/* overflow-hidden wrapper clips Google Docs toolbar off-screen */}
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <iframe
+            src={iframeSrc}
+            title={viewer.title}
+            style={{
+              position: 'absolute', top: -CLIP, left: 0,
+              width: '100%', height: `calc(100% + ${CLIP}px)`,
+              border: 0, display: 'block', background: 'inherit',
+            }}
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-forms"
+          />
+        </div>
       </div>
     </div>
   )

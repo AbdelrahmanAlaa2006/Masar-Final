@@ -10,6 +10,7 @@ export async function listVideos() {
     .select(`
       id, title, description, grade,
       active_hours, expiry_at, quizzes, created_at,
+      pdf_url, pdf_key,
       video_parts (
         id, part_index, title,
         source, youtube_id, youtube_url, drive_id, duration_seconds,
@@ -63,6 +64,8 @@ export async function createVideo(input) {
     expiry_at,
     quizzes: input.quizzes || [],
     created_by: input.created_by || null,
+    pdf_url: input.pdf_url || null,
+    pdf_key: input.pdf_key || null,
   }
 
   const { data: video, error } = await supabase
@@ -120,6 +123,9 @@ export async function updateVideo(id, input) {
   if (input.description !== undefined) patch.description = String(input.description || '').trim() || null
   if (input.grade       !== undefined) patch.grade = input.grade
   if (input.quizzes     !== undefined) patch.quizzes = input.quizzes || []
+  if (input.pdf_url       !== undefined) patch.pdf_url = input.pdf_url || null
+  if (input.pdf_key       !== undefined) patch.pdf_key = input.pdf_key || null
+
   if (input.active_hours !== undefined) {
     const h = Math.max(1, parseInt(input.active_hours, 10) || 1)
     patch.active_hours = h
@@ -130,9 +136,25 @@ export async function updateVideo(id, input) {
     if (getErr) throw getErr
     patch.expiry_at = new Date(new Date(row.created_at).getTime() + h * 3600 * 1000).toISOString()
   }
+
+  // If the admin uploaded a NEW pdf, we need to delete the OLD one in R2
+  let oldPdfKey = null
+  if (patch.pdf_key !== undefined) {
+    const { data: prev } = await supabase
+      .from('videos').select('pdf_key').eq('id', id).maybeSingle()
+    oldPdfKey = prev?.pdf_key || null
+  }
+
   const { data: video, error } = await supabase
     .from('videos').update(patch).eq('id', id).select().single()
   if (error) throw error
+
+  if (oldPdfKey && oldPdfKey !== patch.pdf_key) {
+    try {
+      const { deleteR2Object } = await import('./r2')
+      await deleteR2Object({ key: oldPdfKey }).catch(() => {})
+    } catch { /* ignore */ }
+  }
 
   // If input.parts is provided, sync parts
   if (Array.isArray(input.parts)) {
@@ -221,8 +243,21 @@ export async function updateVideo(id, input) {
 }
 
 export async function deleteVideo(id) {
+  const { data: row } = await supabase
+    .from('videos')
+    .select('pdf_key, pdf_url')
+    .eq('id', id)
+    .maybeSingle()
+
   const { error } = await supabase.from('videos').delete().eq('id', id)
   if (error) throw error
+
+  if (row?.pdf_key || row?.pdf_url) {
+    try {
+      const { deleteR2Object } = await import('./r2')
+      await deleteR2Object({ key: row.pdf_key, url: row.pdf_url }).catch(() => {})
+    } catch { /* ignore */ }
+  }
 }
 
 /* Admin: change a video's availability window after the fact. We both

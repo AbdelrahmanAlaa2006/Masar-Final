@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 .report-page {
   padding-top: 30px;
   padding-bottom: 60px;
@@ -723,4 +725,33 @@
   .rp-modal-header { padding: 0.9rem 1rem 0.75rem; }
   .rp-modal-search { margin: 0.75rem 1rem 0; }
   .rp-modal-meta { padding: 0.5rem 1rem 0.3rem; }
+}
+
+/* ── Premium Glassmorphic suggestion dropdown overrides ── */
+body.dark .report-suggestions-wrap {
+  background: rgba(30, 41, 59, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+body.dark .report-suggestions-header {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+body.dark .report-suggestions li {
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+body.dark .report-suggestions li:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+body.dark .report-suggestions li.is-active {
+  background: rgba(124, 58, 237, 0.12);
+}
+body.dark .report-suggestion-name {
+  color: #f1f5f9;
+}
+body.dark .report-suggestion-sub {
+  color: #94a3b8;
 }

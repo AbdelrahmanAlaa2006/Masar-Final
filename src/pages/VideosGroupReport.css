@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* VideosGroupReport */
 
 .vgr-page {
@@ -435,21 +437,7 @@
   color: var(--text-color);
 }
 
-/* ── Print ── */
-@media print {
-  body * { visibility: hidden; }
-  #vgr-reportTable, #vgr-reportTable * { visibility: visible; }
-  #vgr-reportTable {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    box-shadow: none;
-    background: white;
-    color: black;
-  }
-  .vgr-print-btn { display: none; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

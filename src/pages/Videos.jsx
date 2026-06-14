@@ -16,6 +16,7 @@ import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
 import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
+import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 import {
@@ -69,6 +70,8 @@ export default function Videos() {
       expiryTime: row.expiry_at,
       createdAt: row.created_at,
       quizzes: row.quizzes || [],
+      pdf_url: row.pdf_url || null,
+      pdf_key: row.pdf_key || null,
     }
   }
 
@@ -80,6 +83,7 @@ export default function Videos() {
     return ''
   })
   const [currentVideo, setCurrentVideo] = useState(null)
+  const [showPdf, setShowPdf] = useState(false)
   const [selectedPart, setSelectedPart] = useState(null)
   const [view, setView] = useState(() => {
     if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
@@ -410,7 +414,7 @@ export default function Videos() {
     if (userRole !== 'admin' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
     }
-    setCurrentVideo(video); setSelectedPart(null); setView('player')
+    setCurrentVideo(video); setSelectedPart(null); setView('player'); setShowPdf(!!video.pdf_url)
   }
   // Lock screen mode while a student is actively watching a part:
   //   • exit guard intercepts back-button + tab-close
@@ -763,67 +767,112 @@ export default function Videos() {
 
           <div className="video-player-container">
             <div className="video-player-card card" style={{ padding: 12 }}>
-              {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
-                (() => {
-                  // Both players share the same onProgress contract, so
-                  // we hoist the handler and just swap the component.
-                  const handleProgress = ({ watchedSeconds }) => {
-                    if (userRole === 'admin' || !currentUser?.id) return
-                    updatePartProgress({
-                      student_id: currentUser.id,
-                      video_id: currentVideo.id,
-                      part_id: selectedPart.id,
-                      seconds: watchedSeconds,
-                    }).then((row) => {
-                      if (!row) return
-                      setProgressRows(prev => {
-                        const others = prev.filter(p => p.part_id !== selectedPart.id)
-                        return [...others, row]
-                      })
-                    }).catch((e) => console.error('updatePartProgress failed', e))
-                  }
-                  const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
-                  return (
-                    <PlayerFacade key={selectedPart.id} part={selectedPart}>
-                      {selectedPart.source === 'bunny' ? (
-                        <BunnyPlayer
-                          partId={selectedPart.id}
-                          initialWatchedSeconds={seed}
-                          onProgress={handleProgress}
-                          onTimeUpdate={handleTimeUpdate}
-                          forcePause={!!activeQuiz}
-                        />
-                      ) : selectedPart.source === 'drive' ? (
-                        <DrivePlayer
-                          driveId={selectedPart.driveId}
-                          initialWatchedSeconds={seed}
-                          onProgress={handleProgress}
-                        />
-                      ) : (
-                        <YouTubePlayer
-                          videoId={selectedPart.youtubeId}
-                          initialWatchedSeconds={seed}
-                          onProgress={handleProgress}
-                          seekTrigger={seekTrigger}
-                          onTimeUpdate={handleTimeUpdate}
-                          forcePause={!!activeQuiz}
-                        />
-                      )}
-                    </PlayerFacade>
-                  )
-                })()
-              ) : (
-                <div className="placeholder-video">
-                  <div>
-                    <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                    <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
-                    <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
+              <div className="video-column">
+                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
+                  (() => {
+                    // Both players share the same onProgress contract, so
+                    // we hoist the handler and just swap the component.
+                    const handleProgress = ({ watchedSeconds }) => {
+                      if (userRole === 'admin' || !currentUser?.id) return
+                      updatePartProgress({
+                        student_id: currentUser.id,
+                        video_id: currentVideo.id,
+                        part_id: selectedPart.id,
+                        seconds: watchedSeconds,
+                      }).then((row) => {
+                        if (!row) return
+                        setProgressRows(prev => {
+                          const others = prev.filter(p => p.part_id !== selectedPart.id)
+                          return [...others, row]
+                        })
+                      }).catch((e) => console.error('updatePartProgress failed', e))
+                    }
+                    const seed = progressRows.find(r => r.part_id === selectedPart.id)?.seconds_watched || 0
+                    return (
+                      <PlayerFacade key={selectedPart.id} part={selectedPart}>
+                        {selectedPart.source === 'bunny' ? (
+                          <BunnyPlayer
+                            partId={selectedPart.id}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                            onTimeUpdate={handleTimeUpdate}
+                            forcePause={!!activeQuiz}
+                          />
+                        ) : selectedPart.source === 'drive' ? (
+                          <DrivePlayer
+                            driveId={selectedPart.driveId}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                          />
+                        ) : (
+                          <YouTubePlayer
+                            videoId={selectedPart.youtubeId}
+                            initialWatchedSeconds={seed}
+                            onProgress={handleProgress}
+                            seekTrigger={seekTrigger}
+                            onTimeUpdate={handleTimeUpdate}
+                            forcePause={!!activeQuiz}
+                          />
+                        )}
+                      </PlayerFacade>
+                    )
+                  })()
+                ) : (
+                  <div className="placeholder-video">
+                    <div>
+                      <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
+                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
+            {showPdf && currentVideo?.pdf_url && (
+              <div className="video-pdf-card card" style={{ padding: '20px 24px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                  borderBottom: '1px solid var(--border-primary)',
+                  paddingBottom: 12
+                }}>
+                  <h3 className="title-section" style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
+                    <span>مذكرة المحاضرة: {currentVideo.title}</span>
+                  </h3>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    style={{ padding: '6px 14px', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444', background: 'transparent', margin: 0 }}
+                    onClick={() => setShowPdf(false)}
+                  >
+                    إخفاء المذكرة
+                  </button>
+                </div>
+                <div style={{ width: '100%', height: '800px', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
+                  <PdfInline url={currentVideo.pdf_url} title={currentVideo.title} />
+                </div>
+              </div>
+            )}
+
             <div className="video-sidebar">
+              {currentVideo?.pdf_url && (
+                <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    type="button"
+                    className={`btn ${showPdf ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ width: '100%', justifyContent: 'center', gap: 8, padding: '12px', fontSize: '0.95rem', margin: 0, direction: 'rtl' }}
+                    onClick={() => setShowPdf(!showPdf)}
+                  >
+                    <i className={showPdf ? "fas fa-eye-slash" : "fas fa-file-pdf"} style={{ fontSize: '1.1rem' }}></i>
+                    <span>{showPdf ? "إخفاء مذكرة المحاضرة" : "عرض مذكرة المحاضرة"}</span>
+                  </button>
+                </div>
+              )}
+
               <div className="card">
                 <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
                 <div id="partsList" data-quiz-tick={quizTick}>
@@ -1305,6 +1354,11 @@ function EditVideoModal({ video, onCancel, onSave }) {
   const [grade, setGrade] = useState(video.grade || 'first-prep')
   const [hours, setHours] = useState(video.activeHours || 24)
   const [busy, setBusy] = useState(false)
+  const [pdfFile, setPdfFile] = useState(null)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [currentPdfUrl, setCurrentPdfUrl] = useState(video.pdf_url || null)
+  const [currentPdfKey, setCurrentPdfKey] = useState(video.pdf_key || null)
+  const [pdfCleared, setPdfCleared] = useState(false)
 
   // Initialize parts state, preserving the database `id` of existing parts
   const [videoParts, setVideoParts] = useState(() => {
@@ -1627,13 +1681,39 @@ function EditVideoModal({ video, onCancel, onSave }) {
     if (!payload) return
 
     setBusy(true)
+    let uploadedKey = null
+    let uploadedUrl = null
     try {
-      await onSave(payload)
+      if (pdfFile) {
+        setUploadPct(1)
+        const { key, publicUrl } = await uploadLecturePdf(pdfFile, {
+          onProgress: (p) => setUploadPct(Math.max(1, p)),
+        })
+        uploadedKey = key
+        uploadedUrl = publicUrl
+      }
+
+      const finalPayload = {
+        ...payload,
+      }
+      if (uploadedUrl) {
+        finalPayload.pdf_url = uploadedUrl
+        finalPayload.pdf_key = uploadedKey
+      } else if (pdfCleared) {
+        finalPayload.pdf_url = null
+        finalPayload.pdf_key = null
+      }
+
+      await onSave(finalPayload)
       notify('تم تعديل الفيديو بنجاح!', { type: 'success' })
     } catch (err) {
+      if (uploadedKey || uploadedUrl) {
+        deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => {})
+      }
       notify(err.message || 'حدث خطأ أثناء تعديل الفيديو', { type: 'warning' })
     } finally {
       setBusy(false)
+      setUploadPct(0)
     }
   }
 
@@ -1963,6 +2043,89 @@ function EditVideoModal({ video, onCancel, onSave }) {
                 مدة الإتاحة التلقائية للطلاب من تاريخ النشر.
               </small>
             </div>
+          </div>
+
+          <div className="edit-field" style={{ border: '1px dashed rgba(167, 139, 250, 0.2)', borderRadius: 12, padding: 15, background: 'rgba(255,255,255,0.01)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
+              <span>مذكرة / ملخص المحاضرة (ملف PDF) - اختياري</span>
+            </label>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+              {currentPdfUrl && !pdfCleared ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '10px 12px', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 10, background: 'rgba(16, 185, 129, 0.05)' }}>
+                  <i className="fas fa-circle-check" style={{ color: '#10b981' }}></i>
+                  <span style={{ flex: 1, color: '#f7fafc', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    هناك مذكرة مرفوعة بالفعل للمحاضرة.
+                  </span>
+                  <button type="button" className="edit-btn-sm edit-btn-delete" style={{ margin: 0 }} onClick={() => { setPdfCleared(true); setPdfFile(null); }}>
+                    حذف المذكرة
+                  </button>
+                </div>
+              ) : (
+                <label htmlFor="edit-pdf-file-input" style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                  border: '1.5px dashed rgba(167, 139, 250, 0.25)', borderRadius: 12, background: 'rgba(255,255,255,0.02)',
+                  cursor: busy ? 'not-allowed' : 'pointer',
+                  flex: 1,
+                  color: '#e2e8f0', fontWeight: 500,
+                }}>
+                  <i className="fas fa-cloud-arrow-up" style={{ color: '#ef4444', fontSize: '1.2rem' }}></i>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                    {pdfFile ? pdfFile.name : 'اختر ملف PDF جديد للمحاضرة'}
+                  </span>
+                  {pdfFile && (
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {(pdfFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </span>
+                  )}
+                </label>
+              )}
+              <input
+                id="edit-pdf-file-input"
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => {
+                  setPdfFile(e.target.files?.[0] || null)
+                  setPdfCleared(false)
+                }}
+                style={{ display: 'none' }}
+                disabled={busy}
+              />
+              {pdfFile && (
+                <button
+                  type="button"
+                  className="edit-btn-sm edit-btn-delete"
+                  style={{ margin: 0 }}
+                  onClick={() => setPdfFile(null)}
+                  disabled={busy}
+                >
+                  إلغاء
+                </button>
+              )}
+              {pdfCleared && !pdfFile && (
+                <button
+                  type="button"
+                  className="edit-btn-sm"
+                  style={{ margin: 0 }}
+                  onClick={() => {
+                    setPdfCleared(false)
+                    setPdfFile(null)
+                  }}
+                  disabled={busy}
+                >
+                  تراجع عن الحذف
+                </button>
+              )}
+            </div>
+            {uploadPct > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ height: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: `${uploadPct}%`, height: '100%', background: 'var(--gradient-primary)', transition: 'width .15s ease' }} />
+                </div>
+                <span style={{ fontSize: 12, color: '#a0aec0' }}>جاري رفع المذكرة... {uploadPct}%</span>
+              </div>
+            )}
           </div>
 
           {/* Parts Manager Section */}
@@ -2547,4 +2710,40 @@ function formatTime(sec) {
   const mm = String(m).padStart(h ? 2 : 1, '0')
   const ss = String(s).padStart(2, '0')
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+}
+
+/* Route all PDFs through Google Docs Viewer on every platform so the
+   browser never falls back to its native viewer (which has a built-in
+   download/print toolbar the user can access).
+   We then clip the viewer's own toolbar row off-screen with a negative-
+   margin trick: the wrapper is overflow-hidden, the iframe is pushed up
+   48 px so Google's header is above the visible area, and the container
+   height grows by the same amount to compensate so the page content
+   is still fully visible. */
+function PdfInline({ url, title }) {
+  const src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
+  const CLIP = 48  // px height of the Google Docs Viewer toolbar
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
+      <iframe
+        src={src}
+        title={title}
+        style={{
+          position: 'absolute',
+          top: -CLIP,
+          left: 0,
+          width: '100%',
+          height: `calc(100% + ${CLIP}px)`,
+          border: 0,
+          display: 'block',
+        }}
+        referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+      />
+    </div>
+  )
 }

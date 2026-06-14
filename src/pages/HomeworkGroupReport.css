@@ -1,3 +1,5 @@
+@import "./ControlPanel.css";
+
 /* ── Homework Group Report — hgr- prefix ────────────────── */
 
 .hgr-page {
@@ -192,13 +194,7 @@
 .hgr-prog-low    { background: #f56565; }
 .hgr-pct-text { font-size: .82rem; color: #94a3b8; white-space: nowrap; }
 
-/* Print */
-@media print {
-  .hgr-page { background: #fff !important; padding: 10px; }
-  .hgr-back-btn, .hgr-chip, .hgr-select-wrap, .hgr-print-btn,
-  .hgr-stepper { display: none !important; }
-  .hgr-table th, .hgr-table td { color: #000; border-color: #ccc; }
-}
+/* Print rules are handled globally in ControlPanel.css */
 
 /* Responsive */
 @media (max-width: 600px) {

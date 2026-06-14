@@ -238,11 +238,11 @@ export default function ExamsGroupReport() {
 
   if (loading) {
     return (
-      <main className="egr-page">
-        <div className="egr-container">
-          <div className="egr-header" style={{textAlign:'center', padding:'40px'}}>
-            <i className="fas fa-spinner fa-spin" style={{fontSize:'2rem'}}></i>
-            <p>جاري التحميل...</p>
+      <main className="cp-page">
+        <div className="cp-container">
+          <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--cp-text-muted)' }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: '2.5rem', marginBottom: 16 }}></i>
+            <p style={{ margin: 0, fontSize: '1.1rem' }}>جاري التحميل...</p>
           </div>
         </div>
       </main>
@@ -250,66 +250,89 @@ export default function ExamsGroupReport() {
   }
 
   return (
-    <main className="egr-page">
-      <div className="egr-container">
+    <main className="cp-page">
+      <div className="cp-container">
 
         {/* Back */}
-        <button className="egr-back-btn" onClick={() => navigate(-1)}>
+        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
-          رجوع
+          <span>رجوع</span>
         </button>
 
         {/* Header */}
-        <div className="egr-header">
-          <div className="egr-header-icon">
+        <div className="cp-page-header">
+          <div className="cp-page-header-text">
+            <h1>التقرير الجماعي للامتحانات</h1>
+            <p>تحليل نتائج الطلاب المسجلين وأداء كل صف دراسي</p>
+          </div>
+          <div className="cp-page-icon">
             <i className="fas fa-chart-pie"></i>
           </div>
-          <h1>التقرير الجماعي للامتحانات</h1>
-          <p>تحليل نتائج الطلاب المسجلين وأداء كل صف</p>
         </div>
+        <div className="cp-header-divider"></div>
 
         {loadError && (
-          <div className="egr-header" style={{background:'#fee2e2', color:'#991b1b', padding:'12px', borderRadius:12}}>
-            <p style={{margin:0}}>{loadError}</p>
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', padding: '12px 16px', borderRadius: 12, marginBottom: 20, direction: 'rtl' }}>
+            <p style={{ margin: 0 }}>{loadError}</p>
           </div>
         )}
 
         {/* Stepper */}
-        <div className="egr-stepper">
-          <div className={`egr-step ${currentGrade ? 'done' : 'active'}`}>
-            <div className="egr-step-num">
+        <div className="cp-panel" style={{ display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', padding: '1rem', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: currentGrade ? '#10b981' : '#5bc2e7',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700
+            }}>
               {currentGrade ? <i className="fas fa-check"></i> : 1}
             </div>
-            <span>الصف</span>
+            <span style={{ color: 'var(--cp-text-main)', fontWeight: 600 }}>الصف الدراسي</span>
           </div>
-          <div className="egr-step-line"></div>
-          <div className={`egr-step ${currentExam ? 'done' : currentGrade ? 'active' : ''}`}>
-            <div className="egr-step-num">
+          <div style={{ flex: 1, maxWidth: 100, height: 2, background: 'var(--cp-divider)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: currentExam ? '#10b981' : currentGrade ? '#5bc2e7' : 'var(--cp-divider)',
+              color: currentGrade ? '#fff' : 'var(--cp-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700
+            }}>
               {currentExam ? <i className="fas fa-check"></i> : 2}
             </div>
-            <span>الامتحان</span>
+            <span style={{ color: currentGrade ? 'var(--cp-text-main)' : 'var(--cp-text-muted)', fontWeight: 600 }}>الامتحان</span>
           </div>
         </div>
 
         {/* Grade */}
-        <div className="egr-section">
-          <h2 className="egr-section-title">
-            <i className="fas fa-school"></i>
-            اختر الصف الدراسي
+        <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <i className="fas fa-school" style={{ color: '#5bc2e7' }}></i> اختر الصف الدراسي
           </h2>
           {availableGrades.length === 0 ? (
-            <p style={{textAlign:'center', color:'#6b7280'}}>لا يوجد طلاب مسجلون بعد.</p>
+            <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا يوجد طلاب مسجلون بعد.</p>
           ) : (
-            <div className="egr-chips">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {availableGrades.map((grade) => (
                 <button
                   key={grade}
-                  className={`egr-chip ${currentGrade === grade ? 'active' : ''}`}
+                  className={`cp-btn ${currentGrade === grade ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                   onClick={() => selectGrade(grade)}
+                  style={{ borderRadius: 12, padding: '10px 18px' }}
                 >
-                  <i className="fas fa-graduation-cap"></i>
+                  <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
                   {GRADE_LABEL[grade]}
-                  <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                  <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
                     {students.filter(s => s.grade === grade).length}
                   </span>
                 </button>
@@ -318,34 +341,34 @@ export default function ExamsGroupReport() {
           )}
         </div>
 
-        {/* Group — only when the chosen grade actually has groups defined.
-            "الكل" keeps the legacy behaviour for grades without groups. */}
+        {/* Group */}
         {currentGrade && groupsForGrade.length > 0 && (
-          <div className="egr-section">
-            <h2 className="egr-section-title">
-              <i className="fas fa-user-group"></i>
-              اختر المجموعة
+          <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-user-group" style={{ color: '#10b981' }}></i> اختر المجموعة
             </h2>
-            <div className="egr-chips">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <button
-                className={`egr-chip ${currentGroup === '' ? 'active' : ''}`}
+                className={`cp-btn ${currentGroup === '' ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                 onClick={() => selectGroup('')}
+                style={{ borderRadius: 12, padding: '10px 18px' }}
               >
-                <i className="fas fa-layer-group"></i>
+                <i className="fas fa-layer-group" style={{ marginLeft: 6 }}></i>
                 كل المجموعات
-                <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
                   {studentsInGrade.length}
                 </span>
               </button>
               {groupsForGrade.map((g) => (
                 <button
                   key={g}
-                  className={`egr-chip ${currentGroup === g ? 'active' : ''}`}
+                  className={`cp-btn ${currentGroup === g ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                   onClick={() => selectGroup(g)}
+                  style={{ borderRadius: 12, padding: '10px 18px' }}
                 >
-                  <i className="fas fa-user-group"></i>
+                  <i className="fas fa-user-group" style={{ marginLeft: 6 }}></i>
                   {g}
-                  <span className="egr-count-badge" style={{marginInlineStart:8}}>
+                  <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
                     {studentsInGrade.filter(s => (s.group || '').trim() === g).length}
                   </span>
                 </button>
@@ -356,85 +379,108 @@ export default function ExamsGroupReport() {
 
         {/* Exam */}
         {currentGrade && (
-          <div className="egr-section">
-            <h2 className="egr-section-title">
-              <i className="fas fa-file-alt"></i>
-              اختر الامتحان
+          <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-file-alt" style={{ color: '#8b5cf6' }}></i> اختر الامتحان
             </h2>
             {examsForGrade.length === 0 ? (
-              <p style={{textAlign:'center', color:'#6b7280'}}>لا توجد امتحانات منشورة لهذا الصف.</p>
+              <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا توجد امتحانات منشورة لهذا الصف.</p>
             ) : (
-              <div className="egr-select-wrap">
-                <i className="fas fa-clipboard-list egr-select-icon"></i>
+              <div style={{ position: 'relative', maxWidth: '400px' }}>
+                <i className="fas fa-clipboard-list" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', zIndex: 1 }}></i>
                 <select
-                  className="egr-select"
+                  className="cp-select"
                   value={currentExam}
                   onChange={(e) => handleExamChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 42px 12px 16px',
+                    borderRadius: 12,
+                    background: 'var(--cp-card-bg)',
+                    border: '1px solid var(--cp-card-border)',
+                    color: 'var(--cp-text-main)',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    appearance: 'none',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
                 >
                   <option value="">-- اختر الامتحان --</option>
                   {examsForGrade.map((exam) => (
-                    <option key={exam.id} value={exam.id}>
+                    <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
                       {exam.number ? `${exam.number} — ` : ''}{exam.title}
                     </option>
                   ))}
                 </select>
-                <i className="fas fa-chevron-down egr-select-arrow"></i>
+                <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
               </div>
             )}
           </div>
         )}
 
         {reportLoading && (
-          <div style={{textAlign:'center', padding:'20px'}}>
-            <i className="fas fa-spinner fa-spin"></i>
-            <span style={{marginInlineStart:8}}>جاري حساب التقرير...</span>
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--cp-text-muted)' }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: 8 }}></i>
+            <p style={{ margin: 0 }}>جاري حساب التقرير...</p>
           </div>
         )}
 
         {/* Summary Stats */}
         {displayedStudents.length > 0 && (
-          <div className="egr-summary">
-            <div className="egr-sum-card">
-              <i className="fas fa-users egr-sum-icon" style={{color:'var(--primary)'}}></i>
-              <span className="egr-sum-val" style={{color:'var(--primary)'}}>{totalStudents}</span>
-              <span className="egr-sum-lbl">إجمالي الطلاب</span>
+          <div className="cp-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+            <div className="cp-stat">
+              <i className="fas fa-users" style={{ color: '#5bc2e7' }}></i>
+              <div>
+                <div className="cp-stat-val" style={{ color: 'var(--cp-text-main)' }}>{totalStudents}</div>
+                <div className="cp-stat-lbl">إجمالي الطلاب</div>
+              </div>
             </div>
-            <div className="egr-sum-card">
-              <i className="fas fa-check-circle egr-sum-icon" style={{color:'#48bb78'}}></i>
-              <span className="egr-sum-val" style={{color:'#48bb78'}}>{passedCount}</span>
-              <span className="egr-sum-lbl">ناجحون</span>
+            <div className="cp-stat cp-stat-good">
+              <i className="fas fa-check-circle"></i>
+              <div>
+                <div className="cp-stat-val">{passedCount}</div>
+                <div className="cp-stat-lbl">ناجحون</div>
+              </div>
             </div>
-            <div className="egr-sum-card">
-              <i className="fas fa-times-circle egr-sum-icon" style={{color:'#ef4444'}}></i>
-              <span className="egr-sum-val" style={{color:'#ef4444'}}>{failedCount}</span>
-              <span className="egr-sum-lbl">راسبون</span>
+            <div className="cp-stat cp-stat-bad">
+              <i className="fas fa-times-circle"></i>
+              <div>
+                <div className="cp-stat-val">{failedCount}</div>
+                <div className="cp-stat-lbl">راسبون</div>
+              </div>
             </div>
-            <div className="egr-sum-card">
-              <i className="fas fa-star egr-sum-icon" style={{color:'#f59e0b'}}></i>
-              <span className="egr-sum-val" style={{color:'#f59e0b'}}>{excellentCount}</span>
-              <span className="egr-sum-lbl">ممتازون</span>
+            <div className="cp-stat cp-stat-info">
+              <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
+              <div>
+                <div className="cp-stat-val" style={{ color: '#f59e0b' }}>{excellentCount}</div>
+                <div className="cp-stat-lbl">ممتازون</div>
+              </div>
             </div>
-            <div className="egr-sum-card">
-              <i className="fas fa-percentage egr-sum-icon" style={{color:'#ed8936'}}></i>
-              <span className="egr-sum-val" style={{color:'#ed8936'}}>{avgScore}%</span>
-              <span className="egr-sum-lbl">متوسط الدرجات</span>
+            <div className="cp-stat" style={{ borderRight: '3px solid #ed8936' }}>
+              <i className="fas fa-percentage" style={{ color: '#ed8936' }}></i>
+              <div>
+                <div className="cp-stat-val" style={{ color: '#ed8936' }}>{avgScore}%</div>
+                <div className="cp-stat-lbl">متوسط الدرجات</div>
+              </div>
             </div>
-            <div className="egr-sum-card">
-              <i className="fas fa-trophy egr-sum-icon" style={{color:'var(--secondary)'}}></i>
-              <span className="egr-sum-val" style={{color:'var(--secondary)'}}>{passRate}%</span>
-              <span className="egr-sum-lbl">نسبة النجاح</span>
+            <div className="cp-stat" style={{ borderRight: '3px solid #818cf8' }}>
+              <i className="fas fa-trophy" style={{ color: '#818cf8' }}></i>
+              <div>
+                <div className="cp-stat-val" style={{ color: '#818cf8' }}>{passRate}%</div>
+                <div className="cp-stat-lbl">نسبة النجاح</div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Filter Chips */}
         {currentExam && allStudentsData.length > 0 && (
-          <div className="egr-section">
-            <h2 className="egr-section-title">
-              <i className="fas fa-filter"></i>
-              تصفية النتائج
+          <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fas fa-filter" style={{ color: '#5bc2e7' }}></i> تصفية النتائج
             </h2>
-            <div className="egr-chips">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {[
                 { key: 'all', label: 'الجميع', icon: 'fa-th-list' },
                 { key: 'passed', label: 'ناجحون (≥60%)', icon: 'fa-check' },
@@ -443,10 +489,11 @@ export default function ExamsGroupReport() {
               ].map(({ key, label, icon }) => (
                 <button
                   key={key}
-                  className={`egr-chip egr-filter-chip ${currentFilter === key ? 'active' : ''}`}
+                  className={`cp-btn ${currentFilter === key ? 'cp-btn-success' : 'cp-btn-ghost'}`}
                   onClick={() => filterStudents(key)}
+                  style={{ borderRadius: 12, padding: '8px 16px' }}
                 >
-                  <i className={`fas ${icon}`}></i>
+                  <i className={`fas ${icon}`} style={{ marginLeft: 6 }}></i>
                   {label}
                 </button>
               ))}
@@ -456,27 +503,29 @@ export default function ExamsGroupReport() {
 
         {/* Report Table */}
         {displayedStudents.length > 0 && (
-          <div className="egr-card" id="egr-reportTable">
-            <div className="egr-card-header">
-              <h2 className="egr-card-title">
-                <i className="fas fa-clipboard-list"></i>
-                تقرير النتائج التفصيلي
-                <span className="egr-count-badge">{displayedStudents.length}</span>
-              </h2>
-              <button onClick={() => window.print()} className="egr-print-btn">
-                <i className="fas fa-print"></i>
+          <div className="cp-table-card" id="egr-reportTable">
+            <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--cp-text-main)' }}>
+                  <i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
+                  تقرير النتائج التفصيلي
+                </h2>
+                <span className="cp-badge cp-badge-neutral">{displayedStudents.length}</span>
+              </div>
+              <button onClick={() => window.print()} className="cp-crumbs-back" style={{ padding: '6px 12px', background: 'transparent' }}>
+                <i className="fas fa-print" style={{ marginLeft: 6 }}></i>
                 طباعة التقرير
               </button>
             </div>
 
-            <div className="egr-table-container">
-              <table className="egr-table">
+            <div className="cp-table-container">
+              <table className="cp-table">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>اسم الطالب</th>
                     <th>رقم الطالب</th>
-                    <th>الصف</th>
+                    <th>المجموعة</th>
                     <th>آخر تسليم</th>
                     <th>النتيجة</th>
                     <th>التقييم</th>
@@ -486,23 +535,22 @@ export default function ExamsGroupReport() {
                 </thead>
                 <tbody>
                   {displayedStudents.map((student, index) => (
-                    <tr key={student.id + index} className="egr-tr">
-                      <td className="egr-td-num">{index + 1}</td>
-                      <td className="egr-td-name">
-                        <div className="egr-name-cell">
-                          <div className="egr-mini-avatar">
+                    <tr key={student.id + index}>
+                      <td>{index + 1}</td>
+                      <td style={{ fontWeight: 700 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="cp-avatar cp-avatar-purple" style={{ width: 32, height: 32, fontSize: '0.9rem' }}>
                             <i className="fas fa-user"></i>
                           </div>
                           <span>{student.name}</span>
                         </div>
                       </td>
-                      <td><span className="egr-id-pill">{student.id}</span></td>
+                      <td><span className="cp-id-pill"><i className="fas fa-id-badge"></i> {student.id}</span></td>
                       <td>{student.group}</td>
                       <td>{student.date}</td>
                       <td>
-                        <span className={`egr-badge ${
-                          student.status === 'passed' ? 'egr-badge-passed' :
-                          student.status === 'failed' ? 'egr-badge-failed' : 'egr-badge-failed'
+                        <span className={`cp-badge ${
+                          student.status === 'passed' ? 'cp-badge-success' : 'cp-badge-danger'
                         }`}>
                           <i className={`fas ${
                             student.status === 'passed' ? 'fa-check-circle' :
@@ -512,27 +560,26 @@ export default function ExamsGroupReport() {
                         </span>
                       </td>
                       <td>
-                        <span className={`egr-rating ${
-                          student.status === 'not_taken' ? 'egr-rating-poor' :
-                          student.score >= 80 ? 'egr-rating-excellent' :
-                          student.score >= 60 ? 'egr-rating-good' : 'egr-rating-poor'
-                        }`}>
-                          {student.rating}
-                        </span>
+                        <span className={`cp-badge ${
+                          student.status === 'not_taken' ? 'cp-badge-danger' :
+                          student.score >= 80 ? 'cp-badge-success' :
+                          student.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'
+                        }`}>{student.rating}</span>
                       </td>
-                      <td><span className="egr-attempts">{student.attempts}/{student.maxAttempts}</span></td>
+                      <td><span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>{student.attempts}/{student.maxAttempts}</span></td>
                       <td>
-                        <div className="egr-score-cell">
-                          <div className="egr-progress-bar">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 60, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
                             <div
-                              className={`egr-progress-fill ${
-                                student.score >= 80 ? 'egr-prog-high' :
-                                student.score >= 60 ? 'egr-prog-medium' : 'egr-prog-low'
-                              }`}
-                              style={{ width: `${student.score}%` }}
-                            ></div>
+                              style={{
+                                width: `${student.score}%`,
+                                height: '100%',
+                                background: student.score >= 80 ? '#10b981' : student.score >= 60 ? '#f59e0b' : '#ef4444',
+                                borderRadius: 3
+                              }}
+                            />
                           </div>
-                          <span className="egr-pct-text">
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>
                             {student.status === 'not_taken' ? '—' : `${student.rawScore}/${student.maxScore}`}
                           </span>
                         </div>
