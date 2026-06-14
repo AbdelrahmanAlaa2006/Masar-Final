@@ -7,6 +7,7 @@ import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
 import { cached } from '../utils/cache'
 import masarLogo from '../assets/logo.white.png'
+import { getTenantThemeConfig } from '../utils/tenantThemes'
 import './Header.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -16,6 +17,7 @@ import './Header.css'
      state (soft tinted pill, not a rainbow)
    - Theme toggle and a polished logout on the end
    - Mobile drawer for narrow viewports
+   - Resolved dynamic themeConfig logo overrides
    ────────────────────────────────────────────────────────────── */
 
 const NAV_ITEMS_BASE = [
@@ -32,8 +34,10 @@ const ADMIN_ITEMS = [
 
 export default function Header() {
   const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
+  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
-  const brandLogo = !tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
+  const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
+  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)

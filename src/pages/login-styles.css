@@ -36,19 +36,6 @@
   --ring: var(--primary);
 }
 
-.aa-page.aa-chem-theme {
-  --background: oklch(0.99 0.005 190);
-  --surface: oklch(0.96 0.01 190);
-  --card: oklch(1 0 0);
-}
-
-.dark .aa-page.aa-chem-theme {
-  --background: oklch(0.14 0.025 200);
-  --surface: oklch(0.18 0.03 200);
-  --card: oklch(0.20 0.03 200);
-  --border: oklch(1 0 0 / 8%);
-}
-
 html {
   font-family: 'Tajawal', system-ui, sans-serif;
 }
@@ -1409,10 +1396,4 @@ body:not(.dark) .aa-footer {
   background: #25D366;
   color: #fff;
   border-color: #25D366;
-}
-
-/* Dynamic logo color filter for chemistry tenant (rotates pink/purple flaticon image to cyan/teal) */
-.aa-page.aa-chem-theme .aa-brand img,
-.aa-page.aa-chem-theme .footer-logo {
-  filter: hue-rotate(190deg) saturate(1.2) brightness(1.1) !important;
-}
+}

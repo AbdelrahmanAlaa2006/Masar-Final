@@ -1,3 +1,5 @@
+import { getTenantThemeConfig } from './tenantThemes'
+
 /**
  * Dynamically applies the tenant's theme configuration (colors, title, logo)
  * to the document root, headers, and browser window.
@@ -6,8 +8,9 @@
 export function applyTenantTheme(tenant) {
   if (!tenant) return
 
-  const primary = tenant.primary_color || '#7c3aed'
-  const secondary = tenant.secondary_color || '#06b6d4'
+  const themeConfig = getTenantThemeConfig(tenant, tenant?.slug)
+  const primary = themeConfig.primaryColor || tenant.primary_color || '#7c3aed'
+  const secondary = themeConfig.secondaryColor || tenant.secondary_color || '#06b6d4'
 
   const root = document.documentElement
 
@@ -48,14 +51,15 @@ export function applyTenantTheme(tenant) {
   metaTheme.setAttribute('content', primary)
 
   // Update tab icon (favicon) if a tenant custom logo is provided
-  if (tenant.logo_url) {
+  const dbLogo = tenant.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
+  if (dbLogo) {
     let favicon = document.querySelector('link[rel="icon"]')
     if (!favicon) {
       favicon = document.createElement('link')
       favicon.setAttribute('rel', 'icon')
       document.head.appendChild(favicon)
     }
-    favicon.setAttribute('href', tenant.logo_url)
+    favicon.setAttribute('href', dbLogo)
   }
 }
 

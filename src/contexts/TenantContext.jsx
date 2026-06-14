@@ -45,8 +45,9 @@ export function TenantProvider({ children }) {
         const cacheKey = `masar-cached-tenant-${candidate}`
         const cachedTenant = sessionStorage.getItem(cacheKey)
         const cachedAvailable = sessionStorage.getItem('masar-cached-available-tenants')
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
 
-        if (cachedTenant && cachedAvailable) {
+        if (cachedTenant && cachedAvailable && !isLocalhost) {
           const tenantData = JSON.parse(cachedTenant)
           const availableData = JSON.parse(cachedAvailable)
           setTenant(tenantData)

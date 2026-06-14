@@ -12,6 +12,8 @@ import { useTenant } from '../contexts/TenantContext'
 import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
 import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
+import './tenant-themes.css'    // custom theme overrides (chemistry, physics, etc.)
+import { getTenantThemeConfig } from '../utils/tenantThemes'
 
 /* ─────────── translations ─────────── */
 const translations = {
@@ -74,8 +76,9 @@ export default function Login() {
   const { login } = useAuth()
   const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled } = useTenant()
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
-  const isChemistry = tenantSlug === 'mona-chem' || tenant?.config?.subject === 'chemistry'
-  const brandLogo = isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")
+  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
+  const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [phone, setPhone] = useState('')
@@ -118,52 +121,67 @@ export default function Login() {
     return val
   }
 
-  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(tenant?.config?.branding?.brand_short, tenantName, tenantName)
-  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(tenant?.config?.branding?.hero_title_a, tenantName, tenantName)
-  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(tenant?.config?.branding?.hero_title_b, '', '')
-  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(tenant?.config?.branding?.hero_sub, '', '')
+  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(themeConfig.branding?.brand_short || tenant?.config?.branding?.brand_short, tenantName, tenantName)
+  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(themeConfig.branding?.hero_title_a || tenant?.config?.branding?.hero_title_a, tenantName, tenantName)
+  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(themeConfig.branding?.hero_title_b || tenant?.config?.branding?.hero_title_b, '', '')
+  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(themeConfig.branding?.hero_sub || tenant?.config?.branding?.hero_sub, '', '')
 
-  const teacherName = getLocalized(tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
-  const teacherRole = getLocalized(tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
+  const teacherName = getLocalized(themeConfig.teacher?.name || tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
+  const teacherRole = getLocalized(themeConfig.teacher?.role || tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
   const teacherBio = getLocalized(
-    tenant?.config?.teacher?.bio,
+    themeConfig.teacher?.bio || tenant?.config?.teacher?.bio,
     'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.',
     'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'
   )
   const teacherQuote = getLocalized(
-    tenant?.config?.teacher?.quote,
+    themeConfig.teacher?.quote || tenant?.config?.teacher?.quote,
     '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»',
     '“Arabic isn\'t hard — it just needs to be taught the right way.”'
   )
-  const teacherImageBase = tenant?.config?.teacher?.image_base || "/images/profile.png"
-  const teacherImageHover = tenant?.config?.teacher?.image_hover || "/images/me.png"
-  const teacherExp = getLocalized(tenant?.config?.teacher?.experience, '+10', '+10')
-  const teacherStudents = getLocalized(tenant?.config?.teacher?.students_count, '+2,000', '+2,000')
-  const teacherSatisfaction = getLocalized(tenant?.config?.teacher?.satisfaction, '98%', '98%')
+  const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
+  const teacherImageHover = themeConfig.teacher?.image_hover || tenant?.config?.teacher?.image_hover || "/images/me.png"
+  const teacherExp = getLocalized(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience, '+10', '+10')
+  const teacherStudents = getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, '+2,000', '+2,000')
+  const teacherSatisfaction = getLocalized(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction, '98%', '98%')
+  const teacherTargetStage = getLocalized(
+    themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage,
+    'الإعدادية والثانوية',
+    'Prep & Secondary'
+  )
+  const teacherTargetStageLabel = getLocalized(
+    themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
+    'المراحل التي يدرّسها',
+    'Stages he teaches'
+  )
+  const teacherLearningSystem = getLocalized(
+    themeConfig.teacher?.learning_system || tenant?.config?.teacher?.learning_system,
+    'أونلاين تفاعلي',
+    'Online Interactive'
+  )
 
-  const socials = tenant?.config?.socials || {
-    facebook: 'https://www.facebook.com',
-    whatsapp: 'https://wa.me/',
-    instagram: 'https://www.instagram.com',
-    youtube: 'https://www.youtube.com',
-    tiktok: 'https://www.tiktok.com'
+  const socials = {
+    facebook: themeConfig.socials?.facebook || tenant?.config?.socials?.facebook || 'https://www.facebook.com',
+    whatsapp: themeConfig.socials?.whatsapp || tenant?.config?.socials?.whatsapp || 'https://wa.me/',
+    instagram: themeConfig.socials?.instagram || tenant?.config?.socials?.instagram || 'https://www.instagram.com',
+    youtube: themeConfig.socials?.youtube || tenant?.config?.socials?.youtube || 'https://www.youtube.com',
+    tiktok: themeConfig.socials?.tiktok || tenant?.config?.socials?.tiktok || 'https://www.tiktok.com'
   }
 
-  const locationKicker = getLocalized(tenant?.config?.location?.kicker, 'زورنا', 'Visit us')
-  const locationTitle = getLocalized(tenant?.config?.location?.title, 'موقعنا على الخريطة', 'Find Us on the Map')
+  const locationKicker = getLocalized(themeConfig.location?.kicker || tenant?.config?.location?.kicker, 'زورنا', 'Visit us')
+  const locationTitle = getLocalized(themeConfig.location?.title || tenant?.config?.location?.title, 'موقعنا على الخريطة', 'Find Us on the Map')
   const locationDesc = getLocalized(
-    tenant?.config?.location?.description,
+    themeConfig.location?.description || tenant?.config?.location?.description,
     'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.',
     'Drop by our center in Damanhour — easy to find and easy to reach.'
   )
-  const locationAddress = getLocalized(tenant?.config?.location?.address, 'دمنهور، البحيرة', 'Damanhour, Beheira')
-  const locationCountry = getLocalized(tenant?.config?.location?.country, 'جمهورية مصر العربية', 'Arab Republic of Egypt')
-  const locationMapUrl = tenant?.config?.location?.map_iframe_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
-  const locationPhone = tenant?.config?.location?.phone || '+20 XXX XXX XXXX'
-  const locationHoursDays = getLocalized(tenant?.config?.location?.hours_days, 'السبت – الخميس', 'Sat – Thu')
-  const locationHoursTime = getLocalized(tenant?.config?.location?.hours_time, '٩ صباحًا – ٩ مساءً', '9 AM – 9 PM')
-  const locationDirectionsLink = tenant?.config?.location?.directions_link || "https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
-  const locationWhatsappLink = tenant?.config?.location?.whatsapp_link || "https://wa.me/20XXXXXXXXXX"
+  const locationAddress = getLocalized(themeConfig.location?.address || tenant?.config?.location?.address, 'دمنهور، البحيرة', 'Damanhour, Beheira')
+  const locationCountry = getLocalized(themeConfig.location?.country || tenant?.config?.location?.country, 'جمهورية مصر العربية', 'Arab Republic of Egypt')
+  const locationMapUrl = themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
+  const locationPhone = themeConfig.location?.phone || tenant?.config?.location?.phone || '+20 XXX XXX XXXX'
+  const locationHoursDays = getLocalized(themeConfig.location?.hours_days || tenant?.config?.location?.hours_days, 'السبت – الخميس', 'Sat – Thu')
+  const locationHoursTime = getLocalized(themeConfig.location?.hours_time || tenant?.config?.location?.hours_time, '٩ صباحًا – ٩ مساءً', '9 AM – 9 PM')
+  const locationDirectionsLink = themeConfig.location?.directions_link || tenant?.config?.location?.directions_link || "https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
+  const locationWhatsappLink = themeConfig.location?.whatsapp_link || tenant?.config?.location?.whatsapp_link || "https://wa.me/20XXXXXXXXXX"
 
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
@@ -217,28 +235,22 @@ export default function Login() {
     const ctx = canvas.getContext('2d')
     let width = 0, height = 0, raf = 0
     const mouse = { x: -9999, y: -9999, active: false }
-    const COLORS = isChemistry 
-      ? ['#0d9488', '#06b6d4', '#14b8a6', '#22d3ee', '#38bdf8', '#8b5cf6']
-      : ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
-
-    const COUNT = Math.max(30, Math.floor((window.innerWidth * window.innerHeight) / 32000))
+    const COLORS = themeConfig.particleColors
+    const COUNT = Math.max(12, Math.floor((window.innerWidth * window.innerHeight) / 80000))
     const particles = []
     const resize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight }
     resize()
 
-    const FORMULAS = ['H₂O', 'CO₂', 'C₆H₆', 'HCl', 'NaOH', 'NH₃', 'CH₄', 'NaCl']
+    const FORMULAS = themeConfig.formulas
 
     for (let i = 0; i < COUNT; i++) {
       let type = 'circle'
       let text = ''
-      if (isChemistry) {
-        const rand = Math.random()
-        if (rand < 0.20) {
-          type = 'benzene'
-        } else if (rand < 0.40) {
-          type = 'flask'
-        } else if (rand < 0.70) {
-          type = 'formula'
+      
+      const customShape = themeConfig.generateCustomShape()
+      if (customShape !== 'circle') {
+        type = customShape
+        if (customShape === 'formula') {
           text = FORMULAS[Math.floor(Math.random() * FORMULAS.length)]
         }
       }
@@ -280,9 +292,7 @@ export default function Login() {
           const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy
           if (d2 < 130 * 130) {
             const alpha = 1 - Math.sqrt(d2) / 130
-            ctx.strokeStyle = isChemistry 
-              ? (theme === 'dark' ? `rgba(120, 200, 255, ${alpha * 0.22})` : `rgba(13, 148, 136, ${alpha * 0.15})`)
-              : `rgba(168, 85, 247, ${alpha * 0.35})`
+            ctx.strokeStyle = themeConfig.getLineColor(theme, alpha)
             ctx.lineWidth = 1
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
           }
@@ -291,40 +301,19 @@ export default function Login() {
       for (const p of particles) {
         ctx.fillStyle = p.c; ctx.strokeStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = theme === 'dark' ? 10 : 0
         
-        if (isChemistry && p.type === 'benzene') {
-          ctx.beginPath()
-          const r = p.r * 5.5
-          for (let s = 0; s < 6; s++) {
-            const angle = (s * Math.PI) / 3
-            const px = p.x + r * Math.cos(angle)
-            const py = p.y + r * Math.sin(angle)
-            if (s === 0) ctx.moveTo(px, py)
-            else ctx.lineTo(px, py)
+        const didDraw = themeConfig.drawCustomShape(ctx, p, p.r)
+        if (!didDraw) {
+          if (p.type === 'formula') {
+            const fontSpec = themeConfig.canvasFont || 'Tajawal, sans-serif'
+            let fullFont = `${Math.round(p.r * 6.5)}px ${fontSpec}`
+            if (fontSpec.startsWith('italic ')) {
+              fullFont = `italic ${Math.round(p.r * 6.5)}px ${fontSpec.substring(7)}`
+            }
+            ctx.font = fullFont
+            ctx.fillText(p.text, p.x, p.y)
+          } else {
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
           }
-          ctx.closePath()
-          ctx.lineWidth = 1.2
-          ctx.stroke()
-          
-          ctx.beginPath()
-          ctx.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2)
-          ctx.stroke()
-        } else if (isChemistry && p.type === 'flask') {
-          const size = p.r * 6
-          ctx.beginPath()
-          ctx.moveTo(p.x - size * 0.2, p.y - size * 0.6)
-          ctx.lineTo(p.x + size * 0.2, p.y - size * 0.6)
-          ctx.lineTo(p.x + size * 0.2, p.y - size * 0.2)
-          ctx.lineTo(p.x + size * 0.6, p.y + size * 0.6)
-          ctx.lineTo(p.x - size * 0.6, p.y + size * 0.6)
-          ctx.lineTo(p.x - size * 0.2, p.y - size * 0.2)
-          ctx.closePath()
-          ctx.lineWidth = 1.2
-          ctx.stroke()
-        } else if (isChemistry && p.type === 'formula') {
-          ctx.font = `${Math.round(p.r * 3.5)}px Tajawal, sans-serif`
-          ctx.fillText(p.text, p.x, p.y)
-        } else {
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill()
         }
       }
       ctx.shadowBlur = 0
@@ -342,7 +331,7 @@ export default function Login() {
       window.removeEventListener('mouseleave', onLeave)
       window.removeEventListener('resize', resize)
     }
-  }, [theme, tenantSlug, tenant, isChemistry])
+  }, [theme, tenantSlug, tenant, themeConfig])
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -461,7 +450,7 @@ export default function Login() {
   const Arrow = lang === 'ar' ? '←' : '→'
 
   return (
-    <div className={`aa-page ${isChemistry ? 'aa-chem-theme' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`aa-page ${themeConfig.themeClass || ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <canvas ref={canvasRef} className="aa-particles" aria-hidden="true" />
 
       {/* ─────────── NEW NAVBAR ─────────── */}
@@ -541,12 +530,12 @@ export default function Login() {
                 </div>
                 <div className="aa-metrics">
                   <div>
-                    <div className="aa-metric-label">{lang === 'ar' ? 'التقييم' : 'Rating'}</div>
-                    <div className="aa-metric-value">4.9 ★★★★☆</div>
+                    <div className="aa-metric-label">{teacherTargetStageLabel}</div>
+                    <div className="aa-metric-value">{teacherTargetStage}</div>
                   </div>
                   <div>
-                    <div className="aa-metric-label">{lang === 'ar' ? 'الحالة' : 'Status'}</div>
-                    <div className="aa-metric-value"><span className="aa-pulse" /> {lang === 'ar' ? 'متاح الآن' : 'Available now'}</div>
+                    <div className="aa-metric-label">{lang === 'ar' ? 'نظام التعلم' : 'Learning System'}</div>
+                    <div className="aa-metric-value"><span className="aa-pulse" /> {teacherLearningSystem}</div>
                   </div>
                 </div>
               </div>
@@ -612,7 +601,7 @@ export default function Login() {
       {/* ─────────── MARKETING SECTIONS ─────────── */}
       <section id="features" className="login-features">
         <div className="section-inner">
-          <h2 className="section-heading">{lang === 'ar' ? 'لماذا منصة مسار؟' : 'Why Masar Platform?'}</h2>
+          <h2 className="section-heading">{lang === 'ar' ? `لماذا ${brandShort}؟` : `Why ${brandShort}?`}</h2>
           <p className="section-sub">{lang === 'ar' ? 'كل ما تحتاجه لرحلة تعليمية ناجحة في مكان واحد' : 'Everything you need for a successful learning journey in one place'}</p>
           <div className="features-grid">
             {features.map((f, i) => (
@@ -755,7 +744,7 @@ export default function Login() {
       <footer className="login-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <img src={isDefaultTenant ? "/images/logo.white.png" : (tenant?.logo_url || "/images/logo.white.png")} alt="Logo" className="footer-logo" />
+            <img src={brandLogo} alt="Logo" className="footer-logo" />
             <span className="footer-brand-name">
               {isDefaultTenant
                 ? (lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform')
