@@ -3,7 +3,19 @@ import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/ca
 
 // Get attendance for a class on a specific date/session
 export async function listAttendanceForSession(sessionId, dateStr) {
-  let query = supabase.from('attendance').select('id, student_id, status, session_id, date')
+  let query = supabase.from('attendance').select(`
+    id,
+    student_id,
+    status,
+    session_id,
+    date,
+    profiles!student_id (
+      name,
+      phone,
+      grade,
+      "group"
+    )
+  `)
   if (sessionId) {
     query = query.eq('session_id', sessionId)
   } else if (dateStr) {
@@ -188,4 +200,27 @@ export async function getStudentAttendanceHistory(studentId) {
     if (error) throw error
     return data || []
   })
+}
+
+// Get list of unique dates where attendance has been saved with session_id = null for this grade
+export async function listCustomAttendanceDates(grade) {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select(`
+      date,
+      profiles!student_id (
+        grade
+      )
+    `)
+    .is('session_id', null)
+
+  if (error) throw error
+
+  // Filter by grade and get unique dates
+  const filtered = (data || [])
+    .filter(r => r.profiles?.grade === grade)
+    .map(r => r.date)
+  
+  // Return sorted unique dates descending
+  return [...new Set(filtered)].sort((a, b) => new Date(b) - new Date(a))
 }

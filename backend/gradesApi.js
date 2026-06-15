@@ -159,3 +159,62 @@ export async function getStudentGradesSummary(studentId) {
     }
   })
 }
+
+// Get unique list of past evaluation titles and types for a grade
+export async function listUniqueEvaluations(grade) {
+  const { data, error } = await supabase
+    .from('grades')
+    .select(`
+      type,
+      title,
+      profiles!student_id (
+        grade
+      )
+    `)
+
+  if (error) throw error
+
+  const filtered = (data || [])
+    .filter(r => r.profiles?.grade === grade)
+    .map(r => ({ type: r.type, title: r.title }))
+
+  const seen = new Set()
+  const unique = []
+  filtered.forEach(item => {
+    const key = `${item.type}:${item.title}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      unique.push(item)
+    }
+  })
+
+  return unique
+}
+
+// Get grades records for a specific evaluation type and title
+export async function listGradesForEvaluation(type, title) {
+  const { data, error } = await supabase
+    .from('grades')
+    .select(`
+      id,
+      student_id,
+      type,
+      title,
+      subject,
+      score,
+      max_score,
+      notes,
+      created_at,
+      profiles!student_id (
+        name,
+        phone,
+        grade,
+        "group"
+      )
+    `)
+    .eq('type', type)
+    .eq('title', title)
+
+  if (error) throw error
+  return data || []
+}
