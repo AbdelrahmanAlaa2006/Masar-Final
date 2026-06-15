@@ -2287,4 +2287,199 @@ body.dark .cp-page {
   }
 }
 
+/* ── Form Inputs & Select Dropdowns Styling (Premium Glassmorphic) ── */
+.cp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--cp-input-border);
+  background: var(--cp-input-bg);
+  color: var(--cp-input-text);
+  font-family: 'Tajawal', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cp-input::placeholder {
+  color: var(--cp-text-muted);
+  opacity: 0.6;
+}
+
+.cp-input:focus {
+  outline: none;
+  border-color: #5bc2e7;
+  background: var(--cp-input-bg);
+  box-shadow: 0 0 0 3px rgba(91, 194, 231, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Specific styling for select dropdowns that use cp-input to suppress native arrows */
+select.cp-input {
+  background-color: var(--cp-select-bg) !important;
+  color: var(--cp-select-text) !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding-left: 2.5rem !important; /* Space for the arrow (left side in RTL) */
+  padding-right: 1rem !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 0.9rem center !important; /* Left position for RTL */
+  background-size: 1rem !important;
+  cursor: pointer !important;
+}
+
+body.dark select.cp-input {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+}
+
+select.cp-input::-ms-expand {
+  display: none !important;
+}
+
+/* Specific styling for date inputs */
+input[type="date"].cp-input {
+  position: relative;
+  min-height: 42px;
+}
+
+/* ── Premium Buttons Style Suite overrides ── */
+.cp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  padding: 0.55rem 1.1rem;
+  border-radius: 9px;
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.cp-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cp-btn:active {
+  transform: translateY(0);
+}
+
+.cp-btn-success {
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+.cp-btn-success:hover {
+  background: #10b981 !important;
+  color: #0b1220 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+}
+
+.cp-btn-danger {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  box-shadow: none !important;
+}
+.cp-btn-danger:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.25) !important;
+}
+
+.cp-btn-info {
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #3b82f6 !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+.cp-btn-info:hover {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25) !important;
+}
+
+.cp-btn-secondary {
+  background: var(--cp-back-bg) !important;
+  color: var(--cp-text-muted) !important;
+  border: 1px solid var(--cp-back-border) !important;
+}
+.cp-btn-secondary:hover {
+  background: var(--cp-hover-bg) !important;
+  border-color: rgba(91, 194, 231, 0.4) !important;
+  color: #5bc2e7 !important;
+  box-shadow: 0 6px 20px rgba(91, 194, 231, 0.1) !important;
+}
+
+.cp-btn-ghost {
+  background: var(--cp-card-bg) !important;
+  color: var(--cp-text-main) !important;
+  border: 1px solid var(--cp-back-border) !important;
+}
+.cp-btn-ghost:hover {
+  border-color: #5bc2e7 !important;
+  color: #5bc2e7 !important;
+  background: rgba(91, 194, 231, 0.05) !important;
+}
+
+/* Animation keyframes for panels */
+.cp-panel-container {
+  animation: cpFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cpFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scanner card glow states */
+.cp-scanner-card.is-focused {
+  border-color: #10b981 !important;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15), var(--cp-card-shadow) !important;
+}
+
+.cp-scanner-card.has-success {
+  animation: cpScanSuccessGlow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cp-scanner-card.has-error {
+  animation: cpScanErrorGlow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cpScanSuccessGlow {
+  0%, 100% {
+    box-shadow: var(--cp-card-shadow);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+    border-color: #10b981;
+  }
+}
+
+@keyframes cpScanErrorGlow {
+  0%, 100% {
+    box-shadow: var(--cp-card-shadow);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+    border-color: #ef4444;
+  }
+}
+
+
+
 

@@ -5,6 +5,7 @@ import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
 import { cached, LIST_TTL } from '../../utils/cache'
 import { SectionCard, Breadcrumbs } from './shared'
+import { useAuth } from '../../contexts/AuthContext'
 import '../ControlPanel.css'
 
 // Lazy-loaded sub-panels for code splitting
@@ -17,15 +18,41 @@ const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
 const StudentsSyncPanel = lazy(() => import('./StudentsSyncPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
-import ChatsPanel from './ChatsPanel'
+const ChatsPanel = lazy(() => import('./ChatsPanel'))
+
+// New sub-panels
+const AttendancePanel = lazy(() => import('./AttendancePanel'))
+const GradesPanel = lazy(() => import('./GradesPanel'))
+const AssistantsPanel = lazy(() => import('./AssistantsPanel'))
+const WhatsAppQueuePanel = lazy(() => import('./WhatsAppQueuePanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { user, hasPermission } = useAuth()
 
   /* navigation derived from URL search parameters */
   const section = searchParams.get('section') || 'home'
   const subtab = searchParams.get('subtab') || 'attempts'
+
+  // Security Gate checks for route routing
+  const isSectionAllowed = (s) => {
+    if (!user) return false
+    if (user.role === 'admin') return true
+    if (s === 'home') return true
+
+    // Assistant gates
+    if (s === 'attendance') return hasPermission('attendance')
+    if (s === 'grades') return hasPermission('grades')
+    if (s === 'homeworks' || s === 'videos') return hasPermission('homework')
+    if (s === 'exams') return hasPermission('exams')
+    if (s === 'students' || s === 'accounts' || s === 'resets' || s === 'chats') {
+      return hasPermission('students')
+    }
+    if (s === 'whatsapp') return hasPermission('whatsapp')
+
+    return false
+  }
 
   // Toast notifications
   const [toast, setToast] = useState(null)
@@ -81,6 +108,10 @@ export default function ControlPanelIndex() {
   }
 
   const enterSection = (s) => {
+    if (!isSectionAllowed(s)) {
+      flash('غير مصرح لك بالدخول إلى هذا القسم', 'warning')
+      return
+    }
     const nextParams = { section: s }
     if (s === 'videos' || s === 'exams') {
       nextParams.subtab = 'attempts'
@@ -99,6 +130,8 @@ export default function ControlPanelIndex() {
       <p>جاري تحميل القسم...</p>
     </div>
   )
+
+  const allowedToSee = isSectionAllowed(section)
 
   return (
     <main className="cp-page">
@@ -129,150 +162,247 @@ export default function ControlPanelIndex() {
           onSection={() => enterSection(section)}
         />
 
-        {/* Home overview of modular sections */}
-        {section === 'home' && (
-          <div className="cp-home-grid">
-            <SectionCard
-              icon="fa-play-circle"
-              accent="blue"
-              title="إدارة الفيديوهات"
-              desc="صلاحيات المشاهدة، المحاولات الإضافية، ومدة الإتاحة"
-              onClick={() => enterSection('videos')}
-            />
-            <SectionCard
-              icon="fa-file-alt"
-              accent="orange"
-              title="إدارة الامتحانات"
-              desc="المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات"
-              onClick={() => enterSection('exams')}
-            />
-            <SectionCard
-              icon="fa-book-open"
-              accent="purple"
-              title="إدارة الواجبات"
-              desc="التحكم في إظهار نتائج الواجبات للطلاب"
-              onClick={() => enterSection('homeworks')}
-            />
-
-            <SectionCard
-              icon="fa-users"
-              accent="green"
-              title="مزامنة الطلاب"
-              desc="رفع ملف CSV لإضافة/تحديث الطلاب وحذف من تم استبعاده"
-              onClick={() => enterSection('students')}
-            />
-            <SectionCard
-              icon="fa-user-check"
-              accent="green"
-              title="حسابات الطلاب والتفعيل"
-              desc="مراجعة وتفعيل الحسابات الجديدة المسجلة ذاتياً والموافقة عليها"
-              onClick={() => enterSection('accounts')}
-            />
-            <SectionCard
-              icon="fa-moon"
-              accent="violet"
-              title="السمات الموسمية"
-              desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي حسب التاريخ"
-              onClick={() => enterSection('seasons')}
-            />
-            <SectionCard
-              icon="fa-key"
-              accent="gold"
-              title="طلبات استعادة الحساب"
-              desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب وقم بتلبيتها"
-              onClick={() => enterSection('resets')}
-            />
-            <SectionCard
-              icon="fa-shield-halved"
-              accent="red"
-              title="سجلات الحماية الأمنية"
-              desc="عرض وإدارة سجلات محاولات اختراق أدوات المطور (DevTools)"
-              onClick={() => enterSection('violations')}
-            />
-            <SectionCard
-              icon="fa-comments"
-              accent="teal"
-              title="محادثات الطلاب"
-              desc="استعرض وأجب على رسائل واستفسارات الطلاب (صوت وصور)"
-              onClick={() => enterSection('chats')}
-            />
+        {/* Security check view */}
+        {!allowedToSee ? (
+          <div className="cp-empty" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '40px', borderRadius: '16px' }}>
+            <i className="fas fa-shield-halved" style={{ fontSize: '2.5rem', marginBottom: '16px' }}></i>
+            <h3>عذراً، غير مصرح لك بالدخول</h3>
+            <p>حسابك لا يملك صلاحية كافية لاستعراض محتويات هذا القسم. يرجى مراجعة المشرف الرئيسي.</p>
+            <button onClick={goHome} className="cp-btn cp-btn-secondary" style={{ marginTop: '16px' }}>الرجوع للرئيسية</button>
           </div>
-        )}
-
-        {section === 'chats' && (
-          <ChatsPanel 
-            onBack={goHome} 
-            flash={flash} 
-            initialStudentId={searchParams.get('studentId')} 
-          />
-        )}
-
-        {/* Suspense wrapper for lazy loading individual components */}
-        <Suspense fallback={<PanelLoader />}>
-          {section === 'students' && <StudentsSyncPanel />}
-          {section === 'seasons'  && <SeasonalThemePanel />}
-          {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
-          {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
-          {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
-          {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
-
-
-          {/* Sub-tab navigation bar for dynamic settings */}
-          {(section === 'videos' || section === 'exams') && (
-            <>
-              <div className="cp-subtabs" style={{
-                display: 'flex', gap: 8, flexWrap: 'wrap',
-                margin: '12px 0 18px',
-              }}>
-                <button
-                  className={`cp-btn ${subtab === 'attempts' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-                  onClick={() => setSubtab('attempts')}
-                >
-                  <i className="fas fa-user-shield"></i> الصلاحيات والمحاولات
-                </button>
-                <button
-                  className={`cp-btn ${subtab === 'availability' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-                  onClick={() => setSubtab('availability')}
-                >
-                  <i className="fas fa-hourglass-half"></i> مدة الإتاحة
-                </button>
-                {section === 'exams' && (
-                  <button
-                    className={`cp-btn ${subtab === 'reveal' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-                    onClick={() => setSubtab('reveal')}
-                  >
-                    <i className="fas fa-eye"></i> إظهار النتائج
-                  </button>
+        ) : (
+          <>
+            {/* Home overview of modular sections */}
+            {section === 'home' && (
+              <div className="cp-home-grid">
+                
+                {/* Attendance System (Gate by attendance) */}
+                {hasPermission('attendance') && (
+                  <SectionCard
+                    icon="fa-calendar-check"
+                    accent="teal"
+                    title="تحضير الطلاب والغياب"
+                    desc="تسجيل الحضور اليدوي، وبطاقات الهوية والـ QR الذكية"
+                    onClick={() => enterSection('attendance')}
+                  />
                 )}
+
+                {/* Grades System (Gate by grades) */}
+                {hasPermission('grades') && (
+                  <SectionCard
+                    icon="fa-star"
+                    accent="gold"
+                    title="رصد الدرجات والتقييم"
+                    desc="رصد الواجبات والامتحانات وسجل التقييم السلوكي والتفاعل"
+                    onClick={() => enterSection('grades')}
+                  />
+                )}
+
+                {/* Videos System (Gate by homework) */}
+                {hasPermission('homework') && (
+                  <SectionCard
+                    icon="fa-play-circle"
+                    accent="blue"
+                    title="إدارة الفيديوهات"
+                    desc="صلاحيات المشاهدة، المحاولات الإضافية، ومدة الإتاحة"
+                    onClick={() => enterSection('videos')}
+                  />
+                )}
+
+                {/* Exams System (Gate by exams) */}
+                {hasPermission('exams') && (
+                  <SectionCard
+                    icon="fa-file-alt"
+                    accent="orange"
+                    title="إدارة الامتحانات"
+                    desc="المحاولات الإضافية، مدة الإتاحة، وإظهار نتائج الامتحانات"
+                    onClick={() => enterSection('exams')}
+                  />
+                )}
+
+                {/* Homework System (Gate by homework) */}
+                {hasPermission('homework') && (
+                  <SectionCard
+                    icon="fa-book-open"
+                    accent="purple"
+                    title="إدارة الواجبات"
+                    desc="التحكم في إظهار نتائج الواجبات للطلاب"
+                    onClick={() => enterSection('homeworks')}
+                  />
+                )}
+
+                {/* Students sync (Gate by students) */}
+                {hasPermission('students') && (
+                  <SectionCard
+                    icon="fa-users"
+                    accent="green"
+                    title="مزامنة الطلاب"
+                    desc="رفع ملف CSV لإضافة/تحديث الطلاب وحذف من تم استبعاده"
+                    onClick={() => enterSection('students')}
+                  />
+                )}
+
+                {/* Students accounts activation (Gate by students) */}
+                {hasPermission('students') && (
+                  <SectionCard
+                    icon="fa-user-check"
+                    accent="green"
+                    title="تفعيل حسابات الطلاب"
+                    desc="مراجعة وتفعيل الحسابات الجديدة والموافقة عليها"
+                    onClick={() => enterSection('accounts')}
+                  />
+                )}
+
+                {/* WhatsApp queue notifications (Gate by whatsapp) */}
+                {hasPermission('whatsapp') && (
+                  <SectionCard
+                    icon="fa-comments-dollar"
+                    accent="teal"
+                    title="إشعارات أولياء الأمور"
+                    desc="متابعة طابور الإرسال المجدول للآباء وضبط Evolution API"
+                    onClick={() => enterSection('whatsapp')}
+                  />
+                )}
+
+                {/* Reset requests (Gate by students) */}
+                {hasPermission('students') && (
+                  <SectionCard
+                    icon="fa-key"
+                    accent="gold"
+                    title="طلبات استعادة الحساب"
+                    desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب"
+                    onClick={() => enterSection('resets')}
+                  />
+                )}
+
+                {/* Chat Panel (Gate by students) */}
+                {hasPermission('students') && (
+                  <SectionCard
+                    icon="fa-comments"
+                    accent="teal"
+                    title="محادثات الطلاب"
+                    desc="استعرض وأجب على رسائل واستفسارات الطلاب"
+                    onClick={() => enterSection('chats')}
+                  />
+                )}
+
+                {/* Assistants Management (Primary Admin Only) */}
+                {user?.role === 'admin' && (
+                  <SectionCard
+                    icon="fa-user-shield"
+                    accent="violet"
+                    title="المساعدين والصلاحيات"
+                    desc="إضافة مساعدين وتعيين صلاحيات RBAC لكل حساب فرعي"
+                    onClick={() => enterSection('assistants')}
+                  />
+                )}
+
+                {/* Seasons settings (Primary Admin Only) */}
+                {user?.role === 'admin' && (
+                  <SectionCard
+                    icon="fa-moon"
+                    accent="violet"
+                    title="السمات الموسمية"
+                    desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي"
+                    onClick={() => enterSection('seasons')}
+                  />
+                )}
+
+                {/* Security Violations (Primary Admin Only) */}
+                {user?.role === 'admin' && (
+                  <SectionCard
+                    icon="fa-shield-halved"
+                    accent="red"
+                    title="سجلات الحماية الأمنية"
+                    desc="عرض محاولات اختراق أدوات المطور (DevTools)"
+                    onClick={() => enterSection('violations')}
+                  />
+                )}
+
               </div>
+            )}
 
-              {/* Render dynamic sub-sections */}
-              {subtab === 'attempts' && (
-                <AttemptsPanel
-                  section={section}
-                  students={students}
-                  videos={videos}
-                  exams={exams}
-                  loading={loading}
-                  flash={flash}
-                  onBack={goHome}
-                />
-              )}
+            {section === 'chats' && (
+              <ChatsPanel 
+                onBack={goHome} 
+                flash={flash} 
+                initialStudentId={searchParams.get('studentId')} 
+              />
+            )}
 
-              {subtab === 'availability' && (
-                <AvailabilityPanel
-                  restrictTo={section === 'exams' ? 'exams' : 'videos'}
-                  onBack={goHome}
-                  flash={flash}
-                />
-              )}
+            {/* Suspense wrapper for lazy loading individual components */}
+            <Suspense fallback={<PanelLoader />}>
+              {section === 'students' && <StudentsSyncPanel />}
+              {section === 'seasons'  && <SeasonalThemePanel />}
+              {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
+              {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
+              {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
+              {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
+              
+              {/* Load new panels */}
+              {section === 'attendance' && <AttendancePanel onBack={goHome} flash={flash} />}
+              {section === 'grades' && <GradesPanel onBack={goHome} flash={flash} />}
+              {section === 'assistants' && <AssistantsPanel onBack={goHome} flash={flash} />}
+              {section === 'whatsapp' && <WhatsAppQueuePanel onBack={goHome} flash={flash} />}
 
-              {section === 'exams' && subtab === 'reveal' && (
-                <RevealPanel onBack={goHome} flash={flash} />
+              {/* Sub-tab navigation bar for dynamic settings */}
+              {(section === 'videos' || section === 'exams') && (
+                <>
+                  <div className="cp-subtabs" style={{
+                    display: 'flex', gap: 8, flexWrap: 'wrap',
+                    margin: '12px 0 18px',
+                  }}>
+                    <button
+                      className={`cp-btn ${subtab === 'attempts' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+                      onClick={() => setSubtab('attempts')}
+                    >
+                      <i className="fas fa-user-shield"></i> الصلاحيات والمحاولات
+                    </button>
+                    <button
+                      className={`cp-btn ${subtab === 'availability' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+                      onClick={() => setSubtab('availability')}
+                    >
+                      <i className="fas fa-hourglass-half"></i> مدة الإتاحة
+                    </button>
+                    {section === 'exams' && (
+                      <button
+                        className={`cp-btn ${subtab === 'reveal' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+                        onClick={() => setSubtab('reveal')}
+                      >
+                        <i className="fas fa-eye"></i> إظهار النتائج
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Render dynamic sub-sections */}
+                  {subtab === 'attempts' && (
+                    <AttemptsPanel
+                      section={section}
+                      students={students}
+                      videos={videos}
+                      exams={exams}
+                      loading={loading}
+                      flash={flash}
+                      onBack={goHome}
+                    />
+                  )}
+
+                  {subtab === 'availability' && (
+                    <AvailabilityPanel
+                      restrictTo={section === 'exams' ? 'exams' : 'videos'}
+                      onBack={goHome}
+                      flash={flash}
+                    />
+                  )}
+
+                  {section === 'exams' && subtab === 'reveal' && (
+                    <RevealPanel onBack={goHome} flash={flash} />
+                  )}
+                </>
               )}
-            </>
-          )}
-        </Suspense>
+            </Suspense>
+          </>
+        )}
       </div>
 
       {toast && (

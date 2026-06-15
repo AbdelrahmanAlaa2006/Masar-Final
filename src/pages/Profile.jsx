@@ -15,6 +15,19 @@ export default function Profile() {
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
+  // Student parent phone state
+  const [parentPhone, setParentPhone] = useState('')
+  const [isEditingPhone, setIsEditingPhone] = useState(false)
+  const [savingPhone, setSavingPhone] = useState(false)
+
+  // Student stats states
+  const [attendanceSummary, setAttendanceSummary] = useState(null)
+  const [gradesSummary, setGradesSummary] = useState(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+
+  // Digital card modal state
+  const [showDigitalCard, setShowDigitalCard] = useState(false)
+
   useEffect(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('masar-user'))
@@ -22,7 +35,7 @@ export default function Profile() {
       setUser(u)
       if (u.avatar_url) setAvatarUrl(u.avatar_url)
 
-      // Fetch fresh profile data to get database fields (including created_at)
+      // Fetch fresh profile data to get database fields (including created_at, parent_phone, qr_token)
       refreshProfile().then((fresh) => {
         if (fresh) {
           setUser(fresh)
@@ -34,9 +47,36 @@ export default function Profile() {
     }
   }, [navigate])
 
+  // Load student stats dynamically (lazy loaded APIs)
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      setParentPhone(user.parent_phone || '')
+      setLoadingStats(true)
+
+      const loadStats = async () => {
+        try {
+          const { getStudentAttendanceSummary } = await import('@backend/attendanceApi')
+          const att = await getStudentAttendanceSummary(user.id)
+          setAttendanceSummary(att)
+
+          const { getStudentGradesSummary } = await import('@backend/gradesApi')
+          const grd = await getStudentGradesSummary(user.id)
+          setGradesSummary(grd)
+        } catch (err) {
+          console.error('Failed to load student statistics summaries:', err)
+        } finally {
+          setLoadingStats(false)
+        }
+      }
+
+      loadStats()
+    }
+  }, [user])
+
   const initial = (user?.name || 'U').trim().charAt(0).toUpperCase()
-  const roleName = user?.role === 'admin' ? 'مشرف' : 'طالب'
+  const roleName = user?.role === 'admin' ? 'مشرف' : user?.role === 'assistant' ? 'مساعد' : 'طالب'
   const isAdmin = user?.role === 'admin'
+  const isAssistant = user?.role === 'assistant'
 
   // Map DB grade enum → Arabic label for display.
   const GRADE_LABEL = {
@@ -48,6 +88,7 @@ export default function Profile() {
     'third-sec':   'الصف الثالث الثانوي',
   }
   const gradeLabel = GRADE_LABEL[user?.grade] || '—'
+  
   const joinDate = (() => {
     if (!user?.created_at) return '12 مايو 2024'
     try {
@@ -67,6 +108,42 @@ export default function Profile() {
     navigator.clipboard.writeText(user.id)
     setSuccessMsg('تم نسخ معرّف المستخدم بنجاح')
     setTimeout(() => setSuccessMsg(''), 2200)
+  }
+
+  const handleCopyQrToken = () => {
+    if (!user) return
+    const data = `${user.id},${user.tenant_id},${user.qr_token || ''}`
+    navigator.clipboard.writeText(data)
+    setSuccessMsg('تم نسخ رمز الهوية بنجاح لمحاكاة مسح الكاشير')
+    setTimeout(() => setSuccessMsg(''), 2500)
+  }
+
+  // Save parent phone number
+  const handleSaveParentPhone = async () => {
+    if (!user) return
+    setSavingPhone(true)
+    setErrorMsg('')
+    setSuccessMsg('')
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ parent_phone: parentPhone.trim() })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setSuccessMsg('تم تحديث رقم هاتف ولي الأمر بنجاح')
+      setTimeout(() => setSuccessMsg(''), 3000)
+      setIsEditingPhone(false)
+      
+      // Update local storage and context
+      await refreshProfile()
+    } catch (err) {
+      console.error('Failed to update parent phone:', err)
+      setErrorMsg('فشل حفظ رقم الهاتف. يرجى المحاولة لاحقاً.')
+    } finally {
+      setSavingPhone(false)
+    }
   }
 
   // Upload avatar
@@ -92,14 +169,10 @@ export default function Profile() {
     const previousUrl = (user.avatar_url || '').split('?')[0] || null
 
     try {
-      // Upload directly to Cloudflare R2 via the presigned-URL Edge
-      // Function. The bucket is public, so we get back a stable
-      // publicUrl we can store on the profile row.
+      // Upload directly to Cloudflare R2
       const { publicUrl } = await uploadAvatarImage(file)
 
-      // Persist the bare URL on the row. The cache-buster lives only on
-      // the in-memory copy so the new image renders immediately without
-      // dirtying the DB value.
+      // Persist the bare URL on the row.
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -107,9 +180,7 @@ export default function Profile() {
 
       if (updateError) throw updateError
 
-      // Best-effort cleanup of the previous avatar object so we don't
-      // accumulate orphans in R2. Failure here is silent — the new
-      // avatar is already in place.
+      // Best-effort cleanup of the previous avatar object
       if (previousUrl && previousUrl !== publicUrl) {
         deleteR2Object({ url: previousUrl }).catch(() => {})
       }
@@ -148,8 +219,7 @@ export default function Profile() {
 
       if (updateError) throw updateError
 
-      // Delete the R2 object so we don't pay storage for an unreferenced
-      // file. Best-effort; we don't block the UI on it.
+      // Delete the R2 object
       if (targetUrl) {
         deleteR2Object({ url: targetUrl }).catch(() => {})
       }
@@ -169,6 +239,10 @@ export default function Profile() {
   }
 
   if (!user) return null
+
+  // Generate QR content securely: studentId,tenantId,qrToken
+  const qrData = `${user.id},${user.tenant_id},${user.qr_token || ''}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
 
   return (
     <div className="profile-page" dir="rtl">
@@ -237,12 +311,19 @@ export default function Profile() {
             
             {/* Badges / Chips Row */}
             <div className="profile-hero-chips">
-              {isAdmin ? (
+              {isAdmin && (
                 <span className="profile-chip profile-chip--admin">
                   <i className="fas fa-shield-halved" />
                   <span>{roleName}</span>
                 </span>
-              ) : (
+              )}
+              {isAssistant && (
+                <span className="profile-chip profile-chip--assistant">
+                  <i className="fas fa-user-shield" />
+                  <span>{roleName}</span>
+                </span>
+              )}
+              {!isAdmin && !isAssistant && (
                 <span className="profile-chip profile-chip--student">
                   <i className="fas fa-graduation-cap" />
                   <span>{roleName}</span>
@@ -278,9 +359,29 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Info Cards 2-Column Grid */}
+        {/* Student warning indicators if attendance is low */}
+        {user.role === 'student' && attendanceSummary && attendanceSummary.attendancePercentage < 75 && (
+          <div className="profile-warning-alert" style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            color: '#ef4444',
+            padding: '16px 20px',
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: '0.96rem',
+            fontWeight: '600',
+            animation: 'profileFadeUp 0.5s ease'
+          }}>
+            <i className="fas fa-triangle-exclamation" style={{ fontSize: '1.2rem' }}></i>
+            <span><strong>تنبيه الحضور:</strong> نسبة حضورك منخفضة حالياً ({attendanceSummary.attendancePercentage}%). يرجى الالتزام بحضور الحصص القادمة لتفادي تجميد حسابك الدراسي.</span>
+          </div>
+        )}
+
+        {/* Info Cards Grid */}
         <div className="profile-grid">
-          {/* Personal info card — read-only */}
+          {/* Personal info card */}
           <div className="profile-form-card">
             <h2 className="profile-card-title">
               <span className="profile-card-accent-bar" />
@@ -304,8 +405,61 @@ export default function Profile() {
               <span className="profile-info-value" dir="ltr">{user.phone || '—'}</span>
             </div>
 
+            {/* Parent contact follow-up phone (editable for students) */}
+            {user.role === 'student' && (
+              <div className="profile-info-row" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                <span className="profile-info-label">
+                  <i className="fab fa-whatsapp" />
+                  هاتف ولي الأمر (للمتابعة)
+                </span>
+                
+                {isEditingPhone ? (
+                  <div className="parent-phone-edit-wrapper" style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '8px' }}>
+                    <input 
+                      type="text" 
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      placeholder="رقم الهاتف (الواتساب)"
+                      className="cp-input"
+                      style={{ flex: 1, padding: '6px 12px', fontSize: '0.9rem', background: 'var(--profile-avatar-bg)', color: 'var(--profile-text)', border: '1px solid var(--profile-card-border)', borderRadius: '8px' }}
+                      dir="ltr"
+                    />
+                    <button 
+                      onClick={handleSaveParentPhone}
+                      disabled={savingPhone}
+                      className="cp-btn cp-btn-success"
+                      style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem' }}
+                    >
+                      {savingPhone ? <i className="fas fa-spinner fa-spin"></i> : 'حفظ'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setParentPhone(user.parent_phone || '')
+                        setIsEditingPhone(false)
+                      }}
+                      className="cp-btn cp-btn-secondary"
+                      style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem' }}
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                ) : (
+                  <div className="parent-phone-value-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className="profile-info-value" dir="ltr">{user.parent_phone || 'غير مسجل'}</span>
+                    <button 
+                      onClick={() => setIsEditingPhone(true)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--profile-accent-icon)', cursor: 'pointer', fontSize: '0.85rem' }}
+                      title="تعديل الهاتف"
+                    >
+                      <i className="fas fa-pen" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Level / Stage — students see their grade. */}
-            {!isAdmin && (
+            {!isAdmin && !isAssistant && (
               <div className="profile-info-row">
                 <span className="profile-info-label">
                   <i className="fas fa-graduation-cap" />
@@ -316,7 +470,7 @@ export default function Profile() {
             )}
 
             {/* Group / class */}
-            {!isAdmin && (
+            {!isAdmin && !isAssistant && (
               <div className="profile-info-row">
                 <span className="profile-info-label">
                   <i className="fas fa-user-group" />
@@ -358,8 +512,268 @@ export default function Profile() {
               </div>
             </div>
           </div>
+
+          {/* Digital Student Card (Only for Student) */}
+          {user.role === 'student' && (
+            <div className="profile-form-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', animationDelay: '200ms' }}>
+              <h2 className="profile-card-title" style={{ width: '100%' }}>
+                <span className="profile-card-accent-bar" />
+                <i className="fas fa-id-card" />
+                <span>بطاقة الطالب الرقمية</span>
+              </h2>
+
+              <p style={{ fontSize: '0.88rem', color: 'var(--profile-row-label)', margin: '0 0 16px', lineHeight: '1.6' }}>
+                استخدم هذه البطاقة لتسجيل الحضور والانصراف تلقائياً عند الدخول إلى المركز التعليمي.
+              </p>
+
+              <button 
+                onClick={() => setShowDigitalCard(true)}
+                className="cp-btn cp-btn-info"
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', fontSize: '0.96rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <i className="fas fa-qrcode" />
+                عرض بطاقة الطالب الرقمية
+              </button>
+            </div>
+          )}
+
+          {/* Student Performance and Attendance Summaries (Only for Student) */}
+          {user.role === 'student' && (
+            <div className="profile-info-card" style={{ animationDelay: '240ms' }}>
+              <h2 className="profile-card-title">
+                <span className="profile-card-accent-bar" />
+                <i className="fas fa-chart-line" />
+                <span>ملخص الأداء والتقييمات</span>
+              </h2>
+
+              {loadingStats ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', color: 'var(--profile-row-label)' }}>
+                  <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: '8px' }}></i>
+                  <span>جاري تحميل إحصائيات الأداء...</span>
+                </div>
+              ) : (
+                <div className="profile-stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Attendance Percentage Indicator */}
+                  {attendanceSummary && (
+                    <div className="stat-progress-item">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
+                        <span>نسبة الحضور</span>
+                        <span style={{ color: attendanceSummary.attendancePercentage >= 75 ? '#10b981' : '#ef4444' }}>
+                          {attendanceSummary.attendancePercentage}% ({attendanceSummary.absent} غياب)
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          height: '100%', 
+                          width: `${attendanceSummary.attendancePercentage}%`, 
+                          background: attendanceSummary.attendancePercentage >= 75 ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #ef4444, #f87171)', 
+                          borderRadius: '999px' 
+                        }}></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Grades summaries */}
+                  {gradesSummary && (
+                    <>
+                      {/* Homework Average */}
+                      <div className="stat-progress-item">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
+                          <span>متوسط تقييم الواجبات</span>
+                          <span>{gradesSummary.homeworkAverage}% ({gradesSummary.homeworkCount} واجبات)</span>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            height: '100%', 
+                            width: `${gradesSummary.homeworkAverage}%`, 
+                            background: 'linear-gradient(90deg, #7c3aed, #a855f7)', 
+                            borderRadius: '999px' 
+                          }}></div>
+                        </div>
+                      </div>
+
+                      {/* Exams Average */}
+                      <div className="stat-progress-item">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
+                          <span>متوسط درجات الامتحانات</span>
+                          <span>{gradesSummary.examAverage}% ({gradesSummary.examCount} امتحانات)</span>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            height: '100%', 
+                            width: `${gradesSummary.examAverage}%`, 
+                            background: 'linear-gradient(90deg, #06b6d4, #0891b2)', 
+                            borderRadius: '999px' 
+                          }}></div>
+                        </div>
+                      </div>
+
+                      {/* Badges for other evaluations */}
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
+                        <span className="profile-chip" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
+                          <i className="fas fa-star" />
+                          <span>{gradesSummary.participationCount} مشاركات وتفاعل</span>
+                        </span>
+                        <span className="profile-chip" style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>
+                          <i className="fas fa-clipboard-list" />
+                          <span>{gradesSummary.behaviorNotesCount} ملاحظات سلوكية</span>
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Digital Student Card Lightbox Modal overlay */}
+      {showDigitalCard && (
+        <div className="digital-card-modal-overlay" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '24px',
+          animation: 'profileToastIn 0.3s ease'
+        }} onClick={() => setShowDigitalCard(false)}>
+          
+          {/* Card Body */}
+          <div className="digital-student-id-card" style={{
+            maxWidth: '380px',
+            width: '100%',
+            background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))',
+            border: '2px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '24px',
+            padding: '36px 28px',
+            boxShadow: '0 30px 60px rgba(0, 0, 0, 0.8)',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            fontFamily: 'Tajawal, sans-serif'
+          }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* Holographic background line */}
+            <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
+
+            {/* Close button */}
+            <button 
+              onClick={() => setShowDigitalCard(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center' }}
+            >
+              <i className="fas fa-times" />
+            </button>
+
+            {/* School / Platform Logo header */}
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#fff', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #06b6d4, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#fff' }}>م</div>
+              <span>بطاقة الهوية الرقمية</span>
+            </div>
+
+            {/* Student Image / Avatar inside digital card */}
+            <div style={{ width: '90px', height: '90px', borderRadius: '50%', border: '3px solid rgba(255, 255, 255, 0.1)', margin: '0 auto 16px', overflow: 'hidden', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '32px', fontWeight: 'bold' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="صورة الطالب" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span>{initial}</span>
+              )}
+            </div>
+
+            {/* Student Info */}
+            <h3 style={{ color: '#fff', fontSize: '1.35rem', fontWeight: 'bold', margin: '0 0 6px' }}>{user.name}</h3>
+            <span className="profile-chip profile-chip--student" style={{ marginBottom: '24px' }}>
+              <i className="fas fa-graduation-cap" />
+              <span>{gradeLabel}</span>
+            </span>
+
+            {/* QR Code container */}
+            <div style={{
+              background: '#fff',
+              padding: '16px',
+              borderRadius: '20px',
+              display: 'inline-block',
+              margin: '0 auto 24px',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+              border: '4px solid rgba(99, 102, 241, 0.2)'
+            }}>
+              <img 
+                src={qrUrl} 
+                alt="QR Code" 
+                style={{ display: 'block', width: '180px', height: '180px' }} 
+              />
+            </div>
+            {/* Raw code and copy button for cashier simulation */}
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px dashed rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              marginBottom: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>رمز التحضير المكتبي (لالمحاكاة والتجربة):</span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                <span 
+                  style={{
+                    fontSize: '0.74rem',
+                    color: '#cbd5e1',
+                    fontFamily: 'monospace',
+                    background: 'rgba(0,0,0,0.2)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'left'
+                  }}
+                  title={qrData}
+                >
+                  {qrData}
+                </span>
+                <button
+                  onClick={handleCopyQrToken}
+                  style={{
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#059669'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#10b981'}
+                >
+                  <i className="fas fa-copy" />
+                  نسخ
+                </button>
+              </div>
+            </div>
+
+            {/* Help note */}
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 12px', lineHeight: '1.5' }}>
+              قم بتقريب الرمز من قارئ الكاميرا لدى المشرف أو المعلم لتسجيل حضورك الفوري للدرس.
+            </p>
+            <p style={{ fontSize: '0.74rem', color: '#64748b', margin: 0, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', lineHeight: '1.4' }}>
+              * للتجربة بدون قارئ حقيقي: انسخ الرمز أعلاه، ثم افتح لوحة التحضير، والصقه في حقل قارئ الكاشير واضغط Enter.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

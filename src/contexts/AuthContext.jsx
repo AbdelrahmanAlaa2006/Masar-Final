@@ -5,9 +5,12 @@ import { supabase } from '@backend/supabase'
 
 const AuthContext = createContext(null)
 
+const ALL_PERMISSIONS = ['attendance', 'grades', 'exams', 'homework', 'students', 'payments', 'reports', 'whatsapp']
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [permissions, setPermissions] = useState([])
   const [loading, setLoading] = useState(true)
   const { tenantId } = useTenant()
 
@@ -22,16 +25,25 @@ export function AuthProvider({ children }) {
     try {
       const token = sessionStorage.getItem('masar-token')
       const userData = sessionStorage.getItem('masar-user')
+      const permsData = sessionStorage.getItem('masar-permissions')
       if (token && userData) {
-        setUser(JSON.parse(userData))
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
         setIsLoggedIn(true)
+        if (permsData) {
+          setPermissions(JSON.parse(permsData))
+        } else {
+          setPermissions(parsedUser.role === 'admin' ? ALL_PERMISSIONS : [])
+        }
       } else {
         setUser(null)
         setIsLoggedIn(false)
+        setPermissions([])
       }
     } catch {
       setUser(null)
       setIsLoggedIn(false)
+      setPermissions([])
     } finally {
       setLoading(false)
     }
@@ -49,6 +61,7 @@ export function AuthProvider({ children }) {
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setIsLoggedIn(false)
+        setPermissions([])
         setLoading(false)
       } else {
         // For other events (like initial session check resolving to null), stop loading
@@ -72,13 +85,29 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, phone, grade, "group", role, avatar_url, tenant_id, is_active, is_approved, created_at')
+        .select('id, name, phone, grade, "group", role, avatar_url, tenant_id, is_active, is_approved, created_at, parent_phone, qr_token')
         .eq('id', user.id)
         .single()
       if (error) throw error
       if (data) {
+        let userPerms = []
+        if (data.role === 'admin') {
+          userPerms = ALL_PERMISSIONS
+        } else if (data.role === 'assistant') {
+          const { data: adminData } = await supabase
+            .from('tenant_admins')
+            .select('permissions')
+            .eq('user_id', data.id)
+            .maybeSingle()
+          if (adminData) {
+            userPerms = adminData.permissions || []
+          }
+        }
+
         sessionStorage.setItem('masar-user', JSON.stringify(data))
+        sessionStorage.setItem('masar-permissions', JSON.stringify(userPerms))
         setUser(data)
+        setPermissions(userPerms)
         window.dispatchEvent(new Event('masar-user-updated'))
         return data
       }
@@ -93,16 +122,24 @@ export function AuthProvider({ children }) {
     sessionStorage.setItem('masar-user', JSON.stringify(userData))
     setUser(userData)
     setIsLoggedIn(true)
-    window.dispatchEvent(new Event('masar-user-updated'))
+    // Run refresh in background to populate permissions, parent_phone, qr_token
+    refreshProfile().catch(err => console.error('Background profile refresh failed on login:', err))
   }
 
   const logout = () => {
     sessionStorage.removeItem('masar-token')
     sessionStorage.removeItem('masar-user')
+    sessionStorage.removeItem('masar-permissions')
     setUser(null)
     setIsLoggedIn(false)
+    setPermissions([])
     invalidateAll()
     window.dispatchEvent(new Event('masar-user-updated'))
+  }
+
+  const hasPermission = (permission) => {
+    if (user?.role === 'admin') return true
+    return permissions.includes(permission)
   }
 
   const value = {
@@ -111,6 +148,9 @@ export function AuthProvider({ children }) {
     loading,
     role: user?.role || null,
     isAdmin: user?.role === 'admin',
+    isAssistant: user?.role === 'assistant',
+    permissions,
+    hasPermission,
     login,
     logout,
     syncAuth,

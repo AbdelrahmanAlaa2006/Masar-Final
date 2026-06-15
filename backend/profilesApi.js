@@ -6,7 +6,7 @@ import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/ca
 export async function listStudents() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, "group", password, avatar_url, created_at, is_active, is_approved')
+    .select('id, name, phone, grade, "group", password, avatar_url, created_at, is_active, is_approved, qr_token, parent_phone')
     .eq('role', 'student')
     .order('name', { ascending: true })
   if (error) throw error
@@ -24,7 +24,7 @@ export async function getProfile(id) {
   return cached(`profile:${id}`, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved')
+      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved, qr_token, parent_phone')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error

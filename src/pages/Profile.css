@@ -817,3 +817,47 @@ body.dark .profile-page {
     transition: none !important;
   }
 }
+
+/* ── Assistant Role Chip Style ────────────────────────────── */
+.profile-chip--assistant {
+  background: rgba(20, 184, 166, 0.08);
+  border: 1px solid rgba(20, 184, 166, 0.2);
+  color: #14b8a6;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark .profile-chip--assistant {
+  background: rgba(20, 184, 166, 0.12);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  color: #2dd4bf;
+}
+
+/* ── Digital Student ID Card Styles ────────────────────────── */
+.digital-card-modal-overlay {
+  animation: profileToastIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.digital-student-id-card {
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.stat-progress-item {
+  margin-bottom: 8px;
+}
+
+.stat-progress-item:last-of-type {
+  margin-bottom: 0;
+}
+
+/* ── Parent Phone Custom Styles ────────────────────────────── */
+.parent-phone-edit-wrapper input:focus {
+  outline: none;
+  border-color: var(--profile-accent-icon) !important;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2) !important;
+}
+
+body.dark .parent-phone-edit-wrapper input:focus {
+  box-shadow: 0 0 0 2px rgba(91, 194, 231, 0.25) !important;
+}
+
