@@ -26,6 +26,7 @@ const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Payments = lazy(() => import('./pages/Payments'))
 const StudentChat = lazy(() => import('./pages/StudentChat'))
+const PublicReport = lazy(() => import('./pages/PublicReport'))
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
 import { tokenAPI } from '@backend/authApi'
@@ -538,10 +539,12 @@ function AppContent() {
             <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><HomeworkGroupReport /></AdminRoute>} />
             <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
-            {/* Public-ish info pages — still gated by auth so non-students can't browse */}
             <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
             <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
             <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
+
+            {/* Public report without login gating */}
+            <Route path="/public-report" element={<PublicReport />} />
           </Routes>
         </Suspense>
       </div>

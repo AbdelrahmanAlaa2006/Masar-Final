@@ -30,6 +30,10 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedGrade, setSelectedGrade] = useState('all')
   const [statusTab, setStatusTab] = useState('pending')
 
+  // QR Report States
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [selectedQrStudent, setSelectedQrStudent] = useState(null)
+
   const fetchStudents = async () => {
     try {
       setLoading(true)
@@ -134,6 +138,95 @@ export default function AccountsPanel({ onBack, flash }) {
     } finally {
       setBusyId(null)
     }
+  }
+
+  const handlePrint = () => {
+    if (!selectedQrStudent) return
+    const printWindow = window.open('', '_blank')
+    const origin = window.location.origin
+    const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`
+    const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`
+    const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || ''
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>بطاقة QR - ${selectedQrStudent.name}</title>
+          <style>
+            body {
+              font-family: 'Tajawal', sans-serif;
+              text-align: center;
+              padding: 40px;
+              direction: rtl;
+              background: #fff;
+              color: #000;
+            }
+            .card {
+              border: 2px dashed #ccc;
+              border-radius: 16px;
+              padding: 30px;
+              max-width: 400px;
+              margin: 0 auto;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            }
+            h2 {
+              margin: 0 0 10px;
+              font-size: 1.6rem;
+            }
+            p {
+              margin: 5px 0;
+              color: #555;
+              font-size: 1.1rem;
+            }
+            .qr-container {
+              margin: 25px 0;
+            }
+            .qr-image {
+              width: 260px;
+              height: 260px;
+            }
+            .logo {
+              font-weight: bold;
+              font-size: 1.4rem;
+              color: #6366f1;
+              margin-bottom: 20px;
+            }
+            .instructions {
+              font-size: 0.9rem;
+              color: #666;
+              margin-top: 15px;
+              line-height: 1.5;
+            }
+            @media print {
+              body { padding: 0; }
+              .card { border: none; box-shadow: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="logo">منصة مسار التعليمية</div>
+            <h2>كود QR لتقرير الطالب</h2>
+            <p><strong>الاسم:</strong> ${selectedQrStudent.name}</p>
+            <p><strong>المرحلة:</strong> ${gradeText}</p>
+            ${selectedQrStudent.group ? `<p><strong>المجموعة:</strong> ${selectedQrStudent.group}</p>` : ''}
+            <div class="qr-container">
+              <img src="${qrCodeApiUrl}" class="qr-image" alt="QR Code" />
+            </div>
+            <div class="instructions">
+              قم بمسح الكود باستخدام كاميرا الهاتف للوصول للتقرير الدراسي الشامل للطالب. يرجى إدخال رقم الهاتف المسجل لتأكيد الهوية.
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   const stats = useMemo(() => {
@@ -353,6 +446,26 @@ export default function AccountsPanel({ onBack, flash }) {
                     <td style={{ padding: '12px 16px' }}>{statusBadge}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                        <button
+                          className="cp-btn cp-btn-info cp-btn-sm"
+                          onClick={() => {
+                            setSelectedQrStudent(student)
+                            setShowQrModal(true)
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            fontSize: '0.8rem',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            borderColor: 'rgba(99, 102, 241, 0.2)',
+                            color: 'var(--primary, #6366f1)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="كود QR للتقرير"
+                        >
+                          <i className="fas fa-qrcode"></i> QR للتقرير
+                        </button>
                         {student.is_approved === false && (
                           <>
                             <button
@@ -412,6 +525,133 @@ export default function AccountsPanel({ onBack, flash }) {
           </table>
         </div>
       )}
+
+      {showQrModal && selectedQrStudent && (() => {
+        const origin = window.location.origin;
+        const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`;
+        const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrUrl)}`;
+        const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || 'غير محدد';
+        
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20
+          }}>
+            <div style={{
+              background: 'rgba(30, 41, 59, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 24,
+              padding: 32,
+              maxWidth: 460,
+              width: '100%',
+              color: '#fff',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+              textAlign: 'center',
+              position: 'relative',
+              direction: 'rtl',
+              fontFamily: 'Tajawal, sans-serif'
+            }}>
+              <button 
+                onClick={() => {
+                  setShowQrModal(false)
+                  setSelectedQrStudent(null)
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 20,
+                  left: 20,
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer'
+                }}
+                title="إغلاق"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 12 }}>كود QR للتقرير الشامل</h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: 24 }}>مسح هذا الرمز يتيح الوصول المباشر لنتائج الطالب وتقارير الحضور.</p>
+
+              <div style={{
+                background: '#fff',
+                padding: 16,
+                borderRadius: 16,
+                display: 'inline-block',
+                marginBottom: 24,
+                boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
+              }}>
+                <img src={qrCodeApiUrl} alt="QR Code" style={{ width: 200, height: 200, display: 'block' }} />
+              </div>
+
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 28,
+                textAlign: 'right'
+              }}>
+                <div style={{ marginBottom: 8 }}><span style={{ color: '#94a3b8' }}>اسم الطالب: </span><span style={{ fontWeight: 600 }}>{selectedQrStudent.name}</span></div>
+                <div style={{ marginBottom: 8 }}><span style={{ color: '#94a3b8' }}>المرحلة الدراسية: </span><span>{gradeText}</span></div>
+                {selectedQrStudent.group && <div><span style={{ color: '#94a3b8' }}>المجموعة: </span><span>{selectedQrStudent.group}</span></div>}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={handlePrint}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 12,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8
+                  }}
+                >
+                  <i className="fas fa-print"></i> طباعة الكود
+                </button>
+                <button
+                  onClick={() => {
+                    setShowQrModal(false)
+                    setSelectedQrStudent(null)
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: 'transparent',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </section>
   )
 }
