@@ -291,6 +291,7 @@ function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isExamTaking = location.pathname === '/exam-taking'
+  const isPublicReportPage = location.pathname === '/public-report'
   const { user, isLoggedIn, loading, logout } = useAuth()
   const { isFeatureEnabled, isGradeEnabled } = useTenant()
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
@@ -496,7 +497,7 @@ function AppContent() {
   const role = user?.role
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
-  const showHeaderFooter = !isLoginPage && !isExamTaking && !isUnapprovedStudent
+  const showHeaderFooter = !isLoginPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
