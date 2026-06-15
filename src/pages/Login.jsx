@@ -512,7 +512,7 @@ export default function Login() {
               🌐 <span>{lang === 'ar' ? 'EN' : 'ع'}</span>
             </button>
             <button onClick={() => {
-              setParentPhoneInput(''); setParentCodeInput(''); setOtpSent(false); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
+              setParentPhoneInput(''); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
             }} className="aa-btn aa-btn-ghost" style={{ color: '#a78bfa' }}>
               {lang === 'ar' ? 'تقارير ولي الأمر' : 'Parent Reports'}
             </button>
@@ -543,7 +543,7 @@ export default function Login() {
                 {t.cta_secondary}
               </button>
               <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={() => {
-                setParentPhoneInput(''); setParentCodeInput(''); setOtpSent(false); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
+                setParentPhoneInput(''); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
               }} style={{ background: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.25)', color: '#a78bfa' }}>
                 <i className="fas fa-chart-line" style={{ marginInlineEnd: 8 }}></i>
                 {lang === 'ar' ? 'تقارير ولي الأمر' : 'Parent Reports'}
