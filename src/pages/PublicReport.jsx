@@ -8,6 +8,7 @@ export default function PublicReport() {
   const [searchParams] = useSearchParams()
   const studentId = searchParams.get('id')
   const qrToken = searchParams.get('token')
+  const urlPhone = searchParams.get('phone')
 
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
@@ -43,20 +44,8 @@ export default function PublicReport() {
     }
   }
 
-  // Check if student details are provided in URL
-  useEffect(() => {
-    if (!studentId || !qrToken) {
-      setError('رابط الاستعلام غير صالح. يرجى مسح كود QR الصحيح من بطاقة الطالب.')
-    }
-  }, [studentId, qrToken])
-
-  const handleVerify = async (e) => {
-    e.preventDefault()
-    if (!phone.trim()) {
-      setError('يرجى إدخال رقم هاتف ولي الأمر المسجل لتأكيد الهوية.')
-      return
-    }
-
+  const performVerify = async (phoneToVerify) => {
+    if (!phoneToVerify) return
     setLoading(true)
     setError('')
     try {
@@ -64,7 +53,7 @@ export default function PublicReport() {
       const { data, error: rpcError } = await supabase.rpc('get_public_report', {
         p_student_id: studentId,
         p_qr_token: qrToken,
-        p_phone: phone.trim()
+        p_phone: phoneToVerify.trim()
       })
 
       if (rpcError) throw new Error(rpcError.message)
@@ -82,6 +71,27 @@ export default function PublicReport() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Check if student details are provided in URL
+  useEffect(() => {
+    if (!studentId || !qrToken) {
+      setError('رابط الاستعلام غير صالح. يرجى مسح كود QR الصحيح من بطاقة الطالب.')
+      return
+    }
+    if (urlPhone) {
+      setPhone(urlPhone)
+      performVerify(urlPhone)
+    }
+  }, [studentId, qrToken, urlPhone])
+
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    if (!phone.trim()) {
+      setError('يرجى إدخال رقم هاتف ولي الأمر المسجل لتأكيد الهوية.')
+      return
+    }
+    await performVerify(phone)
   }
 
   const sendWhatsAppReport = async (data) => {

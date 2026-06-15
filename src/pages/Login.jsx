@@ -108,11 +108,9 @@ export default function Login() {
   // NEW: auth modal
   const [showAuthModal, setShowAuthModal] = useState(false)
 
-  // Parent Reports Verification States
+  // Parent Reports Lookup States
   const [showParentModal, setShowParentModal] = useState(false)
   const [parentPhoneInput, setParentPhoneInput] = useState('')
-  const [parentCodeInput, setParentCodeInput] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
   const [parentModalLoading, setParentModalLoading] = useState(false)
   const [parentModalError, setParentModalError] = useState('')
   const [childrenList, setChildrenList] = useState([])
@@ -441,7 +439,7 @@ export default function Login() {
     } finally { setForgotLoading(false) }
   }
 
-  const handleSendParentOtp = async (e) => {
+  const handleParentLookup = async (e) => {
     e.preventDefault()
     if (!parentPhoneInput.trim()) {
       setParentModalError(lang === 'ar' ? 'يرجى إدخال رقم الهاتف' : 'Please enter phone number')
@@ -450,47 +448,24 @@ export default function Login() {
     setParentModalLoading(true)
     setParentModalError('')
     try {
-      const { data, error } = await supabase.rpc('send_parent_otp', {
+      const { data, error } = await supabase.rpc('get_student_by_parent_phone', {
         p_phone: parentPhoneInput.trim()
       })
       if (error) throw error
-      setOtpSent(true)
-    } catch (err) {
-      console.error(err)
-      setParentModalError(err.message || (lang === 'ar' ? 'رقم الهاتف غير مسجل كولي أمر' : 'Phone not registered as parent'))
-    } finally {
-      setParentModalLoading(false)
-    }
-  }
-
-  const handleVerifyParentOtp = async (e) => {
-    e.preventDefault()
-    if (!parentCodeInput.trim()) {
-      setParentModalError(lang === 'ar' ? 'يرجى إدخال كود التحقق' : 'Please enter verification code')
-      return
-    }
-    setParentModalLoading(true)
-    setParentModalError('')
-    try {
-      const { data, error } = await supabase.rpc('verify_parent_otp', {
-        p_phone: parentPhoneInput.trim(),
-        p_code: parentCodeInput.trim()
-      })
-      if (error) throw error
       if (!data || data.length === 0) {
-        throw new Error(lang === 'ar' ? 'لم يتم العثور على طلاب مرتبطين بهذا الرقم' : 'No students found associated with this number')
+        throw new Error(lang === 'ar' ? 'رقم الهاتف المدخل غير مسجل كولي أمر في النظام' : 'Phone not registered as parent')
       }
       
       if (data.length === 1) {
         const student = data[0]
         setShowParentModal(false)
-        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}`)
+        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
       } else {
         setChildrenList(data)
       }
     } catch (err) {
       console.error(err)
-      setParentModalError(err.message || (lang === 'ar' ? 'كود التحقق غير صحيح أو انتهت صلاحيته' : 'Incorrect or expired OTP'))
+      setParentModalError(err.message || (lang === 'ar' ? 'حدث خطأ أثناء الاستعلام. يرجى المحاولة مرة أخرى.' : 'Error during lookup. Please try again.'))
     } finally {
       setParentModalLoading(false)
     }
@@ -1011,7 +986,7 @@ export default function Login() {
         </div>
       )}
 
-      {/* ─────────── PARENT REPORTS VERIFICATION MODAL ─────────── */}
+      {/* ─────────── PARENT REPORTS LOOKUP MODAL ─────────── */}
       {showParentModal && (
         <div className="auth-modal-overlay" onClick={() => setShowParentModal(false)}>
           <div className="auth-modal aa-auth-modal" onClick={e => e.stopPropagation()} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -1021,11 +996,11 @@ export default function Login() {
               <div className="auth-modal-icon" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justify: 'center', margin: '0 auto 16px', fontSize: '1.6rem' }}>
                 <i className="fas fa-user-shield"></i>
               </div>
-              <h3>{lang === 'ar' ? 'استعلام تقارير أولياء الأمور' : 'Parent Report Verification'}</h3>
+              <h3>{lang === 'ar' ? 'استعلام تقارير أولياء الأمور' : 'Parent Report Lookup'}</h3>
               <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.9rem', marginTop: 8 }}>
                 {lang === 'ar' 
-                  ? 'أدخل رقم هاتف ولي الأمر المسجل لإرسال كود التحقق إلى واتساب الخاص بك والوصول للتقرير.' 
-                  : 'Enter your registered parent phone number to receive a WhatsApp OTP.'}
+                  ? 'أدخل رقم هاتف ولي الأمر المسجل للوصول المباشر إلى التقرير الدراسي للطالب.' 
+                  : 'Enter your registered parent phone number to access the student report.'}
               </p>
             </div>
 
@@ -1042,7 +1017,7 @@ export default function Login() {
                       key={student.student_id}
                       onClick={() => {
                         setShowParentModal(false)
-                        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}`)
+                        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
                       }}
                       className="modern-btn"
                       style={{
@@ -1067,8 +1042,8 @@ export default function Login() {
                   ))}
                 </div>
               </div>
-            ) : !otpSent ? (
-              <form onSubmit={handleSendParentOtp} className="auth-modal-form">
+            ) : (
+              <form onSubmit={handleParentLookup} className="auth-modal-form">
                 <div className="input-wrapper">
                   <i className="fas fa-phone"></i>
                   <input 
@@ -1081,40 +1056,9 @@ export default function Login() {
                   />
                 </div>
                 <button type="submit" className="modern-btn" disabled={parentModalLoading}>
-                  <span className="btn-text">{lang === 'ar' ? 'إرسال كود التحقق (واتساب)' : 'Send Verification Code (WhatsApp)'}</span>
+                  <span className="btn-text">{lang === 'ar' ? 'عرض التقرير' : 'View Report'}</span>
                   {parentModalLoading && <span className="btn-loader"><span className="spinner"></span></span>}
                 </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyParentOtp} className="auth-modal-form">
-                <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: 12, borderRadius: 10, marginBottom: 16, fontSize: '0.84rem', textAlign: 'center' }}>
-                  <i className="fas fa-check-circle" style={{ marginInlineEnd: 6 }}></i>
-                  {lang === 'ar' ? 'تم إرسال كود التحقق لواتساب ولي الأمر بنجاح!' : 'Verification code sent to parent WhatsApp!'}
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-key"></i>
-                  <input 
-                    type="text" 
-                    value={parentCodeInput} 
-                    onChange={e => setParentCodeInput(e.target.value)} 
-                    required 
-                    placeholder={lang === 'ar' ? 'أدخل كود التحقق المكون من 6 أرقام' : 'Enter 6-digit OTP'} 
-                    style={{ textAlign: 'center', letterSpacing: 4, fontWeight: 'bold' }}
-                  />
-                </div>
-                <button type="submit" className="modern-btn" disabled={parentModalLoading}>
-                  <span className="btn-text">{lang === 'ar' ? 'تأكيد وعرض التقرير' : 'Verify & View Report'}</span>
-                  {parentModalLoading && <span className="btn-loader"><span className="spinner"></span></span>}
-                </button>
-                <div style={{ textAlign: 'center', marginTop: 14 }}>
-                  <button 
-                    type="button" 
-                    onClick={() => setOtpSent(false)} 
-                    style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    {lang === 'ar' ? 'إعادة إرسال أو تغيير الرقم' : 'Resend or change phone'}
-                  </button>
-                </div>
               </form>
             )}
           </div>
