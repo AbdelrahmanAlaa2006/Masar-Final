@@ -278,6 +278,9 @@ CREATE POLICY hws_select_own_or_admin ON public.homework_submissions FOR SELECT
 
 -- exams
 DROP POLICY IF EXISTS "Tenant isolation ON exams" ON public.exams;
+DROP POLICY IF EXISTS "Tenant select isolation ON exams" ON public.exams;
+DROP POLICY IF EXISTS "Tenant write isolation ON exams" ON public.exams;
+
 CREATE POLICY "Tenant select isolation ON exams" ON public.exams FOR SELECT
   USING (tenant_id = public.current_tenant_id());
 
