@@ -50,18 +50,36 @@ BEGIN
     jsonb_build_object(
       'id', v.id,
       'title', v.title,
-      'video_parts', v.video_parts,
+      'video_parts', (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', vp.id,
+            'part_index', vp.part_index,
+            'title', vp.title,
+            'source', vp.source,
+            'youtube_id', vp.youtube_id,
+            'youtube_url', vp.youtube_url,
+            'drive_id', vp.drive_id,
+            'duration_seconds', vp.duration_seconds,
+            'view_limit', vp.view_limit,
+            'bunny_video_id', vp.bunny_video_id,
+            'bunny_library_id', vp.bunny_library_id
+          ) ORDER BY vp.part_index ASC
+        )
+        FROM public.video_parts vp
+        WHERE vp.video_id = v.id
+      ),
       'progress_rows', (
         SELECT jsonb_agg(
           jsonb_build_object(
-            'part_id', vp.part_id,
-            'seconds_watched', vp.seconds_watched,
-            'views_used', vp.views_used,
-            'last_watched_at', vp.last_watched_at
+            'part_id', vpr.part_id,
+            'seconds_watched', vpr.seconds_watched,
+            'views_used', vpr.views_used,
+            'last_watched_at', vpr.last_watched_at
           )
         )
-        FROM public.video_progress vp
-        WHERE vp.video_id = v.id AND vp.student_id = p_student_id
+        FROM public.video_progress vpr
+        WHERE vpr.video_id = v.id AND vpr.student_id = p_student_id
       )
     )
   ) INTO v_videos_list
