@@ -755,3 +755,29 @@ body.dark .report-suggestion-name {
 body.dark .report-suggestion-sub {
   color: #94a3b8;
 }
+
+/* ── Public Report Mobile Viewport Adjustments ── */
+@media (max-width: 640px) {
+  .cp-page {
+    padding-top: 16px !important;
+  }
+  .cp-container {
+    padding: 0 12px 40px !important;
+  }
+  .cp-target-banner {
+    flex-direction: column !important;
+    text-align: center !important;
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+  .cp-target-banner-body {
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .cp-target-banner-meta {
+    justify-content: center !important;
+    gap: 12px !important;
+    margin-top: 6px !important;
+  }
+}
+

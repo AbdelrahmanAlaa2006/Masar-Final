@@ -5,6 +5,7 @@ import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
 import { cached, LIST_TTL } from '../../utils/cache'
 import { SectionCard, Breadcrumbs } from './shared'
+import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import '../ControlPanel.css'
 
@@ -15,7 +16,6 @@ const RevealPanel = lazy(() => import('./RevealPanel'))
 const HomeworkRevealPanel = lazy(() => import('./HomeworkRevealPanel'))
 const ResetRequestsPanel = lazy(() => import('./ResetRequestsPanel'))
 const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
-const StudentsSyncPanel = lazy(() => import('./StudentsSyncPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
 const ChatsPanel = lazy(() => import('./ChatsPanel'))
@@ -67,6 +67,7 @@ export default function ControlPanelIndex() {
   const [exams, setExams]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [resetRequestsCount, setResetRequestsCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -81,6 +82,14 @@ export default function ControlPanelIndex() {
         setStudents(s)
         setVideos(v)
         setExams(e)
+
+        const { count, error: countError } = await supabase
+          .from('password_reset_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+        if (!cancelled && !countError) {
+          setResetRequestsCount(count || 0)
+        }
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
       } finally {
@@ -89,6 +98,27 @@ export default function ControlPanelIndex() {
     })()
     return () => { cancelled = true }
   }, [])
+
+  // Refresh pending reset requests count when section changes back to home
+  useEffect(() => {
+    if (section === 'home') {
+      let cancelled = false
+      ;(async () => {
+        try {
+          const { count, error: countError } = await supabase
+            .from('password_reset_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending')
+          if (!cancelled && !countError) {
+            setResetRequestsCount(count || 0)
+          }
+        } catch (err) {
+          console.error('Failed to fetch pending reset requests count:', err)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+  }, [section])
 
   // Clear chats refresh flag when navigating away from the chats section
   useEffect(() => {
@@ -231,17 +261,6 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
-                {/* Students sync (Gate by students) */}
-                {hasPermission('students') && (
-                  <SectionCard
-                    icon="fa-users"
-                    accent="green"
-                    title="مزامنة الطلاب"
-                    desc="رفع ملف CSV لإضافة/تحديث الطلاب وحذف من تم استبعاده"
-                    onClick={() => enterSection('students')}
-                  />
-                )}
-
                 {/* Students accounts activation (Gate by students) */}
                 {hasPermission('students') && (
                   <SectionCard
@@ -272,6 +291,7 @@ export default function ControlPanelIndex() {
                     title="طلبات استعادة الحساب"
                     desc="استعرض طلبات استعادة كلمة المرور المقدمة من الطلاب"
                     onClick={() => enterSection('resets')}
+                    badge={resetRequestsCount}
                   />
                 )}
 
@@ -332,7 +352,6 @@ export default function ControlPanelIndex() {
 
             {/* Suspense wrapper for lazy loading individual components */}
             <Suspense fallback={<PanelLoader />}>
-              {section === 'students' && <StudentsSyncPanel />}
               {section === 'seasons'  && <SeasonalThemePanel />}
               {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
               {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}

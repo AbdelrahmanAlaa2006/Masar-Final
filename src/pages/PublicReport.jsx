@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
 import { sendGatewayMessage } from '@backend/parentNotificationsApi'
 import './Report.css' // Reuse general report styles
 
 export default function PublicReport() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const studentId = searchParams.get('id')
   const qrToken = searchParams.get('token')
@@ -174,6 +175,28 @@ export default function PublicReport() {
     return (
       <main className="cp-page" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif', minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="cp-container" style={{ maxWidth: '480px', width: '100%', padding: '0 20px' }}>
+          <button 
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--cp-text-muted, #94a3b8)',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '16px',
+              padding: '4px 8px',
+              borderRadius: '8px',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--cp-text-muted, #94a3b8)'}
+          >
+            <i className="fas fa-arrow-right" />
+            <span>العودة لصفحة الدخول</span>
+          </button>
           <div style={{
             background: 'rgba(30, 41, 59, 0.45)',
             backdropFilter: 'blur(20px)',
@@ -267,6 +290,30 @@ export default function PublicReport() {
     <main className="cp-page" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
       <div className="cp-container" style={{ maxWidth: '900px', margin: '20px auto' }}>
         
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate('/login')}
+          style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            color: '#fff',
+            padding: '8px 16px',
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '20px',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+        >
+          <i className="fas fa-arrow-right" />
+          <span>العودة لصفحة الدخول</span>
+        </button>
+        
         {/* Verification Success Alert */}
         <div style={{
           background: 'rgba(16, 185, 129, 0.15)',
@@ -309,7 +356,7 @@ export default function PublicReport() {
         </div>
 
         {/* Stats Grid */}
-        <div className="cp-home-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="cp-home-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '16px', marginBottom: '24px' }}>
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', padding: '16px', textAlign: 'center', boxShadow: 'var(--cp-card-shadow)' }}>
             <span style={{ fontSize: '0.84rem', color: 'var(--cp-text-muted)', fontWeight: 'bold' }}>نسبة حضور السنتر</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '8px', color: '#10b981' }}>{attendance.percentage || 100}%</div>
@@ -333,7 +380,7 @@ export default function PublicReport() {
         </div>
 
         {/* Detailed Reports Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '24px', marginBottom: '24px' }}>
           
           {/* Center Grades Table */}
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--cp-card-shadow)' }}>

@@ -15,10 +15,6 @@ export default function Profile() {
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Student parent phone state
-  const [parentPhone, setParentPhone] = useState('')
-  const [isEditingPhone, setIsEditingPhone] = useState(false)
-  const [savingPhone, setSavingPhone] = useState(false)
 
   // Student stats states
   const [attendanceSummary, setAttendanceSummary] = useState(null)
@@ -50,7 +46,6 @@ export default function Profile() {
   // Load student stats dynamically (lazy loaded APIs)
   useEffect(() => {
     if (user && user.role === 'student') {
-      setParentPhone(user.parent_phone || '')
       setLoadingStats(true)
 
       const loadStats = async () => {
@@ -118,33 +113,6 @@ export default function Profile() {
     setTimeout(() => setSuccessMsg(''), 2500)
   }
 
-  // Save parent phone number
-  const handleSaveParentPhone = async () => {
-    if (!user) return
-    setSavingPhone(true)
-    setErrorMsg('')
-    setSuccessMsg('')
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ parent_phone: parentPhone.trim() })
-        .eq('id', user.id)
-
-      if (error) throw error
-
-      setSuccessMsg('تم تحديث رقم هاتف ولي الأمر بنجاح')
-      setTimeout(() => setSuccessMsg(''), 3000)
-      setIsEditingPhone(false)
-      
-      // Update local storage and context
-      await refreshProfile()
-    } catch (err) {
-      console.error('Failed to update parent phone:', err)
-      setErrorMsg('فشل حفظ رقم الهاتف. يرجى المحاولة لاحقاً.')
-    } finally {
-      setSavingPhone(false)
-    }
-  }
 
   // Upload avatar
   const handleAvatarChange = async (e) => {
@@ -405,56 +373,27 @@ export default function Profile() {
               <span className="profile-info-value" dir="ltr">{user.phone || '—'}</span>
             </div>
 
-            {/* Parent contact follow-up phone (editable for students) */}
+            {/* Parent contact follow-up phone (read-only for students, edit disabled) */}
             {user.role === 'student' && (
               <div className="profile-info-row" style={{ flexWrap: 'wrap', gap: '8px' }}>
-                <span className="profile-info-label">
-                  <i className="fab fa-whatsapp" />
-                  هاتف ولي الأمر (للمتابعة)
-                </span>
-                
-                {isEditingPhone ? (
-                  <div className="parent-phone-edit-wrapper" style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '8px' }}>
-                    <input 
-                      type="text" 
-                      value={parentPhone}
-                      onChange={(e) => setParentPhone(e.target.value)}
-                      placeholder="رقم الهاتف (الواتساب)"
-                      className="cp-input"
-                      style={{ flex: 1, padding: '6px 12px', fontSize: '0.9rem', background: 'var(--profile-avatar-bg)', color: 'var(--profile-text)', border: '1px solid var(--profile-card-border)', borderRadius: '8px' }}
-                      dir="ltr"
-                    />
-                    <button 
-                      onClick={handleSaveParentPhone}
-                      disabled={savingPhone}
-                      className="cp-btn cp-btn-success"
-                      style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem' }}
-                    >
-                      {savingPhone ? <i className="fas fa-spinner fa-spin"></i> : 'حفظ'}
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setParentPhone(user.parent_phone || '')
-                        setIsEditingPhone(false)
-                      }}
-                      className="cp-btn cp-btn-secondary"
-                      style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem' }}
-                    >
-                      إلغاء
-                    </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <span className="profile-info-label">
+                    <i className="fab fa-whatsapp" />
+                    هاتف ولي الأمر (للمتابعة)
+                  </span>
+                  <div className="parent-phone-value-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="profile-info-value" dir="ltr" style={{ opacity: 0.85 }}>
+                      {user.parent_phone || 'غير مسجل'}
+                    </span>
+                    <i className="fas fa-lock" style={{ color: 'var(--profile-row-label-icon)', fontSize: '0.8rem' }} title="تعديل رقم ولي الأمر غير متاح" />
                   </div>
-                ) : (
-                  <div className="parent-phone-value-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className="profile-info-value" dir="ltr">{user.parent_phone || 'غير مسجل'}</span>
-                    <button 
-                      onClick={() => setIsEditingPhone(true)}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--profile-accent-icon)', cursor: 'pointer', fontSize: '0.85rem' }}
-                      title="تعديل الهاتف"
-                    >
-                      <i className="fas fa-pen" />
-                    </button>
-                  </div>
-                )}
+                </div>
+                <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', background: 'rgba(255, 255, 255, 0.02)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--profile-card-border)' }}>
+                  <i className="fas fa-circle-info" style={{ color: 'var(--profile-accent-icon)', fontSize: '0.9rem' }} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--profile-row-label)', lineHeight: '1.4' }}>
+                    يتم إدخال رقم ولي الأمر عند التسجيل فقط. لتعديله، يرجى التواصل مع الإدارة.
+                  </span>
+                </div>
               </div>
             )}
 
@@ -528,8 +467,7 @@ export default function Profile() {
 
               <button 
                 onClick={() => setShowDigitalCard(true)}
-                className="cp-btn cp-btn-info"
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', fontSize: '0.96rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                className="profile-digital-card-btn"
               >
                 <i className="fas fa-qrcode" />
                 عرض بطاقة الطالب الرقمية

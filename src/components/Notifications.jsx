@@ -62,8 +62,26 @@ export default function Notifications() {
           ? cached(`reads:${uid}`, NOTIF_TTL, () => listMyReadIds(uid))
           : Promise.resolve([]),
       ])
-      setList(rows)
-      setReadIds(new Set(reads))
+
+      const readSet = new Set(reads)
+
+      // Auto-delete read DevTools violations in the background to prevent clutter & requests
+      const devtoolsToDelete = rows.filter(
+        (n) => n.meta?.kind === 'devtools_violation' && readSet.has(n.id)
+      )
+      if (devtoolsToDelete.length > 0) {
+        Promise.all(devtoolsToDelete.map((n) => deleteNotification(n.id)))
+          .then(() => invalidateCache('notifications'))
+          .catch((err) => console.error('Failed to clean up read devtools notifications:', err))
+      }
+
+      // Filter them out from local state immediately
+      const filteredRows = rows.filter(
+        (n) => !(n.meta?.kind === 'devtools_violation' && readSet.has(n.id))
+      )
+
+      setList(filteredRows)
+      setReadIds(readSet)
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }
@@ -149,14 +167,35 @@ export default function Notifications() {
   }, [list, userRole, userId, user?.grade])
   const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length
 
+  const deleteOne = async (id) => {
+    const prev = list
+    setList(list.filter((n) => n.id !== id))
+    try {
+      await deleteNotification(id)
+      invalidateCache('notifications')
+    } catch { setList(prev) }
+  }
+
   const markAllRead = async () => {
     const ids = sorted.map((n) => n.id).filter((id) => !readIds.has(id))
     if (!ids.length || !userId) return
     const next = new Set(readIds); ids.forEach((id) => next.add(id))
     setReadIds(next)
     try {
+      // Find all devtools violations that are about to be marked as read
+      const devtoolsIds = sorted
+        .filter((n) => n.meta?.kind === 'devtools_violation' && !readIds.has(n.id))
+        .map((n) => n.id)
+
       await apiMarkAllRead(ids, userId)
       invalidateCache(`reads:${userId}`)
+
+      // Delete devtools violations from DB to prevent clutter/bloat
+      if (devtoolsIds.length > 0) {
+        await Promise.all(devtoolsIds.map((id) => deleteNotification(id)))
+        setList((prev) => prev.filter((n) => !devtoolsIds.includes(n.id)))
+        invalidateCache('notifications')
+      }
     } catch { /* ignore */ }
   }
 
@@ -172,9 +211,14 @@ export default function Notifications() {
 
   // Click a notification: mark read, close panel, navigate to the right page
   const handleNotifClick = (n) => {
-    markOneRead(n.id)
-
     const meta = n.meta || {}
+    
+    // Do not mark password reset requests as read when clicked; they should remain unread
+    // until resolved/rejected by the admin (which deletes them from the DB trigger).
+    if (meta.kind !== 'password_reset_request') {
+      markOneRead(n.id)
+    }
+
     let target = null
     let state = null
 
@@ -201,6 +245,7 @@ export default function Notifications() {
     } else if (meta.kind === 'devtools_violation') {
       if (userRole === 'admin') {
         target = '/control-panel?section=violations'
+        deleteOne(n.id) // DevTools violations are deleted once read to avoid UI clutter & DB requests
       }
     } else if (meta.kind === 'student_chat_message') {
       if (userRole === 'admin') {
@@ -216,15 +261,6 @@ export default function Notifications() {
       setOpen(false)
       navigate(target, { state })
     }
-  }
-
-  const deleteOne = async (id) => {
-    const prev = list
-    setList(list.filter((n) => n.id !== id))
-    try {
-      await deleteNotification(id)
-      invalidateCache('notifications')
-    } catch { setList(prev) }
   }
 
   const sendNotification = async (e) => {

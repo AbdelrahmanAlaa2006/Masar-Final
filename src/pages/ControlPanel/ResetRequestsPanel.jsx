@@ -12,6 +12,7 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
   const [copiedId, setCopiedId] = useState(null)
   const [copiedPassId, setCopiedPassId] = useState(null)
   const [showGuide, setShowGuide] = useState(true)
+  const [tempPasswords, setTempPasswords] = useState({})
 
   // Load pending password reset requests
   useEffect(() => {
@@ -101,6 +102,28 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
     }
   }
 
+  const handleResetPassword = async (req, studentId) => {
+    if (busyId) return
+    setBusyId(req.id)
+    const newPass = 'masar' + Math.floor(1000 + Math.random() * 9000)
+    try {
+      const { error: rpcError } = await supabase.rpc('reset_student_password', {
+        p_student_id: studentId,
+        p_new_password: newPass
+      })
+      if (rpcError) throw rpcError
+
+      setTempPasswords((prev) => ({ ...prev, [req.id]: newPass }))
+      flash(`تم تعيين كلمة مرور مؤقتة للطالب بنجاح: ${newPass} (تم نسخها تلقائياً)`, 'success')
+      navigator.clipboard.writeText(newPass)
+    } catch (e) {
+      console.error(e)
+      flash(e.message || 'تعذّر إعادة تعيين كلمة المرور. يرجى التأكد من تشغيل ملف SQL في قاعدة البيانات أولاً.', 'warning')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <section className="cp-panel">
       {onBack && (
@@ -137,10 +160,10 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
         {showGuide && (
           <div className="reset-guide-body">
             <ol>
-              <li>تصفح الطلبات المعلقة بالأسفل لمشاهدة كلمة المرور الخاصة بكل طالب مباشرة.</li>
-              <li>اضغط على زر <strong>"نسخ كلمة المرور"</strong> لنسخ كلمة المرور الأصلية المستوردة من ملف الـ CSV.</li>
-              <li>قم بإرسال كلمة المرور المنسوخة للطالب عبر الواتساب أو وسيلة التواصل المناسبة.</li>
-              <li>بعد تسليم كلمة المرور بنجاح للطالب، اضغط على زر <strong>"تم حل الطلب"</strong> لأرشفة الطلب تلقائيًا وحذف الإشعار.</li>
+              <li>تصفح الطلبات المعلقة بالأسفل لمشاهدة كلمة المرور الخاصة بكل طالب.</li>
+              <li>إذا كان الحساب قد تم إنشاؤه يدوياً من الطالب (تظهر كلمة المرور "غير مسجلة")، اضغط على زر <strong>"توليد كلمة مرور مؤقتة"</strong> لتعيين كلمة مرور جديدة له تلقائياً.</li>
+              <li>اضغط على زر <strong>"نسخ كلمة المرور"</strong> لإرسالها إلى الطالب عبر الواتساب أو غيره.</li>
+              <li>بعد تسليم كلمة المرور بنجاح، اضغط على زر <strong>"تم حل الطلب"</strong> لأرشفة الطلب تلقائياً.</li>
             </ol>
           </div>
         )}
@@ -186,7 +209,8 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
             const getCleanPhone = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
             const reqPhoneClean = getCleanPhone(req.phone)
             const studentMatch = students.find((s) => getCleanPhone(s.phone) === reqPhoneClean)
-            const currentPassword = studentMatch?.password || 'غير مسجلة (تمت إضافته يدويًا)'
+            const currentPassword = tempPasswords[req.id] || studentMatch?.password || 'غير مسجلة (تمت إضافته يدويًا)'
+            const isManualNoPassword = !studentMatch?.password && !tempPasswords[req.id]
 
             return (
               <li key={req.id} className="cp-item">
@@ -205,16 +229,32 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
                   </div>
                 </div>
 
-                <div className="cp-item-controls" style={{ gap: 8 }}>
-                  <button
-                    className="cp-btn cp-btn-info cp-btn-sm"
-                    type="button"
-                    onClick={() => copyToClipboard(currentPassword, req.id, 'password')}
-                    title="نسخ كلمة مرور الطالب"
-                  >
-                    <i className={`fas ${copiedPassId === req.id ? 'fa-check' : 'fa-copy'}`}></i>
-                    {copiedPassId === req.id ? 'تم النسخ' : 'نسخ كلمة المرور'}
-                  </button>
+                <div className="cp-item-controls" style={{ gap: 8, flexWrap: 'wrap' }}>
+                  {studentMatch && isManualNoPassword && (
+                    <button
+                      className="cp-btn cp-btn-success cp-btn-sm"
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleResetPassword(req, studentMatch.id)}
+                      title="إنشاء كلمة مرور مؤقتة وتحديث حساب الطالب بها"
+                      style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)' }}
+                    >
+                      <i className="fas fa-magic"></i>
+                      توليد كلمة مرور مؤقتة
+                    </button>
+                  )}
+
+                  {!isManualNoPassword && (
+                    <button
+                      className="cp-btn cp-btn-info cp-btn-sm"
+                      type="button"
+                      onClick={() => copyToClipboard(currentPassword, req.id, 'password')}
+                      title="نسخ كلمة مرور الطالب"
+                    >
+                      <i className={`fas ${copiedPassId === req.id ? 'fa-check' : 'fa-copy'}`}></i>
+                      {copiedPassId === req.id ? 'تم النسخ' : 'نسخ كلمة المرور'}
+                    </button>
+                  )}
 
                   <button
                     className="cp-btn cp-btn-ghost cp-btn-sm"

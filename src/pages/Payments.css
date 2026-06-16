@@ -686,3 +686,109 @@
     display: none !important;
   }
 }
+
+/* ── Receipt Zoom Modal Lightbox ── */
+.rp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  animation: rp-fade 0.18s ease-out;
+}
+
+@keyframes rp-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.rp-modal {
+  background: var(--cp-card-bg, #fff);
+  border: 1px solid var(--cp-card-border, rgba(0,0,0,0.06));
+  border-radius: 16px;
+  width: 100%;
+  max-width: 550px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  font-family: 'Tajawal', sans-serif;
+  overflow: hidden;
+  animation: rp-pop 0.22s ease-out;
+}
+
+body.dark .rp-modal {
+  background: #1e1e2f;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes rp-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.rp-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1.1rem 1.25rem 0.9rem;
+  border-bottom: 1px solid var(--cp-divider, #e2e8f0);
+}
+
+body.dark .rp-modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.rp-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.rp-modal-title {
+  flex: 1;
+  min-width: 0;
+}
+.rp-modal-title h3 {
+  margin: 0 0 2px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cp-text-main);
+}
+
+.rp-modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--cp-back-bg, transparent);
+  border: 1.5px solid var(--cp-back-border, #e2e8f0);
+  color: var(--cp-text-muted, #718096);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+body.dark .rp-modal-close {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #a0aec0;
+}
+
+.rp-modal-close:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}

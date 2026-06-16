@@ -67,9 +67,26 @@ export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope
   )
 }
 
-export function SectionCard({ icon, title, desc, accent, onClick }) {
+export function SectionCard({ icon, title, desc, accent, onClick, badge }) {
   return (
-    <button className={`cp-section-card cp-accent-${accent}`} onClick={onClick}>
+    <button className={`cp-section-card cp-accent-${accent}`} onClick={onClick} style={{ position: 'relative' }}>
+      {badge ? (
+        <span className="cp-section-badge" style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          background: '#ef4444',
+          color: '#fff',
+          fontSize: '0.75rem',
+          fontWeight: 'bold',
+          padding: '2px 8px',
+          borderRadius: '999px',
+          boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
+          zIndex: 2
+        }}>
+          {badge}
+        </span>
+      ) : null}
       <div className="cp-section-icon">
         <i className={`fas ${icon}`}></i>
       </div>

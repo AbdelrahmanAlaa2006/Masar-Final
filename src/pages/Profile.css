@@ -861,3 +861,41 @@ body.dark .parent-phone-edit-wrapper input:focus {
   box-shadow: 0 0 0 2px rgba(91, 194, 231, 0.25) !important;
 }
 
+/* ── Digital Card Button ──────────────────────────────────── */
+.profile-digital-card-btn {
+  background: var(--profile-accent-gradient);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  font-family: 'Tajawal', sans-serif;
+}
+
+.profile-digital-card-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35);
+  filter: brightness(1.05);
+}
+
+.profile-digital-card-btn:active {
+  transform: translateY(1px);
+}
+
+body.dark .profile-digital-card-btn {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+body.dark .profile-digital-card-btn:hover {
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+}
+
