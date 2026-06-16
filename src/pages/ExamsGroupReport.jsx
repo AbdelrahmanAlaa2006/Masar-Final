@@ -40,7 +40,7 @@ export default function ExamsGroupReport() {
       try {
         const [s, e] = await Promise.all([
           cached('students', LIST_TTL, listStudents),
-          cached('exams', LIST_TTL, listExams),
+          cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
         ])
         if (cancelled) return
         setStudents(s)

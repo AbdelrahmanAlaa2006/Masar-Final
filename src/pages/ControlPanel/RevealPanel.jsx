@@ -39,7 +39,7 @@ export default function RevealPanel({ onBack, flash }) {
       try {
         setLoading(true)
         const [ex, st] = await Promise.all([
-          cached('exams', LIST_TTL, listExams),
+          cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
           cached('students', LIST_TTL, listStudents),
         ])
         if (!cancelled) {

@@ -76,7 +76,7 @@ export default function ControlPanelIndex() {
         const [s, v, e] = await Promise.all([
           cached('students', LIST_TTL, listStudents),
           cached('videos',   LIST_TTL, listVideos),
-          cached('exams',    LIST_TTL, listExams),
+          cached('exams-lean',    LIST_TTL, () => listExams({ lean: true })),
         ])
         if (cancelled) return
         setStudents(s)

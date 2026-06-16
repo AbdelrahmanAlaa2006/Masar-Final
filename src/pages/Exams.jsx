@@ -51,7 +51,12 @@ export default function Exams() {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await cached('exams', LIST_TTL, listExams)
+      const isLean = userRole !== 'admin'
+      const data = await cached(
+        isLean ? 'exams-lean' : 'exams',
+        LIST_TTL,
+        () => listExams({ lean: isLean })
+      )
       setRows(data)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل الامتحانات')
@@ -248,7 +253,9 @@ export default function Exams() {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     })
-    const qCount = Array.isArray(exam.questions) ? exam.questions.length : 0
+    const qCount = exam.questions_count !== undefined
+      ? exam.questions_count
+      : (Array.isArray(exam.questions) ? exam.questions.length : 0)
 
     return (
       <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>

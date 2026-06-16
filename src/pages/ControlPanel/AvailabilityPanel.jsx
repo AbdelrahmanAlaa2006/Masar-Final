@@ -38,7 +38,7 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
       try {
         setLoading(true)
         const [ex, vd, st] = await Promise.all([
-          cached('exams', LIST_TTL, listExams),
+          cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
           cached('videos', LIST_TTL, listVideos),
           cached('students', LIST_TTL, listStudents),
         ])

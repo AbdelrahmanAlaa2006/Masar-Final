@@ -28,8 +28,8 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || null
 // needed (cuts payload by 10–100x for big exams).
 export async function listExams({ lean = false } = {}) {
   const cols = lean
-    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at'
-    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, reveal_grades, created_at'
+    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at, questions_count'
+    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, created_at'
   const { data, error } = await supabase
     .from('exams')
     .select(cols)
