@@ -98,11 +98,11 @@ BEGIN
           'score', ea.score,
           'max_score', ea.max_score,
           'completed_at', ea.submitted_at,
-          'created_at', ea.created_at
+          'created_at', ea.started_at
         )
         FROM public.exam_attempts ea
         WHERE ea.exam_id = e.id AND ea.student_id = p_student_id
-        ORDER BY ea.created_at DESC
+        ORDER BY ea.started_at DESC
         LIMIT 1
       )
     )
@@ -121,11 +121,11 @@ BEGIN
           'id', hs.id,
           'score', hs.score,
           'max_score', hs.max_score,
-          'created_at', hs.created_at
+          'created_at', hs.submitted_at
         )
         FROM public.homework_submissions hs
         WHERE hs.homework_id = h.id AND hs.student_id = p_student_id
-        ORDER BY hs.created_at DESC
+        ORDER BY hs.submitted_at DESC
         LIMIT 1
       )
     )
