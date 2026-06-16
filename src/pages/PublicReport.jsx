@@ -31,6 +31,7 @@ export default function PublicReport() {
   const [platformData, setPlatformData] = useState(null)
   const [loadingPlatform, setLoadingPlatform] = useState(false)
   const [platformError, setPlatformError] = useState('')
+  const [retryTrigger, setRetryTrigger] = useState(0)
 
   // Synchronize component state with URL parameters (type, subView)
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function PublicReport() {
     } else {
       setViewType('selection')
     }
-  }, [verified, searchParams])
+  }, [verified, searchParams, retryTrigger])
 
   const navigateToCenter = () => {
     const params = new URLSearchParams(window.location.search)
@@ -1092,18 +1093,6 @@ export default function PublicReport() {
                 </p>
               </div>
             </div>
-
-            {loadingPlatform && (
-              <div style={{ textAlign: 'center', marginTop: '30px', color: '#cbd5e1', fontSize: '0.95rem' }}>
-                <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: '8px', color: '#8b5cf6' }} />
-                جاري تحميل تقارير المنصة...
-              </div>
-            )}
-            {platformError && (
-              <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '20px', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                {platformError}
-              </div>
-            )}
           </div>
         )}
 
@@ -1265,8 +1254,75 @@ export default function PublicReport() {
         )}
 
         {/* ─────────── 3. PLATFORM REPORTS VIEW ─────────── */}
-        {viewType === 'platform' && platformData && (
+        {viewType === 'platform' && (
           <div>
+            {/* Loading State */}
+            {loadingPlatform && !platformData && (
+              <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '3rem', color: '#8b5cf6', marginBottom: '24px', display: 'block', margin: '0 auto' }} />
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>جاري تحميل البيانات</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.92rem', margin: 0 }}>نسترجع الآن تفاصيل مشاهدة الفيديوهات والواجبات والاختبارات الخاصة بك...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {platformError && !platformData && (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#f87171',
+                  borderRadius: '20px',
+                  padding: '24px',
+                  marginBottom: '24px',
+                  textAlign: 'right'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <i className="fas fa-exclamation-circle" style={{ fontSize: '1.4rem' }} />
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>عذراً، فشل تحميل التقارير</h4>
+                  </div>
+                  <p style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#cbd5e1', margin: 0 }}>
+                    {platformError}
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setPlatformError('')
+                    setPlatformData(null)
+                    setRetryTrigger(prev => prev + 1)
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '14px',
+                    padding: '14px 32px',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontFamily: 'Tajawal, sans-serif',
+                    boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(124, 58, 237, 0.45)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(124, 58, 237, 0.3)'
+                  }}
+                >
+                  <i className="fas fa-redo-alt" style={{ marginInlineEnd: '8px' }} />
+                  إعادة المحاولة
+                </button>
+              </div>
+            )}
+
+            {/* Content State */}
+            {platformData && (
+              <div>
             {/* PLATFORM DASHBOARD INDEX */}
             {platformSubView === 'dashboard' && (
               <div>
@@ -1495,6 +1551,8 @@ export default function PublicReport() {
                     })}
                   </div>
                 )}
+              </div>
+            )}
               </div>
             )}
           </div>
