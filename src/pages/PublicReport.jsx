@@ -219,8 +219,11 @@ export default function PublicReport() {
   // Compute selected month stats
   const monthlyStats = useMemo(() => {
     const totalAtt = filteredAttendance.length
-    const presentAtt = filteredAttendance.filter(a => a.status === 'present' || a.status === 'late').length
-    const attRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : 100
+    const presentAtt = filteredAttendance.filter(a => a.status === 'present').length
+    const absentAtt = filteredAttendance.filter(a => a.status === 'absent').length
+    const lateAtt = filteredAttendance.filter(a => a.status === 'late').length
+    const excusedAtt = filteredAttendance.filter(a => a.status === 'excused').length
+    const attRate = totalAtt > 0 ? Math.round(((presentAtt + lateAtt) / totalAtt) * 100) : 100
 
     const examGrades = filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework')
     const avgScore = examGrades.length > 0
@@ -229,13 +232,36 @@ export default function PublicReport() {
     const highestScore = examGrades.length > 0
       ? Math.max(...examGrades.map(g => Number(g.score)))
       : 0
+    const lowestScore = examGrades.length > 0
+      ? Math.min(...examGrades.map(g => Number(g.score)))
+      : 0
+
+    const avgPct = examGrades.length > 0
+      ? Math.round(examGrades.reduce((sum, g) => sum + (g.score / g.max_score) * 100, 0) / examGrades.length)
+      : 0
+    const classAvgPct = examGrades.length > 0
+      ? Math.round(examGrades.reduce((sum, g) => sum + (g.class_average ? (g.class_average / g.max_score) * 100 : (g.score / g.max_score) * 100), 0) / examGrades.length)
+      : 0
+
+    const participationCount = filteredGrades.filter(g => g.type === 'behavior' || g.type === 'participation').length
+    const behaviorCount = filteredGrades.filter(g => g.type === 'behavior').length
 
     return {
       attendanceRate: attRate,
       averageScore: avgScore,
       highestScore: highestScore,
+      lowestScore: lowestScore,
       totalExams: examGrades.length,
-      examGradesList: examGrades
+      examGradesList: examGrades,
+      presentCount: presentAtt,
+      absentCount: absentAtt,
+      lateCount: lateAtt,
+      excusedCount: excusedAtt,
+      totalAttendance: totalAtt,
+      avgPercentage: avgPct,
+      classAvgPercentage: classAvgPct,
+      participationCount,
+      behaviorCount
     }
   }, [filteredAttendance, filteredGrades])
 
@@ -1063,6 +1089,98 @@ export default function PublicReport() {
                       <span>تحليل أداء الطالب</span>
                     </div>
                     {evaluationMessage}
+                  </div>
+
+                  {/* Attendance Breakdown Dashboard */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '18px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: '#fff' }}>
+                      تحليل الحضور والغياب للشهر
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+                      <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#34d399' }}>{monthlyStats.presentCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>حضور</div>
+                      </div>
+                      <div style={{ background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fbbf24' }}>{monthlyStats.lateCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>متأخر</div>
+                      </div>
+                      <div style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f87171' }}>{monthlyStats.absentCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>غياب</div>
+                      </div>
+                      <div style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#a78bfa' }}>{monthlyStats.excusedCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>غياب بعذر</div>
+                      </div>
+                    </div>
+                    
+                    {/* Visual attendance ratio bar */}
+                    {monthlyStats.totalAttendance > 0 && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8', marginBottom: '6px' }}>
+                          <span>نسبة الالتزام بالحضور</span>
+                          <span>{monthlyStats.attendanceRate}%</span>
+                        </div>
+                        <div className="pr-progress-track">
+                          <div className="pr-progress-bar" style={{ width: `${monthlyStats.attendanceRate}%`, background: '#10b981' }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Academic Comparison Dashboard */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '18px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: '#fff' }}>
+                      مقارنة أداء الطالب بمتوسط الفصل
+                    </h4>
+                    
+                    {/* Progress comparing student avg vs class avg */}
+                    {monthlyStats.totalExams > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '5px' }}>
+                            <span>متوسط درجات الطالب</span>
+                            <span>{monthlyStats.avgPercentage}%</span>
+                          </div>
+                          <div className="pr-progress-track" style={{ height: '8px' }}>
+                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.avgPercentage}%`, background: '#8b5cf6' }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8', marginBottom: '5px' }}>
+                            <span>متوسط الفصل العام</span>
+                            <span>{monthlyStats.classAvgPercentage}%</span>
+                          </div>
+                          <div className="pr-progress-track" style={{ height: '8px' }}>
+                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.classAvgPercentage}%`, background: '#475569' }} />
+                          </div>
+                        </div>
+
+                        {/* Analysis label */}
+                        <div style={{ 
+                          marginTop: '6px', 
+                          padding: '10px 12px', 
+                          borderRadius: '8px', 
+                          fontSize: '0.8rem', 
+                          fontWeight: 'bold',
+                          textAlign: 'center',
+                          background: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                          color: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? '#34d399' : '#fbbf24',
+                          border: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(245, 158, 11, 0.15)'
+                        }}>
+                          {monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage 
+                            ? `الطالب يتفوق على متوسط الفصل بمقدار +${monthlyStats.avgPercentage - monthlyStats.classAvgPercentage}% ✨`
+                            : `مستوى الطالب يقل عن متوسط الفصل بمقدار ${monthlyStats.classAvgPercentage - monthlyStats.avgPercentage}% (ينصح بالمتابعة) ⚠️`
+                          }
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '10px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem' }}>
+                        لا توجد اختبارات كافية للمقارنة هذا الشهر.
+                      </div>
+                    )}
                   </div>
 
                   {/* Participation and Behavior List */}
