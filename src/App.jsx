@@ -421,7 +421,7 @@ function AppContent() {
 
   const isUserGradeDisabled = isLoggedIn && user && user.role !== 'admin' && user.grade && !isGradeEnabled(user.grade)
 
-  if (isUserGradeDisabled && !isLoginPage) {
+  if (isUserGradeDisabled && !isLoginPage && !isPublicReportPage) {
     return (
       <div className="pending-app-container" style={{
         display: 'flex',

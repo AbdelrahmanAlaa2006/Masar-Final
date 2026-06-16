@@ -40,6 +40,7 @@ const translations = {
     'register-btn-link': 'سجل الآن',
     'student-name': 'الاسم الكامل للطالب',
     'select-grade': 'اختر المرحلة الدراسية',
+    'parent-phone': 'رقم هاتف ولي الأمر (واتساب)',
     // NEW design
     nav_about: 'عن المعلم',
     nav_signin: 'تسجيل الدخول',
@@ -63,6 +64,7 @@ const translations = {
     'have-account': 'Already have an account?', 'no-account': "Don't have an account?",
     'register-btn': 'Create Account', 'login-btn-link': 'Log In', 'register-btn-link': 'Register Now',
     'student-name': 'Full Student Name', 'select-grade': 'Select Academic Grade',
+    'parent-phone': "Parent's Phone Number (WhatsApp)",
     nav_about: 'About', nav_signin: 'Sign in', nav_signup: 'Sign up',
     hero_badge: "Masar Educational Platform",
     hero_title_a: 'Arabic language', hero_title_b: 'made enjoyable',
@@ -82,6 +84,7 @@ export default function Login() {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [phone, setPhone] = useState('')
+  const [parentPhone, setParentPhone] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -404,11 +407,12 @@ export default function Login() {
     e.preventDefault(); setError('')
     if (name.trim().length < 3) { setError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters'); return }
     if (phone.trim().length < 8) { setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number'); return }
+    if (parentPhone.trim().length < 8) { setError(lang === 'ar' ? 'رقم هاتف ولي الأمر غير صحيح' : 'Invalid parent phone number'); return }
     if (password.length < 6) { setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters'); return }
     if (password !== confirmPassword) { setError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'); return }
     setLoading(true)
     try {
-      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade)
+      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade, parentPhone.trim())
       if (!response.user) throw new Error('Invalid response from server')
       showRegisterSuccessMessage()
       setTimeout(() => {
@@ -465,7 +469,11 @@ export default function Login() {
       }
     } catch (err) {
       console.error(err)
-      setParentModalError(err.message || (lang === 'ar' ? 'حدث خطأ أثناء الاستعلام. يرجى المحاولة مرة أخرى.' : 'Error during lookup. Please try again.'))
+      const isMissingRpc = err.message && (err.message.includes('get_student_by_parent_phone') || err.message.includes('schema cache') || err.message.includes('does not exist'))
+      const friendlyError = isMissingRpc 
+        ? (lang === 'ar' ? 'خدمة الاستعلام عن التقارير قيد التفعيل حالياً. يرجى المحاولة بعد قليل.' : 'Report lookup service is currently being activated. Please try again in a moment.')
+        : (err.message || (lang === 'ar' ? 'حدث خطأ أثناء الاستعلام. يرجى المحاولة مرة أخرى.' : 'Error during lookup. Please try again.'))
+      setParentModalError(friendlyError)
     } finally {
       setParentModalLoading(false)
     }
@@ -859,6 +867,10 @@ export default function Login() {
                 <div className="input-wrapper">
                   <i className="fas fa-phone"></i>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
+                </div>
+                <div className="input-wrapper">
+                  <i className="fas fa-phone"></i>
+                  <input type="tel" value={parentPhone} onChange={e => setParentPhone(e.target.value)} required placeholder={t['parent-phone']} dir="ltr" />
                 </div>
                 <div className="input-wrapper">
                   <i className="fas fa-graduation-cap"></i>

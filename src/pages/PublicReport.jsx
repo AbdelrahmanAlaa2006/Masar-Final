@@ -67,7 +67,11 @@ export default function PublicReport() {
 
     } catch (err) {
       console.error(err)
-      setError(err.message || 'حدث خطأ أثناء التحقق. يرجى التأكد من رقم هاتف ولي الأمر الصحيح.')
+      const isMissingRpc = err.message && (err.message.includes('get_public_report') || err.message.includes('schema cache') || err.message.includes('does not exist'))
+      const friendlyError = isMissingRpc 
+        ? 'تحديث النظام قيد التنفيذ حالياً. خدمة تقارير أولياء الأمور ستكون متاحة فور اكتمال التحديث خلال دقائق.'
+        : (err.message || 'حدث خطأ أثناء التحقق. يرجى التأكد من رقم هاتف ولي الأمر الصحيح.')
+      setError(friendlyError)
     } finally {
       setLoading(false)
     }

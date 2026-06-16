@@ -77,9 +77,9 @@ BEGIN
   -- Fetch Online Homeworks & Exams statistics from submissions
   SELECT jsonb_build_object(
     'homework_submitted', (SELECT count(*) FROM public.homework_submissions WHERE student_id = p_student_id),
-    'homework_total', (SELECT count(*) FROM public.homeworks WHERE grade = v_grade),
+    'homework_total', (SELECT count(*) FROM public.homeworks WHERE grade = v_grade AND tenant_id = v_tenant_id),
     'exam_submitted', (SELECT count(*) FROM public.exam_attempts WHERE student_id = p_student_id),
-    'exam_total', (SELECT count(*) FROM public.exams WHERE grade = v_grade)
+    'exam_total', (SELECT count(*) FROM public.exams WHERE grade = v_grade AND tenant_id = v_tenant_id)
   ) INTO v_homeworks_summary;
 
   -- Fetch Detailed Grades History

@@ -435,10 +435,23 @@ export default function AccountsPanel({ onBack, flash }) {
                       <span style={{ fontWeight: 600, color: 'var(--text-color)' }}>{student.name}</span>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-color)' }}>
-                      <a href={`https://wa.me/${student.phone}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <i className="fab fa-whatsapp" style={{ color: '#25d366' }}></i>
-                        {student.phone}
-                      </a>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <a href={`https://wa.me/${student.phone}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
+                          <i className="fab fa-whatsapp" style={{ color: '#25d366' }}></i>
+                          <span>الطالب: {student.phone}</span>
+                        </a>
+                        {student.parent_phone ? (
+                          <a href={`https://wa.me/${student.parent_phone}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', opacity: 0.85 }}>
+                            <i className="fab fa-whatsapp" style={{ color: '#25d366' }}></i>
+                            <span>ولي الأمر: {student.parent_phone}</span>
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <i className="fas fa-triangle-exclamation"></i>
+                            <span>ولي الأمر: غير مسجل</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-color)' }}>{gradeText}</td>
                     <td style={{ padding: '12px 16px', color: 'var(--text-color)' }}>{student.group || '—'}</td>
