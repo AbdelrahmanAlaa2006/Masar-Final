@@ -91,13 +91,13 @@ BEGIN
     jsonb_build_object(
       'id', e.id,
       'title', e.title,
-      'max_score', e.max_score,
+      'max_score', e.total_points,
       'attempt', (
         SELECT jsonb_build_object(
           'id', ea.id,
           'score', ea.score,
           'max_score', ea.max_score,
-          'completed_at', ea.completed_at,
+          'completed_at', ea.submitted_at,
           'created_at', ea.created_at
         )
         FROM public.exam_attempts ea
