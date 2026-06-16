@@ -6,7 +6,7 @@ import './Report.css' // Reuse general report styles
 
 export default function PublicReport() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const studentId = searchParams.get('id')
   const qrToken = searchParams.get('token')
   const urlPhone = searchParams.get('phone')
@@ -24,6 +24,96 @@ export default function PublicReport() {
   // Full Report Modal States
   const [showFullReportModal, setShowFullReportModal] = useState(false)
   const [activeTab, setActiveTab] = useState('attendance') // 'attendance' | 'exams' | 'performance'
+
+  // View Navigation States
+  const [viewType, setViewType] = useState('selection') // 'selection' | 'center' | 'platform'
+  const [platformSubView, setPlatformSubView] = useState('dashboard') // 'dashboard' | 'videos' | 'exams' | 'homeworks'
+  const [platformData, setPlatformData] = useState(null)
+  const [loadingPlatform, setLoadingPlatform] = useState(false)
+  const [platformError, setPlatformError] = useState('')
+
+  // Synchronize component state with URL parameters (type, subView)
+  useEffect(() => {
+    if (!verified) return
+
+    const typeParam = searchParams.get('type')
+    const subViewParam = searchParams.get('subView')
+
+    if (typeParam === 'platform') {
+      setViewType('platform')
+      if (subViewParam) {
+        setPlatformSubView(subViewParam)
+      } else {
+        setPlatformSubView('dashboard')
+      }
+
+      // Auto-fetch platform data if not loaded yet
+      if (!platformData && !loadingPlatform) {
+        const loadPlatformData = async () => {
+          setLoadingPlatform(true)
+          setPlatformError('')
+          try {
+            const { data, error: rpcError } = await supabase.rpc('get_public_platform_reports', {
+              p_student_id: studentId,
+              p_qr_token: qrToken,
+              p_phone: phone.trim() || urlPhone?.trim() || ''
+            })
+            if (rpcError) throw rpcError
+            setPlatformData(data)
+          } catch (err) {
+            console.error(err)
+            setPlatformError(err.message || 'حدث خطأ أثناء تحميل تقارير المنصة.')
+          } finally {
+            setLoadingPlatform(false)
+          }
+        }
+        loadPlatformData()
+      }
+    } else if (typeParam === 'center') {
+      setViewType('center')
+    } else {
+      setViewType('selection')
+    }
+  }, [verified, searchParams])
+
+  const navigateToCenter = () => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('type', 'center')
+    params.delete('subView')
+    setSearchParams(params)
+  }
+
+  const navigateToPlatform = () => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('type', 'platform')
+    params.set('subView', 'dashboard')
+    setSearchParams(params)
+  }
+
+  const navigateToPlatformSub = (sub) => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('type', 'platform')
+    params.set('subView', sub)
+    setSearchParams(params)
+  }
+
+  const handlePlatformBack = () => {
+    const params = new URLSearchParams(window.location.search)
+    if (platformSubView === 'dashboard') {
+      params.delete('type')
+      params.delete('subView')
+    } else {
+      params.set('subView', 'dashboard')
+    }
+    setSearchParams(params)
+  }
+
+  const handleCenterBack = () => {
+    const params = new URLSearchParams(window.location.search)
+    params.delete('type')
+    params.delete('subView')
+    setSearchParams(params)
+  }
 
   // Map DB grade enum → Arabic label
   const GRADE_LABEL = {
@@ -722,6 +812,118 @@ export default function PublicReport() {
           from { transform: translateY(30px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
+
+        /* Selection Options styling */
+        .pr-selection-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 20px;
+          margin-top: 25px;
+        }
+        @media(min-width: 640px) {
+          .pr-selection-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+        .pr-selection-card {
+          background: rgba(30, 41, 59, 0.45);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 24px;
+          padding: 30px 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .pr-selection-card:hover {
+          transform: translateY(-5px);
+          border-color: rgba(139, 92, 246, 0.3);
+          background: rgba(30, 41, 59, 0.6);
+          box-shadow: 0 15px 35px rgba(124, 58, 237, 0.15);
+        }
+        .pr-selection-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.8rem;
+          background: rgba(124, 58, 237, 0.1);
+          color: #a78bfa;
+          border: 1px solid rgba(124, 58, 237, 0.2);
+          transition: all 0.3s;
+        }
+        .pr-selection-card:hover .pr-selection-icon {
+          transform: scale(1.1);
+          background: #7c3aed;
+          color: #fff;
+        }
+
+        /* Platform Dashboard cards styling */
+        .pr-plat-dashboard-card {
+          background: rgba(30, 41, 59, 0.45);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 22px 20px;
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .pr-plat-dashboard-card:hover {
+          transform: translateY(-4px);
+          background: rgba(30, 41, 59, 0.6);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+        .pr-plat-dashboard-card:nth-child(1):hover {
+          border-color: rgba(56, 189, 248, 0.45);
+          box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+        }
+        .pr-plat-dashboard-card:nth-child(2):hover {
+          border-color: rgba(167, 139, 250, 0.45);
+          box-shadow: 0 10px 25px rgba(167, 139, 250, 0.15);
+        }
+        .pr-plat-dashboard-card:nth-child(3):hover {
+          border-color: rgba(45, 212, 191, 0.45);
+          box-shadow: 0 10px 25px rgba(45, 212, 191, 0.15);
+        }
+        .pr-plat-icon-box {
+          width: 50px;
+          height: 50px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.3rem;
+          transition: transform 0.3s;
+        }
+        .pr-plat-dashboard-card:hover .pr-plat-icon-box {
+          transform: scale(1.1);
+        }
+        .pr-chevron-box {
+          color: #94a3b8;
+          font-size: 1.1rem;
+          transition: transform 0.3s, color 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pr-plat-dashboard-card:hover .pr-chevron-box {
+          transform: translateX(-4px);
+          color: #fff;
+        }
       `}</style>
 
       <div className="pr-glow-1" />
@@ -729,208 +931,574 @@ export default function PublicReport() {
 
       <div style={{ maxWidth: '650px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
         {/* Back Button */}
-        <button 
-          onClick={() => navigate('/login')}
-          style={{
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '12px',
-            color: '#fff',
-            padding: '8px 16px',
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '20px',
-            transition: 'background 0.2s',
-            fontFamily: 'Tajawal, sans-serif'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-        >
-          <i className="fas fa-arrow-right" />
-          <span>العودة لصفحة الدخول</span>
-        </button>
+        {viewType === 'selection' ? (
+          <button 
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '12px',
+              color: '#fff',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+              transition: 'background 0.2s',
+              fontFamily: 'Tajawal, sans-serif'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          >
+            <i className="fas fa-arrow-right" />
+            <span>العودة لصفحة الدخول</span>
+          </button>
+        ) : viewType === 'center' ? (
+          <button 
+            onClick={handleCenterBack}
+            style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '12px',
+              color: '#fff',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+              transition: 'background 0.2s',
+              fontFamily: 'Tajawal, sans-serif'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          >
+            <i className="fas fa-arrow-right" />
+            <span>العودة لخيارات التقارير</span>
+          </button>
+        ) : (
+          <button 
+            onClick={handlePlatformBack}
+            style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '12px',
+              color: '#fff',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+              transition: 'background 0.2s',
+              fontFamily: 'Tajawal, sans-serif'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+          >
+            <i className="fas fa-arrow-right" />
+            <span>{platformSubView === 'dashboard' ? 'العودة لخيارات التقارير' : 'العودة لتقارير المنصة'}</span>
+          </button>
+        )}
 
         {/* Verification Success Alert */}
-        <div style={{
-          background: 'rgba(16, 185, 129, 0.12)',
-          border: '1px solid rgba(16, 185, 129, 0.25)',
-          color: '#34d399',
-          borderRadius: '16px',
-          padding: '14px 16px',
-          marginBottom: '20px',
-          fontWeight: 'bold',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px',
-          fontSize: '0.88rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className="fas fa-check-circle" style={{ fontSize: '1.1rem' }} />
-            <span>تم التحقق بنجاح وإرسال نسخة تفصيلية للتقرير عبر واتساب!</span>
-          </div>
-          {whatsappStatus === 'sending' && (
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-              <i className="fas fa-spinner fa-spin" /> جاري الإرسال...
-            </span>
-          )}
-        </div>
-
-        {/* Student Profile Header Banner */}
-        <div className="pr-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        {viewType === 'selection' && (
           <div style={{
-            width: '56px',
-            height: '56px',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
-            color: '#fff',
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            color: '#34d399',
             borderRadius: '16px',
+            padding: '14px 16px',
+            marginBottom: '20px',
+            fontWeight: 'bold',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.4rem',
-            fontWeight: 'bold'
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            fontSize: '0.88rem'
           }}>
-            {report.student_name.charAt(0)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-check-circle" style={{ fontSize: '1.1rem' }} />
+              <span>تم التحقق بنجاح وإرسال نسخة تفصيلية للتقرير عبر واتساب!</span>
+            </div>
+            {whatsappStatus === 'sending' && (
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                <i className="fas fa-spinner fa-spin" /> جاري الإرسال...
+              </span>
+            )}
           </div>
+        )}
+
+        {/* ─────────── 1. SELECTION DASHBOARD ─────────── */}
+        {viewType === 'selection' && (
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>التقرير الدراسي الموحد</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
-              <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
-              {report.group && (
-                <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+            <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
+              <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>تقاريري الدراسية</h2>
+              <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
+            </div>
+
+            {/* Student Card Info */}
+            <div className="pr-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                color: '#fff',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.4rem',
+                fontWeight: 'bold'
+              }}>
+                {report.student_name.charAt(0)}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>الطالب الحالي</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                  <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                  {report.group && (
+                    <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Selection Options */}
+            <div className="pr-selection-grid">
+              <div className="pr-selection-card" onClick={navigateToCenter}>
+                <div className="pr-selection-icon">
+                  <i className="fas fa-school" />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '8px 0' }}>تقارير السنتر</h3>
+                <p style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  كشف حضور الحصص، تفاصيل الاشتراكات والمدفوعات، ونتائج درجات الاختبارات والواجبات الميدانية.
+                </p>
+              </div>
+
+              <div className="pr-selection-card" onClick={navigateToPlatform}>
+                <div className="pr-selection-icon">
+                  <i className="fas fa-laptop-code" />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '8px 0' }}>تقارير المنصة التعليمية</h3>
+                <p style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  متابعة نسب مشاهدة الفيديوهات، تسليمات الواجبات الإلكترونية، ونتائج امتحانات الأونلاين.
+                </p>
+              </div>
+            </div>
+
+            {loadingPlatform && (
+              <div style={{ textAlign: 'center', marginTop: '30px', color: '#cbd5e1', fontSize: '0.95rem' }}>
+                <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: '8px', color: '#8b5cf6' }} />
+                جاري تحميل تقارير المنصة...
+              </div>
+            )}
+            {platformError && (
+              <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '20px', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                {platformError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─────────── 2. CENTER REPORTS VIEW ─────────── */}
+        {viewType === 'center' && (
+          <div>
+            {/* Student Profile Header Banner */}
+            <div className="pr-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                color: '#fff',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.4rem',
+                fontWeight: 'bold'
+              }}>
+                {report.student_name.charAt(0)}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>تقارير السنتر الموحدة</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                  <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                  {report.group && (
+                    <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Month Filter Selector Card */}
+            <div className="pr-card">
+              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>اختر الشهر</div>
+              <div className="pr-month-grid">
+                {ACADEMIC_MONTHS.map(m => (
+                  <button 
+                    key={m.name} 
+                    className={`pr-month-btn ${selectedMonth.name === m.name ? 'active' : ''}`}
+                    onClick={() => setSelectedMonth(m)}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Payment Status Info */}
+              <div className="pr-payment-row">
+                <div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>حالة الدفع</div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                    المبلغ المدفوع: {monthPayment ? `${monthPayment.amount} ج.م` : '0 ج.م'}
+                  </div>
+                </div>
+                {monthPayment ? (
+                  monthPayment.status === 'approved' ? (
+                    <span className="pr-badge pr-badge-green">تم الدفع</span>
+                  ) : monthPayment.status === 'pending' ? (
+                    <span className="pr-badge pr-badge-orange">قيد الانتظار</span>
+                  ) : (
+                    <span className="pr-badge pr-badge-red">تم الرفض</span>
+                  )
+                ) : (
+                  <span className="pr-badge pr-badge-red">لم يتم الدفع</span>
+                )}
+              </div>
+            </div>
+
+            {/* Stat Summary Cards */}
+            <div className="pr-card">
+              <div className="pr-stats-row">
+                <div>
+                  <div className="pr-stat-val" style={{ color: '#34d399' }}>{monthlyStats.attendanceRate}%</div>
+                  <div className="pr-stat-label">معدل الحضور</div>
+                </div>
+                <div>
+                  <div className="pr-stat-val" style={{ color: '#8b5cf6' }}>{monthlyStats.averageScore}</div>
+                  <div className="pr-stat-label">المتوسط العام</div>
+                </div>
+              </div>
+
+              {/* View Full Report Button */}
+              <button 
+                className="pr-btn-primary" 
+                onClick={() => {
+                  setActiveTab('attendance')
+                  setShowFullReportModal(true)
+                }}
+              >
+                عرض التقرير الكامل للسنتر
+              </button>
+            </div>
+
+            {/* Recent Sessions List (Last 5) */}
+            <div className="pr-card">
+              <h3 className="pr-section-title">الحصص الأخيرة بالسنتر</h3>
+              {last5Attendance.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                  لا توجد حصص مسجلة في شهر {selectedMonth.name} حتى الآن.
+                </div>
+              ) : (
+                <div className="pr-list">
+                  {last5Attendance.map(a => {
+                    const statusLabel = a.status === 'present' ? 'حضر' : a.status === 'absent' ? 'غاب' : a.status === 'late' ? 'متأخر' : 'معذور'
+                    const statusDotClass = a.status === 'present' ? 'pr-dot-green' : a.status === 'absent' ? 'pr-dot-red' : 'pr-dot-orange'
+                    return (
+                      <div key={a.id} className="pr-list-item">
+                        <div>
+                          <div className="pr-list-item-title">{a.lesson_title || 'حصة السنتر'}</div>
+                          <div className="pr-list-item-date">{fmtDate(a.date)}</div>
+                        </div>
+                        <div className="pr-dot-status">
+                          <span className={`pr-dot ${statusDotClass}`} />
+                          <span style={{ color: a.status === 'present' ? '#34d399' : a.status === 'absent' ? '#f87171' : '#fbbf24' }}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Exams List (Last 5) */}
+            <div className="pr-card">
+              <h3 className="pr-section-title">الاختبارات الأخيرة بالسنتر</h3>
+              {last5Grades.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                  لا توجد اختبارات أو واجبات مرصودة في شهر {selectedMonth.name} حتى الآن.
+                </div>
+              ) : (
+                <div className="pr-list">
+                  {last5Grades.map(g => (
+                    <div key={g.id} className="pr-list-item">
+                      <div>
+                        <div className="pr-list-item-title">{g.title}</div>
+                        <div className="pr-list-item-date">
+                          {g.type === 'homework' ? 'واجب' : 'اختبار'} • {fmtDate(g.created_at)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#8b5cf6' }}>
+                          {g.score} / {g.max_score}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                          {Math.round((g.score / g.max_score) * 100)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Month Filter Selector Card */}
-        <div className="pr-card">
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>اختر الشهر</div>
-          <div className="pr-month-grid">
-            {ACADEMIC_MONTHS.map(m => (
-              <button 
-                key={m.name} 
-                className={`pr-month-btn ${selectedMonth.name === m.name ? 'active' : ''}`}
-                onClick={() => setSelectedMonth(m)}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
+        {/* ─────────── 3. PLATFORM REPORTS VIEW ─────────── */}
+        {viewType === 'platform' && platformData && (
+          <div>
+            {/* PLATFORM DASHBOARD INDEX */}
+            {platformSubView === 'dashboard' && (
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
+                  <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>تقاريري الدراسية</h2>
+                  <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
+                </div>
 
-          {/* Payment Status Info */}
-          <div className="pr-payment-row">
-            <div>
-              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>حالة الدفع</div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
-                المبلغ المدفوع: {monthPayment ? `${monthPayment.amount} ج.م` : '0 ج.م'}
-              </div>
-            </div>
-            {monthPayment ? (
-              monthPayment.status === 'approved' ? (
-                <span className="pr-badge pr-badge-green">تم الدفع</span>
-              ) : monthPayment.status === 'pending' ? (
-                <span className="pr-badge pr-badge-orange">قيد الانتظار</span>
-              ) : (
-                <span className="pr-badge pr-badge-red">تم الرفض</span>
-              )
-            ) : (
-              <span className="pr-badge pr-badge-red">لم يتم الدفع</span>
-            )}
-          </div>
-        </div>
-
-        {/* Stat Summary Cards */}
-        <div className="pr-card">
-          <div className="pr-stats-row">
-            <div>
-              <div className="pr-stat-val" style={{ color: '#34d399' }}>{monthlyStats.attendanceRate}%</div>
-              <div className="pr-stat-label">معدل الحضور</div>
-            </div>
-            <div>
-              <div className="pr-stat-val" style={{ color: '#8b5cf6' }}>{monthlyStats.averageScore}</div>
-              <div className="pr-stat-label">المتوسط العام</div>
-            </div>
-          </div>
-
-          {/* View Full Report Button */}
-          <button 
-            className="pr-btn-primary" 
-            onClick={() => {
-              setActiveTab('attendance')
-              setShowFullReportModal(true)
-            }}
-          >
-            عرض التقرير الكامل
-          </button>
-        </div>
-
-        {/* Recent Sessions List (Last 5) */}
-        <div className="pr-card">
-          <h3 className="pr-section-title">الحصص الأخيرة</h3>
-          {last5Attendance.length === 0 ? (
-            <div style={{ padding: '20px', textAlignment: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-              لا توجد حصص مسجلة في شهر {selectedMonth.name} حتى الآن.
-            </div>
-          ) : (
-            <div className="pr-list">
-              {last5Attendance.map(a => {
-                const statusLabel = a.status === 'present' ? 'حضر' : a.status === 'absent' ? 'غاب' : a.status === 'late' ? 'متأخر' : 'معذور'
-                const statusDotClass = a.status === 'present' ? 'pr-dot-green' : a.status === 'absent' ? 'pr-dot-red' : 'pr-dot-orange'
-                return (
-                  <div key={a.id} className="pr-list-item">
-                    <div>
-                      <div className="pr-list-item-title">{a.lesson_title || 'حصة السنتر'}</div>
-                      <div className="pr-list-item-date">{fmtDate(a.date)}</div>
-                    </div>
-                    <div className="pr-dot-status">
-                      <span className={`pr-dot ${statusDotClass}`} />
-                      <span style={{ color: a.status === 'present' ? '#34d399' : a.status === 'absent' ? '#f87171' : '#fbbf24' }}>
-                        {statusLabel}
-                      </span>
-                    </div>
+                {/* Student Profile Header Banner */}
+                <div className="pr-card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                    color: '#fff',
+                    borderRadius: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.4rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {report.student_name.charAt(0)}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Exams List (Last 5) */}
-        <div className="pr-card">
-          <h3 className="pr-section-title">الاختبارات الأخيرة</h3>
-          {last5Grades.length === 0 ? (
-            <div style={{ padding: '20px', textAlignment: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-              لا توجد اختبارات أو واجبات مرصودة في شهر {selectedMonth.name} حتى الآن.
-            </div>
-          ) : (
-            <div className="pr-list">
-              {last5Grades.map(g => (
-                <div key={g.id} className="pr-list-item">
                   <div>
-                    <div className="pr-list-item-title">{g.title}</div>
-                    <div className="pr-list-item-date">
-                      {g.type === 'homework' ? 'واجب' : 'اختبار'} • {fmtDate(g.created_at)}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#8b5cf6' }}>
-                      {g.score} / {g.max_score}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
-                      {Math.round((g.score / g.max_score) * 100)}%
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>الطالب الحالي</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                      <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                      {report.group && (
+                        <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                {/* 3 Clickable Dashboard Buttons */}
+                <div style={{ marginTop: '20px' }}>
+                  {/* Videos Report */}
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('videos')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div className="pr-plat-icon-box" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                        <i className="fas fa-play" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الفيديوهات</div>
+                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</div>
+                      </div>
+                    </div>
+                    <div className="pr-chevron-box">
+                      <i className="fas fa-chevron-left" />
+                    </div>
+                  </div>
+
+                  {/* Exams Report */}
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('exams')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div className="pr-plat-icon-box" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                        <i className="fas fa-file-invoice" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الامتحانات</div>
+                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>نتائجك في الامتحانات السابقة وتحليل أدائك</div>
+                      </div>
+                    </div>
+                    <div className="pr-chevron-box">
+                      <i className="fas fa-chevron-left" />
+                    </div>
+                  </div>
+
+                  {/* Homeworks Report */}
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('homeworks')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div className="pr-plat-icon-box" style={{ background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', border: '1px solid rgba(45, 212, 191, 0.2)' }}>
+                        <i className="fas fa-book-open" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الواجبات</div>
+                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>درجاتك في الواجبات ومتابعة تسليماتك</div>
+                      </div>
+                    </div>
+                    <div className="pr-chevron-box">
+                      <i className="fas fa-chevron-left" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PLATFORM REPORTS: VIDEOS DETAIL VIEW */}
+            {platformSubView === 'videos' && (
+              <div>
+                <h3 className="pr-section-title" style={{ borderRightColor: '#38bdf8' }}>تقرير الفيديوهات التعليمية</h3>
+                {platformData.videos.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فيديوهات مسجلة للمرحلة الدراسية للطالب.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {platformData.videos.map(v => {
+                      const parts = v.video_parts || []
+                      const progList = v.progress_rows || []
+                      const watchedByPart = new Map(progList.map(p => [p.part_id, p.seconds_watched || 0]))
+                      const partSeconds = p => parseInt(p.duration_seconds, 10) || 0
+                      const totalSecs = parts.reduce((s, p) => s + partSeconds(p), 0)
+                      const watchedSecs = parts.reduce((s, p) => {
+                        const dur = partSeconds(p)
+                        const seen = watchedByPart.get(p.id) || 0
+                        return s + (dur ? Math.min(seen, dur) : seen)
+                      }, 0)
+                      const progress = totalSecs > 0 ? Math.min(100, Math.round((watchedSecs / totalSecs) * 100)) : 0
+
+                      const statusLabel = progress >= 90 ? 'مكتمل' : progress > 0 ? `تم مشاهدة ${progress}%` : 'لم تتم المشاهدة'
+                      const badgeClass = progress >= 90 ? 'pr-badge-green' : progress > 0 ? 'pr-badge-orange' : 'pr-badge-red'
+
+                      return (
+                        <div key={v.id} className="pr-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{v.title}</div>
+                            <span className={`pr-badge ${badgeClass}`} style={{ whiteSpace: 'nowrap' }}>{statusLabel}</span>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                            المشاهدة الفعلية: {Math.floor(watchedSecs / 60)} دقيقة / {Math.ceil(totalSecs / 60)} دقيقة
+                          </div>
+                          <div className="pr-progress-track" style={{ height: '8px', marginTop: '10px' }}>
+                            <div className="pr-progress-bar" style={{ width: `${progress}%`, background: progress >= 90 ? '#10b981' : '#38bdf8' }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PLATFORM REPORTS: EXAMS DETAIL VIEW */}
+            {platformSubView === 'exams' && (
+              <div>
+                <h3 className="pr-section-title" style={{ borderRightColor: '#a78bfa' }}>تقرير الامتحانات الأونلاين</h3>
+                {platformData.exams.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد امتحانات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {platformData.exams.map(e => {
+                      const attempt = e.attempt
+                      return (
+                        <div key={e.id} className="pr-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{e.title}</div>
+                            {attempt ? (
+                              <span className="pr-badge pr-badge-green">مكتمل</span>
+                            ) : (
+                              <span className="pr-badge pr-badge-red">لم يتم التقديم</span>
+                            )}
+                          </div>
+                          {attempt ? (
+                            <div style={{ marginTop: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                                <span>الدرجة الحاصل عليها:</span>
+                                <span style={{ fontWeight: 'bold', color: '#a78bfa' }}>{attempt.score} / {attempt.max_score}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                                <span>النسبة المئوية:</span>
+                                <span>{Math.round((attempt.score / attempt.max_score) * 100)}%</span>
+                              </div>
+                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '8px' }}>
+                                تاريخ المحاولة: {fmtDate(attempt.completed_at || attempt.created_at)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
+                              لم يسجل الطالب أي محاولات لهذا الامتحان حتى الآن.
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PLATFORM REPORTS: HOMEWORKS DETAIL VIEW */}
+            {platformSubView === 'homeworks' && (
+              <div>
+                <h3 className="pr-section-title" style={{ borderRightColor: '#2dd4bf' }}>تقرير الواجبات الإلكترونية</h3>
+                {platformData.homeworks.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد واجبات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {platformData.homeworks.map(h => {
+                      const sub = h.submission
+                      return (
+                        <div key={h.id} className="pr-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{h.title}</div>
+                            {sub ? (
+                              <span className="pr-badge pr-badge-green">تم التسليم</span>
+                            ) : (
+                              <span className="pr-badge pr-badge-red">لم يتم التسليم</span>
+                            )}
+                          </div>
+                          {sub ? (
+                            <div style={{ marginTop: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                                <span>الدرجة الحاصل عليها:</span>
+                                <span style={{ fontWeight: 'bold', color: '#2dd4bf' }}>
+                                  {sub.score !== null && sub.score !== undefined ? `${sub.score} / ${sub.max_score}` : 'بانتظار التصحيح'}
+                                </span>
+                              </div>
+                              {sub.score !== null && sub.score !== undefined && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                                  <span>النسبة المئوية:</span>
+                                  <span>{Math.round((sub.score / sub.max_score) * 100)}%</span>
+                                </div>
+                              )}
+                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '8px' }}>
+                                تاريخ التسليم: {fmtDate(sub.created_at)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
+                              لم يقم الطالب بتسليم هذا الواجب الإلكتروني حتى الآن.
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ─────────── FULL REPORT DETAILED TABS MODAL ─────────── */}
