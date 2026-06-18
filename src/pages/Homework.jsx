@@ -94,7 +94,7 @@ export default function Homework() {
   )
 
   const [grade, setGrade] = useState(() => {
-    if (user && user.role !== 'admin' && user.grade) {
+    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
       return dbToUiGrade(user.grade)
     }
     return null
@@ -146,7 +146,7 @@ export default function Homework() {
   // Load submission status for ALL homeworks the student can see, in one shot.
   // Admins don't have submissions of their own — skip entirely.
   useEffect(() => {
-    if (!userId || userRole === 'admin' || rows.length === 0) {
+    if (!userId || userRole === 'admin' || userRole === 'assistant' || rows.length === 0) {
       setSubmissions({}); return
     }
     let cancelled = false
@@ -368,7 +368,7 @@ export default function Homework() {
                 </p>
               </div>
               <div className="premium-header-actions">
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'assistant') && (
                   <button className="premium-back-btn" onClick={() => { setGrade(null); setSearch('') }}>
                     <i className="fas fa-arrow-right"></i> العودة للمراحل
                   </button>
@@ -387,7 +387,7 @@ export default function Homework() {
                     </button>
                   )}
                 </div>
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'assistant') && (
                   <button className="premium-action-btn btn-primary" onClick={openAddModal}>
                     <i className="fas fa-plus"></i> واجب جديد
                   </button>
@@ -407,8 +407,8 @@ export default function Homework() {
                   <HomeworkCard
                     key={hw.id}
                     hw={hw}
-                    isAdmin={userRole === 'admin'}
-                    isInactive={userRole !== 'admin' && user?.is_active === false}
+                    isAdmin={userRole === 'admin' || userRole === 'assistant'}
+                    isInactive={userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false}
                     submission={submissions[hw.id] || null}
                     onOpen={() => {
                       if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })

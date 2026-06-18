@@ -52,7 +52,7 @@ export default function VideosReport() {
   const initialViewMode = (() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      return u?.role === 'admin' ? 'table' : 'cards'
+      return (u?.role === 'admin' || u?.role === 'assistant') ? 'table' : 'cards'
     } catch { return 'cards' }
   })()
   const [viewMode, setViewMode] = useState(initialViewMode)
@@ -66,7 +66,7 @@ export default function VideosReport() {
   useEffect(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('masar-user'))
-      setIsAdmin(u?.role === 'admin')
+      setIsAdmin(u?.role === 'admin' || u?.role === 'assistant')
     } catch { setIsAdmin(false) }
   }, [])
 

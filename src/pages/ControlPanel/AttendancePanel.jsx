@@ -5,6 +5,7 @@ import { listAttendanceForSession, saveAttendanceBatch, listCustomAttendanceDate
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
+import { cached, LIST_TTL } from '../../utils/cache'
 
 export default function AttendancePanel({ onBack, flash }) {
   const { tenantId } = useTenant()
@@ -76,8 +77,8 @@ export default function AttendancePanel({ onBack, flash }) {
     ;(async () => {
       try {
         const [allStudents, allHomeworks, customDates] = await Promise.all([
-          listStudents(),
-          listHomeworks(),
+          cached('students', LIST_TTL, listStudents),
+          cached('homeworks', LIST_TTL, listHomeworks),
           listCustomAttendanceDates(grade)
         ])
         if (!active) return

@@ -281,9 +281,32 @@ function ProtectedRoute({ isLoggedIn, children }) {
 
   return children
 }
-function AdminRoute({ isLoggedIn, role, children }) {
+
+function PermissionRoute({ isLoggedIn, permission, children }) {
+  const { user, hasPermission } = useAuth()
+
   if (!isLoggedIn) return <Navigate to="/login" replace />
-  if (role !== 'admin') return <Navigate to="/" replace />
+
+  // Guard for newly registered students
+  if (user && user.role === 'student' && user.is_approved === false) {
+    return <PendingApprovalPage />
+  }
+
+  // Guard for assistants: enforce permission boundaries
+  if (user && user.role === 'assistant' && !hasPermission(permission)) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
+function AdminRoute({ isLoggedIn, role, permission, children }) {
+  const { hasPermission } = useAuth()
+  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (role !== 'admin' && role !== 'assistant') return <Navigate to="/" replace />
+  if (role === 'assistant' && permission && !hasPermission(permission)) {
+    return <Navigate to="/" replace />
+  }
   return children
 }
 
@@ -336,9 +359,9 @@ function AppContent() {
       document.body.classList.remove('no-select')
       return // blocker is disabled
     }
-    const isAdmin = user?.role === 'admin'
+    const isAdmin = user?.role === 'admin' || user?.role === 'assistant'
     document.body.classList.toggle('no-select', !isAdmin)
-    if (isAdmin) return  // admins: no event blockers
+    if (isAdmin) return  // admins/assistants: no event blockers
 
     // Form fields stay normal so students can type answers, edit their
     // profile, and paste into "writing sections" as requested.
@@ -393,8 +416,8 @@ function AppContent() {
       setIsDevToolsOpen(false)
       return
     }
-    // If the logged-in user is an admin, we bypass all detection!
-    if (user?.role === 'admin') {
+    // If the logged-in user is an admin or assistant, we bypass all detection!
+    if (user?.role === 'admin' || user?.role === 'assistant') {
       sessionStorage.removeItem('masar-devtools-blocked')
       setIsDevToolsOpen(false)
       return
@@ -419,7 +442,7 @@ function AppContent() {
     return <PageLoader />
   }
 
-  const isUserGradeDisabled = isLoggedIn && user && user.role !== 'admin' && user.grade && !isGradeEnabled(user.grade)
+  const isUserGradeDisabled = isLoggedIn && user && user.role !== 'admin' && user.role !== 'assistant' && user.grade && !isGradeEnabled(user.grade)
 
   if (isUserGradeDisabled && !isLoginPage && !isPublicReportPage) {
     return (
@@ -518,26 +541,26 @@ function AppContent() {
             <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
             {/* Old /lectures URLs redirect to the new /homework page so
                 shared links / browser bookmarks keep working. */}
-            <Route path="/homework" element={isFeatureEnabled('homework') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Homework /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/homework" element={isFeatureEnabled('homework') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute> : <Navigate to="/" replace />} />
             <Route path="/lectures" element={<Navigate to="/homework" replace />} />
-            <Route path="/exams" element={isFeatureEnabled('exams') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Exams /></ProtectedRoute> : <Navigate to="/" replace />} />
-            <Route path="/exam-taking" element={isFeatureEnabled('exams') ? <ProtectedRoute isLoggedIn={isLoggedIn}><ExamTaking /></ProtectedRoute> : <Navigate to="/" replace />} />
-            <Route path="/videos" element={isFeatureEnabled('videos') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Videos /></ProtectedRoute> : <Navigate to="/" replace />} />
-            <Route path="/payments" element={isFeatureEnabled('payments') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Payments /></ProtectedRoute> : <Navigate to="/" replace />} />
-            <Route path="/chat" element={isFeatureEnabled('chat') ? <ProtectedRoute isLoggedIn={isLoggedIn}><StudentChat /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/exams" element={isFeatureEnabled('exams') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/exam-taking" element={isFeatureEnabled('exams') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/videos" element={isFeatureEnabled('videos') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/payments" element={isFeatureEnabled('payments') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/chat" element={isFeatureEnabled('chat') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute> : <Navigate to="/" replace />} />
 
             {/* Student + Admin: solo reports */}
-            <Route path="/videos-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><VideosReport /></ProtectedRoute>} />
-            <Route path="/exams-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><ExamsReport /></ProtectedRoute>} />
-            <Route path="/homework-report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><HomeworkReport /></ProtectedRoute>} />
+            <Route path="/videos-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute>} />
+            <Route path="/exams-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute>} />
+            <Route path="/homework-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute>} />
 
             {/* Admin only */}
-            <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideoAdd /></AdminRoute>} />
-            <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamAdd /></AdminRoute>} />
-            <Route path="/report" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Report /></ProtectedRoute>} />
-            <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><VideosGroupReport /></AdminRoute>} />
-            <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ExamsGroupReport /></AdminRoute>} />
-            <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><HomeworkGroupReport /></AdminRoute>} />
+            <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute>} />
+            <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute>} />
+            <Route path="/report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute>} />
+            <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute>} />
+            <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute>} />
+            <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute>} />
             <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
             <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />

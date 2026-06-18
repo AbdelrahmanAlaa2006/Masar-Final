@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
 import { uploadAvatarImage, deleteR2Object } from '@backend/r2'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import './Profile.css'
 
 export default function Profile() {
   const navigate = useNavigate()
   const fileRef = useRef(null)
   const { refreshProfile } = useAuth()
+  const { isFeatureEnabled } = useTenant()
   const [user, setUser] = useState(null)
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -46,17 +48,20 @@ export default function Profile() {
   // Load student stats dynamically (lazy loaded APIs)
   useEffect(() => {
     if (user && user.role === 'student') {
-      setLoadingStats(true)
-
       const loadStats = async () => {
+        setLoadingStats(true)
         try {
-          const { getStudentAttendanceSummary } = await import('@backend/attendanceApi')
-          const att = await getStudentAttendanceSummary(user.id)
-          setAttendanceSummary(att)
+          if (isFeatureEnabled('attendance')) {
+            const { getStudentAttendanceSummary } = await import('@backend/attendanceApi')
+            const att = await getStudentAttendanceSummary(user.id)
+            setAttendanceSummary(att)
+          }
 
-          const { getStudentGradesSummary } = await import('@backend/gradesApi')
-          const grd = await getStudentGradesSummary(user.id)
-          setGradesSummary(grd)
+          if (isFeatureEnabled('grades')) {
+            const { getStudentGradesSummary } = await import('@backend/gradesApi')
+            const grd = await getStudentGradesSummary(user.id)
+            setGradesSummary(grd)
+          }
         } catch (err) {
           console.error('Failed to load student statistics summaries:', err)
         } finally {
@@ -66,7 +71,7 @@ export default function Profile() {
 
       loadStats()
     }
-  }, [user])
+  }, [user, isFeatureEnabled])
 
   const initial = (user?.name || 'U').trim().charAt(0).toUpperCase()
   const roleName = user?.role === 'admin' ? 'مشرف' : user?.role === 'assistant' ? 'مساعد' : 'طالب'
@@ -75,15 +80,15 @@ export default function Profile() {
 
   // Map DB grade enum → Arabic label for display.
   const GRADE_LABEL = {
-    'first-prep':  'الصف الأول الإعدادي',
+    'first-prep': 'الصف الأول الإعدادي',
     'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep':  'الصف الثالث الإعدادي',
-    'first-sec':   'الصف الأول الثانوي',
-    'second-sec':  'الصف الثاني الثانوي',
-    'third-sec':   'الصف الثالث الثانوي',
+    'third-prep': 'الصف الثالث الإعدادي',
+    'first-sec': 'الصف الأول الثانوي',
+    'second-sec': 'الصف الثاني الثانوي',
+    'third-sec': 'الصف الثالث الثانوي',
   }
   const gradeLabel = GRADE_LABEL[user?.grade] || '—'
-  
+
   const joinDate = (() => {
     if (!user?.created_at) return '12 مايو 2024'
     try {
@@ -150,7 +155,7 @@ export default function Profile() {
 
       // Best-effort cleanup of the previous avatar object
       if (previousUrl && previousUrl !== publicUrl) {
-        deleteR2Object({ url: previousUrl }).catch(() => {})
+        deleteR2Object({ url: previousUrl }).catch(() => { })
       }
 
       const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`
@@ -189,7 +194,7 @@ export default function Profile() {
 
       // Delete the R2 object
       if (targetUrl) {
-        deleteR2Object({ url: targetUrl }).catch(() => {})
+        deleteR2Object({ url: targetUrl }).catch(() => { })
       }
 
       setAvatarUrl(null)
@@ -241,7 +246,7 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-              
+
               {/* Floating Camera Edit FAB */}
               <button
                 type="button"
@@ -265,7 +270,7 @@ export default function Profile() {
                   <i className="fas fa-trash-can" />
                 </button>
               )}
-              
+
               <input
                 ref={fileRef}
                 type="file"
@@ -276,7 +281,7 @@ export default function Profile() {
             </div>
 
             <h1 className="profile-hero-name">{user.name}</h1>
-            
+
             {/* Badges / Chips Row */}
             <div className="profile-hero-chips">
               {isAdmin && (
@@ -328,7 +333,7 @@ export default function Profile() {
         )}
 
         {/* Student warning indicators if attendance is low */}
-        {user.role === 'student' && attendanceSummary && attendanceSummary.attendancePercentage < 75 && (
+        {isFeatureEnabled('attendance') && user.role === 'student' && attendanceSummary && attendanceSummary.attendancePercentage < 75 && (
           <div className="profile-warning-alert" style={{
             background: 'rgba(239, 68, 68, 0.1)',
             border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -429,7 +434,7 @@ export default function Profile() {
               <i className="fas fa-shield-halved" />
               <span>معلومات الحساب</span>
             </h2>
-            
+
             <div className="profile-info-row">
               <span className="profile-info-label">
                 <i className="fas fa-user-shield" />
@@ -453,7 +458,7 @@ export default function Profile() {
           </div>
 
           {/* Digital Student Card (Only for Student) */}
-          {user.role === 'student' && (
+          {isFeatureEnabled('qr_attendance') && user.role === 'student' && (
             <div className="profile-form-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', animationDelay: '200ms' }}>
               <h2 className="profile-card-title" style={{ width: '100%' }}>
                 <span className="profile-card-accent-bar" />
@@ -465,7 +470,7 @@ export default function Profile() {
                 استخدم هذه البطاقة لتسجيل الحضور والانصراف تلقائياً عند الدخول إلى المركز التعليمي.
               </p>
 
-              <button 
+              <button
                 onClick={() => setShowDigitalCard(true)}
                 className="profile-digital-card-btn"
               >
@@ -476,7 +481,7 @@ export default function Profile() {
           )}
 
           {/* Student Performance and Attendance Summaries (Only for Student) */}
-          {user.role === 'student' && (
+          {user.role === 'student' && (isFeatureEnabled('attendance') || isFeatureEnabled('grades')) && (
             <div className="profile-info-card" style={{ animationDelay: '240ms' }}>
               <h2 className="profile-card-title">
                 <span className="profile-card-accent-bar" />
@@ -492,7 +497,7 @@ export default function Profile() {
               ) : (
                 <div className="profile-stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Attendance Percentage Indicator */}
-                  {attendanceSummary && (
+                  {isFeatureEnabled('attendance') && attendanceSummary && (
                     <div className="stat-progress-item">
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
                         <span>نسبة الحضور</span>
@@ -501,18 +506,18 @@ export default function Profile() {
                         </span>
                       </div>
                       <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
-                        <div style={{ 
-                          height: '100%', 
-                          width: `${attendanceSummary.attendancePercentage}%`, 
-                          background: attendanceSummary.attendancePercentage >= 75 ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #ef4444, #f87171)', 
-                          borderRadius: '999px' 
+                        <div style={{
+                          height: '100%',
+                          width: `${attendanceSummary.attendancePercentage}%`,
+                          background: attendanceSummary.attendancePercentage >= 75 ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #ef4444, #f87171)',
+                          borderRadius: '999px'
                         }}></div>
                       </div>
                     </div>
                   )}
 
                   {/* Grades summaries */}
-                  {gradesSummary && (
+                  {isFeatureEnabled('grades') && gradesSummary && (
                     <>
                       {/* Homework Average */}
                       <div className="stat-progress-item">
@@ -521,11 +526,11 @@ export default function Profile() {
                           <span>{gradesSummary.homeworkAverage}% ({gradesSummary.homeworkCount} واجبات)</span>
                         </div>
                         <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
-                          <div style={{ 
-                            height: '100%', 
-                            width: `${gradesSummary.homeworkAverage}%`, 
-                            background: 'linear-gradient(90deg, #7c3aed, #a855f7)', 
-                            borderRadius: '999px' 
+                          <div style={{
+                            height: '100%',
+                            width: `${gradesSummary.homeworkAverage}%`,
+                            background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
+                            borderRadius: '999px'
                           }}></div>
                         </div>
                       </div>
@@ -537,11 +542,11 @@ export default function Profile() {
                           <span>{gradesSummary.examAverage}% ({gradesSummary.examCount} امتحانات)</span>
                         </div>
                         <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
-                          <div style={{ 
-                            height: '100%', 
-                            width: `${gradesSummary.examAverage}%`, 
-                            background: 'linear-gradient(90deg, #06b6d4, #0891b2)', 
-                            borderRadius: '999px' 
+                          <div style={{
+                            height: '100%',
+                            width: `${gradesSummary.examAverage}%`,
+                            background: 'linear-gradient(90deg, #06b6d4, #0891b2)',
+                            borderRadius: '999px'
                           }}></div>
                         </div>
                       </div>
@@ -580,7 +585,7 @@ export default function Profile() {
           padding: '24px',
           animation: 'profileToastIn 0.3s ease'
         }} onClick={() => setShowDigitalCard(false)}>
-          
+
           {/* Card Body */}
           <div className="digital-student-id-card" style={{
             maxWidth: '380px',
@@ -595,12 +600,12 @@ export default function Profile() {
             overflow: 'hidden',
             fontFamily: 'Tajawal, sans-serif'
           }} onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Holographic background line */}
             <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
 
             {/* Close button */}
-            <button 
+            <button
               onClick={() => setShowDigitalCard(false)}
               style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center' }}
             >
@@ -639,10 +644,10 @@ export default function Profile() {
               boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
               border: '4px solid rgba(99, 102, 241, 0.2)'
             }}>
-              <img 
-                src={qrUrl} 
-                alt="QR Code" 
-                style={{ display: 'block', width: '180px', height: '180px' }} 
+              <img
+                src={qrUrl}
+                alt="QR Code"
+                style={{ display: 'block', width: '180px', height: '180px' }}
               />
             </div>
             {/* Raw code and copy button for cashier simulation */}
@@ -659,7 +664,7 @@ export default function Profile() {
             }}>
               <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>رمز التحضير المكتبي (لالمحاكاة والتجربة):</span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                <span 
+                <span
                   style={{
                     fontSize: '0.74rem',
                     color: '#cbd5e1',

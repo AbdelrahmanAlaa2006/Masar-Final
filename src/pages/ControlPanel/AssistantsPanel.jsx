@@ -24,7 +24,8 @@ export default function AssistantsPanel({ onBack, flash }) {
   const PERMISSIONS_LIST = {
     'attendance': 'إدارة الحضور والغياب',
     'grades': 'رصد الدرجات والتقييمات',
-    'homework': 'إدارة الواجبات والمحاضرات',
+    'homework': 'إدارة الواجبات والأنشطة',
+    'videos': 'إدارة الفيديوهات والمحاضرات',
     'exams': 'إدارة الامتحانات والنتائج',
     'students': 'إدارة حسابات الطلاب والتفعيل',
     'payments': 'إدارة الاشتراكات والمدفوعات',
@@ -368,7 +369,7 @@ export default function AssistantsPanel({ onBack, flash }) {
                           className="cp-id-pill"
                           style={{ background: 'rgba(140, 114, 219, 0.08)', border: '1px solid rgba(140, 114, 219, 0.15)', color: '#8c72db', fontSize: '0.74rem', padding: '3px 8px' }}
                         >
-                          {p === 'attendance' ? 'حضور' : p === 'grades' ? 'درجات' : p === 'homework' ? 'واجبات' : p === 'exams' ? 'امتحانات' : p === 'students' ? 'طلاب' : p === 'payments' ? 'اشتراكات' : p === 'reports' ? 'تقارير' : 'واتساب'}
+                          {p === 'attendance' ? 'حضور' : p === 'grades' ? 'درجات' : p === 'homework' ? 'واجبات' : p === 'videos' ? 'فيديوهات' : p === 'exams' ? 'امتحانات' : p === 'students' ? 'طلاب' : p === 'payments' ? 'اشتراكات' : p === 'reports' ? 'تقارير' : 'واتساب'}
                         </span>
                       ))
                     ) : (

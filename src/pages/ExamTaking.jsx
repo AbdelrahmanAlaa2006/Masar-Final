@@ -42,7 +42,7 @@ export default function ExamTaking() {
       const u = JSON.parse(sessionStorage.getItem('masar-user'))
       return {
         guardLabel: u ? `${u.name || ''} · ${u.phone || ''}` : '',
-        isAdmin: u?.role === 'admin',
+        isAdmin: u?.role === 'admin' || u?.role === 'assistant',
       }
     } catch { return { guardLabel: '', isAdmin: false } }
   }, [])
@@ -68,7 +68,7 @@ export default function ExamTaking() {
 
         // Safety Check for Students: verify remaining attempts on refresh or direct URL access
         const role = u?.role || 'student'
-        if (role !== 'admin') {
+        if (role !== 'admin' && role !== 'assistant') {
           // Fetch student's submitted attempts
           const attempts = await listAttemptsForStudent(sid)
           const submittedCount = attempts.filter(

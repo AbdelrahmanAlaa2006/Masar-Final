@@ -41,7 +41,7 @@ export default function Header() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const { user, role: userRole, logout } = useAuth()
+  const { user, role: userRole, logout, hasPermission } = useAuth()
   const userName = user?.name || ''
   const avatarUrl = user?.avatar_url || null
   const navigate = useNavigate()
@@ -51,11 +51,11 @@ export default function Header() {
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0)
 
   useEffect(() => {
-    if (userRole !== 'admin') return
+    if (userRole !== 'admin' && userRole !== 'assistant') return
 
     const fetchPendingCount = async () => {
       try {
-        const count = await cached('payments:pending-count', 5000, async () => {
+        const count = await cached('payments:pending-count', 30000, async () => {
           const { count: c, error } = await supabase
             .from('payments')
             .select('*', { count: 'exact', head: true })
@@ -157,12 +157,22 @@ export default function Header() {
     if (item.to === '/homework') key = 'homework'
     if (item.to === '/payments') key = 'payments'
     if (item.to === '/report') key = 'reports'
-    return isFeatureEnabled(key || '')
+    
+    if (!isFeatureEnabled(key || '')) return false
+
+    // If assistant, enforce permissions filter in navbar
+    if (userRole === 'assistant') {
+      if (key === 'reports') return hasPermission('reports')
+      return hasPermission(key)
+    }
+
+    return true
   })
 
   const isChatEnabled = isFeatureEnabled('chat')
 
-  const items = userRole === 'admin'
+  const isStaff = userRole === 'admin' || userRole === 'assistant'
+  const items = isStaff
     ? [...filteredBase, ...ADMIN_ITEMS]
     : [...filteredBase, ...(isChatEnabled ? [{ to: '/chat', label: 'الدردشة', icon: 'fa-comments' }] : [])]
 
@@ -193,7 +203,7 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
-                {item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 && (
+                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant') && pendingPaymentsCount > 0 && (
                   <span className="nav-badge-pending">
                     {pendingPaymentsCount}
                   </span>
@@ -204,7 +214,7 @@ export default function Header() {
 
           {/* ─── Actions ─── */}
           <div className="mh__actions">
-            <Notifications />
+            {isFeatureEnabled('notifications') && <Notifications />}
             <button
               type="button"
               className="mh__icon-btn"
@@ -301,7 +311,7 @@ export default function Header() {
               <div>
                 <div className="mh-drawer__user-name">{userName}</div>
                 <div className="mh-drawer__user-role">
-                  {userRole === 'admin' ? 'مشرف' : 'طالب'}
+                  {userRole === 'admin' ? 'مشرف' : userRole === 'assistant' ? 'مساعد' : 'طالب'}
                 </div>
               </div>
             </div>
@@ -316,7 +326,7 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
-                {item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 && (
+                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant') && pendingPaymentsCount > 0 && (
                   <span className="nav-badge-pending" style={{ marginRight: 'auto', marginLeft: 8 }}>
                     {pendingPaymentsCount}
                   </span>

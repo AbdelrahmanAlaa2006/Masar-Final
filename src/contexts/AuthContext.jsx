@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { invalidateAll } from '../utils/cache'
 import { useTenant } from './TenantContext'
 import { supabase } from '@backend/supabase'
 
 const AuthContext = createContext(null)
 
-const ALL_PERMISSIONS = ['attendance', 'grades', 'exams', 'homework', 'students', 'payments', 'reports', 'whatsapp']
+const ALL_PERMISSIONS = ['attendance', 'grades', 'exams', 'homework', 'videos', 'students', 'payments', 'reports', 'whatsapp']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -14,14 +14,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const { tenantId } = useTenant()
 
-  // Enforce session boundary for cross-tenant isolation (especially on localhost testing)
-  useEffect(() => {
-    if (user && tenantId && user.tenant_id !== tenantId) {
-      logout()
-    }
-  }, [user, tenantId])
-
-  const syncAuth = () => {
+  const syncAuth = useCallback(() => {
     try {
       const token = sessionStorage.getItem('masar-token')
       const userData = sessionStorage.getItem('masar-user')
@@ -47,40 +40,9 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    // 1. Initial sync from sessionStorage
-    syncAuth()
-
-    // 2. Subscribe to Supabase auth state change events
-    // This resolves the asynchronous session restoration on app boot
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        syncAuth()
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setIsLoggedIn(false)
-        setPermissions([])
-        setLoading(false)
-      } else {
-        // For other events (like initial session check resolving to null), stop loading
-        setLoading(false)
-      }
-    })
-
-    // 3. Sync state on custom event and standard storage updates
-    window.addEventListener('masar-user-updated', syncAuth)
-    window.addEventListener('storage', syncAuth)
-
-    return () => {
-      subscription.unsubscribe()
-      window.removeEventListener('masar-user-updated', syncAuth)
-      window.removeEventListener('storage', syncAuth)
-    }
   }, [])
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (!user) return null
     try {
       const { data, error } = await supabase
@@ -115,18 +77,18 @@ export function AuthProvider({ children }) {
       console.error('Failed to refresh profile:', err)
       throw err
     }
-  }
+  }, [user])
 
-  const login = (token, userData) => {
+  const login = useCallback((token, userData) => {
     sessionStorage.setItem('masar-token', token)
     sessionStorage.setItem('masar-user', JSON.stringify(userData))
     setUser(userData)
     setIsLoggedIn(true)
     // Run refresh in background to populate permissions, parent_phone, qr_token
     refreshProfile().catch(err => console.error('Background profile refresh failed on login:', err))
-  }
+  }, [refreshProfile])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     sessionStorage.removeItem('masar-token')
     sessionStorage.removeItem('masar-user')
     sessionStorage.removeItem('masar-permissions')
@@ -135,14 +97,52 @@ export function AuthProvider({ children }) {
     setPermissions([])
     invalidateAll()
     window.dispatchEvent(new Event('masar-user-updated'))
-  }
+  }, [])
 
-  const hasPermission = (permission) => {
+  const hasPermission = useCallback((permission) => {
     if (user?.role === 'admin') return true
     return permissions.includes(permission)
-  }
+  }, [user, permissions])
 
-  const value = {
+  // Enforce session boundary for cross-tenant isolation (especially on localhost testing)
+  useEffect(() => {
+    if (user && tenantId && user.tenant_id !== tenantId) {
+      logout()
+    }
+  }, [user, tenantId, logout])
+
+  useEffect(() => {
+    // 1. Initial sync from sessionStorage
+    syncAuth()
+
+    // 2. Subscribe to Supabase auth state change events
+    // This resolves the asynchronous session restoration on app boot
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        syncAuth()
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setIsLoggedIn(false)
+        setPermissions([])
+        setLoading(false)
+      } else {
+        // For other events (like initial session check resolving to null), stop loading
+        setLoading(false)
+      }
+    })
+
+    // 3. Sync state on custom event and standard storage updates
+    window.addEventListener('masar-user-updated', syncAuth)
+    window.addEventListener('storage', syncAuth)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('masar-user-updated', syncAuth)
+      window.removeEventListener('storage', syncAuth)
+    }
+  }, [syncAuth])
+
+  const value = useMemo(() => ({
     user,
     isLoggedIn,
     loading,
@@ -155,7 +155,7 @@ export function AuthProvider({ children }) {
     logout,
     syncAuth,
     refreshProfile,
-  }
+  }), [user, isLoggedIn, loading, permissions, hasPermission, login, logout, syncAuth, refreshProfile])
 
   return (
     <AuthContext.Provider value={value}>

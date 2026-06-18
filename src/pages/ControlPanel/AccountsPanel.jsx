@@ -53,7 +53,7 @@ export default function AccountsPanel({ onBack, flash }) {
   const refreshList = async () => {
     invalidateCache('students')
     try {
-      const data = await listStudents()
+      const data = await cached('students', LIST_TTL, listStudents)
       setStudents(data || [])
     } catch (e) {
       flash(e.message || 'تعذّر تحديث البيانات', 'warning')
@@ -130,7 +130,7 @@ export default function AccountsPanel({ onBack, flash }) {
         successCount++
       }
       invalidateCache('students')
-      const data = await listStudents()
+      const data = await cached('students', LIST_TTL, listStudents)
       setStudents(data || [])
       flash(`تمت الموافقة بنجاح على ${successCount} طالب (قيد الانتظار للاشتراك)`, 'success')
     } catch (e) {

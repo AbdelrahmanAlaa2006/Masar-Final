@@ -115,7 +115,7 @@ export default function Payments() {
     if (!userId) return
     try {
       setLoadingHistory(true)
-      if (user?.role === 'admin') {
+      if (user?.role === 'admin' || user?.role === 'assistant') {
         const data = await listPayments()
         setPayments(data)
       } else {
@@ -226,7 +226,7 @@ export default function Payments() {
 
   return (
     <>
-      {user?.role === 'admin' ? (
+      {user?.role === 'admin' || user?.role === 'assistant' ? (
         <AdminPaymentsReport 
           payments={payments} 
           loading={loadingHistory} 

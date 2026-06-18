@@ -77,7 +77,7 @@ export default function Videos() {
 
 
   const [currentGrade, setCurrentGrade] = useState(() => {
-    if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'assistant' && currentUser.grade) {
       return currentUser.grade
     }
     return ''
@@ -86,7 +86,7 @@ export default function Videos() {
   const [showPdf, setShowPdf] = useState(false)
   const [selectedPart, setSelectedPart] = useState(null)
   const [view, setView] = useState(() => {
-    if (currentUser && currentUser.role !== 'admin' && currentUser.grade) {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'assistant' && currentUser.grade) {
       return 'videos'
     }
     return 'grades'
@@ -166,7 +166,7 @@ export default function Videos() {
   // network round-trip for every admin visit.
   useEffect(() => {
     if (!currentUser?.id) return
-    if (currentUser.role === 'admin') { setVideoOverrides(new Map()); return }
+    if (currentUser.role === 'admin' || currentUser.role === 'assistant') { setVideoOverrides(new Map()); return }
     const grade = currentUser.grade
     if (!grade) { setVideoOverrides(new Map()); return }
     let cancelled = false
@@ -209,7 +209,7 @@ export default function Videos() {
         passedThisSessionRef.current = new Set()
         return
       }
-      if (currentUser.role === 'admin') {
+      if (currentUser.role === 'admin' || currentUser.role === 'assistant') {
         setQuizAttempts([])
         setProgressRows([])
         return
@@ -300,14 +300,14 @@ export default function Videos() {
   // ── Navigation ───────────────────────────────────────────────
   const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos') }
   const goBackToGrades = () => {
-    if (userRole !== 'admin') return // students don't go back to grade picker
+    if (userRole !== 'admin' && userRole !== 'assistant') return // students don't go back to grade picker
     setCurrentGrade(''); setCurrentVideo(null); setSelectedPart(null); setView('grades')
   }
   const goBackToVideos = () => {
     // Confirm before leaving an actively-playing part so a mistouch
     // doesn't burn a view-counter (or close mid-video for the student).
     // Admins are exempt — they preview without using attempts.
-    if (selectedPart && userRole !== 'admin') {
+    if (selectedPart && userRole !== 'admin' && userRole !== 'assistant') {
       setShowExitConfirm(true)
     } else {
       setCurrentVideo(null); setSelectedPart(null); setView('videos')
@@ -352,7 +352,7 @@ export default function Videos() {
   const handleTimeUpdate = (seconds) => {
     setCurrentTime(seconds)
 
-    if (userRole === 'admin' || !currentUser?.id || !selectedPart || !currentVideo) return
+    if (userRole === 'admin' || userRole === 'assistant' || !currentUser?.id || !selectedPart || !currentVideo) return
 
     // Count attempt when student watches 5 seconds of the video part
     if (seconds >= 5 && !viewCountedRef.current) {
@@ -407,11 +407,11 @@ export default function Videos() {
     }
   }
   const openVideoPlayer = (video) => {
-    if (userRole !== 'admin' && currentUser?.is_active === false) {
+    if (userRole !== 'admin' && userRole !== 'assistant' && currentUser?.is_active === false) {
       setShowLockModal(true)
       return
     }
-    if (userRole !== 'admin' && !isVideoAllowed(video)) {
+    if (userRole !== 'admin' && userRole !== 'assistant' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
     }
     setCurrentVideo(video); setSelectedPart(null); setView('player'); setShowPdf(!!video.pdf_url)
@@ -421,7 +421,7 @@ export default function Videos() {
   //   • body class hides the global Header / Footer so the only way out
   //     is the page's own back button (which calls confirmExit)
   // Admins are exempt — they preview videos without view-counter cost.
-  const isWatching = view === 'player' && !!selectedPart && userRole !== 'admin'
+  const isWatching = view === 'player' && !!selectedPart && userRole !== 'admin' && userRole !== 'assistant'
   const exitGuard = useExitGuard({
     active: isWatching,
     message: 'هل تريد الخروج من الفيديو؟ المحاولة قد تُحتسب إذا غادرت الآن.',
@@ -492,7 +492,7 @@ export default function Videos() {
 
     // Trial-cap gate (per-part view limit). Admins are exempt — they need
     // to be able to preview content without burning trials.
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'assistant') {
       const left = partTrialsLeft(currentVideo, part)
       if (left <= 0) {
         return showAlertModal(
@@ -504,7 +504,7 @@ export default function Videos() {
 
     // Quiz gate
     const blocking = findBlockingQuiz(currentVideo, part)
-    if (blocking && userRole !== 'admin') {
+    if (blocking && userRole !== 'admin' && userRole !== 'assistant') {
       const att = quizAttempts.find(a => a.quiz_local_id === blocking.localId)
       const attempts = att?.attempts || 0
       const max = blocking.maxAttempts || 1
@@ -535,7 +535,7 @@ export default function Videos() {
   useEffect(() => {
     viewCountedRef.current = false
 
-    if (!selectedPart || userRole === 'admin' || !currentUser?.id || !currentVideo?.id) return
+    if (!selectedPart || userRole === 'admin' || userRole === 'assistant' || !currentUser?.id || !currentVideo?.id) return
 
     // For non-YouTube parts (Google Drive, Bunny), we count the attempt after a 5-second delay
     if (selectedPart.source !== 'youtube') {
@@ -591,7 +591,7 @@ export default function Videos() {
   // page only when actually playing a part. Admins are exempt so they
   // can debug freely; the rest of the app stays unguarded so students
   // can screenshot bug reports etc.
-  const guardActive = view === 'player' && !!selectedPart && userRole !== 'admin'
+  const guardActive = view === 'player' && !!selectedPart && userRole !== 'admin' && userRole !== 'assistant'
   const guardLabel = (() => {
     if (!currentUser) return ''
     return `${currentUser.name || ''} · ${currentUser.phone || ''}`
@@ -664,12 +664,12 @@ export default function Videos() {
               </p>
             </div>
             <div className="premium-header-actions">
-              {userRole === 'admin' && (
+              {(userRole === 'admin' || userRole === 'assistant') && (
                 <button className="premium-back-btn" onClick={goBackToGrades}>
                   <i className="fas fa-arrow-right"></i> العودة للصفوف
                 </button>
               )}
-              {userRole === 'admin' && (
+              {(userRole === 'admin' || userRole === 'assistant') && (
                 <button className="premium-action-btn btn-primary" onClick={goToAddVideo}>
                   <i className="fas fa-plus"></i> إضافة فيديو جديد
                 </button>
@@ -710,7 +710,7 @@ export default function Videos() {
                     <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
                       <span className="vc-status-dot" />
                       <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
-                      {userRole === 'admin' && (
+                      {(userRole === 'admin' || userRole === 'assistant') && (
                         <>
                           <button className="vc-delete-btn" onClick={(e) => handleEditVideo(video, e)} style={{ marginInlineEnd: 6 }}>
                             ✏️ تعديل
@@ -782,7 +782,7 @@ export default function Videos() {
                     // Both players share the same onProgress contract, so
                     // we hoist the handler and just swap the component.
                     const handleProgress = ({ watchedSeconds }) => {
-                      if (userRole === 'admin' || !currentUser?.id) return
+                      if (userRole === 'admin' || userRole === 'assistant' || !currentUser?.id) return
                       updatePartProgress({
                         student_id: currentUser.id,
                         video_id: currentVideo.id,
@@ -889,10 +889,10 @@ export default function Videos() {
                     const blocking = findBlockingQuiz(currentVideo, part)
                     const left = partTrialsLeft(currentVideo, part)
                     const cap = partViewCap(currentVideo, part)
-                    const outOfTrials = userRole !== 'admin' && left <= 0
-                    const locked = (!!blocking && userRole !== 'admin') || outOfTrials
+                    const outOfTrials = userRole !== 'admin' && userRole !== 'assistant' && left <= 0
+                    const locked = (!!blocking && userRole !== 'admin' && userRole !== 'assistant') || outOfTrials
                     const isActive = selectedPart?.id === part.id
-                    const showTrials = userRole !== 'admin' && cap !== Infinity
+                    const showTrials = userRole !== 'admin' && userRole !== 'assistant' && cap !== Infinity
                     // Tint the trial pill: green when 2+ left, orange at 1, red at 0
                     const trialColor = left <= 0 ? '#e53e3e' : left === 1 ? '#ed8936' : '#38a169'
                     return (
@@ -926,7 +926,7 @@ export default function Videos() {
                             </span>
                           )}
                         </div>
-                        {blocking && userRole !== 'admin' && (
+                        {blocking && userRole !== 'admin' && userRole !== 'assistant' && (
                           <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
                             <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
                           </div>
@@ -958,7 +958,7 @@ export default function Videos() {
                   ) : (
                     <>
                       {/* Note add form */}
-                      {userRole === 'admin' && (
+                      {(userRole === 'admin' || userRole === 'assistant') && (
                         <form onSubmit={handleSaveNote} className="note-form mb-4">
                           <div className="note-input-container">
                             <textarea
@@ -1010,7 +1010,7 @@ export default function Videos() {
                                     <i className="fas fa-play" style={{ fontSize: '0.65rem', marginInlineEnd: 4 }}></i>
                                     {formatTime(note.timestamp_seconds)}
                                   </button>
-                                  {userRole === 'admin' && (
+                                  {(userRole === 'admin' || userRole === 'assistant') && (
                                     <button
                                       onClick={() => handleDeleteNote(note.id)}
                                       className="note-delete-btn"

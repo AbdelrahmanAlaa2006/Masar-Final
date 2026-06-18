@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@backend/supabase'
 import { applyTenantTheme } from '../utils/theme'
+import { cached } from '../utils/cache'
 
 const TenantContext = createContext(null)
 
@@ -14,10 +15,10 @@ export function TenantProvider({ children }) {
       try {
         const hostname = window.location.hostname
         const urlParams = new URLSearchParams(window.location.search)
-        
+
         // 1. Resolve slug/domain candidate first
         let candidate = 'default'
-        
+
         // For development on localhost: check query param first, then sessionStorage
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
           const queryTenant = urlParams.get('tenant')
@@ -41,72 +42,69 @@ export function TenantProvider({ children }) {
           }
         }
 
-        // 2. Check if cached data exists in sessionStorage
-        const cacheKey = `masar-cached-tenant-${candidate}`
-        const cachedTenant = sessionStorage.getItem(cacheKey)
-        const cachedAvailable = sessionStorage.getItem('masar-cached-available-tenants')
-        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
-
-        if (cachedTenant && cachedAvailable && !isLocalhost) {
-          const tenantData = JSON.parse(cachedTenant)
-          const availableData = JSON.parse(cachedAvailable)
-          setTenant(tenantData)
-          setAvailableTenants(availableData)
-          applyTenantTheme(tenantData)
-          setLoading(false)
-          return
-        }
-
-        // 3. Fetch all tenants for local development selectors
-        const { data: allTenants } = await supabase
-          .from('tenants')
-          .select('slug, name')
-          .order('name')
+        // 2. Fetch all tenants for local development selectors (cached for 30 minutes)
+        const allTenants = await cached('available-tenants', 30 * 60 * 1000, async () => {
+          const { data } = await supabase
+            .from('tenants')
+            .select('slug, name')
+            .order('name')
+          return data || []
+        })
         if (allTenants) {
           setAvailableTenants(allTenants)
-          sessionStorage.setItem('masar-cached-available-tenants', JSON.stringify(allTenants))
         }
 
-        // 4. Fetch tenant config from database
-        let tenantData = null
-        if (candidate && candidate !== 'default') {
-          const { data, error } = await supabase
-            .from('tenants')
-            .select('*')
-            .or(`slug.eq.${candidate},domain.eq.${candidate}`)
-            .maybeSingle()
-          if (!error && data) {
-            tenantData = data
-          }
-        }
-
-        // 5. Fallback to default tenant if not found or candidate is default
-        if (!tenantData) {
-          const { data, error } = await supabase
-            .from('tenants')
-            .select('*')
-            .eq('slug', 'default')
-            .maybeSingle()
-          
-          if (!error && data) {
-            tenantData = data
-          } else {
-            // Hardcoded fallback in case database query fails entirely
-            tenantData = {
-              id: 'd3b07384-d113-4ec2-a5d6-d005b6be4979',
-              slug: 'default',
-              name: 'منصة مسار التعليمية',
-              primary_color: '#7c3aed',
-              secondary_color: '#06b6d4',
-              logo_url: null,
-              config: {}
+        // 3. Fetch tenant config from database with nested settings and features (cached for 10 minutes)
+        const tenantData = await cached(`tenant-config:${candidate}`, 10 * 60 * 1000, async () => {
+          let resolvedData = null
+          if (candidate && candidate !== 'default') {
+            const { data, error } = await supabase
+              .from('tenants')
+              .select(`
+                *,
+                tenant_settings (*),
+                tenant_features (*)
+              `)
+              .or(`slug.eq.${candidate},domain.eq.${candidate}`)
+              .maybeSingle()
+            if (!error && data) {
+              resolvedData = data
             }
           }
-        }
+
+          if (!resolvedData) {
+            const { data, error } = await supabase
+              .from('tenants')
+              .select(`
+                *,
+                tenant_settings (*),
+                tenant_features (*)
+              `)
+              .eq('slug', 'default')
+              .maybeSingle()
+
+            if (!error && data) {
+              resolvedData = data
+            } else {
+              // Hardcoded fallback in case database query fails entirely
+              resolvedData = {
+                id: 'd3b07384-d113-4ec2-a5d6-d005b6be4979',
+                slug: 'default',
+                name: 'منصة مسار التعليمية',
+                primary_color: '#7c3aed',
+                secondary_color: '#06b6d4',
+                logo_url: null,
+                config: {},
+                tenant_settings: [],
+                tenant_features: []
+              }
+            }
+          }
+          return resolvedData
+        })
 
         setTenant(tenantData)
         applyTenantTheme(tenantData)
-        sessionStorage.setItem(cacheKey, JSON.stringify(tenantData))
       } catch (err) {
         console.error('Failed to resolve tenant:', err)
       } finally {
@@ -125,12 +123,23 @@ export function TenantProvider({ children }) {
     window.location.href = url.toString()
   }
 
-  const isFeatureEnabled = (featureKey) => {
-    if (!tenant?.config?.features) return true
-    return tenant.config.features[featureKey] !== false
-  }
+  const isFeatureEnabled = useCallback((featureKey) => {
+    // 1. Check in the new tenant_features array
+    if (tenant?.tenant_features) {
+      const list = Array.isArray(tenant.tenant_features) ? tenant.tenant_features : []
+      const found = list.find(f => f.feature_name === featureKey)
+      if (found !== undefined) {
+        return found.is_enabled
+      }
+    }
+    // 2. Fallback to existing config.features JSONB column
+    if (tenant?.config?.features && tenant.config.features[featureKey] !== undefined) {
+      return tenant.config.features[featureKey] !== false
+    }
+    return true
+  }, [tenant])
 
-  const isGradeEnabled = (gradeKey) => {
+  const isGradeEnabled = useCallback((gradeKey) => {
     if (!tenant?.config?.grades) return true
     // Support both standard enums (first-prep) and alternative conventions (grade_1_prep / grade_3_sec)
     const legacyMap = {
@@ -145,9 +154,9 @@ export function TenantProvider({ children }) {
     if (tenant.config.grades[gradeKey] === false) return false
     if (altKey && tenant.config.grades[altKey] === false) return false
     return true
-  }
+  }, [tenant])
 
-  const value = {
+  const value = useMemo(() => ({
     tenant,
     tenantId: tenant?.id || null,
     tenantSlug: tenant?.slug || 'default',
@@ -155,7 +164,7 @@ export function TenantProvider({ children }) {
     isFeatureEnabled,
     isGradeEnabled,
     loading
-  }
+  }), [tenant, isFeatureEnabled, isGradeEnabled, loading])
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
@@ -164,8 +173,8 @@ export function TenantProvider({ children }) {
       {!loading && (
         <>
           {children}
-          
-                    {/* Localhost Dev Tenant Selector Overlay (Redesigned Floating Glass Pill Switcher) */}
+
+          {/* Localhost Dev Tenant Selector Overlay (Redesigned Floating Glass Pill Switcher) */}
           {isLocalhost && availableTenants.length > 1 && (
             <div className="dev-tenant-switcher" style={{
               position: 'fixed',
@@ -204,10 +213,10 @@ export function TenantProvider({ children }) {
               }}>
                 {(tenant?.name || 'M').charAt(0)}
               </div>
-              
+
               {/* Tenant Name */}
               <span style={{ fontWeight: '600' }}>{tenant?.name || 'Default'}</span>
-              
+
               {/* Chevron */}
               <i className="fas fa-chevron-up" style={{ fontSize: '10px', color: '#94a3b8' }}></i>
 

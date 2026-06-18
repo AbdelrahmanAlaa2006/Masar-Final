@@ -7,6 +7,7 @@ import { cached, LIST_TTL } from '../../utils/cache'
 import { SectionCard, Breadcrumbs } from './shared'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTenant } from '../../contexts/TenantContext'
 import '../ControlPanel.css'
 
 // Lazy-loaded sub-panels for code splitting
@@ -30,6 +31,7 @@ export default function ControlPanelIndex() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, hasPermission } = useAuth()
+  const { isFeatureEnabled } = useTenant()
 
   /* navigation derived from URL search parameters */
   const section = searchParams.get('section') || 'home'
@@ -38,13 +40,23 @@ export default function ControlPanelIndex() {
   // Security Gate checks for route routing
   const isSectionAllowed = (s) => {
     if (!user) return false
+
+    // Feature toggles check (blocks access if feature is disabled in tenant settings)
+    if (s === 'attendance' && !isFeatureEnabled('attendance')) return false
+    if (s === 'grades' && !isFeatureEnabled('grades')) return false
+    if (s === 'exams' && !isFeatureEnabled('exams')) return false
+    if (s === 'homeworks' && !isFeatureEnabled('homework')) return false
+    if (s === 'videos' && !isFeatureEnabled('videos')) return false
+    if (s === 'whatsapp' && !isFeatureEnabled('notifications')) return false
+
     if (user.role === 'admin') return true
     if (s === 'home') return true
 
     // Assistant gates
     if (s === 'attendance') return hasPermission('attendance')
     if (s === 'grades') return hasPermission('grades')
-    if (s === 'homeworks' || s === 'videos') return hasPermission('homework')
+    if (s === 'homeworks') return hasPermission('homework')
+    if (s === 'videos') return hasPermission('videos')
     if (s === 'exams') return hasPermission('exams')
     if (s === 'students' || s === 'accounts' || s === 'resets' || s === 'chats') {
       return hasPermission('students')
@@ -63,39 +75,44 @@ export default function ControlPanelIndex() {
 
   /* catalog data from Supabase - shared across sub-panels */
   const [students, setStudents] = useState([])
-  const [videos, setVideos]     = useState([])
-  const [exams, setExams]       = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [videos, setVideos] = useState([])
+  const [exams, setExams] = useState([])
+  const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [resetRequestsCount, setResetRequestsCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const [s, v, e] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
-          cached('videos',   LIST_TTL, listVideos),
-          cached('exams-lean',    LIST_TTL, () => listExams({ lean: true })),
-        ])
-        if (cancelled) return
-        setStudents(s)
-        setVideos(v)
-        setExams(e)
+      ; (async () => {
+        try {
+          const [s, v, e] = await Promise.all([
+            cached('students', LIST_TTL, listStudents),
+            cached('videos', LIST_TTL, listVideos),
+            cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
+          ])
+          if (cancelled) return
+          setStudents(s)
+          setVideos(v)
+          setExams(e)
 
-        const { count, error: countError } = await supabase
-          .from('password_reset_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
-        if (!cancelled && !countError) {
-          setResetRequestsCount(count || 0)
+          const fetchCount = async () => {
+            const { count, error } = await supabase
+              .from('password_reset_requests')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'pending')
+            if (error) throw error
+            return count || 0
+          }
+          const count = await cached('password_reset_requests_count', 10000, fetchCount)
+          if (!cancelled) {
+            setResetRequestsCount(count)
+          }
+        } catch (err) {
+          if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
+        } finally {
+          if (!cancelled) setLoading(false)
         }
-      } catch (err) {
-        if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+      })()
     return () => { cancelled = true }
   }, [])
 
@@ -103,19 +120,24 @@ export default function ControlPanelIndex() {
   useEffect(() => {
     if (section === 'home') {
       let cancelled = false
-      ;(async () => {
-        try {
-          const { count, error: countError } = await supabase
-            .from('password_reset_requests')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending')
-          if (!cancelled && !countError) {
-            setResetRequestsCount(count || 0)
+        ; (async () => {
+          try {
+            const fetchCount = async () => {
+              const { count, error } = await supabase
+                .from('password_reset_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending')
+              if (error) throw error
+              return count || 0
+            }
+            const count = await cached('password_reset_requests_count', 10000, fetchCount)
+            if (!cancelled) {
+              setResetRequestsCount(count)
+            }
+          } catch (err) {
+            console.error('Failed to fetch pending reset requests count:', err)
           }
-        } catch (err) {
-          console.error('Failed to fetch pending reset requests count:', err)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
   }, [section])
@@ -205,7 +227,7 @@ export default function ControlPanelIndex() {
             {/* Home overview of modular sections */}
             {section === 'home' && (
               <div className="cp-home-grid">
-                
+
                 {/* Attendance System (Gate by attendance) */}
                 {hasPermission('attendance') && (
                   <SectionCard
@@ -228,8 +250,8 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
-                {/* Videos System (Gate by homework) */}
-                {hasPermission('homework') && (
+                {/* Videos System (Gate by videos) */}
+                {hasPermission('videos') && (
                   <SectionCard
                     icon="fa-play-circle"
                     accent="blue"
@@ -343,21 +365,21 @@ export default function ControlPanelIndex() {
             )}
 
             {section === 'chats' && (
-              <ChatsPanel 
-                onBack={goHome} 
-                flash={flash} 
-                initialStudentId={searchParams.get('studentId')} 
+              <ChatsPanel
+                onBack={goHome}
+                flash={flash}
+                initialStudentId={searchParams.get('studentId')}
               />
             )}
 
             {/* Suspense wrapper for lazy loading individual components */}
             <Suspense fallback={<PanelLoader />}>
-              {section === 'seasons'  && <SeasonalThemePanel />}
+              {section === 'seasons' && <SeasonalThemePanel />}
               {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
               {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
               {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
               {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
-              
+
               {/* Load new panels */}
               {section === 'attendance' && <AttendancePanel onBack={goHome} flash={flash} />}
               {section === 'grades' && <GradesPanel onBack={goHome} flash={flash} />}
@@ -426,13 +448,12 @@ export default function ControlPanelIndex() {
 
       {toast && (
         <div className={`cp-toast cp-toast-${toast.kind}`}>
-          <i className={`fas ${
-            toast.kind === 'success'
+          <i className={`fas ${toast.kind === 'success'
               ? 'fa-circle-check'
               : toast.kind === 'warning'
-              ? 'fa-circle-exclamation'
-              : 'fa-circle-info'
-          }`}></i>
+                ? 'fa-circle-exclamation'
+                : 'fa-circle-info'
+            }`}></i>
           <span>{toast.msg}</span>
         </div>
       )}

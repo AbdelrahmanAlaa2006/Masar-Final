@@ -33,7 +33,7 @@ export default function Exams() {
   )
 
   const [currentLevel, setCurrentLevel] = useState(() => {
-    if (user && user.role !== 'admin' && user.grade) {
+    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
       return dbToUiGrade(user.grade)
     }
     return null
@@ -51,7 +51,7 @@ export default function Exams() {
     setLoading(true)
     setLoadError(null)
     try {
-      const isLean = userRole !== 'admin'
+      const isLean = userRole !== 'admin' && userRole !== 'assistant'
       const data = await cached(
         isLean ? 'exams-lean' : 'exams',
         LIST_TTL,
@@ -68,7 +68,7 @@ export default function Exams() {
   useEffect(() => { refresh() }, [])
 
   useEffect(() => {
-    if (!userId || userRole === 'admin') { setOverridesMap(new Map()); return }
+    if (!userId || userRole === 'admin' || userRole === 'assistant') { setOverridesMap(new Map()); return }
     let cancelled = false
       ; (async () => {
         try {
@@ -90,7 +90,7 @@ export default function Exams() {
   useEffect(() => {
     // Admins don't take exams — skip the attempt-count batch. Saves one
     // round trip per visit to /exams for the admin.
-    if (!userId || userRole === 'admin' || rows.length === 0) {
+    if (!userId || userRole === 'admin' || userRole === 'assistant' || rows.length === 0) {
       setAttemptsMap({}); return
     }
     let cancelled = false
@@ -143,15 +143,15 @@ export default function Exams() {
     Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
   const startExam = (exam) => {
-    if (userRole !== 'admin' && user?.is_active === false) {
+    if (userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false) {
       setShowLockModal(true)
       return
     }
-    if (userRole !== 'admin' && !isAllowed(exam)) {
+    if (userRole !== 'admin' && userRole !== 'assistant' && !isAllowed(exam)) {
       setAlertModal('الوصول محظور', 'تم تقييد هذا الامتحان من قِبَل الإدارة.')
       return
     }
-    if (userRole !== 'admin' && remainingFor(exam) <= 0) {
+    if (userRole !== 'admin' && userRole !== 'assistant' && remainingFor(exam) <= 0) {
       setShowModal(true)
       return
     }
@@ -262,7 +262,7 @@ export default function Exams() {
         <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
           <span className="ec-status-dot" />
           <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
-          {userRole === 'admin' && (
+          {(userRole === 'admin' || userRole === 'assistant') && (
             <>
               <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestEdit(exam) }} style={{ marginInlineEnd: 6 }}>
                 ✏️ تعديل
@@ -311,7 +311,7 @@ export default function Exams() {
         </div>
 
         <div className="ec-footer">
-          {userRole !== 'admin' && user?.is_active === false ? (
+          {userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false ? (
             <span style={{ color: '#e0a96d', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <i className="fas fa-lock"></i> الامتحان مغلق (يتطلب تفعيل الحساب)
             </span>
@@ -339,12 +339,12 @@ export default function Exams() {
           </p>
         </div>
         <div className="premium-header-actions">
-          {userRole === 'admin' && (
+          {(userRole === 'admin' || userRole === 'assistant') && (
             <button className="premium-back-btn" onClick={() => setCurrentLevel(null)}>
               <i className="fas fa-arrow-right"></i> العودة للمستويات
             </button>
           )}
-          {userRole === 'admin' && (
+          {(userRole === 'admin' || userRole === 'assistant') && (
             <button className="premium-action-btn btn-primary" onClick={() => addExam(level)}>
               <i className="fas fa-plus"></i> إضافة امتحان جديد
             </button>
@@ -374,7 +374,7 @@ export default function Exams() {
   return (
     <div className="exams-container">
       {/* Grade picker (admins only — students auto-land) */}
-      {!currentLevel && userRole === 'admin' && (
+      {!currentLevel && (userRole === 'admin' || userRole === 'assistant') && (
         <div className="exm-prep-wrap">
           <div className="exm-prep-head">
             <div className="exm-prep-icon"><i className="fas fa-file-alt"></i></div>
@@ -389,7 +389,7 @@ export default function Exams() {
         </div>
       )}
 
-      {currentLevel && userRole === 'admin' && (
+      {currentLevel && (userRole === 'admin' || userRole === 'assistant') && (
         <div className="breadcrumb" id="breadcrumb">
           <span className="breadcrumb-item active" onClick={() => setCurrentLevel(null)}>الامتحانات</span>
           <span>›</span>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { listPayments, resolvePayment } from '@backend/paymentsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { notify } from '../../utils/notify'
+import { invalidate as invalidateCache } from '../../utils/cache'
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -67,6 +68,7 @@ export default function PaymentsPanel() {
       })
       
       notify(status === 'approved' ? 'تم قبول الدفع وتفعيل حساب الطالب بنجاح! 🎉' : 'تم رفض طلب الدفع بنجاح.', 'success')
+      invalidateCache('payments:pending-count')
       
       // Clear note input
       setNotesMap(prev => {

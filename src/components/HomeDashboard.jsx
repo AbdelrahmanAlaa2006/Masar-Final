@@ -34,7 +34,7 @@ export default function HomeDashboard({ role }) {
       </div>
     )
   }
-  return role === 'admin' ? <AdminDashboard /> : <StudentDashboard />
+  return (role === 'admin' || role === 'assistant') ? <AdminDashboard role={role} /> : <StudentDashboard />
 }
 
 /* ─────────── Live content stats ───────────
@@ -78,7 +78,7 @@ function useContentStats({ role, grade }) {
           wrap(cached('videos',    LIST_TTL, listVideos),    'videos'),
           wrap(cached('exams-lean', LIST_TTL, () => listExams({ lean: true })), 'exams'),
           // Students aren't allowed to read other profiles → skip that.
-          role === 'admin'
+          (role === 'admin' || role === 'assistant')
             ? wrap(cached('students', LIST_TTL, listStudents), 'students')
             : Promise.resolve({ ok: true, v: [] }),
         ])
@@ -372,10 +372,15 @@ function CountCell({ value, label }) {
 
 /* ─────────── Admin ─────────── */
 
-function AdminDashboard() {
+function AdminDashboard({ role }) {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
   // Pulled live from Supabase — totals across all grades.
-  const { stats, loading, error, refresh } = useContentStats({ role: 'admin' })
+  const { stats, loading, error, refresh } = useContentStats({ role })
+
+  const allowedExams = role === 'admin' || hasPermission('exams')
+  const allowedVideos = role === 'admin' || hasPermission('videos')
+  const allowedReports = role === 'admin' || hasPermission('reports')
 
   return (
     <section className="hdash hdash-admin">
@@ -401,18 +406,24 @@ function AdminDashboard() {
 
       <WidgetCard icon="fa-bolt" title="إجراءات سريعة" accent="amber">
         <div className="hdash-quick">
-          <Link to="/exams" className="hdash-quick-card-btn hdash-quick-primary">
-            <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
-            <span className="hdash-quick-text">امتحان جديد</span>
-          </Link>
-          <Link to="/videos" className="hdash-quick-card-btn hdash-quick-primary">
-            <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
-            <span className="hdash-quick-text">فيديو جديد</span>
-          </Link>
-          <Link to="/report" className="hdash-quick-card-btn hdash-quick-ghost">
-            <span className="hdash-quick-icon-chip"><i className="fas fa-chart-line"></i></span>
-            <span className="hdash-quick-text">التقارير</span>
-          </Link>
+          {allowedExams && (
+            <Link to="/exams" className="hdash-quick-card-btn hdash-quick-primary">
+              <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
+              <span className="hdash-quick-text">امتحان جديد</span>
+            </Link>
+          )}
+          {allowedVideos && (
+            <Link to="/videos" className="hdash-quick-card-btn hdash-quick-primary">
+              <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
+              <span className="hdash-quick-text">فيديو جديد</span>
+            </Link>
+          )}
+          {allowedReports && (
+            <Link to="/report" className="hdash-quick-card-btn hdash-quick-ghost">
+              <span className="hdash-quick-icon-chip"><i className="fas fa-chart-line"></i></span>
+              <span className="hdash-quick-text">التقارير</span>
+            </Link>
+          )}
           <Link to="/control-panel" className="hdash-quick-card-btn hdash-quick-ghost">
             <span className="hdash-quick-icon-chip"><i className="fas fa-gear"></i></span>
             <span className="hdash-quick-text">لوحة التحكم</span>

@@ -15,7 +15,7 @@ import {
 
 export default function Home() {
   const navigate = useNavigate()
-  const { user, role } = useAuth()
+  const { user, role, hasPermission } = useAuth()
   const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
   const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
   const username = user?.name || ''
@@ -256,10 +256,10 @@ export default function Home() {
       <section className="home-greeting animate-fade-up">
         <h2 className="home-greeting-title">
           <span className="home-greeting-hi">أهلاً بك،</span>{" "}
-          <span className="home-greeting-name">{username || (role === 'admin' ? 'المشرف' : 'الطالب')}</span>
+          <span className="home-greeting-name">{username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب')}</span>
         </h2>
         <p className="home-greeting-sub">
-          {role === 'admin'
+          {role === 'admin' || role === 'assistant'
             ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
             : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨'}
         </p>
@@ -300,16 +300,16 @@ export default function Home() {
       {/* Hero Section */}
       <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>
         <div className="hero-title-container">
-          <h1>{role === 'admin' ? `لوحة إدارة ${brandName}` : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`)}</h1>
+          <h1>{role === 'admin' || role === 'assistant' ? `لوحة إدارة ${brandName}` : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`)}</h1>
           <div className="hero-title-accent" />
         </div>
         <p>
-          {role === 'admin'
+          {role === 'admin' || role === 'assistant'
             ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
             : (tenant?.config?.branding?.hero_subtitle || 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.')}
         </p>
         <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
-          <span>{role === 'admin' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن'}</span>
+          <span>{role === 'admin' || role === 'assistant' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن'}</span>
           <i className="fas fa-arrow-left hero-btn-arrow" />
         </a>
       </section>
@@ -324,12 +324,19 @@ export default function Home() {
             { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
             { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
             { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' }
-          ].filter(c => isFeatureEnabled(c.key)).map((card) => (
+          ].filter(c => {
+            if (!isFeatureEnabled(c.key)) return false
+            if (role === 'assistant') {
+              if (c.key === 'reports') return hasPermission('reports')
+              return hasPermission(c.key)
+            }
+            return true
+          }).map((card) => (
             <div key={card.key} className="card" onClick={() => goAndTrack(card.key, card.route)}>
               <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
               <h2>{card.label}</h2>
               <div className="card-title-accent" />
-              <p>{role === 'admin' ? card.descAdmin : card.descStudent}</p>
+              <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
             </div>
           ))}
         </div>
@@ -351,14 +358,14 @@ export default function Home() {
         </div>
         <h2>
           <span className="name-highlight">
-            {role === 'admin'
+            {role === 'admin' || role === 'assistant'
               ? `شكرًا لجهودك يا ${username || 'المشرف'}`
               : `يومك سعيد يا ${username || 'الطالب'}`}
           </span>
         </h2>
         <div className="greeting-title-accent" />
         <p>
-          {role === 'admin'
+          {role === 'admin' || role === 'assistant'
             ? 'لأي ملاحظات تقنية أو اقتراحات لتطوير المنصة، تواصل معنا عبر القنوات التالية'
             : 'لو بتواجهك أي مشاكل أو عندك أي استفسارات أو اقتراحات أو أي حاجة عايزنا نعرفها متترددش إنك تتواصل معانا'}
         </p>

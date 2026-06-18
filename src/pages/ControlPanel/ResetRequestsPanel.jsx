@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@backend/supabase'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../../utils/cache'
 import { initials } from './shared'
 
 export default function ResetRequestsPanel({ onBack, flash, students }) {
@@ -71,7 +71,7 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
 
       if (updateError) throw updateError
 
-      invalidateCache('password_reset_requests')
+      invalidatePrefix('password_reset_requests')
       setRequests((prev) => prev.filter((r) => r.id !== req.id))
       flash(`تم وضع علامة "تم الحل" على طلب الطالب: ${req.full_name}`, 'success')
     } catch (e) {
@@ -92,7 +92,7 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
 
       if (updateError) throw updateError
 
-      invalidateCache('password_reset_requests')
+      invalidatePrefix('password_reset_requests')
       setRequests((prev) => prev.filter((r) => r.id !== req.id))
       flash(`تم رفض طلب الطالب: ${req.full_name}`, 'warning')
     } catch (e) {

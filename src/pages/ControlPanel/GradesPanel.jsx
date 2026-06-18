@@ -3,6 +3,7 @@ import { listStudents } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation } from '@backend/gradesApi'
 import { useAuth } from '../../contexts/AuthContext'
+import { cached, LIST_TTL } from '../../utils/cache'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
@@ -69,8 +70,8 @@ export default function GradesPanel({ onBack, flash }) {
     ;(async () => {
       try {
         const [allStudents, allHomeworks] = await Promise.all([
-          listStudents(),
-          listHomeworks()
+          cached('students', LIST_TTL, listStudents),
+          cached('homeworks', LIST_TTL, listHomeworks)
         ])
         if (!active) return
 
