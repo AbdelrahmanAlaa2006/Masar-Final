@@ -256,12 +256,16 @@ export default function Home() {
       <section className="home-greeting animate-fade-up">
         <h2 className="home-greeting-title">
           <span className="home-greeting-hi">أهلاً بك،</span>{" "}
-          <span className="home-greeting-name">{username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب')}</span>
+          <span className="home-greeting-name">
+            {role === 'super_admin' ? 'مطورنا العزيز 💻' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
+          </span>
         </h2>
         <p className="home-greeting-sub">
-          {role === 'admin' || role === 'assistant'
-            ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
-            : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨'}
+          {role === 'super_admin'
+            ? 'مرحباً بك في لوحة تحكم المطور والـ Super Admin 👋 نتمنى لك تجربة موفّقة!'
+            : (role === 'admin' || role === 'assistant'
+              ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
+              : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨')}
         </p>
         <div className="home-greeting-shimmer" />
       </section>
@@ -300,47 +304,74 @@ export default function Home() {
       {/* Hero Section */}
       <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>
         <div className="hero-title-container">
-          <h1>{role === 'admin' || role === 'assistant' ? `لوحة إدارة ${brandName}` : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`)}</h1>
+          <h1>
+            {role === 'super_admin'
+              ? 'لوحة المطور والتحكم العام'
+              : (role === 'admin' || role === 'assistant'
+                ? `لوحة إدارة ${brandName}`
+                : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`))}
+          </h1>
           <div className="hero-title-accent" />
         </div>
         <p>
-          {role === 'admin' || role === 'assistant'
-            ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
-            : (tenant?.config?.branding?.hero_subtitle || 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.')}
+          {role === 'super_admin'
+            ? 'إدارة حسابات المدرسين، متابعة المنصات الفعالة، والتحكم الشامل وتصفير بيانات التجارب.'
+            : (role === 'admin' || role === 'assistant'
+              ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
+              : (tenant?.config?.branding?.hero_subtitle || 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.'))}
         </p>
-        <a href="#cards" className="hero-btn" onClick={handleHeroClick}>
-          <span>{role === 'admin' || role === 'assistant' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن'}</span>
+        <a
+          href={role === 'super_admin' ? '/control-panel' : '#cards'}
+          className="hero-btn"
+          onClick={(e) => {
+            if (role === 'super_admin') {
+              e.preventDefault()
+              navigate('/control-panel')
+            } else {
+              handleHeroClick(e)
+            }
+          }}
+        >
+          <span>
+            {role === 'super_admin'
+              ? 'انتقل للوحة التحكم'
+              : (role === 'admin' || role === 'assistant' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن')}
+          </span>
           <i className="fas fa-arrow-left hero-btn-arrow" />
         </a>
       </section>
 
-      <div className="home-divider" />
+      {role !== 'super_admin' && (
+        <>
+          <div className="home-divider" />
 
-      {/* Cards Section */}
-      <div className="container">
-        <div id="cards" className="cards-grid">
-          {[
-            { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
-            { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
-            { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
-            { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' }
-          ].filter(c => {
-            if (!isFeatureEnabled(c.key)) return false
-            if (role === 'assistant') {
-              if (c.key === 'reports') return hasPermission('reports')
-              return hasPermission(c.key)
-            }
-            return true
-          }).map((card) => (
-            <div key={card.key} className="card" onClick={() => goAndTrack(card.key, card.route)}>
-              <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
-              <h2>{card.label}</h2>
-              <div className="card-title-accent" />
-              <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
+          {/* Cards Section */}
+          <div className="container">
+            <div id="cards" className="cards-grid">
+              {[
+                { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
+                { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
+                { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
+                { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' }
+              ].filter(c => {
+                if (!isFeatureEnabled(c.key)) return false
+                if (role === 'assistant') {
+                  if (c.key === 'reports') return hasPermission('reports')
+                  return hasPermission(c.key)
+                }
+                return true
+              }).map((card) => (
+                <div key={card.key} className="card" onClick={() => goAndTrack(card.key, card.route)}>
+                  <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
+                  <h2>{card.label}</h2>
+                  <div className="card-title-accent" />
+                  <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       <div className="home-divider" />
 
@@ -358,14 +389,16 @@ export default function Home() {
         </div>
         <h2>
           <span className="name-highlight">
-            {role === 'admin' || role === 'assistant'
-              ? `شكرًا لجهودك يا ${username || 'المشرف'}`
-              : `يومك سعيد يا ${username || 'الطالب'}`}
+            {role === 'super_admin'
+              ? `شكرًا لجهودك يا مطورنا العزيز 💻`
+              : (role === 'admin' || role === 'assistant'
+                ? `شكرًا لجهودك يا ${username || 'المشرف'}`
+                : `يومك سعيد يا ${username || 'الطالب'}`)}
           </span>
         </h2>
         <div className="greeting-title-accent" />
         <p>
-          {role === 'admin' || role === 'assistant'
+          {role === 'super_admin' || role === 'admin' || role === 'assistant'
             ? 'لأي ملاحظات تقنية أو اقتراحات لتطوير المنصة، تواصل معنا عبر القنوات التالية'
             : 'لو بتواجهك أي مشاكل أو عندك أي استفسارات أو اقتراحات أو أي حاجة عايزنا نعرفها متترددش إنك تتواصل معانا'}
         </p>

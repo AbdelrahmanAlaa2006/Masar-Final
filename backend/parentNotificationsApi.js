@@ -217,6 +217,28 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
     }
     return true
   }
+  
+  else if (type === 'ultramsg') {
+    if (!url || !token) throw new Error('بيانات UltraMsg غير مكتملة (رابط الخدمة أو الـ Token مفقود)')
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        token: token,
+        to: parentPhone,
+        body: messageText
+      })
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`UltraMsg Error (${response.status}): ${errText || 'فشل الإرسال عبر UltraMsg'}`)
+    }
+    return true
+  }
 
   throw new Error(`بوابة الإرسال غير معروفة: ${type}`)
 }

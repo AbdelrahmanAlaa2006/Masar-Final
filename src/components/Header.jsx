@@ -51,7 +51,7 @@ export default function Header() {
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0)
 
   useEffect(() => {
-    if (userRole !== 'admin' && userRole !== 'assistant') return
+    if (userRole !== 'admin' && userRole !== 'assistant' && userRole !== 'super_admin') return
 
     const fetchPendingCount = async () => {
       try {
@@ -171,10 +171,11 @@ export default function Header() {
 
   const isChatEnabled = isFeatureEnabled('chat')
 
-  const isStaff = userRole === 'admin' || userRole === 'assistant'
-  const items = isStaff
-    ? [...filteredBase, ...ADMIN_ITEMS]
-    : [...filteredBase, ...(isChatEnabled ? [{ to: '/chat', label: 'الدردشة', icon: 'fa-comments' }] : [])]
+  const items = userRole === 'super_admin'
+    ? [{ to: '/', label: 'الرئيسية', icon: 'fa-house' }, ...ADMIN_ITEMS]
+    : (userRole === 'admin' || userRole === 'assistant'
+      ? [...filteredBase, ...ADMIN_ITEMS]
+      : [...filteredBase, ...(isChatEnabled ? [{ to: '/chat', label: 'الدردشة', icon: 'fa-comments' }] : [])])
 
   const initial = (userName || 'U').trim().charAt(0).toUpperCase()
 
@@ -203,7 +204,7 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
-                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant') && pendingPaymentsCount > 0 && (
+                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant' || userRole === 'super_admin') && pendingPaymentsCount > 0 && (
                   <span className="nav-badge-pending">
                     {pendingPaymentsCount}
                   </span>
@@ -311,7 +312,7 @@ export default function Header() {
               <div>
                 <div className="mh-drawer__user-name">{userName}</div>
                 <div className="mh-drawer__user-role">
-                  {userRole === 'admin' ? 'مشرف' : userRole === 'assistant' ? 'مساعد' : 'طالب'}
+                  {userRole === 'super_admin' ? 'سوبر أدمن' : userRole === 'admin' ? 'مشرف' : userRole === 'assistant' ? 'مساعد' : 'طالب'}
                 </div>
               </div>
             </div>
@@ -326,12 +327,12 @@ export default function Header() {
               >
                 <i className={`fas ${item.icon}`} aria-hidden="true"></i>
                 <span>{item.label}</span>
-                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant') && pendingPaymentsCount > 0 && (
+                {item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant' || userRole === 'super_admin') && pendingPaymentsCount > 0 && (
                   <span className="nav-badge-pending" style={{ marginRight: 'auto', marginLeft: 8 }}>
                     {pendingPaymentsCount}
                   </span>
                 )}
-                <i className="fas fa-chevron-left mh-drawer__link-arrow" style={{ marginRight: item.to === '/payments' && userRole === 'admin' && pendingPaymentsCount > 0 ? '0' : 'auto' }}></i>
+                <i className="fas fa-chevron-left mh-drawer__link-arrow" style={{ marginRight: item.to === '/payments' && (userRole === 'admin' || userRole === 'assistant' || userRole === 'super_admin') && pendingPaymentsCount > 0 ? '0' : 'auto' }}></i>
               </Link>
             ))}
           </nav>

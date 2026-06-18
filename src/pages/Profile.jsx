@@ -74,8 +74,8 @@ export default function Profile() {
   }, [user, isFeatureEnabled])
 
   const initial = (user?.name || 'U').trim().charAt(0).toUpperCase()
-  const roleName = user?.role === 'admin' ? 'مشرف' : user?.role === 'assistant' ? 'مساعد' : 'طالب'
-  const isAdmin = user?.role === 'admin'
+  const roleName = user?.role === 'super_admin' ? 'سوبر أدمن (مطور)' : user?.role === 'admin' ? 'مشرف' : user?.role === 'assistant' ? 'مساعد' : 'طالب'
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
   const isAssistant = user?.role === 'assistant'
 
   // Map DB grade enum → Arabic label for display.

@@ -9,16 +9,26 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 async function main() {
-  const { data, error } = await supabase
-    .from('videos')
-    .insert({ title: 'Test PDF Column Check Temp', grade: 'first-sec', active_hours: 1 })
-    .select()
-
-  console.log('Insert attempt output:', { data, error })
+  console.log("Checking tenants table...")
+  const { data: tenants, error: err } = await supabase
+    .from('tenants')
+    .select('*')
   
-  if (data && data.length > 0) {
-    await supabase.from('videos').delete().eq('id', data[0].id)
+  if (err) {
+    console.error("Error fetching tenants:", err)
+  } else {
+    console.log("Tenants found:", tenants)
   }
+
+  console.log("Checking tenants selection query from TenantContext...")
+  const { data: qData, error: qErr } = await supabase
+    .from('tenants')
+    .select(`
+      *,
+      tenant_settings (*),
+      tenant_features (*)
+    `)
+  console.log("Result of querying nested relations:", { qData, qErr })
 }
 
 main()

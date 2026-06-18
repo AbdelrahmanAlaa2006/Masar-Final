@@ -303,7 +303,7 @@ function PermissionRoute({ isLoggedIn, permission, children }) {
 function AdminRoute({ isLoggedIn, role, permission, children }) {
   const { hasPermission } = useAuth()
   if (!isLoggedIn) return <Navigate to="/login" replace />
-  if (role !== 'admin' && role !== 'assistant') return <Navigate to="/" replace />
+  if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') return <Navigate to="/" replace />
   if (role === 'assistant' && permission && !hasPermission(permission)) {
     return <Navigate to="/" replace />
   }

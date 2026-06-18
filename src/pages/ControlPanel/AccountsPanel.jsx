@@ -4,6 +4,7 @@ import { createNotification } from '@backend/notificationsApi'
 import { initials, GRADE_LABEL } from './shared'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '@backend/supabase'
 
 const fmtDate = (iso) => {
   if (!iso) return ''
@@ -100,6 +101,30 @@ export default function AccountsPanel({ onBack, flash }) {
       flash(`تم تحديث حالة الطالب: ${student.name}`, 'success')
     } catch (e) {
       flash(e.message || 'تعذّر تحديث حالة الطالب', 'warning')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleDeleteStudent = async (student) => {
+    if (busyId) return
+    if (!window.confirm(`⚠️ تحذير: هل أنت متأكد من رغبتك في حذف الطالب "${student.name}" نهائياً من المنصة؟ سيؤدي ذلك لحذف حسابه وجميع درجاته وغيابه ومحاولاته بالكامل ولا يمكن التراجع عن هذا.`)) {
+      return
+    }
+    
+    setBusyId(student.id)
+    try {
+      const { error: rpcError } = await supabase.rpc('delete_student_account', {
+        p_student_id: student.id
+      })
+      if (rpcError) throw rpcError
+      
+      // Update local state and invalid cache
+      setStudents(prev => prev.filter(s => s.id !== student.id))
+      invalidateCache('students')
+      flash(`تم حذف حساب الطالب "${student.name}" بنجاح.`, 'success')
+    } catch (e) {
+      flash(e.message || 'تعذّر حذف حساب الطالب', 'warning')
     } finally {
       setBusyId(null)
     }
@@ -529,6 +554,25 @@ export default function AccountsPanel({ onBack, flash }) {
                             </button>
                           </>
                         )}
+                        <button
+                          className="cp-btn cp-btn-danger cp-btn-sm"
+                          type="button"
+                          onClick={() => handleDeleteStudent(student)}
+                          disabled={isBusy}
+                          style={{
+                            padding: '6px 10px',
+                            fontSize: '0.8rem',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            borderColor: 'rgba(239, 68, 68, 0.2)',
+                            color: '#ef4444',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="حذف الطالب نهائياً"
+                        >
+                          <i className="fas fa-trash-can"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>

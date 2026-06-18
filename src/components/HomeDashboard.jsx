@@ -34,6 +34,19 @@ export default function HomeDashboard({ role }) {
       </div>
     )
   }
+
+  if (role === 'super_admin') {
+    return (
+      <div className="hdash-card hdash-accent-violet" style={{ gridColumn: '1 / -1', padding: '36px', textAlign: 'center', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '24px' }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--cp-text-main, #1e293b)', marginBottom: '10px' }}>مرحباً بك في لوحة المطور والتحكم العام</h3>
+        <p style={{ color: 'var(--cp-text-muted, #64748b)', marginBottom: '20px', fontSize: '0.92rem' }}>يمكنك الانتقال مباشرة لإدارة المدرسين والمنصات والقيام بعمليات تنظيف وتصفير قاعدة البيانات للبدء من جديد.</p>
+        <Link to="/control-panel" className="cp-btn cp-btn-primary" style={{ display: 'inline-flex', padding: '10px 24px', borderRadius: '12px', fontWeight: 'bold', textDecoration: 'none', background: 'var(--primary, #6366f1)', color: '#fff' }}>
+          الدخول للوحة التحكم والمطور
+        </Link>
+      </div>
+    )
+  }
+
   return (role === 'admin' || role === 'assistant') ? <AdminDashboard role={role} /> : <StudentDashboard />
 }
 

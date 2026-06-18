@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
         if (permsData) {
           setPermissions(JSON.parse(permsData))
         } else {
-          setPermissions(parsedUser.role === 'admin' ? ALL_PERMISSIONS : [])
+          setPermissions((parsedUser.role === 'admin' || parsedUser.role === 'super_admin') ? ALL_PERMISSIONS : [])
         }
       } else {
         setUser(null)
@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
       if (error) throw error
       if (data) {
         let userPerms = []
-        if (data.role === 'admin') {
+        if (data.role === 'admin' || data.role === 'super_admin') {
           userPerms = ALL_PERMISSIONS
         } else if (data.role === 'assistant') {
           const { data: adminData } = await supabase
@@ -100,13 +100,13 @@ export function AuthProvider({ children }) {
   }, [])
 
   const hasPermission = useCallback((permission) => {
-    if (user?.role === 'admin') return true
+    if (user?.role === 'admin' || user?.role === 'super_admin') return true
     return permissions.includes(permission)
   }, [user, permissions])
 
   // Enforce session boundary for cross-tenant isolation (especially on localhost testing)
   useEffect(() => {
-    if (user && tenantId && user.tenant_id !== tenantId) {
+    if (user && tenantId && user.tenant_id !== tenantId && user.role !== 'super_admin') {
       logout()
     }
   }, [user, tenantId, logout])
@@ -147,7 +147,8 @@ export function AuthProvider({ children }) {
     isLoggedIn,
     loading,
     role: user?.role || null,
-    isAdmin: user?.role === 'admin',
+    isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
+    isSuperAdmin: user?.role === 'super_admin',
     isAssistant: user?.role === 'assistant',
     permissions,
     hasPermission,

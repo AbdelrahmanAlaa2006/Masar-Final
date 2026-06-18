@@ -14,29 +14,58 @@ export const authAPI = {
 
   // Login with phone + password
   login: async (phone, password, clientTenantId) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: phoneToEmail(phone, clientTenantId),
-      password,
-    })
+    let authData = null
+    let authError = null
 
-    if (error) throw new Error('رقم الهاتف أو كلمة المرور غلط')
+    // 1. Try tenant-scoped login first
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: phoneToEmail(phone, clientTenantId),
+        password,
+      })
+      if (error) throw error
+      authData = data
+    } catch (err) {
+      authError = err
+
+      // 2. Fallback: Try default tenant (Global Super Admin) login
+      const defaultTenantId = 'd3b07384-d113-4ec2-a5d6-d005b6be4979'
+      if (clientTenantId && clientTenantId !== defaultTenantId) {
+        try {
+          const { data, error: fallbackError } = await supabase.auth.signInWithPassword({
+            email: phoneToEmail(phone, defaultTenantId),
+            password,
+          })
+          if (!fallbackError && data?.user) {
+            authData = data
+            authError = null
+          }
+        } catch (fErr) {
+          // ignore fallback error
+        }
+      }
+    }
+
+    if (authError || !authData) {
+      throw new Error('رقم الهاتف أو كلمة المرور غلط')
+    }
 
     // Fetch profile (name, role, level, tenant_id)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, name, phone, grade, "group", role, avatar_url, tenant_id, is_active, is_approved, created_at')
-      .eq('id', data.user.id)
+      .eq('id', authData.user.id)
       .single()
 
     if (profileError) throw new Error('فشل تحميل بيانات المستخدم')
 
-    // Cross-tenant login validation
-    if (clientTenantId && profile.tenant_id !== clientTenantId) {
+    // Cross-tenant login validation (Super Admins are allowed to bypass tenant checks)
+    if (clientTenantId && profile.tenant_id !== clientTenantId && profile.role !== 'super_admin') {
       await supabase.auth.signOut()
       throw new Error('المستخدم غير مسجل في هذه المنصة')
     }
 
-    return { token: data.session.access_token, user: profile }
+    return { token: authData.session.access_token, user: profile }
   },
 
   // Logout

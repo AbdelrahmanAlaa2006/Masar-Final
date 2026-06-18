@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 import { listExams } from '@backend/examsApi'
 import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
@@ -26,9 +26,11 @@ const AttendancePanel = lazy(() => import('./AttendancePanel'))
 const GradesPanel = lazy(() => import('./GradesPanel'))
 const AssistantsPanel = lazy(() => import('./AssistantsPanel'))
 const WhatsAppQueuePanel = lazy(() => import('./WhatsAppQueuePanel'))
+const SuperAdminPanel = lazy(() => import('./SuperAdminPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, hasPermission } = useAuth()
   const { isFeatureEnabled } = useTenant()
@@ -40,6 +42,7 @@ export default function ControlPanelIndex() {
   // Security Gate checks for route routing
   const isSectionAllowed = (s) => {
     if (!user) return false
+    if (user.role === 'super_admin') return true
 
     // Feature toggles check (blocks access if feature is disabled in tenant settings)
     if (s === 'attendance' && !isFeatureEnabled('attendance')) return false
@@ -49,7 +52,7 @@ export default function ControlPanelIndex() {
     if (s === 'videos' && !isFeatureEnabled('videos')) return false
     if (s === 'whatsapp' && !isFeatureEnabled('notifications')) return false
 
-    if (user.role === 'admin') return true
+    if (user.role === 'admin' || user.role === 'super_admin') return true
     if (s === 'home') return true
 
     // Assistant gates
@@ -82,6 +85,10 @@ export default function ControlPanelIndex() {
   const [resetRequestsCount, setResetRequestsCount] = useState(0)
 
   useEffect(() => {
+    if (user?.role === 'super_admin') {
+      setLoading(false)
+      return
+    }
     let cancelled = false
       ; (async () => {
         try {
@@ -184,6 +191,29 @@ export default function ControlPanelIndex() {
   )
 
   const allowedToSee = isSectionAllowed(section)
+
+  if (user?.role === 'super_admin') {
+    return (
+      <main className="cp-page">
+        <div className="cp-container">
+          <Suspense fallback={<PanelLoader />}>
+            <SuperAdminPanel onBack={() => navigate('/')} flash={flash} />
+          </Suspense>
+        </div>
+        {toast && (
+          <div className={`cp-toast cp-toast-${toast.kind}`}>
+            <i className={`fas ${toast.kind === 'success'
+                ? 'fa-circle-check'
+                : toast.kind === 'warning'
+                  ? 'fa-circle-exclamation'
+                  : 'fa-circle-info'
+              }`}></i>
+            <span>{toast.msg}</span>
+          </div>
+        )}
+      </main>
+    )
+  }
 
   return (
     <main className="cp-page">
@@ -361,6 +391,17 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
+                {/* Super Admin Tools (SaaS Owner/Developer Only) */}
+                {user?.role === 'super_admin' && (
+                  <SectionCard
+                    icon="fa-user-ninja"
+                    accent="red"
+                    title="لوحة تحكم المطور (Super Admin)"
+                    desc="إدارة المدرسين المشتركين، وعمليات صيانة قاعدة البيانات"
+                    onClick={() => enterSection('super_admin')}
+                  />
+                )}
+
               </div>
             )}
 
@@ -385,6 +426,7 @@ export default function ControlPanelIndex() {
               {section === 'grades' && <GradesPanel onBack={goHome} flash={flash} />}
               {section === 'assistants' && <AssistantsPanel onBack={goHome} flash={flash} />}
               {section === 'whatsapp' && <WhatsAppQueuePanel onBack={goHome} flash={flash} />}
+              {section === 'super_admin' && <SuperAdminPanel onBack={goHome} flash={flash} />}
 
               {/* Sub-tab navigation bar for dynamic settings */}
               {(section === 'videos' || section === 'exams') && (

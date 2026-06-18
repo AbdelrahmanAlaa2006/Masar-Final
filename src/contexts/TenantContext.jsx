@@ -54,17 +54,13 @@ export function TenantProvider({ children }) {
           setAvailableTenants(allTenants)
         }
 
-        // 3. Fetch tenant config from database with nested settings and features (cached for 10 minutes)
+        // 3. Fetch tenant config from database (cached for 10 minutes)
         const tenantData = await cached(`tenant-config:${candidate}`, 10 * 60 * 1000, async () => {
           let resolvedData = null
           if (candidate && candidate !== 'default') {
             const { data, error } = await supabase
               .from('tenants')
-              .select(`
-                *,
-                tenant_settings (*),
-                tenant_features (*)
-              `)
+              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config')
               .or(`slug.eq.${candidate},domain.eq.${candidate}`)
               .maybeSingle()
             if (!error && data) {
@@ -75,11 +71,7 @@ export function TenantProvider({ children }) {
           if (!resolvedData) {
             const { data, error } = await supabase
               .from('tenants')
-              .select(`
-                *,
-                tenant_settings (*),
-                tenant_features (*)
-              `)
+              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config')
               .eq('slug', 'default')
               .maybeSingle()
 

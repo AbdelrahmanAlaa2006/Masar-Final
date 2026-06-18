@@ -386,6 +386,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>نوع البوابة</label>
                 <select value={gatewayType} onChange={(e) => setGatewayType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
                   <option value="whatsapp_evolution">WhatsApp (Evolution API)</option>
+                  <option value="ultramsg">WhatsApp (UltraMsg API)</option>
                   <option value="telegram">Telegram Bot</option>
                   <option value="generic_webhook">Generic Webhook (SMS/Custom)</option>
                 </select>
