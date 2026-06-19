@@ -20,18 +20,130 @@ export default function AssistantsPanel({ onBack, flash }) {
   const [editingAssistant, setEditingAssistant] = useState(null)
   const [showEditForm, setShowEditForm] = useState(false)
 
-  // Available permissions list (Internal name -> Arabic label)
-  const PERMISSIONS_LIST = {
-    'attendance': 'إدارة الحضور والغياب',
-    'grades': 'رصد الدرجات والتقييمات',
-    'homework': 'إدارة الواجبات والأنشطة',
-    'videos': 'إدارة الفيديوهات والمحاضرات',
-    'exams': 'إدارة الامتحانات والنتائج',
-    'students': 'إدارة حسابات الطلاب والتفعيل',
-    'payments': 'إدارة الاشتراكات والمدفوعات',
-    'reports': 'عرض التقارير والإحصائيات',
-    'whatsapp': 'متابعة إشعارات الواتساب والـ SMS'
+  // Detailed permissions mapping for assistant cards
+  const SHORT_LABELS = {
+    'attendance:view': 'عرض الحضور',
+    'attendance:take': 'تسجيل الحضور',
+    'attendance:delete': 'حذف الحضور',
+    'grades:view': 'عرض الدرجات',
+    'grades:edit': 'رصد الدرجات',
+    'videos:view': 'سجل الفيديوهات',
+    'videos:edit': 'إدارة الفيديوهات',
+    'exams:view': 'نتائج الامتحانات',
+    'exams:edit': 'إدارة الامتحانات',
+    'homework:view': 'تسليمات الواجب',
+    'homework:edit': 'إدارة الواجبات',
+    'students:view': 'عرض الطلاب',
+    'students:activate': 'تفعيل الطلاب',
+    'students:edit': 'تعديل الطلاب',
+    'students:delete': 'حذف الطلاب',
+    'students:reset_pass': 'استعادة الباسورد',
+    'chats:view': 'قراءة الدردشة',
+    'chats:reply': 'الرد على الدردشة',
+    'payments:view': 'عرض الماليات',
+    'payments:edit': 'إدارة الماليات',
+    'whatsapp:view': 'طابور الواتساب',
+    'reports:view': 'التقارير العامة',
+    // Fallbacks for legacy coarse permissions
+    'attendance': 'حضور كامل',
+    'grades': 'درجات كامل',
+    'homework': 'واجبات كامل',
+    'videos': 'فيديوهات كامل',
+    'exams': 'امتحانات كامل',
+    'students': 'طلاب كامل',
+    'payments': 'اشتراكات كامل',
+    'reports': 'تقارير كامل',
+    'whatsapp': 'واتساب كامل'
   }
+
+  // Grouped and categorized permissions for the form checkboxes
+  const PERMISSIONS_CATEGORIES = [
+    {
+      title: 'الحضور والغياب',
+      icon: 'fa-calendar-check',
+      accent: 'teal',
+      items: [
+        { key: 'attendance:view', label: 'عرض سجل الحضور والغياب' },
+        { key: 'attendance:take', label: 'تسجيل الحضور اليومي للطلاب' },
+        { key: 'attendance:delete', label: 'حذف وتعديل جلسات وسجلات الحضور' }
+      ]
+    },
+    {
+      title: 'رصد الدرجات والتقييم',
+      icon: 'fa-star',
+      accent: 'gold',
+      items: [
+        { key: 'grades:view', label: 'عرض كشوف الدرجات والتقييمات' },
+        { key: 'grades:edit', label: 'رصد وتعديل درجات الطلاب وتقييماتهم' }
+      ]
+    },
+    {
+      title: 'الفيديوهات والمحاضرات',
+      icon: 'fa-play-circle',
+      accent: 'blue',
+      items: [
+        { key: 'videos:view', label: 'عرض سجل مشاهدات الفيديوهات' },
+        { key: 'videos:edit', label: 'إدارة محاولات المشاهدة ومدة الإتاحة' }
+      ]
+    },
+    {
+      title: 'الامتحانات والنتائج',
+      icon: 'fa-file-alt',
+      accent: 'orange',
+      items: [
+        { key: 'exams:view', label: 'عرض نتائج وإجابات الطلاب' },
+        { key: 'exams:edit', label: 'إدارة المحاولات، الإتاحة، وإظهار النتائج' }
+      ]
+    },
+    {
+      title: 'الواجبات والأنشطة',
+      icon: 'fa-book-open',
+      accent: 'purple',
+      items: [
+        { key: 'homework:view', label: 'عرض وإحصائيات تسليم الواجبات' },
+        { key: 'homework:edit', label: 'تعديل درجات الواجبات وإظهار نتائجها' }
+      ]
+    },
+    {
+      title: 'شؤون الطلاب والملفات الشخصية',
+      icon: 'fa-user-check',
+      accent: 'green',
+      items: [
+        { key: 'students:view', label: 'عرض وقائمة الطلاب والبحث' },
+        { key: 'students:activate', label: 'تفعيل حسابات الطلاب الجديدة (الموافقة)' },
+        { key: 'students:edit', label: 'تعديل بيانات الطلاب والملف الشخصي' },
+        { key: 'students:delete', label: 'حذف حسابات الطلاب نهائياً' },
+        { key: 'students:reset_pass', label: 'الموافقة على طلبات استعادة الباسورد' }
+      ]
+    },
+    {
+      title: 'الدردشة والدعم الفني',
+      icon: 'fa-comments',
+      accent: 'teal',
+      items: [
+        { key: 'chats:view', label: 'قراءة محادثات واستفسارات الطلاب' },
+        { key: 'chats:reply', label: 'الرد على محادثات واستفسارات الطلاب' }
+      ]
+    },
+    {
+      title: 'الماليات والاشتراكات',
+      icon: 'fa-wallet',
+      accent: 'violet',
+      items: [
+        { key: 'payments:view', label: 'عرض السجل المالي والتحصيل' },
+        { key: 'payments:edit', label: 'تسجيل الاشتراكات وتعديل العمليات المالية' }
+      ]
+    },
+    {
+      title: 'الواتساب والتقارير العامة',
+      icon: 'fa-comments-dollar',
+      accent: 'red',
+      items: [
+        { key: 'whatsapp:view', label: 'متابعة طابور رسائل الواتساب' },
+        { key: 'reports:view', label: 'عرض التقارير والإحصائيات العامة' }
+      ]
+    }
+  ]
 
   // Load assistants on mount
   const loadData = async () => {
@@ -207,38 +319,88 @@ export default function AssistantsPanel({ onBack, flash }) {
 
             {/* Permissions Checkbox Grid */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '12px', color: 'var(--cp-text-muted)' }}>تحديد الصلاحيات والأقسام المتاحة للمساعد:</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
-                {Object.entries(PERMISSIONS_LIST).map(([key, label]) => {
-                  const checked = selectedPermissions.includes(key)
-                  return (
-                    <label 
-                      key={key} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '10px', 
-                        padding: '12px 16px', 
-                        borderRadius: '12px', 
-                        border: '1px solid ' + (checked ? 'rgba(140, 114, 219, 0.3)' : 'var(--cp-card-border)'), 
-                        background: checked ? 'rgba(140, 114, 219, 0.06)' : 'var(--cp-bg)', 
-                        cursor: 'pointer',
-                        fontSize: '0.88rem',
-                        fontWeight: '600',
-                        color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={checked} 
-                        onChange={() => handlePermissionToggle(key)}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  )
-                })}
+              <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 'bold', marginBottom: '16px', color: 'var(--cp-text-main)' }}>
+                تحديد الصلاحيات الممنوحة للمساعد بالتفصيل:
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {PERMISSIONS_CATEGORIES.map(category => (
+                  <div 
+                    key={category.title} 
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.01)', 
+                      border: '1px solid var(--cp-card-border)', 
+                      borderRadius: '16px', 
+                      padding: '16px' 
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ fontSize: '0.92rem', fontWeight: '700', margin: 0, color: 'var(--cp-text-main)' }}>
+                          <i className={`fas ${category.icon}`} style={{ marginInlineEnd: '6px', color: '#8c72db' }} />
+                          {category.title}
+                        </h4>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const keys = category.items.map(item => item.key)
+                            setSelectedPermissions(prev => {
+                              const filtered = prev.filter(p => !keys.includes(p))
+                              return [...filtered, ...keys]
+                            })
+                          }} 
+                          style={{ fontSize: '0.72rem', background: 'rgba(20, 184, 166, 0.1)', color: '#14b8a6', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          تحديد الكل
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const keys = category.items.map(item => item.key)
+                            setSelectedPermissions(prev => prev.filter(p => !keys.includes(p)))
+                          }} 
+                          style={{ fontSize: '0.72rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          إلغاء الكل
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                      {category.items.map(item => {
+                        const checked = selectedPermissions.includes(item.key)
+                        return (
+                          <label 
+                            key={item.key} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '10px', 
+                              padding: '12px 14px', 
+                              borderRadius: '12px', 
+                              border: '1px solid ' + (checked ? 'rgba(140, 114, 219, 0.25)' : 'var(--cp-card-border)'), 
+                              background: checked ? 'rgba(140, 114, 219, 0.04)' : 'transparent', 
+                              cursor: 'pointer',
+                              fontSize: '0.82rem',
+                              fontWeight: '600',
+                              color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={checked} 
+                              onChange={() => handlePermissionToggle(item.key)}
+                              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                            />
+                            <span>{item.label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -273,38 +435,88 @@ export default function AssistantsPanel({ onBack, flash }) {
 
             {/* Permissions Checkbox Grid */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '12px', color: 'var(--cp-text-muted)' }}>تحديث الصلاحيات الممنوحة:</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
-                {Object.entries(PERMISSIONS_LIST).map(([key, label]) => {
-                  const checked = selectedPermissions.includes(key)
-                  return (
-                    <label 
-                      key={key} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '10px', 
-                        padding: '12px 16px', 
-                        borderRadius: '12px', 
-                        border: '1px solid ' + (checked ? 'rgba(140, 114, 219, 0.3)' : 'var(--cp-card-border)'), 
-                        background: checked ? 'rgba(140, 114, 219, 0.06)' : 'var(--cp-bg)', 
-                        cursor: 'pointer',
-                        fontSize: '0.88rem',
-                        fontWeight: '600',
-                        color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={checked} 
-                        onChange={() => handlePermissionToggle(key)}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  )
-                })}
+              <label style={{ display: 'block', fontSize: '0.92rem', fontWeight: 'bold', marginBottom: '16px', color: 'var(--cp-text-main)' }}>
+                تحديث الصلاحيات الممنوحة للمساعد بالتفصيل:
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {PERMISSIONS_CATEGORIES.map(category => (
+                  <div 
+                    key={category.title} 
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.01)', 
+                      border: '1px solid var(--cp-card-border)', 
+                      borderRadius: '16px', 
+                      padding: '16px' 
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ fontSize: '0.92rem', fontWeight: '700', margin: 0, color: 'var(--cp-text-main)' }}>
+                          <i className={`fas ${category.icon}`} style={{ marginInlineEnd: '6px', color: '#8c72db' }} />
+                          {category.title}
+                        </h4>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const keys = category.items.map(item => item.key)
+                            setSelectedPermissions(prev => {
+                              const filtered = prev.filter(p => !keys.includes(p))
+                              return [...filtered, ...keys]
+                            })
+                          }} 
+                          style={{ fontSize: '0.72rem', background: 'rgba(20, 184, 166, 0.1)', color: '#14b8a6', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          تحديد الكل
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const keys = category.items.map(item => item.key)
+                            setSelectedPermissions(prev => prev.filter(p => !keys.includes(p)))
+                          }} 
+                          style={{ fontSize: '0.72rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          إلغاء الكل
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                      {category.items.map(item => {
+                        const checked = selectedPermissions.includes(item.key)
+                        return (
+                          <label 
+                            key={item.key} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '10px', 
+                              padding: '12px 14px', 
+                              borderRadius: '12px', 
+                              border: '1px solid ' + (checked ? 'rgba(140, 114, 219, 0.25)' : 'var(--cp-card-border)'), 
+                              background: checked ? 'rgba(140, 114, 219, 0.04)' : 'transparent', 
+                              cursor: 'pointer',
+                              fontSize: '0.82rem',
+                              fontWeight: '600',
+                              color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={checked} 
+                              onChange={() => handlePermissionToggle(item.key)}
+                              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                            />
+                            <span>{item.label}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -369,7 +581,7 @@ export default function AssistantsPanel({ onBack, flash }) {
                           className="cp-id-pill"
                           style={{ background: 'rgba(140, 114, 219, 0.08)', border: '1px solid rgba(140, 114, 219, 0.15)', color: '#8c72db', fontSize: '0.74rem', padding: '3px 8px' }}
                         >
-                          {p === 'attendance' ? 'حضور' : p === 'grades' ? 'درجات' : p === 'homework' ? 'واجبات' : p === 'videos' ? 'فيديوهات' : p === 'exams' ? 'امتحانات' : p === 'students' ? 'طلاب' : p === 'payments' ? 'اشتراكات' : p === 'reports' ? 'تقارير' : 'واتساب'}
+                          {SHORT_LABELS[p] || p}
                         </span>
                       ))
                     ) : (

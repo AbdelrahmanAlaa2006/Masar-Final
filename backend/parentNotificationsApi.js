@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { invalidate as invalidateCache } from '../src/utils/cache'
+import { updateNotificationStatus } from './unifiedNotificationsApi'
 
 // Get paginated parent notifications list
 export async function listNotificationQueue(page = 1, limit = 50) {
@@ -7,38 +8,43 @@ export async function listNotificationQueue(page = 1, limit = 50) {
   const rangeEnd = page * limit - 1
 
   const { data, error, count } = await supabase
-    .from('parent_notifications')
+    .from('unified_notifications')
     .select(`
       id,
-      phone,
       message,
       type,
       status,
-      retry_count,
-      last_error,
       created_at,
-      sent_at,
-      profiles (
-        name
+      profiles:student_id (
+        name,
+        parent_phone
       )
     `, { count: 'exact' })
+    .contains('channels', ['whatsapp'])
     .order('created_at', { ascending: false })
     .range(rangeStart, rangeEnd)
 
   if (error) throw error
   return {
-    items: (data || []).map(item => ({
-      id: item.id,
-      phone: item.phone,
-      message: item.message,
-      type: item.type,
-      status: item.status,
-      retry_count: item.retry_count,
-      last_error: item.last_error,
-      created_at: item.created_at,
-      sent_at: item.sent_at,
-      student_name: item.profiles?.name || '—'
-    })),
+    items: (data || []).map(item => {
+      const whatsappStatus = item.status?.whatsapp || 'pending'
+      const lastError = item.status?.whatsapp_error || null
+      const retryCount = item.status?.whatsapp_retry_count || 0
+      const sentAt = item.status?.whatsapp_sent_at || null
+
+      return {
+        id: item.id,
+        phone: item.profiles?.parent_phone || '—',
+        message: item.message,
+        type: item.type,
+        status: whatsappStatus,
+        retry_count: retryCount,
+        last_error: lastError,
+        created_at: item.created_at,
+        sent_at: sentAt,
+        student_name: item.profiles?.name || '—'
+      }
+    }),
     total: count || 0
   }
 }
@@ -46,8 +52,9 @@ export async function listNotificationQueue(page = 1, limit = 50) {
 // Get statistics summary of notifications
 export async function getNotificationQueueSummary() {
   const { data, error } = await supabase
-    .from('parent_notifications')
+    .from('unified_notifications')
     .select('status')
+    .contains('channels', ['whatsapp'])
 
   if (error) throw error
 
@@ -56,9 +63,10 @@ export async function getNotificationQueueSummary() {
   let failed = 0
 
   data.forEach(r => {
-    if (r.status === 'pending') pending++
-    else if (r.status === 'sent') sent++
-    else if (r.status === 'failed') failed++
+    const whatsappStatus = r.status?.whatsapp || 'pending'
+    if (whatsappStatus === 'pending') pending++
+    else if (whatsappStatus === 'sent') sent++
+    else if (whatsappStatus === 'failed') failed++
   })
 
   return { pending, sent, failed, total: data.length }
@@ -66,9 +74,20 @@ export async function getNotificationQueueSummary() {
 
 // Retry a specific notification
 export async function retryNotification(id) {
+  // Read current row status
+  const { data: row } = await supabase
+    .from('unified_notifications')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle()
+
+  const updatedStatus = { ...(row?.status || {}) }
+  updatedStatus.whatsapp = 'pending'
+  updatedStatus.whatsapp_error = null
+
   const { data, error } = await supabase
-    .from('parent_notifications')
-    .update({ status: 'pending', last_error: null })
+    .from('unified_notifications')
+    .update({ status: updatedStatus })
     .eq('id', id)
     .select()
 
@@ -78,15 +97,27 @@ export async function retryNotification(id) {
 
 // Reset all failed notifications to pending
 export async function retryAllFailed(tenantId) {
-  const { data, error } = await supabase
-    .from('parent_notifications')
-    .update({ status: 'pending', last_error: null })
+  // Read all failed rows first
+  const { data: failedRows } = await supabase
+    .from('unified_notifications')
+    .select('id, status')
     .eq('tenant_id', tenantId)
-    .eq('status', 'failed')
-    .select()
 
-  if (error) throw error
-  return data
+  const failedWhatsapp = (failedRows || []).filter(r => r.status?.whatsapp === 'failed')
+
+  const promises = failedWhatsapp.map(async (row) => {
+    const updatedStatus = { ...(row.status || {}) }
+    updatedStatus.whatsapp = 'pending'
+    updatedStatus.whatsapp_error = null
+
+    return supabase
+      .from('unified_notifications')
+      .update({ status: updatedStatus })
+      .eq('id', row.id)
+  })
+
+  await Promise.all(promises)
+  return failedWhatsapp
 }
 
 // Update gateway configuration inside the tenant's config column
@@ -144,7 +175,6 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
     if (!url || !token) throw new Error('بيانات Evolution API غير مكتملة (العنوان أو المفتاح مفقود)')
     const instanceUrl = url.endsWith('/') ? url : `${url}/`
     
-    // We assume the URL contains the instance details e.g., http://localhost:8080/message/sendText?key=instanceName
     const response = await fetch(instanceUrl, {
       method: 'POST',
       headers: {
@@ -173,10 +203,7 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
       throw new Error('بيانات بوت التليجرام غير مكتملة (البوت أو معرّف المحادثة مفقود)')
     }
     
-    // Post to Telegram Bot API sendMessage endpoint
     const tgUrl = `https://api.telegram.org/bot${telegram_bot_token}/sendMessage`
-    
-    // Construct rich message formatting including the target recipient details
     const textWithPhone = `*إشعار لولي الأمر (${parentPhone}):*\n\n${messageText}`
     
     const response = await fetch(tgUrl, {
@@ -250,32 +277,57 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
     throw new Error('يرجى ضبط إعدادات بوابة الإرسال أولاً')
   }
 
-  // Fetch pending notifications
+  // Fetch pending unified notifications for whatsapp
   const { data: pending, error } = await supabase
-    .from('parent_notifications')
-    .select('*')
-    .eq('status', 'pending')
-    .limit(20) // process in chunks of 20 to avoid rate limits
+    .from('unified_notifications')
+    .select(`
+      id,
+      message,
+      type,
+      status,
+      created_at,
+      profiles:student_id ( parent_phone )
+    `)
+    .contains('channels', ['whatsapp'])
+    .limit(20)
     .order('created_at', { ascending: true })
 
   if (error) throw error
   if (!pending || pending.length === 0) return 0
 
+  const pendingWhatsapp = pending.filter(row => row.status?.whatsapp === 'pending')
+  if (pendingWhatsapp.length === 0) return 0
+
   let processedCount = 0
 
-  for (const notif of pending) {
+  for (const notif of pendingWhatsapp) {
+    const parentPhone = notif.profiles?.parent_phone
+    if (!parentPhone) {
+      // Mark as failed if parent phone is missing
+      const statusMap = { ...(notif.status || {}) }
+      statusMap.whatsapp = 'failed'
+      statusMap.whatsapp_error = 'رقم هاتف ولي الأمر غير متوفر'
+      await supabase.from('unified_notifications').update({ status: statusMap }).eq('id', notif.id)
+      continue
+    }
+
     try {
       // 1. Call API gateway
-      await sendGatewayMessage(gatewayConfig, notif)
+      await sendGatewayMessage(gatewayConfig, {
+        phone: parentPhone,
+        message: notif.message,
+        type: notif.type
+      })
 
       // 2. Mark as sent on success
+      const statusMap = { ...(notif.status || {}) }
+      statusMap.whatsapp = 'sent'
+      statusMap.whatsapp_sent_at = new Date().toISOString()
+      statusMap.whatsapp_error = null
+
       await supabase
-        .from('parent_notifications')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-          last_error: null
-        })
+        .from('unified_notifications')
+        .update({ status: statusMap })
         .eq('id', notif.id)
 
       processedCount++
@@ -287,13 +339,14 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       console.error(`Failed to process notification ${notif.id}:`, err)
       
       // 3. Mark as failed on error
+      const statusMap = { ...(notif.status || {}) }
+      statusMap.whatsapp = 'failed'
+      statusMap.whatsapp_retry_count = (statusMap.whatsapp_retry_count || 0) + 1
+      statusMap.whatsapp_error = err.message || 'خطأ غير معروف'
+
       await supabase
-        .from('parent_notifications')
-        .update({
-          status: 'failed',
-          retry_count: notif.retry_count + 1,
-          last_error: err.message || 'خطأ غير معروف'
-        })
+        .from('unified_notifications')
+        .update({ status: statusMap })
         .eq('id', notif.id)
 
       if (onProgress) onProgress(notif.id, 'failed', err.message)

@@ -107,6 +107,7 @@ export default function Login() {
   const [grade, setGrade] = useState('first-prep')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [enrollmentType, setEnrollmentType] = useState('CENTER')
 
   // NEW: auth modal
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -412,7 +413,7 @@ export default function Login() {
     if (password !== confirmPassword) { setError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'); return }
     setLoading(true)
     try {
-      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade, parentPhone.trim())
+      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade, parentPhone.trim(), enrollmentType)
       if (!response.user) throw new Error('Invalid response from server')
       showRegisterSuccessMessage()
       setTimeout(() => {
@@ -452,8 +453,9 @@ export default function Login() {
     setParentModalLoading(true)
     setParentModalError('')
     try {
-      const { data, error } = await supabase.rpc('get_student_by_parent_phone', {
-        p_phone: parentPhoneInput.trim()
+      const { data, error } = await supabase.rpc('get_parent_portal_summary', {
+        p_parent_phone: parentPhoneInput.trim(),
+        p_tenant_id: tenantId
       })
       if (error) throw error
       if (!data || data.length === 0) {
@@ -463,13 +465,13 @@ export default function Login() {
       if (data.length === 1) {
         const student = data[0]
         setShowParentModal(false)
-        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
+        navigate(`/public-report?id=${student.id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
       } else {
         setChildrenList(data)
       }
     } catch (err) {
       console.error(err)
-      const isMissingRpc = err.message && (err.message.includes('get_student_by_parent_phone') || err.message.includes('schema cache') || err.message.includes('does not exist'))
+      const isMissingRpc = err.message && (err.message.includes('get_parent_portal_summary') || err.message.includes('schema cache') || err.message.includes('does not exist'))
       const friendlyError = isMissingRpc 
         ? (lang === 'ar' ? 'خدمة الاستعلام عن التقارير قيد التفعيل حالياً. يرجى المحاولة بعد قليل.' : 'Report lookup service is currently being activated. Please try again in a moment.')
         : (err.message || (lang === 'ar' ? 'حدث خطأ أثناء الاستعلام. يرجى المحاولة مرة أخرى.' : 'Error during lookup. Please try again.'))
@@ -889,6 +891,15 @@ export default function Login() {
                   </select>
                 </div>
                 <div className="input-wrapper">
+                  <i className="fas fa-laptop-house"></i>
+                  <select value={enrollmentType} onChange={e => setEnrollmentType(e.target.value)} required
+                    style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
+                    <option value="CENTER">{lang === 'ar' ? 'حضور بالسنتر (CENTER)' : 'Center Presence (CENTER)'}</option>
+                    <option value="ONLINE">{lang === 'ar' ? 'دراسة أونلاين (ONLINE)' : 'Online Studying (ONLINE)'}</option>
+                    <option value="HYBRID">{lang === 'ar' ? 'مدمج سنتر + أونلاين (HYBRID)' : 'Hybrid Center & Online (HYBRID)'}</option>
+                  </select>
+                </div>
+                <div className="input-wrapper">
                   <i className="fas fa-lock"></i>
                   <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t.password} minLength="6" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="toggle-password-btn">
@@ -1026,10 +1037,10 @@ export default function Login() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {childrenList.map((student) => (
                     <button
-                      key={student.student_id}
+                      key={student.id}
                       onClick={() => {
                         setShowParentModal(false)
-                        navigate(`/public-report?id=${student.student_id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
+                        navigate(`/public-report?id=${student.id}&token=${student.qr_token || ''}&phone=${encodeURIComponent(parentPhoneInput.trim())}`)
                       }}
                       className="modern-btn"
                       style={{
@@ -1046,7 +1057,7 @@ export default function Login() {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{student.student_name}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{student.name}</div>
                         <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>{t[`grade-${student.grade}`] || student.grade}</div>
                       </div>
                       <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'}`} style={{ color: '#7c3aed' }}></i>

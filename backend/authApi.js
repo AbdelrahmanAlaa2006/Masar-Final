@@ -75,7 +75,7 @@ export const authAPI = {
   },
 
   // Register with name + phone + password (always student role)
-  register: async (name, phone, password, clientTenantId, grade, parentPhone) => {
+  register: async (name, phone, password, clientTenantId, grade, parentPhone, enrollmentType) => {
     if (!clientTenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
     if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
 
@@ -89,7 +89,8 @@ export const authAPI = {
           role: 'student', 
           grade,
           tenant_id: clientTenantId,
-          parent_phone: parentPhone ? parentPhone.trim() : ''
+          parent_phone: parentPhone ? parentPhone.trim() : '',
+          enrollment_type: enrollmentType || 'CENTER'
         },
       },
     })
@@ -107,7 +108,8 @@ export const authAPI = {
         role: 'student',
         tenant_id: clientTenantId,
         grade: grade,
-        parent_phone: parentPhone ? parentPhone.trim() : ''
+        parent_phone: parentPhone ? parentPhone.trim() : '',
+        enrollment_type: enrollmentType || 'CENTER'
       }, { onConflict: 'id' })
 
     if (upsertError) throw new Error('فشل إنشاء الملف الشخصي: ' + upsertError.message)

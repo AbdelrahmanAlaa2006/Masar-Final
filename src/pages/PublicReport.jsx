@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
 import { sendGatewayMessage } from '@backend/parentNotificationsApi'
+import { useTenant } from '../contexts/TenantContext'
 import './Report.css' // Reuse general report styles
 
 export default function PublicReport() {
   const navigate = useNavigate()
+  const { tenantId } = useTenant()
   const [searchParams, setSearchParams] = useSearchParams()
   const studentId = searchParams.get('id')
   const qrToken = searchParams.get('token')
@@ -32,6 +34,9 @@ export default function PublicReport() {
   const [loadingPlatform, setLoadingPlatform] = useState(false)
   const [platformError, setPlatformError] = useState('')
   const [retryTrigger, setRetryTrigger] = useState(0)
+
+  const [siblings, setSiblings] = useState([])
+  const [childrenList, setChildrenList] = useState([])
 
   // Synchronize component state with URL parameters (type, subView)
   useEffect(() => {
@@ -76,6 +81,26 @@ export default function PublicReport() {
       setViewType('selection')
     }
   }, [verified, searchParams, retryTrigger])
+
+  // Fetch sibling students for parent portal multi-child switcher
+  useEffect(() => {
+    if (verified && report && report.parent_phone && report.tenant_id) {
+      const fetchSiblings = async () => {
+        try {
+          const { data, error } = await supabase.rpc('get_parent_portal_summary', {
+            p_parent_phone: report.parent_phone,
+            p_tenant_id: report.tenant_id
+          })
+          if (!error && data) {
+            setSiblings(data)
+          }
+        } catch (err) {
+          console.error('Failed to fetch sibling students:', err)
+        }
+      }
+      fetchSiblings()
+    }
+  }, [verified, report])
 
   const navigateToCenter = () => {
     const params = new URLSearchParams(window.location.search)
@@ -198,11 +223,7 @@ export default function PublicReport() {
 
   // Check if student details are provided in URL
   useEffect(() => {
-    if (!studentId || !qrToken) {
-      setError('رابط الاستعلام غير صالح. يرجى مسح كود QR الصحيح من بطاقة الطالب.')
-      return
-    }
-    if (urlPhone) {
+    if (studentId && qrToken && urlPhone) {
       setPhone(urlPhone)
       performVerify(urlPhone)
     }
@@ -214,7 +235,39 @@ export default function PublicReport() {
       setError('يرجى إدخال رقم هاتف ولي الأمر المسجل لتأكيد الهوية.')
       return
     }
-    await performVerify(phone)
+    
+    if (studentId && qrToken) {
+      await performVerify(phone)
+    } else {
+      setLoading(true)
+      setError('')
+      try {
+        const { data, error: rpcError } = await supabase.rpc('get_parent_portal_summary', {
+          p_parent_phone: phone.trim(),
+          p_tenant_id: tenantId
+        })
+        if (rpcError) throw rpcError
+        if (!data || data.length === 0) {
+          throw new Error('رقم الهاتف المدخل غير مسجل كولي أمر في النظام')
+        }
+        
+        if (data.length === 1) {
+          const student = data[0]
+          setSearchParams({
+            id: student.id,
+            token: student.qr_token || '',
+            phone: phone.trim()
+          })
+        } else {
+          setChildrenList(data)
+        }
+      } catch (err) {
+        console.error(err)
+        setError(err.message || 'حدث خطأ أثناء الاستعلام. يرجى المحاولة مرة أخرى.')
+      } finally {
+        setLoading(false)
+      }
+    }
   }
 
   const sendWhatsAppReport = async (data, verifiedPhone) => {
@@ -450,54 +503,120 @@ export default function PublicReport() {
               يرجى إدخال رقم هاتف ولي الأمر المسجل في المنصة لعرض التقرير وإرساله فوراً إلى واتساب الخاص بك.
             </p>
 
-            <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="رقم هاتف ولي الأمر (مثال: 01xxxxxxxxx)"
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px 14px 44px',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    borderRadius: '12px',
-                    border: '1px solid var(--cp-input-border)',
-                    background: 'var(--cp-bg)',
-                    color: 'var(--cp-text-main)',
-                    textAlign: 'center'
+            {childrenList.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                <p style={{ fontSize: '0.9rem', color: '#cbd5e1', marginBottom: '8px', fontWeight: 'bold' }}>
+                  اختر الطالب المراد عرض تقريره:
+                </p>
+                {childrenList.map((student) => (
+                  <button
+                    key={student.id}
+                    onClick={() => {
+                      setSearchParams({
+                        id: student.id,
+                        token: student.qr_token || '',
+                        phone: phone.trim()
+                      })
+                      setChildrenList([])
+                    }}
+                    className="cp-btn"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#fff',
+                      textAlign: 'right',
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#8b5cf6'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{student.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
+                        {GRADE_LABEL[student.grade] || student.grade}
+                      </div>
+                    </div>
+                    <i className="fas fa-chevron-left" style={{ color: '#8b5cf6' }}></i>
+                  </button>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChildrenList([])
+                    setError('')
                   }}
-                />
-                <i className="fas fa-phone" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    fontSize: '0.88rem',
+                    fontWeight: 'bold',
+                    marginTop: '8px',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  العودة لإدخال الرقم
+                </button>
               </div>
-
-              {error && (
-                <div style={{ color: '#ef4444', fontSize: '0.88rem', fontWeight: 'bold', textAlign: 'right' }}>
-                  <i className="fas fa-exclamation-triangle" style={{ marginInlineEnd: '4px' }} />
-                  {error}
+            ) : (
+              <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="رقم هاتف ولي الأمر (مثال: 01xxxxxxxxx)"
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px 14px 44px',
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      borderRadius: '12px',
+                      border: '1px solid var(--cp-input-border)',
+                      background: 'var(--cp-bg)',
+                      color: 'var(--cp-text-main)',
+                      textAlign: 'center'
+                    }}
+                  />
+                  <i className="fas fa-phone" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
                 </div>
-              )}
 
-              <button 
-                type="submit"
-                disabled={loading}
-                className="cp-btn cp-btn-success"
-                style={{
-                  padding: '12px',
-                  borderRadius: '12px',
-                  fontSize: '1.05rem',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                {loading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
-                <span>تأكيد وعرض التقرير</span>
-              </button>
-            </form>
+                {error && (
+                  <div style={{ color: '#ef4444', fontSize: '0.88rem', fontWeight: 'bold', textAlign: 'right' }}>
+                    <i className="fas fa-exclamation-triangle" style={{ marginInlineEnd: '4px' }} />
+                    {error}
+                  </div>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="cp-btn cp-btn-success"
+                  style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    fontSize: '1.05rem',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {loading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                  <span>تأكيد وعرض التقرير</span>
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </main>
@@ -1004,6 +1123,60 @@ export default function PublicReport() {
             <i className="fas fa-arrow-right" />
             <span>{platformSubView === 'dashboard' ? 'العودة لخيارات التقارير' : 'العودة لتقارير المنصة'}</span>
           </button>
+        )}
+
+        {/* Sibling Student Selector (Multi-child support) */}
+        {verified && siblings.length > 1 && (
+          <div className="pr-card" style={{ padding: '16px 20px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '10px' }}>
+              <i className="fas fa-users-rectangle" style={{ marginInlineEnd: '8px', color: '#8b5cf6' }}></i>
+              التقارير الدراسية للأبناء:
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {siblings.map((sibling) => {
+                const isCurrent = sibling.id === studentId
+                return (
+                  <button
+                    key={sibling.id}
+                    onClick={() => {
+                      if (isCurrent) return
+                      const params = new URLSearchParams(window.location.search)
+                      params.set('id', sibling.id)
+                      params.set('token', sibling.qr_token || '')
+                      params.set('phone', report.parent_phone)
+                      setVerified(false)
+                      setReport(null)
+                      setPlatformData(null)
+                      setSearchParams(params)
+                    }}
+                    style={{
+                      background: isCurrent ? 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)' : 'rgba(255, 255, 255, 0.04)',
+                      border: isCurrent ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                      color: '#fff',
+                      borderRadius: '12px',
+                      padding: '8px 16px',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      cursor: isCurrent ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isCurrent) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isCurrent) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                    }}
+                  >
+                    <i className="fas fa-user-graduate" style={{ opacity: isCurrent ? 1 : 0.6 }} />
+                    <span>{sibling.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/* Verification Success Alert */}

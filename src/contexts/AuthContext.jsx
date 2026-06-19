@@ -43,12 +43,19 @@ export function AuthProvider({ children }) {
   }, [])
 
   const refreshProfile = useCallback(async () => {
-    if (!user) return null
+    let activeUser = user
+    if (!activeUser) {
+      try {
+        const stored = sessionStorage.getItem('masar-user')
+        if (stored) activeUser = JSON.parse(stored)
+      } catch {}
+    }
+    if (!activeUser) return null
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name, phone, grade, "group", role, avatar_url, tenant_id, is_active, is_approved, created_at, parent_phone, qr_token')
-        .eq('id', user.id)
+        .eq('id', activeUser.id)
         .single()
       if (error) throw error
       if (data) {
@@ -77,7 +84,7 @@ export function AuthProvider({ children }) {
       console.error('Failed to refresh profile:', err)
       throw err
     }
-  }, [user])
+  }, [])
 
   const login = useCallback((token, userData) => {
     sessionStorage.setItem('masar-token', token)
@@ -99,9 +106,11 @@ export function AuthProvider({ children }) {
     window.dispatchEvent(new Event('masar-user-updated'))
   }, [])
 
-  const hasPermission = useCallback((permission) => {
+  const hasPermission = useCallback((permission, branchId = null) => {
     if (user?.role === 'admin' || user?.role === 'super_admin') return true
-    return permissions.includes(permission)
+    if (permissions.includes(permission)) return true
+    if (branchId && permissions.includes(`${permission}:${branchId}`)) return true
+    return false
   }, [user, permissions])
 
   // Enforce session boundary for cross-tenant isolation (especially on localhost testing)
@@ -135,12 +144,19 @@ export function AuthProvider({ children }) {
     window.addEventListener('masar-user-updated', syncAuth)
     window.addEventListener('storage', syncAuth)
 
+    // 4. Proactively refresh profile/permissions in the background on mount
+    const token = sessionStorage.getItem('masar-token')
+    const userData = sessionStorage.getItem('masar-user')
+    if (token && userData) {
+      refreshProfile().catch(err => console.error('Initial background profile refresh failed:', err))
+    }
+
     return () => {
       subscription.unsubscribe()
       window.removeEventListener('masar-user-updated', syncAuth)
       window.removeEventListener('storage', syncAuth)
     }
-  }, [syncAuth])
+  }, [syncAuth, refreshProfile])
 
   const value = useMemo(() => ({
     user,

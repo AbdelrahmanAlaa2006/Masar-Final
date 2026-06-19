@@ -3,7 +3,7 @@ import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
 
 // ────────────────────────────────────────────────────────────────────
-// Payments API
+// Refactored Payments API (utilizing Student Ledger)
 // ────────────────────────────────────────────────────────────────────
 
 // Admin only: list all payments joined with student profile info
@@ -11,14 +11,42 @@ export async function listPayments() {
   const key = 'admin-payments'
   return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
-      .from('payments')
+      .from('student_ledger')
       .select(`
-        *,
+        id,
+        student_id,
+        amount,
+        payment_method,
+        screenshot_url,
+        screenshot_key,
+        status,
+        description,
+        notes,
+        created_at,
+        resolved_at,
+        resolved_by,
         profiles:student_id ( name, phone, grade, "group" )
       `)
+      .eq('type', 'payment')
       .order('created_at', { ascending: false })
     if (error) throw error
-    return data || []
+
+    // Map database ledger structure to expected payments keys
+    return (data || []).map(p => ({
+      id: p.id,
+      student_id: p.student_id,
+      amount: p.amount,
+      payment_method: p.payment_method,
+      screenshot_url: p.screenshot_url,
+      screenshot_key: p.screenshot_key,
+      status: p.status,
+      admin_notes: p.notes, // map notes to admin_notes
+      package_name: p.description, // map description to package_name
+      created_at: p.created_at,
+      resolved_at: p.resolved_at,
+      resolved_by: p.resolved_by,
+      profiles: p.profiles
+    }))
   })
 }
 
@@ -28,38 +56,63 @@ export async function listMyPayments(studentId) {
   const key = `student-payments-${studentId}`
   return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
-      .from('payments')
+      .from('student_ledger')
       .select('*')
       .eq('student_id', studentId)
+      .eq('type', 'payment')
       .order('created_at', { ascending: false })
     if (error) throw error
-    return data || []
+
+    return (data || []).map(p => ({
+      id: p.id,
+      student_id: p.student_id,
+      amount: p.amount,
+      payment_method: p.payment_method,
+      screenshot_url: p.screenshot_url,
+      screenshot_key: p.screenshot_key,
+      status: p.status,
+      admin_notes: p.notes,
+      package_name: p.description,
+      created_at: p.created_at,
+      resolved_at: p.resolved_at,
+      resolved_by: p.resolved_by
+    }))
   })
 }
 
 // Student: submit a new payment receipt
 export async function submitPayment({ studentId, amount, paymentMethod, screenshotUrl, screenshotKey, packageName }) {
+  // Fetch student's branch and academic year defaults
+  const { data: studentProfile } = await supabase
+    .from('profiles')
+    .select('branch_id, academic_year_id')
+    .eq('id', studentId)
+    .single()
+
   const payload = {
     student_id: studentId,
+    branch_id: studentProfile?.branch_id || null,
+    academic_year_id: studentProfile?.academic_year_id || null,
+    type: 'payment',
     amount: parseFloat(amount),
     payment_method: paymentMethod,
     screenshot_url: screenshotUrl,
     screenshot_key: screenshotKey,
-    package_name: packageName || null,
+    description: packageName || null,
     status: 'pending',
   }
   const { data, error } = await supabase
-    .from('payments')
+    .from('student_ledger')
     .insert(payload)
     .select()
     .single()
   if (error) throw error
 
-  // Invalidate both caches immediately
+  // Invalidate caches
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
 
-  // Proactively notify all admins about the new pending payment
+  // Proactively notify admins
   try {
     const { data: admins } = await supabase
       .from('profiles')
@@ -97,12 +150,12 @@ export async function submitPayment({ studentId, amount, paymentMethod, screensh
 export async function resolvePayment(paymentId, { status, adminNotes, adminId, studentId }) {
   const payload = {
     status,
-    admin_notes: adminNotes || null,
+    notes: adminNotes || null,
     resolved_at: new Date().toISOString(),
     resolved_by: adminId,
   }
   const { data, error } = await supabase
-    .from('payments')
+    .from('student_ledger')
     .update(payload)
     .eq('id', paymentId)
     .select()
@@ -114,7 +167,7 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     try {
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ is_active: true })
+        .update({ is_active: true, status: 'active' })
         .eq('id', studentId)
       if (profileError) console.error('Failed to activate profile:', profileError)
     } catch (err) {
@@ -122,7 +175,7 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     }
   }
 
-  // Create database-backed notification targeting the student
+  // Create notification targeting the student
   try {
     const titleAr = status === 'approved' ? 'تم قبول دفعتك بنجاح' : 'تم رفض دفعتك'
     const messageAr = status === 'approved' 
@@ -141,7 +194,7 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     console.error('Failed to create payment resolution notification:', err)
   }
 
-  // Invalidate both caches immediately
+  // Invalidate caches
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
 
@@ -150,19 +203,28 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
 
 // Admin: record a cash/offline payment in person (resolved instantly and activates student)
 export async function recordCashPayment({ studentId, amount, packageName, adminId }) {
+  const { data: studentProfile } = await supabase
+    .from('profiles')
+    .select('branch_id, academic_year_id')
+    .eq('id', studentId)
+    .single()
+
   const payload = {
     student_id: studentId,
+    branch_id: studentProfile?.branch_id || null,
+    academic_year_id: studentProfile?.academic_year_id || null,
+    type: 'payment',
     amount: parseFloat(amount),
     payment_method: 'Cash',
     screenshot_url: null,
     screenshot_key: null,
     status: 'approved',
-    package_name: packageName || null,
+    description: packageName || null,
     resolved_at: new Date().toISOString(),
     resolved_by: adminId,
   }
   const { data, error } = await supabase
-    .from('payments')
+    .from('student_ledger')
     .insert(payload)
     .select()
     .single()
@@ -172,21 +234,21 @@ export async function recordCashPayment({ studentId, amount, packageName, adminI
   try {
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ is_active: true })
+      .update({ is_active: true, status: 'active' })
       .eq('id', studentId)
     if (profileError) console.error('Failed to activate profile:', profileError)
   } catch (err) {
     console.error('Failed to activate profile:', err)
   }
 
-  // Invalidate both caches immediately
+  // Invalidate caches
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
 
   return data
 }
 
-// Fetch all payment settings from dynamic DB table
+// Fetch all payment settings
 export async function getPaymentSettings() {
   const key = 'payment-settings'
   return cached(key, LIST_TTL, async () => {
@@ -194,7 +256,7 @@ export async function getPaymentSettings() {
       .from('payment_settings')
       .select('*')
     if (error) {
-      console.warn('Failed to fetch payment settings, using local config fallback:', error)
+      console.warn('Failed to fetch payment settings:', error)
       return null
     }
     
@@ -206,7 +268,7 @@ export async function getPaymentSettings() {
   })
 }
 
-// Update payment settings in DB
+// Update payment settings
 export async function updatePaymentSetting(key, value) {
   const { data, error } = await supabase
     .from('payment_settings')
@@ -214,10 +276,6 @@ export async function updatePaymentSetting(key, value) {
     .select()
     .single()
   if (error) throw error
-  
-  // Invalidate settings cache
   invalidatePrefix('payment-settings')
-  
   return data
 }
-
