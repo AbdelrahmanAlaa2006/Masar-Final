@@ -261,12 +261,15 @@ export default function Header() {
             </button>
           </div>
         </div>
-        {user && user.role === 'student' && user.is_approved === true && user.is_active === false && (
+        {user && user.role === 'student' && user.is_approved === true && (user.is_active === false || user.status === 'inactive' || user.status === 'suspended' || user.status === 'archived' || user.status === 'graduated') && (
           <div className="mh__pending-ribbon">
             <i className="fas fa-circle-exclamation"></i>
             <span>
-              حسابك غير نشط حاليًا. يرجى تفعيل الحساب لتتمكن من مشاهدة الفيديوهات، دخول الامتحانات، وحل الواجبات. يمكنك تأكيد التفعيل من{' '}
-              <Link to="/payments">صفحة المدفوعات</Link>.
+              {user.status === 'suspended' ? 'حسابك معطل حالياً (موقوف). يرجى مراجعة الإدارة.'
+               : user.status === 'archived' ? 'تم أرشفة حسابك. يرجى التواصل مع الإدارة.'
+               : user.status === 'graduated' ? 'تم تخرج حسابك الدراسي. يرجى التواصل مع الإدارة.'
+               : 'حسابك غير نشط حاليًا. يرجى تفعيل الحساب لتتمكن من مشاهدة الفيديوهات، دخول الامتحانات، وحل الواجبات.'}
+              {(!user.status || user.status === 'inactive') && <> يمكنك تأكيد التفعيل من <Link to="/payments">صفحة المدفوعات</Link>.</>}
             </span>
           </div>
         )}

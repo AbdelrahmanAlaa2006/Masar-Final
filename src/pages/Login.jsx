@@ -101,13 +101,7 @@ export default function Login() {
   const [forgotError, setForgotError] = useState('')
   const [forgotSuccess, setForgotSuccess] = useState(false)
 
-  // Register
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [name, setName] = useState('')
-  const [grade, setGrade] = useState('first-prep')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [enrollmentType, setEnrollmentType] = useState('CENTER')
+  // Registration is now on /register page
 
   // NEW: auth modal
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -404,28 +398,7 @@ export default function Login() {
     }
   }
 
-  const handleRegister = async e => {
-    e.preventDefault(); setError('')
-    if (name.trim().length < 3) { setError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters'); return }
-    if (phone.trim().length < 8) { setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number'); return }
-    if (parentPhone.trim().length < 8) { setError(lang === 'ar' ? 'رقم هاتف ولي الأمر غير صحيح' : 'Invalid parent phone number'); return }
-    if (password.length < 6) { setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters'); return }
-    if (password !== confirmPassword) { setError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'); return }
-    setLoading(true)
-    try {
-      const response = await authAPI.register(name.trim(), phone.trim(), password, tenantId, grade, parentPhone.trim(), enrollmentType)
-      if (!response.user) throw new Error('Invalid response from server')
-      showRegisterSuccessMessage()
-      setTimeout(() => {
-        if (response.token) { login(response.token, response.user); window.location.href = '/' }
-        else { setIsRegistering(false); setPhone(phone.trim()); setPassword(''); setLoading(false) }
-      }, 1500)
-    } catch (err) {
-      console.error('Registration error:', err)
-      setError(err.message || (lang === 'ar' ? 'فشل إنشاء الحساب' : 'Registration failed'))
-      setLoading(false)
-    }
-  }
+
 
   const handleForgotSubmit = async e => {
     e.preventDefault(); setForgotError('')
@@ -486,14 +459,13 @@ export default function Login() {
     lang === 'ar' ? 'جارٍ تحويلك إلى المنصة...' : 'Redirecting you to the platform...',
     lang
   )
-  const showRegisterSuccessMessage = () => spawnToast(
-    lang === 'ar' ? 'تم إنشاء الحساب بنجاح' : 'Registration Successful',
-    lang === 'ar' ? 'جارٍ تحويلك إلى صفحة الدفع وتفعيل الحساب...' : 'Redirecting you to the payment page...',
-    lang
-  )
-
   const openAuth = (registering) => {
-    setIsRegistering(registering); setError(''); setShowAuthModal(true)
+    if (registering) {
+      navigate('/register')
+    } else {
+      setError('')
+      setShowAuthModal(true)
+    }
   }
 
   const Arrow = lang === 'ar' ? '←' : '→'
@@ -850,119 +822,53 @@ export default function Login() {
         </div>
       </footer>
 
-      {/* ─────────── AUTH MODAL (login/register) ─────────── */}
+      {/* ─────────── AUTH MODAL (login only) ─────────── */}
       {showAuthModal && (
         <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
           <div className="auth-modal aa-auth-modal" onClick={e => e.stopPropagation()} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
             <button className="auth-modal-close" onClick={() => setShowAuthModal(false)} aria-label="Close">✕</button>
 
-            <h2 style={{ textAlign: 'center', marginBottom: 16 }}>{isRegistering ? t.register : t.login}</h2>
+            <h2 style={{ textAlign: 'center', marginBottom: 16 }}>{t.login}</h2>
 
             {error && <div className="error-message show">{error}</div>}
 
-            {isRegistering ? (
-              <form onSubmit={handleRegister}>
-                <div className="input-wrapper">
-                  <i className="fas fa-user"></i>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder={t['student-name']} />
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-phone"></i>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-phone"></i>
-                  <input type="tel" value={parentPhone} onChange={e => setParentPhone(e.target.value)} required placeholder={t['parent-phone']} dir="ltr" />
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-graduation-cap"></i>
-                  <select value={grade} onChange={e => setGrade(e.target.value)} required
-                    style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
-                    <optgroup label={lang === 'ar' ? 'المرحلة الإعدادية' : 'Preparatory'}>
-                      {isGradeEnabled('first-prep') && <option value="first-prep">{t['grade-first']}</option>}
-                      {isGradeEnabled('second-prep') && <option value="second-prep">{t['grade-second']}</option>}
-                      {isGradeEnabled('third-prep') && <option value="third-prep">{t['grade-third']}</option>}
-                    </optgroup>
-                    <optgroup label={lang === 'ar' ? 'المرحلة الثانوية' : 'Secondary'}>
-                      {isGradeEnabled('first-sec') && <option value="first-sec">{t['grade-sec-1']}</option>}
-                      {isGradeEnabled('second-sec') && <option value="second-sec">{t['grade-sec-2']}</option>}
-                      {isGradeEnabled('third-sec') && <option value="third-sec">{t['grade-sec-3']}</option>}
-                    </optgroup>
-                  </select>
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-laptop-house"></i>
-                  <select value={enrollmentType} onChange={e => setEnrollmentType(e.target.value)} required
-                    style={{ textAlign: lang === 'ar' ? 'right' : 'left' }}>
-                    <option value="CENTER">{lang === 'ar' ? 'حضور بالسنتر (CENTER)' : 'Center Presence (CENTER)'}</option>
-                    <option value="ONLINE">{lang === 'ar' ? 'دراسة أونلاين (ONLINE)' : 'Online Studying (ONLINE)'}</option>
-                    <option value="HYBRID">{lang === 'ar' ? 'مدمج سنتر + أونلاين (HYBRID)' : 'Hybrid Center & Online (HYBRID)'}</option>
-                  </select>
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-lock"></i>
-                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t.password} minLength="6" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="toggle-password-btn">
-                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                  </button>
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-lock"></i>
-                  <input type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder={t['confirm-password']} minLength="6" />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="toggle-password-btn">
-                    <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                  </button>
-                </div>
-                <button type="submit" className="modern-btn" disabled={loading}>
-                  <span className="btn-text">{t['register-btn']}</span>
-                  {loading && <span className="btn-loader"><span className="spinner"></span></span>}
+            <form onSubmit={handleLogin}>
+              <div className="input-wrapper">
+                <i className="fas fa-phone"></i>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
+              </div>
+              <div className="input-wrapper">
+                <i className="fas fa-lock"></i>
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t.password} minLength="6" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="toggle-password-btn">
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                 </button>
-                <div className="form-toggle-link" style={{ textAlign: 'center', marginTop: 16 }}>
-                  <span>{t['have-account']} </span>
-                  <button type="button" onClick={() => { setIsRegistering(false); setError('') }} className="aa-link-btn">
-                    {t['login-btn-link']}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleLogin}>
-                <div className="input-wrapper">
-                  <i className="fas fa-phone"></i>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
-                </div>
-                <div className="input-wrapper">
-                  <i className="fas fa-lock"></i>
-                  <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t.password} minLength="6" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="toggle-password-btn">
-                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                  </button>
-                </div>
-                <div className="form-options">
-                  <label className="switch">
-                    <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                    <span className="slider"></span>
-                  </label>
-                  <span className="remember-text">{t.remember}</span>
-                  <button type="button" className="forgot-btn"
-                    onClick={() => {
-                      setForgotPhone(phone); setForgotName(''); setForgotError(''); setForgotSuccess(false)
-                      setShowAuthModal(false); setShowForgotModal(true)
-                    }}>
-                    {t.forgot}
-                  </button>
-                </div>
-                <button type="submit" className="modern-btn" disabled={loading}>
-                  <span className="btn-text">{t.login}</span>
-                  {loading && <span className="btn-loader"><span className="spinner"></span></span>}
+              </div>
+              <div className="form-options">
+                <label className="switch">
+                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                  <span className="slider"></span>
+                </label>
+                <span className="remember-text">{t.remember}</span>
+                <button type="button" className="forgot-btn"
+                  onClick={() => {
+                    setForgotPhone(phone); setForgotName(''); setForgotError(''); setForgotSuccess(false)
+                    setShowAuthModal(false); setShowForgotModal(true)
+                  }}>
+                  {t.forgot}
                 </button>
-                <div className="form-toggle-link" style={{ textAlign: 'center', marginTop: 16 }}>
-                  <span>{t['no-account']} </span>
-                  <button type="button" onClick={() => { setIsRegistering(true); setError('') }} className="aa-link-btn">
-                    {t['register-btn-link']}
-                  </button>
-                </div>
-              </form>
-            )}
+              </div>
+              <button type="submit" className="modern-btn" disabled={loading}>
+                <span className="btn-text">{t.login}</span>
+                {loading && <span className="btn-loader"><span className="spinner"></span></span>}
+              </button>
+              <div className="form-toggle-link" style={{ textAlign: 'center', marginTop: 16 }}>
+                <span>{t['no-account']} </span>
+                <button type="button" onClick={() => { navigate('/register') }} className="aa-link-btn">
+                  {t['register-btn-link']}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

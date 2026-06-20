@@ -25,6 +25,12 @@ export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope
     : section === 'violations' ? 'سجلات الحماية الأمنية'
     : section === 'seasons' ? 'السمات الموسمية'
     : section === 'chats' ? 'محادثات الطلاب'
+    : section === 'groups' ? 'إدارة المجموعات'
+    : section === 'branches' ? 'إدارة الفروع'
+    : section === 'attendance' ? 'تحضير الطلاب والغياب'
+    : section === 'grades' ? 'رصد الدرجات والتقييم'
+    : section === 'assistants' ? 'المساعدين والصلاحيات'
+    : section === 'whatsapp' ? 'إشعارات أولياء الأمور'
     : ''
   const scopeLabel =
     scope === 'student' ? 'حسب الطالب' : scope === 'prep' ? 'حسب المرحلة' : ''

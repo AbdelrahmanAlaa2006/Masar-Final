@@ -11,7 +11,7 @@ import {
 } from '@backend/attendanceApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { cached, LIST_TTL } from '../../utils/cache'
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 
@@ -472,7 +472,7 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => document.removeEventListener('click', handleGlobalClick)
   }, [alwaysFocus])
 
-  // Camera QR scanner start/stop
+  // Camera QR/Barcode scanner start/stop
   useEffect(() => {
     if (showScanner) {
       setScannerError('')
@@ -483,11 +483,18 @@ export default function AttendancePanel({ onBack, flash }) {
           await html5Qrcode.start(
             { facingMode: "environment" },
             {
-              fps: 10,
+              fps: 15,
               qrbox: (w, h) => {
-                const s = Math.min(w, h) * 0.7
-                return { width: s, height: s }
-              }
+                const width = Math.min(w, h) * 0.8
+                const height = Math.min(w, h) * 0.45
+                return { width, height }
+              },
+              formatsToSupport: [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.EAN_13
+              ]
             },
             (decodedText) => {
               handleQrScanned(decodedText, false)

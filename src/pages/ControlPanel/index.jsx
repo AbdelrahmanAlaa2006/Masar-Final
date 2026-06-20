@@ -20,6 +20,7 @@ const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
 const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
 const ChatsPanel = lazy(() => import('./ChatsPanel'))
+const GroupsPanel = lazy(() => import('./GroupsPanel'))
 
 // New sub-panels
 const AttendancePanel = lazy(() => import('./AttendancePanel'))
@@ -27,6 +28,7 @@ const GradesPanel = lazy(() => import('./GradesPanel'))
 const AssistantsPanel = lazy(() => import('./AssistantsPanel'))
 const WhatsAppQueuePanel = lazy(() => import('./WhatsAppQueuePanel'))
 const SuperAdminPanel = lazy(() => import('./SuperAdminPanel'))
+const BranchesPanel = lazy(() => import('./BranchesPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
@@ -61,10 +63,13 @@ export default function ControlPanelIndex() {
     if (s === 'homeworks') return hasPermission('homework')
     if (s === 'videos') return hasPermission('videos')
     if (s === 'exams') return hasPermission('exams')
-    if (s === 'students' || s === 'accounts' || s === 'resets' || s === 'chats') {
+    if (s === 'students' || s === 'accounts' || s === 'resets' || s === 'chats' || s === 'groups') {
       return hasPermission('students')
     }
     if (s === 'whatsapp') return hasPermission('whatsapp')
+    if (s === 'branches') {
+      return hasPermission('branches:view') || hasPermission('branches:edit')
+    }
 
     return false
   }
@@ -83,6 +88,7 @@ export default function ControlPanelIndex() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [resetRequestsCount, setResetRequestsCount] = useState(0)
+  const [pendingStudentsCount, setPendingStudentsCount] = useState(0)
 
   useEffect(() => {
     if (user?.role === 'super_admin') {
@@ -111,8 +117,24 @@ export default function ControlPanelIndex() {
             return count || 0
           }
           const count = await cached('password_reset_requests_count', 10000, fetchCount)
+          
+          let pendingCount = 0
+          if (hasPermission('students') || user?.role === 'admin') {
+            const fetchPendingCount = async () => {
+              const { count, error } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'student')
+                .eq('is_approved', false)
+              if (error) throw error
+              return count || 0
+            }
+            pendingCount = await cached('pending_students_count', 10000, fetchPendingCount)
+          }
+
           if (!cancelled) {
             setResetRequestsCount(count)
+            setPendingStudentsCount(pendingCount)
           }
         } catch (err) {
           if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
@@ -137,12 +159,38 @@ export default function ControlPanelIndex() {
               if (error) throw error
               return count || 0
             }
-            const count = await cached('password_reset_requests_count', 10000, fetchCount)
+
+            const fetchPendingCount = async () => {
+              const { count, error } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'student')
+                .eq('is_approved', false)
+              if (error) throw error
+              return count || 0
+            }
+
+            const promises = [
+              cached('password_reset_requests_count', 10000, fetchCount)
+            ]
+
+            if (hasPermission('students') || user?.role === 'admin') {
+              promises.push(cached('pending_students_count', 10000, fetchPendingCount))
+            }
+
+            const results = await Promise.all(promises)
+            const count = results[0]
+            let pendingCount = 0
+            if (promises.length > 1) {
+              pendingCount = results[1]
+            }
+
             if (!cancelled) {
               setResetRequestsCount(count)
+              setPendingStudentsCount(pendingCount)
             }
           } catch (err) {
-            console.error('Failed to fetch pending reset requests count:', err)
+            console.error('Failed to fetch pending requests count:', err)
           }
         })()
       return () => { cancelled = true }
@@ -321,6 +369,18 @@ export default function ControlPanelIndex() {
                     title="تفعيل حسابات الطلاب"
                     desc="مراجعة وتفعيل الحسابات الجديدة والموافقة عليها"
                     onClick={() => enterSection('accounts')}
+                    badge={pendingStudentsCount}
+                  />
+                )}
+
+                {/* Groups Management (Gate by students) */}
+                {hasPermission('students') && (
+                  <SectionCard
+                    icon="fa-user-group"
+                    accent="indigo"
+                    title="إدارة المجموعات"
+                    desc="إضافة وتعديل المجموعات الدراسية لكل مرحلة وفرع"
+                    onClick={() => enterSection('groups')}
                   />
                 )}
 
@@ -366,6 +426,17 @@ export default function ControlPanelIndex() {
                     title="المساعدين والصلاحيات"
                     desc="إضافة مساعدين وتعيين صلاحيات RBAC لكل حساب فرعي"
                     onClick={() => enterSection('assistants')}
+                  />
+                )}
+
+                {/* Branches Management (Admin or authorized assistants) */}
+                {(user?.role === 'admin' || hasPermission('branches:view') || hasPermission('branches:edit')) && (
+                  <SectionCard
+                    icon="fa-map-marker-alt"
+                    accent="violet"
+                    title="إدارة الفروع"
+                    desc="إضافة وتعديل الفروع الدراسية التابعة للمنصة"
+                    onClick={() => enterSection('branches')}
                   />
                 )}
 
@@ -420,6 +491,7 @@ export default function ControlPanelIndex() {
               {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
               {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
               {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
+              {section === 'groups' && <GroupsPanel onBack={goHome} flash={flash} />}
 
               {/* Load new panels */}
               {section === 'attendance' && <AttendancePanel onBack={goHome} flash={flash} />}
@@ -427,6 +499,7 @@ export default function ControlPanelIndex() {
               {section === 'assistants' && <AssistantsPanel onBack={goHome} flash={flash} />}
               {section === 'whatsapp' && <WhatsAppQueuePanel onBack={goHome} flash={flash} />}
               {section === 'super_admin' && <SuperAdminPanel onBack={goHome} flash={flash} />}
+              {section === 'branches' && <BranchesPanel onBack={goHome} flash={flash} />}
 
               {/* Sub-tab navigation bar for dynamic settings */}
               {(section === 'videos' || section === 'exams') && (

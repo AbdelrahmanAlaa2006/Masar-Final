@@ -6,7 +6,7 @@ import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/ca
 export async function listStudents() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, "group", password, avatar_url, created_at, is_active, is_approved, qr_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, father_name, father_phone, mother_name, mother_phone, guardian_name, guardian_phone, guardian_relation')
+    .select('id, name, phone, grade, "group", password, avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)')
     .eq('role', 'student')
     .order('name', { ascending: true })
   if (error) throw error
@@ -24,7 +24,7 @@ export async function getProfile(id) {
   return cached(`profile:${id}`, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved, qr_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, father_name, father_phone, mother_name, mother_phone, guardian_name, guardian_phone, guardian_relation')
+      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
@@ -35,7 +35,10 @@ export async function getProfile(id) {
 export async function updateStudentStatus(studentId, { is_approved, is_active }) {
   const patch = {}
   if (is_approved !== undefined) patch.is_approved = is_approved
-  if (is_active !== undefined) patch.is_active = is_active
+  if (is_active !== undefined) {
+    patch.is_active = is_active
+    patch.status = is_active ? 'active' : 'inactive'
+  }
 
   const { data, error } = await supabase
     .from('profiles')
@@ -55,18 +58,14 @@ export async function updateStudentProfile(studentId, updates) {
   const { data, error } = await supabase
     .from('profiles')
     .update({
+      name: updates.name,
+      phone: updates.phone,
       branch_id: updates.branch_id || null,
       academic_year_id: updates.academic_year_id || null,
       status: updates.status,
       enrollment_type: updates.enrollment_type,
       flags: updates.flags || [],
-      father_name: updates.father_name || null,
-      father_phone: updates.father_phone || null,
-      mother_name: updates.mother_name || null,
-      mother_phone: updates.mother_phone || null,
-      guardian_name: updates.guardian_name || null,
-      guardian_phone: updates.guardian_phone || null,
-      guardian_relation: updates.guardian_relation || null,
+      parent_phone: updates.parent_phone || null,
       is_approved: updates.status === 'active' || updates.is_approved || false,
       is_active: updates.status === 'active' || updates.is_active || false
     })
@@ -86,8 +85,8 @@ export function invalidateProfile(id) {
 }
 
 export async function getStudentIdentityByQr(qrToken, tenantId) {
-  const { data, error } = await supabase.rpc('get_student_identity_by_qr', {
-    p_qr_token: qrToken,
+  const { data, error } = await supabase.rpc('get_student_identity', {
+    p_code: qrToken,
     p_tenant_id: tenantId
   })
   if (error) throw error

@@ -6,6 +6,7 @@ import Footer from './components/Footer'
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
 const Homework = lazy(() => import('./pages/Homework'))
 const Exams = lazy(() => import('./pages/Exams'))
 const Videos = lazy(() => import('./pages/Videos'))
@@ -279,6 +280,20 @@ function ProtectedRoute({ isLoggedIn, children }) {
     return <PendingApprovalPage />
   }
 
+  // Guard for inactive, suspended, archived, or graduated students: redirect to payments page
+  const isStudentBlocked = user && user.role === 'student' && user.is_approved === true && (
+    user.is_active === false || 
+    user.status === 'inactive' || 
+    user.status === 'suspended' || 
+    user.status === 'archived' || 
+    user.status === 'graduated'
+  )
+  if (isStudentBlocked) {
+    if (window.location.pathname !== '/payments') {
+      return <Navigate to="/payments" replace />
+    }
+  }
+
   return children
 }
 
@@ -290,6 +305,20 @@ function PermissionRoute({ isLoggedIn, permission, children }) {
   // Guard for newly registered students
   if (user && user.role === 'student' && user.is_approved === false) {
     return <PendingApprovalPage />
+  }
+
+  // Guard for inactive, suspended, archived, or graduated students: redirect to payments page
+  const isStudentBlocked = user && user.role === 'student' && user.is_approved === true && (
+    user.is_active === false || 
+    user.status === 'inactive' || 
+    user.status === 'suspended' || 
+    user.status === 'archived' || 
+    user.status === 'graduated'
+  )
+  if (isStudentBlocked) {
+    if (window.location.pathname !== '/payments') {
+      return <Navigate to="/payments" replace />
+    }
   }
 
   // Guard for assistants: enforce permission boundaries
@@ -520,7 +549,8 @@ function AppContent() {
   const role = user?.role
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
-  const showHeaderFooter = !isLoginPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage
+  const isRegisterPage = location.pathname === '/register'
+  const showHeaderFooter = !isLoginPage && !isRegisterPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
@@ -537,6 +567,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
             <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
+            <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
             <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
             {/* Old /lectures URLs redirect to the new /homework page so

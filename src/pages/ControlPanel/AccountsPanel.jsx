@@ -4,10 +4,12 @@ import { listStudents, updateStudentStatus, updateStudentProfile } from '@backen
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
+import { listGroups, assignStudentToGroup } from '@backend/groupsApi'
 import { initials, GRADE_LABEL } from './shared'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 
 const fmtDate = (iso) => {
   if (!iso) return ''
@@ -27,6 +29,7 @@ export default function AccountsPanel({ onBack, flash }) {
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
+  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -42,18 +45,21 @@ export default function AccountsPanel({ onBack, flash }) {
   
   const [showEditModal, setShowEditModal] = useState(false)
   const [editStudent, setEditStudent] = useState(null)
+  const [deletingStudent, setDeletingStudent] = useState(null)
 
   const fetchStudentsAndMeta = async () => {
     try {
       setLoading(true)
-      const [studentsData, branchesData, yearsData] = await Promise.all([
+      const [studentsData, branchesData, yearsData, groupsData] = await Promise.all([
         cached('students', LIST_TTL, listStudents),
         listBranches(),
-        listAcademicYears()
+        listAcademicYears(),
+        listGroups()
       ])
       setStudents(studentsData || [])
       setBranches(branchesData || [])
       setAcademicYears(yearsData || [])
+      setGroups(groupsData || [])
     } catch (e) {
       setError(e.message || 'تعذّر تحميل قائمة الطلاب أو الفروع')
     } finally {
@@ -107,12 +113,10 @@ export default function AccountsPanel({ onBack, flash }) {
     }
   }
 
-  const handleDeleteStudent = async (student) => {
-    if (busyId) return
-    if (!window.confirm(`⚠️ تحذير: هل أنت متأكد من رغبتك في حذف الطالب "${student.name}" نهائياً؟`)) {
-      return
-    }
-    
+  const confirmDeleteStudent = async () => {
+    if (!deletingStudent) return
+    const student = deletingStudent
+    setDeletingStudent(null)
     setBusyId(student.id)
     try {
       const { error: rpcError } = await supabase.rpc('delete_student_account', {
@@ -136,7 +140,28 @@ export default function AccountsPanel({ onBack, flash }) {
     setBusyId(editStudent.id)
     try {
       const updated = await updateStudentProfile(editStudent.id, editStudent)
-      setStudents(prev => prev.map(s => s.id === editStudent.id ? { ...s, ...updated } : s))
+      
+      // Update group if changed
+      if (editStudent.selectedGroupId !== editStudent.currentGroupId) {
+        if (editStudent.selectedGroupId) {
+          await assignStudentToGroup(editStudent.id, editStudent.selectedGroupId)
+        } else {
+          await supabase.from('student_groups').delete().eq('student_id', editStudent.id)
+          await supabase.from('profiles').update({ "group": null }).eq('id', editStudent.id)
+        }
+      }
+
+      const matchedGroup = groups.find(g => g.id === editStudent.selectedGroupId)
+      const groupName = matchedGroup ? matchedGroup.name : ''
+      const updatedGroups = editStudent.selectedGroupId ? [{ group_id: editStudent.selectedGroupId }] : []
+      
+      setStudents(prev => prev.map(s => s.id === editStudent.id ? { 
+        ...s, 
+        ...updated, 
+        group: groupName, 
+        student_groups: updatedGroups 
+      } : s))
+
       flash('تم تحديث بيانات الطالب وحفظ التغييرات بنجاح', 'success')
       setShowEditModal(false)
       setEditStudent(null)
@@ -154,29 +179,43 @@ export default function AccountsPanel({ onBack, flash }) {
     const origin = window.location.origin
     const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`
     const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`
+    const barcodeToken = selectedQrStudent.barcode_token || ''
+    const barcodeApiUrl = barcodeToken 
+      ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true` 
+      : ''
     
     printWindow.document.write(`
       <html>
         <head>
-          <title>بطاقة QR - ${selectedQrStudent.name}</title>
+          <title>بطاقة هوية الطالب - ${selectedQrStudent.name}</title>
           <style>
-            body { font-family: 'Tajawal', sans-serif; text-align: center; padding: 40px; direction: ltr; background: #fff; color: #000; }
-            .card { border: 2px dashed #ccc; border-radius: 16px; padding: 30px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-            h2 { margin: 0 0 10px; font-size: 1.6rem; }
-            p { margin: 5px 0; color: #555; font-size: 1.1rem; }
-            .qr-container { margin: 25px 0; }
-            .qr-image { width: 260px; height: 260px; }
-            .logo { font-weight: bold; font-size: 1.4rem; color: #6366f1; margin-bottom: 20px; }
+            body { font-family: 'Tajawal', sans-serif; text-align: center; padding: 30px; direction: rtl; background: #fff; color: #000; }
+            .card { border: 2px solid #ccc; border-radius: 16px; padding: 24px; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
+            h2 { margin: 0 0 8px; font-size: 1.5rem; color: #1e293b; }
+            p { margin: 6px 0; color: #475569; font-size: 1rem; }
+            .codes-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; margin: 24px 0; }
+            .qr-image { width: 200px; height: 200px; }
+            .barcode-image { width: 100%; max-width: 300px; height: auto; }
+            .logo { font-weight: 800; font-size: 1.3rem; color: #6366f1; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
           <div class="card">
             <div class="logo">منصة مسار التعليمية</div>
-            <h2>كود QR لتقرير الطالب</h2>
+            <h2>بطاقة هوية الطالب الكودية</h2>
             <p><strong>الاسم:</strong> ${selectedQrStudent.name}</p>
             <p><strong>المرحلة:</strong> ${GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade}</p>
-            <div class="qr-container">
-              <img src="${qrCodeApiUrl}" class="qr-image" alt="QR Code" />
+            <div class="codes-grid">
+              <div>
+                <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; color: #64748b;">كود QR للتقرير الرقمي</p>
+                <img src="${qrCodeApiUrl}" class="qr-image" alt="QR Code" />
+              </div>
+              ${barcodeApiUrl ? `
+              <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; color: #64748b;">رمز الباركود للتحضير السريع</p>
+                <img src="${barcodeApiUrl}" class="barcode-image" alt="Barcode" />
+              </div>
+              ` : ''}
             </div>
           </div>
         </body>
@@ -348,11 +387,58 @@ export default function AccountsPanel({ onBack, flash }) {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        {student.is_approved === false ? (
+                          <>
+                            <button
+                              className="cp-btn cp-btn-sm"
+                              onClick={() => handleUpdateStatus(student, true, true)}
+                              disabled={isBusy}
+                              style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', fontWeight: 'bold' }}
+                              title="موافقة وتنشيط الحساب فوراً"
+                            >
+                              <i className="fas fa-check-double" style={{ marginInlineEnd: 4 }} /> موافقة وتنشيط
+                            </button>
+                            <button
+                              className="cp-btn cp-btn-sm"
+                              onClick={() => handleUpdateStatus(student, true, false)}
+                              disabled={isBusy}
+                              style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'none', fontWeight: 'bold' }}
+                              title="موافقة على التسجيل فقط بدون تفعيل الاشتراك"
+                            >
+                              <i className="fas fa-check" style={{ marginInlineEnd: 4 }} /> موافقة فقط
+                            </button>
+                          </>
+                        ) : (student.is_active === false || student.status === 'suspended' || student.status === 'archived' || student.status === 'graduated') ? (
+                          <button
+                            className="cp-btn cp-btn-sm"
+                            onClick={() => handleUpdateStatus(student, true, true)}
+                            disabled={isBusy}
+                            style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', fontWeight: 'bold' }}
+                            title="تنشيط وتفعيل اشتراك الطالب"
+                          >
+                            <i className="fas fa-power-off" style={{ marginInlineEnd: 4 }} /> تنشيط
+                          </button>
+                        ) : (
+                          <button
+                            className="cp-btn cp-btn-sm"
+                            onClick={() => handleUpdateStatus(student, true, false)}
+                            disabled={isBusy}
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', fontWeight: 'bold' }}
+                            title="إلغاء تنشيط وتجميد حساب الطالب"
+                          >
+                            <i className="fas fa-ban" style={{ marginInlineEnd: 4 }} /> إيقاف
+                          </button>
+                        )}
                         <button
                           className="cp-btn cp-btn-info cp-btn-sm"
                           onClick={() => {
-                            setEditStudent({ ...student })
+                            const curGroupId = student.student_groups?.[0]?.group_id || ''
+                            setEditStudent({ 
+                              ...student, 
+                              currentGroupId: curGroupId, 
+                              selectedGroupId: curGroupId 
+                            })
                             setShowEditModal(true)
                           }}
                         >
@@ -370,7 +456,7 @@ export default function AccountsPanel({ onBack, flash }) {
                         </button>
                         <button
                           className="cp-btn cp-btn-danger cp-btn-sm"
-                          onClick={() => handleDeleteStudent(student)}
+                          onClick={() => setDeletingStudent(student)}
                           disabled={isBusy}
                         >
                           <i className="fas fa-trash" />
@@ -383,6 +469,18 @@ export default function AccountsPanel({ onBack, flash }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {deletingStudent && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف حساب الطالب"
+          itemLabel={deletingStudent.name}
+          message="هل أنت متأكد من رغبتك في حذف حساب الطالب نهائياً؟ لا يمكن التراجع عن هذا الإجراء."
+          confirmText="نعم، احذف الطالب"
+          cancelText="إلغاء"
+          onConfirm={confirmDeleteStudent}
+          onCancel={() => setDeletingStudent(null)}
+        />
       )}
 
       {/* Edit Student Modal */}
@@ -443,38 +541,29 @@ export default function AccountsPanel({ onBack, flash }) {
               </div>
             </div>
 
-            {/* Parent contacts Section */}
-            <h4 style={{ fontSize: '0.98rem', fontWeight: 'bold', marginBottom: '12px', color: '#38bdf8', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>جهات اتصال أولياء الأمور</h4>
+            {/* Parent contact Section */}
+            <h4 style={{ fontSize: '0.98rem', fontWeight: 'bold', marginBottom: '12px', color: '#38bdf8', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>بيانات ولي الأمر والمجموعة</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>اسم الأب</label>
-                <input type="text" value={editStudent.father_name || ''} onChange={(e) => setEditStudent({ ...editStudent, father_name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
+                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>رقم هاتف ولي الأمر</label>
+                <input type="text" value={editStudent.parent_phone || ''} onChange={(e) => setEditStudent({ ...editStudent, parent_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>رقم هاتف الأب</label>
-                <input type="text" value={editStudent.father_phone || ''} onChange={(e) => setEditStudent({ ...editStudent, father_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>اسم الأم</label>
-                <input type="text" value={editStudent.mother_name || ''} onChange={(e) => setEditStudent({ ...editStudent, mother_name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>رقم هاتف الأم</label>
-                <input type="text" value={editStudent.mother_phone || ''} onChange={(e) => setEditStudent({ ...editStudent, mother_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
-              </div>
-              <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>اسم الوصي البديل</label>
-                  <input type="text" value={editStudent.guardian_name || ''} onChange={(e) => setEditStudent({ ...editStudent, guardian_name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>رقم هاتف الوصي</label>
-                  <input type="text" value={editStudent.guardian_phone || ''} onChange={(e) => setEditStudent({ ...editStudent, guardian_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>صلة القرابة</label>
-                  <input type="text" value={editStudent.guardian_relation || ''} onChange={(e) => setEditStudent({ ...editStudent, guardian_relation: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} placeholder="مثال: جد، خال، عم..." />
-                </div>
+                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>المجموعة الدراسية</label>
+                <select 
+                  value={editStudent.selectedGroupId || ''} 
+                  onChange={(e) => setEditStudent({ ...editStudent, selectedGroupId: e.target.value })} 
+                  className="cp-input" 
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="">بدون مجموعة...</option>
+                  {groups
+                    .filter(g => g.grade === editStudent.grade && (!editStudent.branch_id || g.branch_id === editStudent.branch_id))
+                    .map(g => (
+                      <option key={g.id} value={g.id} style={{ background: '#0f172a', color: '#fff' }}>{g.name}</option>
+                    ))
+                  }
+                </select>
               </div>
             </div>
 
@@ -522,30 +611,49 @@ export default function AccountsPanel({ onBack, flash }) {
         const origin = window.location.origin;
         const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`;
         const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrUrl)}`;
+        const barcodeToken = selectedQrStudent.barcode_token || '';
+        const barcodeApiUrl = barcodeToken 
+          ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true` 
+          : '';
         const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || 'غير محدد';
         
         return createPortal(
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
-            <div style={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 24, padding: 32, maxWidth: 460, width: '100%', color: '#fff', textAlign: 'center', position: 'relative', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            <div style={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 24, padding: 32, maxWidth: 480, width: '100%', color: '#fff', textAlign: 'center', position: 'relative', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
               <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }} title="إغلاق">
                 <i className="fas fa-times"></i>
               </button>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 12 }}>كود QR للتقرير الشامل</h3>
-              <div style={{ background: '#fff', padding: 16, borderRadius: 16, display: 'inline-block', marginBottom: 24 }}>
-                <img src={qrCodeApiUrl} alt="QR Code" style={{ width: 200, height: 200, display: 'block' }} />
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 16 }}>بطاقة أكواد الطالب للتحضير والتقارير</h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', marginBottom: 24 }}>
+                {/* QR Code */}
+                <div style={{ background: '#fff', padding: 12, borderRadius: 16, display: 'inline-block' }}>
+                  <img src={qrCodeApiUrl} alt="QR Code" style={{ width: 160, height: 160, display: 'block' }} />
+                </div>
+                
+                {/* Barcode */}
+                {barcodeToken && (
+                  <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 16, display: 'inline-block', width: '100%', maxWidth: '280px' }}>
+                    <img src={barcodeApiUrl} alt="Barcode" style={{ width: '100%', height: 'auto', maxHeight: '70px', display: 'block' }} />
+                  </div>
+                )}
               </div>
-              <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: 16, padding: 16, marginBottom: 28, textAlign: 'right' }}>
-                <div style={{ marginBottom: 8 }}><span style={{ color: '#94a3b8' }}>اسم الطالب: </span><span style={{ fontWeight: 600 }}>{selectedQrStudent.name}</span></div>
-                <div style={{ marginBottom: 8 }}><span style={{ color: '#94a3b8' }}>المرحلة الدراسية: </span><span>{gradeText}</span></div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: 16, padding: 16, marginBottom: 24, textAlign: 'right' }}>
+                <div style={{ marginBottom: 6 }}><span style={{ color: '#94a3b8' }}>اسم الطالب: </span><span style={{ fontWeight: 600 }}>{selectedQrStudent.name}</span></div>
+                <div style={{ marginBottom: 6 }}><span style={{ color: '#94a3b8' }}>المرحلة الدراسية: </span><span>{gradeText}</span></div>
+                {barcodeToken && (
+                  <div><span style={{ color: '#94a3b8' }}>كود الباركود: </span><span style={{ fontFamily: 'monospace', color: '#8c72db', fontWeight: 'bold' }}>{barcodeToken}</span></div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={handlePrint} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><i className="fas fa-print"></i> طباعة الكود</button>
+                <button onClick={handlePrint} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><i className="fas fa-print"></i> طباعة البطاقة</button>
                 <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}>إغلاق</button>
               </div>
             </div>
           </div>,
           document.body
-        );
+        )
       })()}
     </section>
   )

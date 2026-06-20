@@ -1,0 +1,561 @@
+/* Register Page Styles */
+.register-page-wrapper {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* Floating background blobs */
+.register-page-wrapper::before,
+.register-page-wrapper::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.register-page-wrapper::before {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--primary, #6366f1), transparent 70%);
+  top: -100px;
+  left: -100px;
+  animation: floatOrb 15s ease-in-out infinite;
+}
+
+.register-page-wrapper::after {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--secondary, #ec4899), transparent 70%);
+  bottom: -150px;
+  right: -150px;
+  animation: floatOrb 18s ease-in-out infinite reverse;
+}
+
+/* Constellation background */
+.register-constellation {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* Split Main Container */
+.register-container {
+  display: flex;
+  flex-direction: row-reverse; /* For Arabic default RTL */
+  max-width: 1100px;
+  width: 100%;
+  background: rgba(30, 41, 59, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 1;
+}
+
+/* Forms column */
+.register-form-col {
+  width: 55%;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.register-form-col h2 {
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #fff, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
+}
+
+.register-form-col p.register-subtitle {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+}
+
+/* Inputs wrapper */
+.register-input-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Full width input helper */
+.register-full-width {
+  grid-column: span 2;
+}
+
+/* Inputs styling */
+.register-input-wrapper {
+  position: relative;
+}
+
+.register-input-wrapper i {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 15px;
+  pointer-events: none;
+  transition: color 0.3s;
+}
+
+.register-input-wrapper input,
+.register-input-wrapper select {
+  width: 100%;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.3);
+  outline: none;
+  font-size: 14px;
+  color: #fff;
+  transition: all 0.3s;
+}
+
+/* LTR layout styling (English mode / default) */
+[dir="ltr"] .register-input-wrapper i {
+  left: 18px;
+  right: auto;
+}
+[dir="ltr"] .register-input-wrapper input,
+[dir="ltr"] .register-input-wrapper select {
+  padding: 14px 18px 14px 44px; /* Icon on the left */
+}
+[dir="ltr"] .register-password-toggle {
+  right: 12px;
+  left: auto;
+}
+
+/* RTL layout styling (Arabic mode) */
+[dir="rtl"] .register-input-wrapper i {
+  right: 18px;
+  left: auto;
+}
+[dir="rtl"] .register-input-wrapper input,
+[dir="rtl"] .register-input-wrapper select {
+  padding: 14px 44px 14px 18px; /* Icon on the right */
+}
+[dir="rtl"] .register-password-toggle {
+  left: 12px;
+  right: auto;
+}
+
+/* Password fields need padding on both sides to accommodate both the lock icon and the eye toggle button */
+.register-input-wrapper.register-password-wrapper input {
+  padding-left: 44px !important;
+  padding-right: 44px !important;
+}
+
+.register-input-wrapper input::placeholder {
+  color: #64748b;
+}
+
+.register-input-wrapper input:hover,
+.register-input-wrapper select:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.register-input-wrapper input:focus,
+.register-input-wrapper select:focus {
+  border-color: var(--primary, #6366f1);
+  background: rgba(15, 23, 42, 0.5);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
+}
+
+.register-input-wrapper:focus-within i {
+  color: var(--primary, #6366f1);
+}
+
+.register-password-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+  z-index: 2;
+}
+
+.register-password-toggle:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Portrait column */
+.register-portrait-col {
+  width: 45%;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.2) 0%, rgba(15, 23, 42, 0.8) 100%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px;
+  overflow: hidden;
+}
+
+.register-portrait-img-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.register-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.75;
+  filter: contrast(1.05) brightness(0.9);
+  transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.register-container:hover .register-portrait-img {
+  transform: scale(1.03);
+}
+
+.register-portrait-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, #0f172a 12%, rgba(15, 23, 42, 0.3) 50%, transparent 100%);
+  z-index: 1;
+}
+
+/* Teacher details and plates */
+.register-teacher-info {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+}
+
+.register-teacher-badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.register-teacher-name {
+  font-size: 2.1rem;
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+
+.register-teacher-role {
+  color: #94a3b8;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+/* Teacher Stat row */
+.register-teacher-stats {
+  display: flex;
+  gap: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+}
+
+.register-stat-item {
+  flex: 1;
+}
+
+.register-stat-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.register-stat-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+/* Actions block */
+.register-actions {
+  margin-top: 8px;
+}
+
+.register-toggle-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: #94a3b8;
+}
+
+.register-toggle-link a {
+  color: var(--primary, #6366f1);
+  text-decoration: none;
+  font-weight: 700;
+  margin-inline-start: 4px;
+  transition: text-decoration 0.2s;
+}
+
+.register-toggle-link a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive constraints */
+@media (max-width: 991px) {
+  .register-container {
+    flex-direction: column;
+    border-radius: 24px;
+  }
+  
+  .register-form-col {
+    width: 100%;
+    padding: 32px 24px;
+    border-inline-start: none;
+  }
+  
+  .register-portrait-col {
+    width: 100%;
+    min-height: 250px;
+    padding: 24px;
+  }
+  
+  .register-teacher-name {
+    font-size: 1.6rem;
+  }
+  
+  .register-input-group {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .register-full-width {
+    grid-column: span 1;
+  }
+}
+
+/* Modern Button Styling for Register Page */
+.modern-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--primary, #6366f1), var(--secondary, #ec4899));
+  background-size: 200% 100%;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-position 0.5s ease;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.modern-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  animation: perpetualShine 4.5s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes perpetualShine {
+  0% { left: -150%; }
+  30% { left: 150%; }
+  100% { left: 150%; }
+}
+
+.modern-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5), 0 8px 24px rgba(236, 72, 153, 0.3);
+  background-position: 100% 0;
+}
+
+.modern-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.modern-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-loader {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─────────── LIGHT MODE OVERRIDES ─────────── */
+body:not(.dark) .register-page-wrapper {
+  background: radial-gradient(ellipse at bottom, #f8fafc 0%, #cbd5e1 100%) !important;
+}
+
+body:not(.dark) .register-container {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15) !important;
+}
+
+body:not(.dark) .register-form-col {
+  border-inline-start-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+body:not(.dark) .register-form-col h2 {
+  background: linear-gradient(135deg, #0f172a, #475569) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body:not(.dark) p.register-subtitle {
+  color: #475569 !important;
+}
+
+body:not(.dark) .register-input-wrapper input,
+body:not(.dark) .register-input-wrapper select {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+
+body:not(.dark) .register-input-wrapper input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body:not(.dark) .register-input-wrapper input:hover,
+body:not(.dark) .register-input-wrapper select:hover {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  background: #fff !important;
+}
+
+body:not(.dark) .register-input-wrapper input:focus,
+body:not(.dark) .register-input-wrapper select:focus {
+  background: #fff !important;
+  border-color: var(--primary, #6366f1) !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12) !important;
+}
+
+body:not(.dark) .register-input-wrapper select option {
+  background: #fff !important;
+  color: #0f172a !important;
+}
+
+body:not(.dark) .register-password-toggle:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
+}
+
+body:not(.dark) .register-toggle-link {
+  color: #475569 !important;
+}
+
+body:not(.dark) .register-portrait-col {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(241, 245, 249, 0.95) 100%) !important;
+}
+
+body:not(.dark) .register-portrait-gradient {
+  background: linear-gradient(0deg, #f1f5f9 12%, rgba(241, 245, 249, 0.3) 50%, transparent 100%) !important;
+}
+
+body:not(.dark) .register-teacher-badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)) !important;
+  border-color: rgba(168, 85, 247, 0.25) !important;
+  color: #7c3aed !important;
+}
+
+body:not(.dark) .register-teacher-name {
+  color: #0f172a !important;
+}
+
+body:not(.dark) .register-teacher-role {
+  color: #475569 !important;
+}
+
+body:not(.dark) .register-teacher-stats {
+  border-top-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body:not(.dark) .register-stat-label {
+  color: #64748b !important;
+}
+
+body:not(.dark) .register-stat-value {
+  color: #0f172a !important;
+}
+
+/* Error message styling */
+.error-message {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  color: #ff6b6b;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  text-align: center;
+  display: none;
+}
+
+.error-message.show {
+  display: block;
+}
+
+body:not(.dark) .error-message {
+  background: rgba(231, 76, 60, 0.1) !important;
+  color: #c0392b !important;
+  border-color: rgba(231, 76, 60, 0.4) !important;
+}

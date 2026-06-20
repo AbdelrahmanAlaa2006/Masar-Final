@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { listAssistants, createAssistant, updateAssistant, deleteAssistant } from '@backend/assistantsApi'
 import { useTenant } from '../../contexts/TenantContext'
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 
 export default function AssistantsPanel({ onBack, flash }) {
   const { tenantId } = useTenant()
@@ -8,6 +9,7 @@ export default function AssistantsPanel({ onBack, flash }) {
   const [assistants, setAssistants] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingAssistant, setDeletingAssistant] = useState(null)
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false)
@@ -44,6 +46,8 @@ export default function AssistantsPanel({ onBack, flash }) {
     'payments:edit': 'إدارة الماليات',
     'whatsapp:view': 'طابور الواتساب',
     'reports:view': 'التقارير العامة',
+    'branches:view': 'عرض الفروع',
+    'branches:edit': 'إدارة الفروع',
     // Fallbacks for legacy coarse permissions
     'attendance': 'حضور كامل',
     'grades': 'درجات كامل',
@@ -53,7 +57,8 @@ export default function AssistantsPanel({ onBack, flash }) {
     'students': 'طلاب كامل',
     'payments': 'اشتراكات كامل',
     'reports': 'تقارير كامل',
-    'whatsapp': 'واتساب كامل'
+    'whatsapp': 'واتساب كامل',
+    'branches': 'الفروع كامل'
   }
 
   // Grouped and categorized permissions for the form checkboxes
@@ -135,6 +140,15 @@ export default function AssistantsPanel({ onBack, flash }) {
       ]
     },
     {
+      title: 'إدارة الفروع والمجموعات',
+      icon: 'fa-map-marker-alt',
+      accent: 'violet',
+      items: [
+        { key: 'branches:view', label: 'عرض الفروع الدراسية التابعة للمنصة' },
+        { key: 'branches:edit', label: 'إدارة وتعديل الفروع الدراسية (إضافة/حذف)' }
+      ]
+    },
+    {
       title: 'الواتساب والتقارير العامة',
       icon: 'fa-comments-dollar',
       accent: 'red',
@@ -144,6 +158,17 @@ export default function AssistantsPanel({ onBack, flash }) {
       ]
     }
   ]
+
+  const getOtherAssistantsWithPermission = (permKey, currentId = null) => {
+    const parentKey = permKey.includes(':') ? permKey.split(':')[0] : null
+    return assistants
+      .filter(as => {
+        if (as.id === currentId) return false
+        if (!as.permissions) return false
+        return as.permissions.includes(permKey) || (parentKey && as.permissions.includes(parentKey))
+      })
+      .map(as => as.name)
+  }
 
   // Load assistants on mount
   const loadData = async () => {
@@ -237,6 +262,7 @@ export default function AssistantsPanel({ onBack, flash }) {
       flash('تم تحديث بيانات المساعد وصلاحياته بنجاح.', 'success')
       setShowEditForm(false)
       setEditingAssistant(null)
+      setSelectedPermissions([])
       loadData()
     } catch (err) {
       console.error(err)
@@ -246,12 +272,11 @@ export default function AssistantsPanel({ onBack, flash }) {
     }
   }
 
-  // Delete assistant
-  const handleDeleteClick = async (id, assistantName) => {
-    if (!window.confirm(`هل أنت متأكد من حذف حساب المساعد "${assistantName}"؟ لن يتمكن من تسجيل الدخول مجدداً.`)) {
-      return
-    }
-
+  // Delete assistant confirm callback
+  const confirmDeleteAssistant = async () => {
+    if (!deletingAssistant) return
+    const { id, name } = deletingAssistant
+    setDeletingAssistant(null)
     try {
       await deleteAssistant(id)
       flash('تم حذف حساب المساعد بنجاح.', 'success')
@@ -370,12 +395,14 @@ export default function AssistantsPanel({ onBack, flash }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
                       {category.items.map(item => {
                         const checked = selectedPermissions.includes(item.key)
+                        const holders = getOtherAssistantsWithPermission(item.key)
                         return (
                           <label 
                             key={item.key} 
                             style={{ 
                               display: 'flex', 
                               alignItems: 'center', 
+                              justifyContent: 'space-between',
                               gap: '10px', 
                               padding: '12px 14px', 
                               borderRadius: '12px', 
@@ -385,16 +412,31 @@ export default function AssistantsPanel({ onBack, flash }) {
                               fontSize: '0.82rem',
                               fontWeight: '600',
                               color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
-                              transition: 'all 0.2s'
+                              transition: 'all 0.2s',
+                              flexWrap: 'wrap'
                             }}
                           >
-                            <input 
-                              type="checkbox" 
-                              checked={checked} 
-                              onChange={() => handlePermissionToggle(item.key)}
-                              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                            />
-                            <span>{item.label}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={checked} 
+                                onChange={() => handlePermissionToggle(item.key)}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                              />
+                              <span>{item.label}</span>
+                            </div>
+                            {holders.length > 0 && (
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                color: 'var(--cp-text-muted)', 
+                                padding: '2px 6px', 
+                                borderRadius: '6px', 
+                                background: 'var(--cp-hover-bg, rgba(0,0,0,0.04))',
+                                fontWeight: 'normal'
+                              }}>
+                                (ممنوحة لـ: {holders.join('، ')})
+                              </span>
+                            )}
                           </label>
                         )
                       })}
@@ -408,7 +450,7 @@ export default function AssistantsPanel({ onBack, flash }) {
               <button type="submit" disabled={saving} className="cp-btn cp-btn-success" style={{ padding: '10px 24px' }}>
                 {saving ? <i className="fas fa-spinner fa-spin"></i> : 'إضافة المساعد والحفظ'}
               </button>
-              <button type="button" onClick={() => setShowAddForm(false)} className="cp-btn cp-btn-secondary">إلغاء</button>
+              <button type="button" onClick={() => { setShowAddForm(false); setSelectedPermissions([]); }} className="cp-btn cp-btn-secondary">إلغاء</button>
             </div>
           </form>
         </div>
@@ -486,12 +528,14 @@ export default function AssistantsPanel({ onBack, flash }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
                       {category.items.map(item => {
                         const checked = selectedPermissions.includes(item.key)
+                        const holders = getOtherAssistantsWithPermission(item.key, editingAssistant.id)
                         return (
                           <label 
                             key={item.key} 
                             style={{ 
                               display: 'flex', 
                               alignItems: 'center', 
+                              justifyContent: 'space-between',
                               gap: '10px', 
                               padding: '12px 14px', 
                               borderRadius: '12px', 
@@ -501,16 +545,31 @@ export default function AssistantsPanel({ onBack, flash }) {
                               fontSize: '0.82rem',
                               fontWeight: '600',
                               color: checked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)',
-                              transition: 'all 0.2s'
+                              transition: 'all 0.2s',
+                              flexWrap: 'wrap'
                             }}
                           >
-                            <input 
-                              type="checkbox" 
-                              checked={checked} 
-                              onChange={() => handlePermissionToggle(item.key)}
-                              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                            />
-                            <span>{item.label}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={checked} 
+                                onChange={() => handlePermissionToggle(item.key)}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                              />
+                              <span>{item.label}</span>
+                            </div>
+                            {holders.length > 0 && (
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                color: 'var(--cp-text-muted)', 
+                                padding: '2px 6px', 
+                                borderRadius: '6px', 
+                                background: 'var(--cp-hover-bg, rgba(0,0,0,0.04))',
+                                fontWeight: 'normal'
+                              }}>
+                                (ممنوحة لـ: {holders.join('، ')})
+                              </span>
+                            )}
                           </label>
                         )
                       })}
@@ -524,7 +583,7 @@ export default function AssistantsPanel({ onBack, flash }) {
               <button type="submit" disabled={saving} className="cp-btn cp-btn-success" style={{ padding: '10px 24px' }}>
                 {saving ? <i className="fas fa-spinner fa-spin"></i> : 'تحديث وصيانة الصلاحيات'}
               </button>
-              <button type="button" onClick={() => { setShowEditForm(false); setEditingAssistant(null); }} className="cp-btn cp-btn-secondary">إلغاء</button>
+              <button type="button" onClick={() => { setShowEditForm(false); setEditingAssistant(null); setSelectedPermissions([]); }} className="cp-btn cp-btn-secondary">إلغاء</button>
             </div>
           </form>
         </div>
@@ -602,7 +661,7 @@ export default function AssistantsPanel({ onBack, flash }) {
                   صيانة الصلاحيات
                 </button>
                 <button 
-                  onClick={() => handleDeleteClick(assistant.id, assistant.name)}
+                  onClick={() => setDeletingAssistant({ id: assistant.id, name: assistant.name })}
                   className="cp-btn cp-btn-danger" 
                   style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', boxShadow: 'none' }}
                 >
@@ -613,6 +672,18 @@ export default function AssistantsPanel({ onBack, flash }) {
             </div>
           ))}
         </div>
+      )}
+
+      {deletingAssistant && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف المساعد"
+          itemLabel={deletingAssistant.name}
+          message="هل أنت متأكد من حذف حساب المساعد؟ لن يتمكن من تسجيل الدخول مجدداً."
+          confirmText="نعم، احذف المساعد"
+          cancelText="إلغاء"
+          onConfirm={confirmDeleteAssistant}
+          onCancel={() => setDeletingAssistant(null)}
+        />
       )}
     </div>
   )

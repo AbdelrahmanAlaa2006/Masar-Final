@@ -5,6 +5,7 @@ import { createNotification } from '@backend/notificationsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import { getProfile } from '@backend/profilesApi'
 import { cached, invalidate } from '../../utils/cache'
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import './ChatsPanel.css'
 
 export default function ChatsPanel({ onBack, flash, initialStudentId }) {
@@ -25,6 +26,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   const [inputText, setInputText] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [previewImageUrl, setPreviewImageUrl] = useState(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   // Attachment states
   const [selectedImage, setSelectedImage] = useState(null)
@@ -340,11 +342,9 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
     }
   }
 
-  const handleClearChat = async () => {
+  const confirmClearChat = async () => {
     if (!selectedStudent) return
-    const confirmDelete = window.confirm('هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوفة مرة أخرى.')
-    if (!confirmDelete) return
-
+    setShowClearConfirm(false)
     try {
       setSending(true)
       await clearChatMessages(selectedStudent.id)
@@ -506,7 +506,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
                 {messages.length > 0 && (
                   <button 
                     className="cp-btn cp-btn-danger" 
-                    onClick={handleClearChat}
+                    onClick={() => setShowClearConfirm(true)}
                     style={{
                       background: 'rgba(239, 68, 68, 0.15)',
                       color: '#ef4444',
@@ -664,6 +664,18 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
           )}
         </div>
       </div>
+
+      {showClearConfirm && selectedStudent && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف المحادثة"
+          itemLabel={`محادثة الطالب: ${selectedStudent.name}`}
+          message="هل أنت متأكد من حذف هذه المحادثة بالكامل؟ لا يمكن استعادة الرسائل المحذوفة مرة أخرى."
+          confirmText="نعم، احذف المحادثة"
+          cancelText="إلغاء"
+          onConfirm={confirmClearChat}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
 
       {/* Lightbox / Image Preview Modal */}
       {previewImageUrl && (
