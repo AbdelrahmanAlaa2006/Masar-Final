@@ -18,6 +18,7 @@ import {
 } from '@backend/homeworksApi'
 import { uploadHomeworkPdf, deleteR2Object } from '@backend/r2'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+import { listPlaylists } from '@backend/playlistsApi'
 
 // Letters used to label MCQ options in Arabic.
 const OPT_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي']
@@ -100,6 +101,8 @@ export default function Homework() {
     return null
   })
   const [rows, setRows] = useState([])
+  const [playlists, setPlaylists] = useState([])
+  const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [search, setSearch] = useState('')
@@ -133,8 +136,12 @@ export default function Homework() {
     setLoadError(null)
     try {
       if (force) invalidateCache('homeworks')
-      const data = await cached('homeworks', LIST_TTL, listHomeworks)
+      const [data, plist] = await Promise.all([
+        cached('homeworks', LIST_TTL, listHomeworks),
+        listPlaylists()
+      ])
       setRows(data)
+      setPlaylists(plist)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل الواجبات')
     } finally {
@@ -195,6 +202,63 @@ export default function Homework() {
         .join(' ').toLowerCase().includes(q)
     )
   }, [homeworks, grade, search])
+
+  // Group active/accessible homeworks by Playlist
+  const playlistGroups = useMemo(() => {
+    if (filtered.length === 0) return []
+
+    const grouped = []
+
+    // 1. Process playlists that are active (or all if admin)
+    const activePlaylists = playlists.filter(p => p.is_active || userRole === 'admin' || userRole === 'assistant')
+
+    for (const playlist of activePlaylists) {
+      const plistHws = []
+      const itemIds = (playlist.playlist_items || [])
+        .filter(item => item.content_type === 'homework')
+        
+      for (const item of itemIds) {
+        const h = filtered.find(hw => hw.id === item.content_id)
+        if (h) {
+          plistHws.push(h)
+        }
+      }
+
+      if (plistHws.length > 0) {
+        grouped.push({
+          id: playlist.id,
+          title: playlist.title,
+          description: playlist.description,
+          homeworks: plistHws
+        })
+      }
+    }
+
+    // 2. Unassigned homeworks (General Syllabus)
+    const unassignedHws = filtered.filter(h => {
+      return !playlists.some(p => 
+        (p.playlist_items || []).some(pi => pi.content_type === 'homework' && pi.content_id === h.id)
+      )
+    })
+
+    if (unassignedHws.length > 0) {
+      grouped.push({
+        id: 'general',
+        title: 'مخطط المنهج العام',
+        description: 'الواجبات والمهام العامة لمرحلتك الدراسية',
+        homeworks: unassignedHws
+      })
+    }
+
+    return grouped
+  }, [playlists, filtered, userRole])
+
+  const togglePlaylistExpanded = (playlistId) => {
+    setExpandedPlaylists(prev => ({
+      ...prev,
+      [playlistId]: prev[playlistId] === false ? true : false
+    }))
+  }
 
   // ── Add modal lifecycle ──────────────────────────────────────
   const closeAddModal = () => {
@@ -402,24 +466,77 @@ export default function Homework() {
             ) : filtered.length === 0 ? (
               <div className="hw-empty"><i className="fas fa-folder-open"></i><p>لا توجد واجبات مطابقة</p></div>
             ) : (
-              <div className="hw-grid">
-                {filtered.map((hw) => (
-                  <HomeworkCard
-                    key={hw.id}
-                    hw={hw}
-                    isAdmin={userRole === 'admin' || userRole === 'assistant'}
-                    isInactive={userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false}
-                    submission={submissions[hw.id] || null}
-                    onOpen={() => {
-                      if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })
-                      else flash('لا يوجد ملف PDF لهذا الواجب', 'warning')
-                    }}
-                    onSubmit={() => setSubmitModal({ homework: hw })}
-                    onGrade={() => setGradeModal({ homework: hw })}
-                    onEdit={() => openEditModal(hw)}
-                    onDelete={() => requestDelete(hw)}
-                  />
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {playlistGroups.map((group) => {
+                  const isExpanded = expandedPlaylists[group.id] !== false
+                  return (
+                    <div key={group.id} className="playlist-section" style={{
+                      background: 'var(--card-bg, #1e1e2f)',
+                      border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))',
+                      borderRadius: 16,
+                      overflow: 'hidden'
+                    }}>
+                      {/* Playlist Header Accordion Trigger */}
+                      <div
+                        onClick={() => togglePlaylistExpanded(group.id)}
+                        style={{
+                          padding: '16px 20px',
+                          background: 'rgba(124, 58, 237, 0.05)',
+                          borderBottom: isExpanded ? '1.5px solid var(--border-color, rgba(255,255,255,0.06))' : 'none',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <i className={`fas ${group.id === 'general' ? 'fa-folder-open' : 'fa-list-check'}`} style={{ color: '#7c3aed', fontSize: '1.2rem' }}></i>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{group.title}</h3>
+                            {group.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{group.description}</p>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            background: 'rgba(124, 58, 237, 0.12)',
+                            color: '#a78bfa',
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            fontWeight: 'bold'
+                          }}>
+                            {group.homeworks.length} واجب
+                          </span>
+                          <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ color: '#a78bfa' }}></i>
+                        </div>
+                      </div>
+
+                      {/* Homework List inside Playlist */}
+                      {isExpanded && (
+                        <div className="hw-grid" style={{ padding: 20 }}>
+                          {group.homeworks.map((hw) => (
+                            <HomeworkCard
+                              key={hw.id}
+                              hw={hw}
+                              isAdmin={userRole === 'admin' || userRole === 'assistant'}
+                              isInactive={userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false}
+                              submission={submissions[hw.id] || null}
+                              onOpen={() => {
+                                if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })
+                                else flash('لا يوجد ملف PDF لهذا الواجب', 'warning')
+                              }}
+                              onSubmit={() => setSubmitModal({ homework: hw })}
+                              onGrade={() => setGradeModal({ homework: hw })}
+                              onEdit={() => openEditModal(hw)}
+                              onDelete={() => requestDelete(hw)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </>

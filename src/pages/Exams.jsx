@@ -5,6 +5,7 @@ import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
+import { listPlaylists } from '@backend/playlistsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
@@ -42,6 +43,8 @@ export default function Exams() {
   const [showModal, setShowModal] = useState(false)
   const [showLockModal, setShowLockModal] = useState(false)
   const [rows, setRows] = useState([])
+  const [playlists, setPlaylists] = useState([])
+  const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
@@ -52,12 +55,16 @@ export default function Exams() {
     setLoadError(null)
     try {
       const isLean = userRole !== 'admin' && userRole !== 'assistant'
-      const data = await cached(
-        isLean ? 'exams-lean' : 'exams',
-        LIST_TTL,
-        () => listExams({ lean: isLean })
-      )
+      const [data, plist] = await Promise.all([
+        cached(
+          isLean ? 'exams-lean' : 'exams',
+          LIST_TTL,
+          () => listExams({ lean: isLean })
+        ),
+        listPlaylists()
+      ])
       setRows(data)
+      setPlaylists(plist)
     } catch (err) {
       setLoadError(err.message || 'تعذر تحميل الامتحانات')
     } finally {
@@ -124,6 +131,64 @@ export default function Exams() {
     }
     return out
   }, [rows])
+
+  // Group active/accessible exams by Playlist
+  const playlistGroups = useMemo(() => {
+    const levelExams = examsByLevel[currentLevel] || []
+    if (levelExams.length === 0) return []
+
+    const grouped = []
+
+    // 1. Process playlists that are active (or all if admin)
+    const activePlaylists = playlists.filter(p => p.is_active || userRole === 'admin' || userRole === 'assistant')
+
+    for (const playlist of activePlaylists) {
+      const plistExams = []
+      const itemIds = (playlist.playlist_items || [])
+        .filter(item => item.content_type === 'exam')
+        
+      for (const item of itemIds) {
+        const e = levelExams.find(ex => ex.id === item.content_id)
+        if (e) {
+          plistExams.push(e)
+        }
+      }
+
+      if (plistExams.length > 0) {
+        grouped.push({
+          id: playlist.id,
+          title: playlist.title,
+          description: playlist.description,
+          exams: plistExams
+        })
+      }
+    }
+
+    // 2. Unassigned exams (General Syllabus)
+    const unassignedExams = levelExams.filter(e => {
+      return !playlists.some(p => 
+        (p.playlist_items || []).some(pi => pi.content_type === 'exam' && pi.content_id === e.id)
+      )
+    })
+
+    if (unassignedExams.length > 0) {
+      grouped.push({
+        id: 'general',
+        title: 'مخطط المنهج العام',
+        description: 'الامتحانات والتقييمات العامة لمرحلتك الدراسية',
+        exams: unassignedExams
+      })
+    }
+
+    return grouped
+  }, [playlists, examsByLevel, currentLevel, userRole])
+
+  const togglePlaylistExpanded = (playlistId) => {
+    setExpandedPlaylists(prev => ({
+      ...prev,
+      [playlistId]: prev[playlistId] === false ? true : false
+    }))
+  }
 
   // Effective max attempts = exam default + admin-granted extra attempts.
   // The override's `attempts` field is a bonus granted on top of the default,
@@ -364,8 +429,61 @@ export default function Exams() {
           لا توجد امتحانات في هذه المرحلة بعد
         </div>
       ) : (
-        <div className="exam-list">
-          {examsByLevel[level].map((exam, idx) => renderExamItem(exam, idx))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {playlistGroups.map((group) => {
+            const isExpanded = expandedPlaylists[group.id] !== false
+            return (
+              <div key={group.id} className="playlist-section" style={{
+                background: 'var(--card-bg, #1e1e2f)',
+                border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))',
+                borderRadius: 16,
+                overflow: 'hidden'
+              }}>
+                {/* Playlist Header Accordion Trigger */}
+                <div
+                  onClick={() => togglePlaylistExpanded(group.id)}
+                  style={{
+                    padding: '16px 20px',
+                    background: 'rgba(124, 58, 237, 0.05)',
+                    borderBottom: isExpanded ? '1.5px solid var(--border-color, rgba(255,255,255,0.06))' : 'none',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <i className={`fas ${group.id === 'general' ? 'fa-folder-open' : 'fa-list-check'}`} style={{ color: '#7c3aed', fontSize: '1.2rem' }}></i>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{group.title}</h3>
+                      {group.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{group.description}</p>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      background: 'rgba(124, 58, 237, 0.12)',
+                      color: '#a78bfa',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      fontWeight: 'bold'
+                    }}>
+                      {group.exams.length} امتحان
+                    </span>
+                    <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ color: '#a78bfa' }}></i>
+                  </div>
+                </div>
+
+                {/* Exam List inside Playlist */}
+                {isExpanded && (
+                  <div className="exam-list" style={{ padding: 20 }}>
+                    {group.exams.map((exam, idx) => renderExamItem(exam, idx))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

@@ -17,7 +17,6 @@ const RevealPanel = lazy(() => import('./RevealPanel'))
 const HomeworkRevealPanel = lazy(() => import('./HomeworkRevealPanel'))
 const ResetRequestsPanel = lazy(() => import('./ResetRequestsPanel'))
 const DevToolsViolationsPanel = lazy(() => import('./DevToolsViolationsPanel'))
-const SeasonalThemePanel = lazy(() => import('./SeasonalThemePanel'))
 const AccountsPanel = lazy(() => import('./AccountsPanel'))
 const ChatsPanel = lazy(() => import('./ChatsPanel'))
 const GroupsPanel = lazy(() => import('./GroupsPanel'))
@@ -29,6 +28,11 @@ const AssistantsPanel = lazy(() => import('./AssistantsPanel'))
 const WhatsAppQueuePanel = lazy(() => import('./WhatsAppQueuePanel'))
 const SuperAdminPanel = lazy(() => import('./SuperAdminPanel'))
 const BranchesPanel = lazy(() => import('./BranchesPanel'))
+
+const PlaylistsPanel = lazy(() => import('./PlaylistsPanel'))
+const PackagesPanel = lazy(() => import('./PackagesPanel'))
+const PurchasesPanel = lazy(() => import('./PurchasesPanel'))
+const StudentAccessPanel = lazy(() => import('./StudentAccessPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
@@ -58,6 +62,9 @@ export default function ControlPanelIndex() {
     if (s === 'home') return true
 
     // Assistant gates
+    if (s === 'playlists') return hasPermission('videos') || hasPermission('exams') || hasPermission('homework')
+    if (s === 'packages' || s === 'purchases') return hasPermission('payments')
+    if (s === 'student_access') return hasPermission('students')
     if (s === 'attendance') return hasPermission('attendance')
     if (s === 'grades') return hasPermission('grades')
     if (s === 'homeworks') return hasPermission('homework')
@@ -208,6 +215,11 @@ export default function ControlPanelIndex() {
         sessionStorage.removeItem('chats-refreshed')
       }
     }
+  }, [section])
+
+  // Scroll to top on section transitions
+  useEffect(() => {
+    window.scrollTo(0, 0)
   }, [section])
 
   const goHome = () => {
@@ -440,14 +452,49 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
-                {/* Seasons settings (Primary Admin Only) */}
-                {user?.role === 'admin' && (
+
+
+                {/* Playlists Management */}
+                {(user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
                   <SectionCard
-                    icon="fa-moon"
-                    accent="violet"
-                    title="السمات الموسمية"
-                    desc="رمضان، عيد الفطر، عيد الأضحى، شتاء — تلقائي"
-                    onClick={() => enterSection('seasons')}
+                    icon="fa-list-check"
+                    accent="indigo"
+                    title="قوائم التشغيل (Playlists)"
+                    desc="تنظيم المحاضرات والامتحانات والواجبات في وحدات ومجموعات متكاملة"
+                    onClick={() => enterSection('playlists')}
+                  />
+                )}
+
+                {/* Packages Management */}
+                {(user?.role === 'admin' || hasPermission('payments')) && (
+                  <SectionCard
+                    icon="fa-box-open"
+                    accent="purple"
+                    title="الباقات والاشتراكات"
+                    desc="إنشاء باقات المحتوى المدفوعة وتجميع المحاضرات والامتحانات للبيع"
+                    onClick={() => enterSection('packages')}
+                  />
+                )}
+
+                {/* Package Purchases */}
+                {(user?.role === 'admin' || hasPermission('payments')) && (
+                  <SectionCard
+                    icon="fa-receipt"
+                    accent="gold"
+                    title="طلبات الشراء والتحويلات"
+                    desc="مراجعة وتفعيل إيصالات دفع الطلاب لشراء الباقات الأونلاين"
+                    onClick={() => enterSection('purchases')}
+                  />
+                )}
+
+                {/* Student Content Access Overrides */}
+                {(user?.role === 'admin' || hasPermission('students')) && (
+                  <SectionCard
+                    icon="fa-user-lock"
+                    accent="teal"
+                    title="صلاحيات محتوى الطلاب"
+                    desc="منح أو سحب صلاحيات مشاهدة الفيديوهات والامتحانات لطلاب معينين"
+                    onClick={() => enterSection('student_access')}
                   />
                 )}
 
@@ -486,7 +533,6 @@ export default function ControlPanelIndex() {
 
             {/* Suspense wrapper for lazy loading individual components */}
             <Suspense fallback={<PanelLoader />}>
-              {section === 'seasons' && <SeasonalThemePanel />}
               {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
               {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
               {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
@@ -500,6 +546,11 @@ export default function ControlPanelIndex() {
               {section === 'whatsapp' && <WhatsAppQueuePanel onBack={goHome} flash={flash} />}
               {section === 'super_admin' && <SuperAdminPanel onBack={goHome} flash={flash} />}
               {section === 'branches' && <BranchesPanel onBack={goHome} flash={flash} />}
+
+              {section === 'playlists' && <PlaylistsPanel onBack={goHome} flash={flash} />}
+              {section === 'packages' && <PackagesPanel onBack={goHome} flash={flash} />}
+              {section === 'purchases' && <PurchasesPanel onBack={goHome} flash={flash} />}
+              {section === 'student_access' && <StudentAccessPanel onBack={goHome} flash={flash} />}
 
               {/* Sub-tab navigation bar for dynamic settings */}
               {(section === 'videos' || section === 'exams') && (

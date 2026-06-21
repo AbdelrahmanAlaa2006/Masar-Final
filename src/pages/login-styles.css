@@ -21,18 +21,18 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.025 240);
-  --foreground: oklch(0.97 0.008 230);
+  --background: var(--dynamic-background, oklch(0.16 0.025 240));
+  --foreground: var(--dynamic-card-text, oklch(0.97 0.008 230));
   --ink: oklch(0.99 0.005 230);
-  --surface: oklch(0.20 0.03 240);
-  --card: oklch(0.22 0.03 240);
-  --card-foreground: oklch(0.97 0.008 230);
+  --surface: var(--dynamic-surface, oklch(0.20 0.03 240));
+  --card: var(--dynamic-card, oklch(0.22 0.03 240));
+  --card-foreground: var(--dynamic-card-text, oklch(0.97 0.008 230));
   --primary-foreground: oklch(0.99 0.005 230);
   --muted: oklch(0.25 0.03 240);
-  --muted-foreground: oklch(0.72 0.025 235);
+  --muted-foreground: var(--dynamic-card-muted, oklch(0.72 0.025 235));
   --accent: var(--secondary);
   --accent-foreground: oklch(0.15 0.04 240);
-  --border: oklch(1 0 0 / 10%);
+  --border: var(--dynamic-border, oklch(1 0 0 / 10%));
   --ring: var(--primary);
 }
 
@@ -1352,14 +1352,14 @@ body:not(.dark) .aa-footer {
 }
 
 .dark .aa-page .map-badge {
-  background: rgba(26, 24, 48, 0.92);
+  background: var(--dynamic-card-bg, rgba(26, 24, 48, 0.92));
   border-color: rgba(255, 255, 255, 0.08);
   color: #86efac;
 }
 
 /* info cards */
 .dark .aa-page .location-info-card {
-  background: rgba(26, 24, 48, 0.7);
+  background: var(--dynamic-card-bg, rgba(26, 24, 48, 0.7));
   border-color: var(--primary-soft);
   box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.5);
 }
@@ -1387,7 +1387,7 @@ body:not(.dark) .aa-footer {
 
 /* ghost WhatsApp button */
 .dark .aa-page .location-directions-btn--ghost {
-  background: rgba(26, 24, 48, 0.7);
+  background: var(--primary-soft, rgba(26, 24, 48, 0.7));
   color: #4ade80;
   border-color: rgba(74, 222, 128, 0.35);
 }

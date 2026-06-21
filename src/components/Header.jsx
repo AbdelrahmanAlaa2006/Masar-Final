@@ -25,7 +25,8 @@ const NAV_ITEMS_BASE = [
   { to: '/videos', label: 'الفيديوهات', icon: 'fa-circle-play' },
   { to: '/exams', label: 'الامتحانات', icon: 'fa-file-pen' },
   { to: '/homework', label: 'الواجبات', icon: 'fa-clipboard-list' },
-  { to: '/payments', label: 'المدفوعات', icon: 'fa-wallet' },
+  { to: '/shop', label: 'الباقات (الاشتراكات)', icon: 'fa-bag-shopping' },
+  { to: '/payments', label: 'تأكيد الدفع', icon: 'fa-wallet' },
   { to: '/report', label: 'التقارير', icon: 'fa-chart-line' },
 ]
 const ADMIN_ITEMS = [
@@ -156,6 +157,13 @@ export default function Header() {
     if (item.to === '/exams') key = 'exams'
     if (item.to === '/homework') key = 'homework'
     if (item.to === '/payments') key = 'payments'
+    if (item.to === '/shop') {
+      if (userRole === 'admin' || userRole === 'assistant') return false
+      if (user && user.role === 'student' && user.enrollment_type !== 'ONLINE' && user.enrollment_type !== 'HYBRID') {
+        return false
+      }
+      key = 'payments'
+    }
     if (item.to === '/report') key = 'reports'
     
     if (!isFeatureEnabled(key || '')) return false

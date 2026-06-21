@@ -51,25 +51,25 @@
 }
 
 body.dark {
-  --login-bg-1: #1e1b4b;
-  --login-bg-2: #312e81;
-  --login-bg-3: #4c1d95;
+  --login-bg-1: var(--dynamic-section-bg-1, #1e1b4b);
+  --login-bg-2: var(--dynamic-section-bg-2, #312e81);
+  --login-bg-3: var(--dynamic-footer-bg, #4c1d95);
   --login-orb-1: var(--primary-soft, var(--primary, var(--primary)));
   --login-orb-2: var(--secondary-soft, var(--secondary, #4338ca));
 
-  --card-bg: rgba(22, 22, 40, 0.85);
-  --card-border: rgba(139, 121, 201, 0.22);
-  --card-shadow: 0 24px 70px rgba(139, 121, 201, 0.35), 0 8px 24px rgba(99, 102, 241, 0.25), 0 0 0 1px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --card-bg: var(--dynamic-card-bg, rgba(22, 22, 40, 0.85));
+  --card-border: var(--dynamic-card-border, rgba(139, 121, 201, 0.22));
+  --card-shadow: var(--dynamic-card-shadow, 0 24px 70px rgba(139, 121, 201, 0.35), 0 8px 24px rgba(99, 102, 241, 0.25), 0 0 0 1px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.08));
 
-  --card-text: #e9e4ff;
-  --card-text-soft: #b8b0d4;
-  --card-muted: #8a82a8;
+  --card-text: var(--dynamic-card-text, #e9e4ff);
+  --card-text-soft: var(--dynamic-card-text-soft, #b8b0d4);
+  --card-muted: var(--dynamic-card-muted, #8a82a8);
   --card-title-from: var(--primary, var(--primary-hover));
   --card-title-to: var(--secondary, var(--primary-hover));
 
   --tab-track: rgba(255, 255, 255, 0.06);
-  --tab-inactive: #9e98b8;
-  --tab-active-bg: linear-gradient(135deg, #2d2a4a, #3a3560);
+  --tab-inactive: var(--dynamic-tab-inactive, #9e98b8);
+  --tab-active-bg: var(--dynamic-tab-active-bg, linear-gradient(135deg, #2d2a4a, #3a3560));
   --tab-active-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 
   --input-bg: rgba(255, 255, 255, 0.05);
@@ -87,16 +87,16 @@ body.dark {
   --btn-shadow-hover: 0 14px 30px var(--primary-glow, var(--primary-glow));
 
   --forgot-color: var(--primary, var(--primary-hover));
-  --remember-text: #b8b0d4;
+  --remember-text: var(--dynamic-remember-text, #b8b0d4);
 
-  --section-bg-1: #09091a;
-  --section-bg-2: #0d0d20;
+  --section-bg-1: var(--dynamic-section-bg-1, #09091a);
+  --section-bg-2: var(--dynamic-section-bg-2, #0d0d20);
   --section-text: #f1efff;
-  --section-sub: #a8a2c4;
+  --section-sub: var(--dynamic-card-muted, #a8a2c4);
   --section-card-bg: rgba(255, 255, 255, 0.035);
   --section-card-border: var(--primary-soft, var(--primary-soft));
-  --footer-bg: #060612;
-  --footer-text: #6b6487;
+  --footer-bg: var(--dynamic-footer-bg, #060612);
+  --footer-text: var(--dynamic-footer-text, #6b6487);
 
   --toggle-bg: rgba(255, 255, 255, 0.08);
   --toggle-active: var(--primary, var(--primary));

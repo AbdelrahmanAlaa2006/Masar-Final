@@ -259,9 +259,9 @@
 }
 
 .register-teacher-badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  color: #c084fc;
+  background: linear-gradient(135deg, var(--primary-soft, rgba(99, 102, 241, 0.2)), var(--secondary-soft, rgba(168, 85, 247, 0.2)));
+  border: 1px solid var(--primary, rgba(168, 85, 247, 0.4));
+  color: var(--primary, #c084fc);
   padding: 4px 12px;
   border-radius: 99px;
   font-size: 0.78rem;
@@ -360,6 +360,35 @@
   
   .register-full-width {
     grid-column: span 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .register-page-wrapper {
+    padding: 20px 12px;
+  }
+  
+  .register-container {
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+  }
+  
+  .register-form-col {
+    padding: 24px 16px;
+  }
+  
+  .register-form-col h2 {
+    font-size: 1.5rem;
+    margin-bottom: 6px;
+  }
+  
+  .register-form-col p.register-subtitle {
+    font-size: 0.88rem;
+    margin-bottom: 18px;
+  }
+  
+  .register-portrait-col {
+    display: none;
   }
 }
 
@@ -511,11 +540,11 @@ body:not(.dark) .register-portrait-gradient {
   background: linear-gradient(0deg, #f1f5f9 12%, rgba(241, 245, 249, 0.3) 50%, transparent 100%) !important;
 }
 
-body:not(.dark) .register-teacher-badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1)) !important;
-  border-color: rgba(168, 85, 247, 0.25) !important;
-  color: #7c3aed !important;
+body:not(.dark) .register-portrait-img {
+  opacity: 1 !important;
+  filter: contrast(1.05) brightness(1) !important;
 }
+
 
 body:not(.dark) .register-teacher-name {
   color: #0f172a !important;

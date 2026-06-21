@@ -38,6 +38,45 @@ export function applyTenantTheme(tenant) {
   const hoverColor = darkenColor(primary, 12)
   root.style.setProperty('--primary-hover', hoverColor)
 
+  // Dynamically compute dark mode theme colors from primary
+  const rgb = hexToRgb(primary)
+  if (rgb) {
+    // Mix with neutral slate dark background base (#030712 => rgb(3, 7, 18))
+    const bgR = Math.round(3 * 0.92 + rgb.r * 0.08)
+    const bgG = Math.round(7 * 0.92 + rgb.g * 0.08)
+    const bgB = Math.round(18 * 0.92 + rgb.b * 0.08)
+    const bgHex = rgbToHex(bgR, bgG, bgB)
+
+    // Mix with card neutral dark surface base (#0d1527 => rgb(13, 21, 39))
+    const cardR = Math.round(13 * 0.88 + rgb.r * 0.12)
+    const cardG = Math.round(21 * 0.88 + rgb.g * 0.12)
+    const cardB = Math.round(39 * 0.88 + rgb.b * 0.12)
+    const cardHex = rgbToHex(cardR, cardG, cardB)
+    const cardBgRgbStr = `rgba(${cardR}, ${cardG}, ${cardB}, 0.85)`
+
+    root.style.setProperty('--dynamic-background', bgHex)
+    root.style.setProperty('--dynamic-surface', cardHex)
+    root.style.setProperty('--dynamic-card', cardHex)
+    root.style.setProperty('--dynamic-border', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`)
+
+    root.style.setProperty('--dynamic-section-bg-1', bgHex)
+    root.style.setProperty('--dynamic-section-bg-2', darkenColor(bgHex, 3))
+    root.style.setProperty('--dynamic-footer-bg', darkenColor(bgHex, 6))
+
+    root.style.setProperty('--dynamic-card-bg', cardBgRgbStr)
+    root.style.setProperty('--dynamic-card-border', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.25)`)
+    root.style.setProperty('--dynamic-card-shadow', `0 24px 70px rgba(0, 0, 0, 0.45), 0 8px 24px ${primary}1a, 0 0 0 1px ${primary}26, inset 0 1px 0 rgba(255, 255, 255, 0.08)`)
+
+    root.style.setProperty('--dynamic-card-text', '#f8fafc')
+    root.style.setProperty('--dynamic-card-text-soft', '#cbd5e1')
+    root.style.setProperty('--dynamic-card-muted', '#94a3b8')
+    root.style.setProperty('--dynamic-remember-text', '#cbd5e1')
+    root.style.setProperty('--dynamic-footer-text', '#64748b')
+    root.style.setProperty('--dynamic-tab-inactive', '#94a3b8')
+
+    root.style.setProperty('--dynamic-tab-active-bg', `linear-gradient(135deg, ${primary}26, rgba(255, 255, 255, 0.05))`)
+  }
+
   // Update browser window tab title
   document.title = `${tenant.name} | منصة مسار التعليمية`
 
@@ -85,3 +124,34 @@ function darkenColor(hex, percent) {
 
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
 }
+
+/**
+ * Converts a hex color to RGB parts
+ * @param {string} hex 
+ * @returns {Object|null}
+ */
+function hexToRgb(hex) {
+  let cleanHex = hex.replace('#', '')
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map(c => c + c).join('')
+  }
+  const num = parseInt(cleanHex, 16)
+  if (isNaN(num)) return null
+  return {
+    r: (num >> 16) & 255,
+    g: (num >> 8) & 255,
+    b: num & 255
+  }
+}
+
+/**
+ * Converts RGB components to Hex format
+ * @param {number} r 
+ * @param {number} g 
+ * @param {number} b 
+ * @returns {string}
+ */
+function rgbToHex(r, g, b) {
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+}
+

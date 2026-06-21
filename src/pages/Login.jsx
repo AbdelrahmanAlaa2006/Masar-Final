@@ -495,7 +495,7 @@ export default function Login() {
             </button>
             <button onClick={() => {
               setParentPhoneInput(''); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
-            }} className="aa-btn aa-btn-ghost" style={{ color: '#a78bfa' }}>
+            }} className="aa-btn aa-btn-ghost" style={{ color: 'var(--primary, #a78bfa)' }}>
               {lang === 'ar' ? 'تقارير ولي الأمر' : 'Parent Reports'}
             </button>
             <button onClick={() => openAuth(false)} className="aa-btn aa-btn-ghost">{t.nav_signin}</button>
@@ -526,7 +526,7 @@ export default function Login() {
               </button>
               <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={() => {
                 setParentPhoneInput(''); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
-              }} style={{ background: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.25)', color: '#a78bfa' }}>
+              }} style={{ background: 'var(--primary-soft, rgba(99, 102, 241, 0.1))', borderColor: 'var(--primary, rgba(99, 102, 241, 0.25))', color: 'var(--primary, #a78bfa)' }}>
                 <i className="fas fa-chart-line" style={{ marginInlineEnd: 8 }}></i>
                 {lang === 'ar' ? 'تقارير ولي الأمر' : 'Parent Reports'}
               </button>

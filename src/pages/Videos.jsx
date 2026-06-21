@@ -13,6 +13,7 @@ import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import VideoComments from '../components/VideoComments'
 import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
+import { listPlaylists } from '@backend/playlistsApi'
 import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
@@ -93,6 +94,8 @@ export default function Videos() {
   })
 
   const [allVideos, setAllVideos] = useState([])
+  const [playlists, setPlaylists] = useState([])
+  const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [videoOverrides, setVideoOverrides] = useState(new Map()) // videoId -> {allowed, attempts}
@@ -149,8 +152,12 @@ export default function Videos() {
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await cached('videos', LIST_TTL, listVideos)
+      const [data, plist] = await Promise.all([
+        cached('videos', LIST_TTL, listVideos),
+        listPlaylists()
+      ])
       setAllVideos(data.map(shapeVideo))
+      setPlaylists(plist)
     } catch (err) {
       setLoadError(err.message || 'جاري التحميل...')
     } finally {
@@ -195,6 +202,65 @@ export default function Videos() {
     }
     return out
   }, [allVideos])
+
+  // Group active/accessible videos by Playlist
+  const playlistGroups = useMemo(() => {
+    const gradeVideos = videosByGrade[currentGrade] || []
+    if (gradeVideos.length === 0) return []
+
+    const grouped = []
+
+    // 1. Process playlists that are active (or all if admin)
+    const activePlaylists = playlists.filter(p => p.is_active || userRole === 'admin' || userRole === 'assistant')
+
+    for (const playlist of activePlaylists) {
+      const plistVideos = []
+      // The playlist_items are sorted by sort_order
+      const itemIds = (playlist.playlist_items || [])
+        .filter(item => item.content_type === 'video')
+        
+      for (const item of itemIds) {
+        const v = gradeVideos.find(vid => vid.id === item.content_id)
+        if (v) {
+          plistVideos.push(v)
+        }
+      }
+
+      if (plistVideos.length > 0) {
+        grouped.push({
+          id: playlist.id,
+          title: playlist.title,
+          description: playlist.description,
+          videos: plistVideos
+        })
+      }
+    }
+
+    // 2. Unassigned videos (General Syllabus)
+    const unassignedVideos = gradeVideos.filter(v => {
+      return !playlists.some(p => 
+        (p.playlist_items || []).some(pi => pi.content_type === 'video' && pi.content_id === v.id)
+      )
+    })
+
+    if (unassignedVideos.length > 0) {
+      grouped.push({
+        id: 'general',
+        title: 'مخطط المنهج العام',
+        description: 'الفيديوهات والمحاضرات العامة لمرحلتك الدراسية',
+        videos: unassignedVideos
+      })
+    }
+
+    return grouped
+  }, [playlists, videosByGrade, currentGrade, userRole])
+
+  const togglePlaylistExpanded = (playlistId) => {
+    setExpandedPlaylists(prev => ({
+      ...prev,
+      [playlistId]: prev[playlistId] === false ? true : false
+    }))
+  }
 
   // ── Load per-video quiz attempts & progress when player opens ─
   // Admins don't have progress/attempts of their own — skip entirely.
@@ -687,71 +753,124 @@ export default function Videos() {
               <i className="fas fa-triangle-exclamation"></i> {loadError}
             </div>
           ) : (
-            <div className="videos-grid" id="videosGrid">
-              {(videosByGrade[currentGrade] || []).map((video, index) => {
-                const expiry = effectiveExpiryFor(video)
-                const notExpired = !expiry || new Date() < expiry
-                // Card status reflects BOTH the toggle (allowed flag) and the
-                // expiry window. If either says "no", the dot turns red.
-                const isAvailable = notExpired && isVideoAllowed(video)
-                const hours = effectiveHoursFor(video)
-                const formattedExpiry = expiry ? expiry.toLocaleDateString('ar-EG', {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                  hour: '2-digit', minute: '2-digit'
-                }) : '—'
-
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }} id="videosGrid">
+              {playlistGroups.map((group) => {
+                const isExpanded = expandedPlaylists[group.id] !== false
                 return (
-                  <div
-                    key={video.id}
-                    className="vc-card"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                    onClick={() => openVideoPlayer(video)}
-                  >
-                    <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
-                      <span className="vc-status-dot" />
-                      <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
-                      {(userRole === 'admin' || userRole === 'assistant') && (
-                        <>
-                          <button className="vc-delete-btn" onClick={(e) => handleEditVideo(video, e)} style={{ marginInlineEnd: 6 }}>
-                            ✏️ تعديل
-                          </button>
-                          <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
-                            🗑 حذف
-                          </button>
-                        </>
-                      )}
+                  <div key={group.id} className="playlist-section" style={{
+                    background: 'var(--card-bg, #1e1e2f)',
+                    border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))',
+                    borderRadius: 16,
+                    overflow: 'hidden'
+                  }}>
+                    {/* Playlist Header Accordion Trigger */}
+                    <div
+                      onClick={() => togglePlaylistExpanded(group.id)}
+                      style={{
+                        padding: '16px 20px',
+                        background: 'rgba(124, 58, 237, 0.05)',
+                        borderBottom: isExpanded ? '1.5px solid var(--border-color, rgba(255,255,255,0.06))' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <i className={`fas ${group.id === 'general' ? 'fa-folder-open' : 'fa-list-check'}`} style={{ color: '#7c3aed', fontSize: '1.2rem' }}></i>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{group.title}</h3>
+                          {group.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{group.description}</p>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          background: 'rgba(124, 58, 237, 0.12)',
+                          color: '#a78bfa',
+                          padding: '3px 8px',
+                          borderRadius: 8,
+                          fontWeight: 'bold'
+                        }}>
+                          {group.videos.length} فيديو
+                        </span>
+                        <i className={`fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ color: '#a78bfa' }}></i>
+                      </div>
                     </div>
 
-                    <div className="vc-header">
-                      <div className="vc-play-btn">▶</div>
-                      <div className="vc-titles">
-                        <div className="vc-title">{video.title}</div>
-                        <div className="vc-desc">{video.description}</div>
-                      </div>
-                      <div className="vc-badge">{index + 1}</div>
-                    </div>
+                    {/* Videos Grid inside Playlist */}
+                    {isExpanded && (
+                      <div className="videos-grid" style={{ padding: 20 }}>
+                        {group.videos.map((video, index) => {
+                          const expiry = effectiveExpiryFor(video)
+                          const notExpired = !expiry || new Date() < expiry
+                          // Card status reflects BOTH the toggle (allowed flag) and the
+                          // expiry window. If either says "no", the dot turns red.
+                          const isAvailable = notExpired && isVideoAllowed(video)
+                          const hours = effectiveHoursFor(video)
+                          const formattedExpiry = expiry ? expiry.toLocaleDateString('ar-EG', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          }) : '—'
 
-                    <div className="vc-stats">
-                      <div className="vc-stat">
-                        <span className="vc-stat-icon">🎬</span>
-                        <span className="vc-stat-label">عدد الأجزاء</span>
-                        <span className="vc-stat-value">{video.totalParts} جزء</span>
-                      </div>
-                      <div className="vc-stat">
-                        <span className="vc-stat-icon">🕒</span>
-                        <span className="vc-stat-label">متاح لمدة</span>
-                        <span className="vc-stat-value">{hours} ساعة</span>
-                      </div>
-                    </div>
+                          return (
+                            <div
+                              key={video.id}
+                              className="vc-card"
+                              style={{ animationDelay: `${index * 0.05}s` }}
+                              onClick={() => openVideoPlayer(video)}
+                            >
+                              <div className={`vc-status-bar ${isAvailable ? 'vc-available' : 'vc-unavailable'}`}>
+                                <span className="vc-status-dot" />
+                                <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+                                {(userRole === 'admin' || userRole === 'assistant') && (
+                                  <>
+                                    <button className="vc-delete-btn" onClick={(e) => handleEditVideo(video, e)} style={{ marginInlineEnd: 6 }}>
+                                      ✏️ تعديل
+                                    </button>
+                                    <button className="vc-delete-btn" onClick={(e) => handleDeleteVideo(video, e)}>
+                                      🗑 حذف
+                                    </button>
+                                  </>
+                                )}
+                              </div>
 
-                    <div className="vc-footer">
-                      <span>⏳</span>
-                      <span>متاح حتى {formattedExpiry}</span>
-                    </div>
+                              <div className="vc-header">
+                                <div className="vc-play-btn">▶</div>
+                                <div className="vc-titles">
+                                  <div className="vc-title">{video.title}</div>
+                                  <div className="vc-desc">{video.description}</div>
+                                </div>
+                                <div className="vc-badge">{index + 1}</div>
+                              </div>
+
+                              <div className="vc-stats">
+                                <div className="vc-stat">
+                                  <span className="vc-stat-icon">🎬</span>
+                                  <span className="vc-stat-label">عدد الأجزاء</span>
+                                  <span className="vc-stat-value">{video.totalParts} جزء</span>
+                                </div>
+                                <div className="vc-stat">
+                                  <span className="vc-stat-icon">🕒</span>
+                                  <span className="vc-stat-label">متاح لمدة</span>
+                                  <span className="vc-stat-value">{hours} ساعة</span>
+                                </div>
+                              </div>
+
+                              <div className="vc-footer">
+                                <span>⏳</span>
+                                <span>متاح حتى {formattedExpiry}</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
-              {!loading && (videosByGrade[currentGrade] || []).length === 0 && (
+              {!loading && playlistGroups.length === 0 && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
                   <i className="fas fa-folder-open" style={{ fontSize: '2rem', color: '#a0aec0' }}></i>
                   <p>لا توجد فيديوهات في هذه المرحلة بعد</p>

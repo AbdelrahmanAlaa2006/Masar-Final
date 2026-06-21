@@ -257,8 +257,11 @@ export default function Home() {
         <h2 className="home-greeting-title">
           <span className="home-greeting-hi">أهلاً بك،</span>{" "}
           <span className="home-greeting-name">
-            {role === 'super_admin' ? 'مطورنا العزيز 💻' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
+            {role === 'super_admin' ? 'مطورنا العزيز' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
           </span>
+          {role === 'super_admin' && (
+            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: '#06b6d4', verticalAlign: 'middle' }}></i>
+          )}
         </h2>
         <p className="home-greeting-sub">
           {role === 'super_admin'
@@ -390,11 +393,14 @@ export default function Home() {
         <h2>
           <span className="name-highlight">
             {role === 'super_admin'
-              ? `شكرًا لجهودك يا مطورنا العزيز 💻`
+              ? 'شكرًا لجهودك يا مطورنا العزيز'
               : (role === 'admin' || role === 'assistant'
                 ? `شكرًا لجهودك يا ${username || 'المشرف'}`
                 : `يومك سعيد يا ${username || 'الطالب'}`)}
           </span>
+          {role === 'super_admin' && (
+            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: '#06b6d4', verticalAlign: 'middle' }}></i>
+          )}
         </h2>
         <div className="greeting-title-accent" />
         <p>

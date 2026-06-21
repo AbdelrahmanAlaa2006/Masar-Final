@@ -5,6 +5,7 @@ import { submitPayment, listMyPayments, listPayments, resolvePayment, getPayment
 import { listStudents } from '@backend/profilesApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
+import { invalidate as invalidateCache } from '../utils/cache'
 import './Payments.css'
 
 const GRADE_SHORT = {
@@ -110,11 +111,15 @@ export default function Payments() {
 
 
 
-  const loadHistory = async () => {
+  const loadHistory = async (forceRefresh = false) => {
     if (window.location.pathname !== '/payments') return
     if (!userId) return
     try {
       setLoadingHistory(true)
+      if (forceRefresh) {
+        invalidateCache('admin-payments')
+        invalidateCache(`student-payments-${userId}`)
+      }
       if (user?.role === 'admin' || user?.role === 'assistant') {
         const data = await listPayments()
         setPayments(data)
@@ -230,7 +235,7 @@ export default function Payments() {
         <AdminPaymentsReport 
           payments={payments} 
           loading={loadingHistory} 
-          onRefresh={loadHistory} 
+          onRefresh={() => loadHistory(true)} 
           config={activeConfig}
           onConfigChange={loadConfig}
           setPreviewUrl={setPreviewUrl}
