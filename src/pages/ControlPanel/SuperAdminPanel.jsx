@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '@backend/supabase'
 import { invalidateAll } from '../../utils/cache'
 import SeasonalThemePanel from './SeasonalThemePanel'
+import DevToolsViolationsPanel from './DevToolsViolationsPanel'
 
 export default function SuperAdminPanel({ onBack, flash }) {
   const [tenants, setTenants] = useState([])
@@ -350,6 +351,28 @@ export default function SuperAdminPanel({ onBack, flash }) {
       (u.phone || '').toLowerCase().includes(query)
     )
   }, [profiles, selectedTenantForManage, searchUserQuery])
+
+  if (activeSubSection === 'violations') {
+    return (
+      <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-shield-halved" style={{ color: '#ef4444' }}></i>
+              <span>سجلات الحماية الأمنية</span>
+            </h2>
+            <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>استعرض تفاصيل محاولات اختراق الحماية ومحاولات فتح أدوات المطور (DevTools) المسجلة أوتوماتيكيًا.</p>
+          </div>
+          <div>
+            <button onClick={() => setActiveSubSection(null)} className="cp-btn cp-btn-secondary">
+              رجوع للوحة السوبر أدمن
+            </button>
+          </div>
+        </div>
+        <DevToolsViolationsPanel onBack={() => setActiveSubSection(null)} flash={flash} />
+      </div>
+    )
+  }
 
   if (activeSubSection === 'seasons') {
     return (
@@ -756,6 +779,24 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   style={{ width: '100%', padding: '12px 14px', background: '#ef4444', color: '#fff', fontWeight: 'bold', justifyContent: 'center', borderRadius: 12, height: '44px', cursor: 'pointer' }}
                 >
                   تفريغ شامل لكافة المنصات (Global Wipe)
+                </button>
+              </div>
+
+              {/* Security Violations Widget */}
+              <div className="cp-sa-sidebar-card">
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
+                  <i className="fas fa-shield-halved"></i>
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--text-color)', margin: '0 0 8px' }}>سجلات الحماية الأمنية</h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.5' }}>
+                  عرض محاولات اختراق أدوات المطور (DevTools) المسجلة أوتوماتيكياً لحماية محتوى منصات المدرسين.
+                </p>
+                <button 
+                  onClick={() => setActiveSubSection('violations')}
+                  className="cp-btn cp-btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', border: '1px solid #ef4444', color: '#ef4444', height: '44px', cursor: 'pointer' }}
+                >
+                  عرض سجلات الاختراق
                 </button>
               </div>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 /* Track the global theme (body.dark class, managed by useTheme) so the
    modal can re-render when the user toggles themes while it's open. */
@@ -169,7 +170,7 @@ export default function ConfirmDeleteDialog({
     color: c.cancelText,
   }
 
-  return (
+  return createPortal(
     <div style={overlay} onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="cdd-title">
       {/* keyframes injected once per mount — cheap and avoids touching global css */}
       <style>{`
@@ -198,6 +199,7 @@ export default function ConfirmDeleteDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

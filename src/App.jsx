@@ -42,7 +42,7 @@ import { detectDevTools } from './utils/devtools'
 
 // SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
 // Set to false to disable them (not blocked).
-const ENABLE_DEVTOOLS_BLOCKER = false;
+const ENABLE_DEVTOOLS_BLOCKER = true;
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -284,10 +284,10 @@ function ProtectedRoute({ isLoggedIn, children }) {
 
   // Guard for inactive, suspended, archived, or graduated students: redirect to payments page
   const isStudentBlocked = user && user.role === 'student' && user.is_approved === true && (
-    user.is_active === false || 
-    user.status === 'inactive' || 
-    user.status === 'suspended' || 
-    user.status === 'archived' || 
+    user.is_active === false ||
+    user.status === 'inactive' ||
+    user.status === 'suspended' ||
+    user.status === 'archived' ||
     user.status === 'graduated'
   )
   if (isStudentBlocked) {
@@ -311,10 +311,10 @@ function PermissionRoute({ isLoggedIn, permission, children }) {
 
   // Guard for inactive, suspended, archived, or graduated students: redirect to payments page
   const isStudentBlocked = user && user.role === 'student' && user.is_approved === true && (
-    user.is_active === false || 
-    user.status === 'inactive' || 
-    user.status === 'suspended' || 
-    user.status === 'archived' || 
+    user.is_active === false ||
+    user.status === 'inactive' ||
+    user.status === 'suspended' ||
+    user.status === 'archived' ||
     user.status === 'graduated'
   )
   if (isStudentBlocked) {
@@ -390,9 +390,9 @@ function AppContent() {
       document.body.classList.remove('no-select')
       return // blocker is disabled
     }
-    const isAdmin = user?.role === 'admin' || user?.role === 'assistant'
+    const isAdmin = user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'super_admin'
     document.body.classList.toggle('no-select', !isAdmin)
-    if (isAdmin) return  // admins/assistants: no event blockers
+    if (isAdmin) return  // admins/assistants/super_admins: no event blockers
 
     // Form fields stay normal so students can type answers, edit their
     // profile, and paste into "writing sections" as requested.
@@ -447,8 +447,8 @@ function AppContent() {
       setIsDevToolsOpen(false)
       return
     }
-    // If the logged-in user is an admin or assistant, we bypass all detection!
-    if (user?.role === 'admin' || user?.role === 'assistant') {
+    // If the logged-in user is an admin, assistant or super_admin, we bypass all detection!
+    if (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'super_admin') {
       sessionStorage.removeItem('masar-devtools-blocked')
       setIsDevToolsOpen(false)
       return
@@ -541,7 +541,7 @@ function AppContent() {
     )
   }
 
-  if (isDevToolsOpen && ENABLE_DEVTOOLS_BLOCKER) {
+  if (isDevToolsOpen && ENABLE_DEVTOOLS_BLOCKER && user?.role !== 'admin' && user?.role !== 'assistant' && user?.role !== 'super_admin') {
     return <DevToolsBlocker />
   }
 

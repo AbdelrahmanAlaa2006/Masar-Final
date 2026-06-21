@@ -44,8 +44,9 @@ export default function Notifications() {
   const [open, setOpen] = useState(false)
   const [list, setList] = useState([])
   const [readIds, setReadIds] = useState(new Set())
-  const { user, role: userRole } = useAuth()
+  const { user, role: userRole, isAdmin, isAssistant } = useAuth()
   const userId = user?.id || null
+  const isStaff = isAdmin || isAssistant
   const [composeOpen, setComposeOpen] = useState(false)
   const [draft, setDraft] = useState({ title: '', message: '', level: 'warning', grade: 'all' })
   const [loading, setLoading] = useState(false)
@@ -54,7 +55,7 @@ export default function Notifications() {
   // Fetch notifications + my read state
   const refresh = async (uid) => {
     setLoading(true)
-    const cacheKey = userRole === 'admin' ? 'notifications:admin' : `notifications:student:${uid}`
+    const cacheKey = isStaff ? 'notifications:admin' : `notifications:student:${uid}`
     try {
       const [rows, reads] = await Promise.all([
         cached(cacheKey, NOTIF_TTL, () => listNotifications()),
@@ -118,7 +119,7 @@ export default function Notifications() {
 
   const sorted = useMemo(() => {
     let filtered = [...list]
-    if (userRole === 'admin') {
+    if (isStaff) {
       filtered = filtered.filter((n) => {
         // Discard student-specific notifications, unless they are targeted to this admin (userId)
         // or they are system-wide admin-only alerts (target_student is null)
@@ -224,7 +225,7 @@ export default function Notifications() {
 
     if (meta.kind === 'reveal' && meta.examId) {
       // Exam grades revealed
-      if (userRole === 'admin') {
+      if (isStaff) {
         target = '/exams-group-report'
         state = { examId: meta.examId }
       } else {
@@ -232,27 +233,27 @@ export default function Notifications() {
       }
     } else if (meta.kind === 'reveal_hw' && meta.homeworkId) {
       // Homework grades revealed
-      if (userRole === 'admin') {
+      if (isStaff) {
         target = '/homework-group-report'
         state = { homeworkId: meta.homeworkId }
       } else {
         target = '/homework-report'
       }
     } else if (meta.kind === 'password_reset_request') {
-      if (userRole === 'admin') {
+      if (isStaff) {
         target = '/control-panel?section=resets'
       }
     } else if (meta.kind === 'devtools_violation') {
-      if (userRole === 'admin') {
+      if (isStaff) {
         target = '/control-panel?section=violations'
         deleteOne(n.id) // DevTools violations are deleted once read to avoid UI clutter & DB requests
       }
     } else if (meta.kind === 'student_chat_message') {
-      if (userRole === 'admin') {
+      if (isStaff) {
         target = `/control-panel?section=chats&studentId=${meta.studentId}`
       }
     } else if (meta.kind === 'admin_chat_message') {
-      if (userRole !== 'admin') {
+      if (!isStaff) {
         target = '/chat'
       }
     }
@@ -311,7 +312,7 @@ export default function Notifications() {
           <div className="notif-panel-head">
             <strong>الإشعارات</strong>
             <div className="notif-panel-actions">
-              {userRole === 'admin' && (
+              {isAdmin && (
                 <button
                   type="button"
                   className="notif-compose-toggle"
@@ -329,7 +330,7 @@ export default function Notifications() {
             </div>
           </div>
 
-          {userRole === 'admin' && composeOpen && (
+          {isAdmin && composeOpen && (
             <form className="notif-compose" onSubmit={sendNotification}>
               <input
                 type="text"
@@ -409,20 +410,20 @@ export default function Notifications() {
                       <span className="notif-time">{formatWhen(n.created_at)}</span>
                     </div>
                     {n.message && <div className="notif-message">{n.message}</div>}
-                    {userRole === 'admin' && (
+                    {isStaff && (
                       <span className="notif-grade-tag">
                         <i className="fas fa-users"></i>
                         {targetLabel(n)}
                       </span>
                     )}
-                    {userRole !== 'admin' && n.meta && (n.meta.kind === 'reveal' || n.meta.kind === 'reveal_hw') && (
+                    {!isStaff && n.meta && (n.meta.kind === 'reveal' || n.meta.kind === 'reveal_hw') && (
                       <div className="notif-nav-hint">
                         <i className="fas fa-external-link-alt"></i>
                         اضغط للعرض في التقارير
                       </div>
                     )}
                   </div>
-                  {userRole === 'admin' && (
+                  {isAdmin && (
                     <button
                       type="button"
                       className="notif-delete"

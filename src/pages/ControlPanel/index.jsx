@@ -498,8 +498,8 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
-                {/* Security Violations (Primary Admin Only) */}
-                {user?.role === 'admin' && (
+                {/* Security Violations (Admin & Super Admin) */}
+                {(user?.role === 'admin' || user?.role === 'super_admin') && (
                   <SectionCard
                     icon="fa-shield-halved"
                     accent="red"
