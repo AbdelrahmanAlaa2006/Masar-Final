@@ -51,17 +51,28 @@ export function TenantProvider({ children }) {
           return data || []
         })
         if (allTenants) {
-          setAvailableTenants(allTenants)
+          const mapped = allTenants.map(t => {
+            if (t.slug === 'sherif-english' || t.slug === 'waled-english') {
+              return { slug: 'waled-english', name: 'The Miracle in English' }
+            }
+            return t
+          })
+          setAvailableTenants(mapped)
         }
 
         // 3. Fetch tenant config from database (cached for 10 minutes)
+        let querySlug = candidate
+        if (candidate === 'waled-english') {
+          querySlug = 'sherif-english'
+        }
+
         const tenantData = await cached(`tenant-config:${candidate}`, 10 * 60 * 1000, async () => {
           let resolvedData = null
-          if (candidate && candidate !== 'default') {
+          if (querySlug && querySlug !== 'default') {
             const { data, error } = await supabase
               .from('tenants')
               .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config')
-              .or(`slug.eq.${candidate},domain.eq.${candidate}`)
+              .or(`slug.eq.${querySlug},domain.eq.${querySlug},slug.eq.${candidate},domain.eq.${candidate}`)
               .maybeSingle()
             if (!error && data) {
               resolvedData = data
@@ -92,6 +103,15 @@ export function TenantProvider({ children }) {
               }
             }
           }
+
+          // Decorate english tenant dynamically to swap brand name & colors
+          if (resolvedData && (resolvedData.slug === 'sherif-english' || resolvedData.slug === 'waled-english' || resolvedData.config?.subject === 'english')) {
+            resolvedData.name = 'The Miracle in English'
+            resolvedData.slug = 'waled-english'
+            resolvedData.primary_color = '#1b439c'
+            resolvedData.secondary_color = '#df8d27'
+          }
+
           return resolvedData
         })
 

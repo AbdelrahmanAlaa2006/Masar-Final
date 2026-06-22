@@ -657,40 +657,40 @@ export const tenantThemes = {
   english: {
     themeClass: 'aa-english-theme',
     canvasFont: 'italic "Playfair Display", serif',
-    primaryColor: '#ec4899',
-    secondaryColor: '#db2777',
-    particleColors: ['#ec4899', '#db2777', '#f472b6', '#fbcfe8', '#be185d', '#9d174d'],
+    primaryColor: '#1b439c',
+    secondaryColor: '#df8d27',
+    particleColors: ['#1b439c', '#df8d27', '#3b82f6', '#f59e0b', '#60a5fa', '#fbbf24'],
     formulas: ['Hello', 'World', 'Verb', 'Noun', 'English', 'A', 'B', 'C', 'Grammar', 'Poetry', 'Drama'],
     getLineColor: (theme, alpha) => {
       return theme === 'dark'
-        ? `rgba(244, 114, 182, ${alpha * 0.22})`
-        : `rgba(236, 72, 153, ${alpha * 0.15})`
+        ? `rgba(91, 194, 231, ${alpha * 0.22})`
+        : `rgba(27, 67, 156, ${alpha * 0.15})`
     },
     drawCustomShape: () => false,
     generateCustomShape: () => 'formula',
     logoUrl: null,
     branding: {
-      brand_short: { ar: 'منصة اللغة الإنجليزية', en: 'English Platform' },
-      hero_title_a: { ar: 'اللغة الإنجليزية', en: 'English Language' },
-      hero_title_b: { ar: 'اتقان الطلاقة والقواعد', en: 'Fluency & Grammar' },
+      brand_short: { ar: 'The Miracle', en: 'The Miracle' },
+      hero_title_a: { ar: 'The Miracle', en: 'The Miracle' },
+      hero_title_b: { ar: 'In English', en: 'In English' },
       hero_sub: {
-        ar: 'منصة تعليمية متخصصة في اللغة الإنجليزية - مراجعات تفاعلية وطرق حديثة لشرح القواعد والنصوص الأدبية بيسر.',
-        en: 'An educational platform specializing in English - interactive reviews and modern methods to explain grammar and literature.'
+        ar: 'رؤية جديدة .. طرق جديدة .. بداية جديدة. منصة الأستاذ وليد أحمد فوزي لتعليم اللغة الإنجليزية للثانوية العامة.',
+        en: "Mr. Waled Ahmed Fawzy's platform for secondary stage English education - new vision, new methods, new beginning."
       }
     },
     teacher: {
-      name: { ar: 'شريف إنجليزي', en: 'Sherif English' },
+      name: { ar: 'وليد أحمد فوزي', en: 'Waled Ahmed Fawzy' },
       role: { ar: 'خبير اللغة الإنجليزية للثانوية العامة', en: 'English Language Expert' },
       bio: {
-        ar: 'تبسيط شامل لمنهج اللغة الإنجليزية، القواعد والنصوص والترجمة، باستخدام طرق تعليمية حديثة وممتعة.',
-        en: 'Comprehensive tutoring of the English curriculum, grammar, and translation with modern methodologies.'
+        ar: 'رؤية جديدة.. طرق جديدة.. بداية جديدة. تبسيط شامل لمنهج اللغة الإنجليزية، القواعد والنصوص والترجمة، باستخدام طرق تعليمية تفاعلية وحديثة تضمن الدرجة النهائية.',
+        en: 'New vision.. new methods.. new beginning. Comprehensive explanation of the English curriculum, grammar, and translation with modern interactive methodologies for guaranteed top marks.'
       },
       quote: {
-        ar: '“English is not just a subject, it is a global bridge to your future career and dreams.”',
-        en: '“English is not just a subject, it is a global bridge to your future career and dreams.”'
+        ar: '«السر ليس في الحفظ، بل في امتلاك المفتاح الحقيقي لفهم اللغة والتميز بها.»',
+        en: '“The secret is not in memorization, but in possessing the real key to understanding and mastering the language.”'
       },
-      image_base: '/images/profile.png',
-      image_hover: '/images/me.png',
+      image_base: '/images/waled-fawzy-base.png',
+      image_hover: '/images/waled-fawzy-hover.png',
       experience: { ar: '+15', en: '+15' },
       students_count: { ar: '+5,000', en: '+5,000' },
       satisfaction: { ar: '99%', en: '99%' },
@@ -700,26 +700,26 @@ export const tenantThemes = {
     },
     socials: {
       facebook: 'https://www.facebook.com',
-      whatsapp: 'https://wa.me/',
+      whatsapp: 'https://wa.me/201005387099',
       instagram: 'https://www.instagram.com',
       youtube: 'https://www.youtube.com',
       tiktok: 'https://www.tiktok.com'
     },
     location: {
-      kicker: { ar: 'تواصل معنا', en: 'Contact us' },
-      title: { ar: 'موقع السنتر', en: 'Our Location' },
+      kicker: { ar: 'مقرنا السنتر الرئيسي', en: 'Our main center' },
+      title: { ar: 'موقع السنتر', en: 'Center Location' },
       description: {
-        ar: 'مقرنا الرئيسي بدمنهور للمحاضرات وورش العمل.',
-        en: 'Our main center in Damanhour for lectures and workshops.'
+        ar: 'دمنهور- خلف تشاو مول - ش توب جيم امام صيدلية عمر زكريا.',
+        en: 'Damanhour - Behind Chao Mall - Top Gym Street - In front of Omar Zakaria Pharmacy.'
       },
       address: { ar: 'دمنهور، البحيرة', en: 'Damanhour, Beheira' },
       country: { ar: 'جمهورية مصر العربية', en: 'Egypt' },
       map_iframe_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000',
-      phone: '+20 100 000 0000',
+      phone: '01005387099 - 01025684017',
       hours_days: { ar: 'السبت - الخميس', en: 'Sat - Thu' },
-      hours_time: { ar: '٩ صباحاً - ٩ مساءً', en: '9 AM - 9 PM' },
+      hours_time: { ar: '١٢ مساءً - ٩ مساءً', en: '12 PM - 9 PM' },
       directions_link: 'https://maps.google.com',
-      whatsapp_link: 'https://wa.me/201000000000'
+      whatsapp_link: 'https://wa.me/201005387099'
     }
   },
   humanities: {

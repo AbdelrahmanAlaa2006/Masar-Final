@@ -73,3 +73,52 @@
 
 
 
+/* ─────────── 5. ENGLISH THEME (english) ─────────── */
+
+.aa-page.aa-english-theme {
+  --background: #fdfaf2 !important; /* Soft warm cream background */
+  --surface: #f7edd4 !important; /* Slightly darker cream */
+  --card: #ffffff !important;
+  --primary: #1b439c !important; /* Deep royal blue primary */
+  --secondary: #df8d27 !important; /* Gold/orange secondary */
+  
+  --primary-glow: rgba(27, 67, 156, 0.25) !important;
+  --primary-soft: rgba(27, 67, 156, 0.1) !important;
+  --btn-from: #1b439c !important;
+  --btn-to: #2563eb !important;
+  --btn-shadow: 0 10px 24px rgba(27, 67, 156, 0.25) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(27, 67, 156, 0.45) !important;
+  
+  --foreground: #0f172a !important;
+  --card-foreground: #1e293b !important;
+  --ink: #0f172a !important;
+  --muted-foreground: #475569 !important;
+  --border: rgba(27, 67, 156, 0.12) !important;
+}
+
+.dark .aa-page.aa-english-theme {
+  --background: #0b1224 !important; /* Deep navy background from image */
+  --surface: #121d33 !important; /* Navy card surface */
+  --card: #17243f !important; /* Lighter navy card content */
+  
+  --primary: #5bc2e7 !important; /* Light blue from image */
+  --secondary: #df972c !important; /* Orange-gold from image */
+  
+  --primary-glow: rgba(91, 194, 231, 0.3) !important;
+  --primary-soft: rgba(91, 194, 231, 0.15) !important;
+  --btn-from: #5bc2e7 !important;
+  --btn-to: #3b82f6 !important;
+  --btn-shadow: 0 10px 24px rgba(91, 194, 231, 0.35) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(91, 194, 231, 0.5) !important;
+  
+  --foreground: #f1f5f9 !important;
+  --card-foreground: #cbd5e1 !important;
+  --ink: #f8fafc !important;
+  --muted-foreground: #94a3b8 !important;
+  --border: rgba(91, 194, 231, 0.18) !important;
+}
+
+
+
+
+
