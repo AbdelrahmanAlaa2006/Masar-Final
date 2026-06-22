@@ -17,6 +17,7 @@ import {
   dbToUiGrade,
 } from '@backend/homeworksApi'
 import { uploadHomeworkPdf, deleteR2Object } from '@backend/r2'
+import { listStudentContentAccess } from '@backend/packagesApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { listPlaylists } from '@backend/playlistsApi'
 
@@ -40,6 +41,7 @@ const PREPS = [
   { id: 'first-sec', nameAr: 'الصف الأول الثانوي', nameEn: 'First Sec', icon: 'fa-graduation-cap', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
   { id: 'second-sec', nameAr: 'الصف الثاني الثانوي', nameEn: 'Second Sec', icon: 'fa-user-graduate', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
   { id: 'third-sec', nameAr: 'الصف الثالث الثانوي', nameEn: 'Third Sec', icon: 'fa-award', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  { id: 'packages', nameAr: 'باقات مدفوعة 📦', nameEn: 'Paid Packages', icon: 'fa-box', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' }
 ]
 
 const PLACEHOLDER_COVER =
@@ -90,9 +92,10 @@ export default function Homework() {
   const { isGradeEnabled } = useTenant()
   const userId = user?.id || null
 
-  const filteredPreps = PREPS.filter(
-    p => isGradeEnabled(uiToDbGrade(p.id) || p.id)
-  )
+  const filteredPreps = [
+    ...PREPS.filter(p => p.id !== 'packages' && isGradeEnabled(uiToDbGrade(p.id) || p.id)),
+    ...(userRole === 'admin' || userRole === 'assistant' ? [PREPS.find(p => p.id === 'packages')] : [])
+  ].filter(Boolean)
 
   const [grade, setGrade] = useState(() => {
     if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
@@ -100,6 +103,7 @@ export default function Homework() {
     }
     return null
   })
+  const [allowedContentIds, setAllowedContentIds] = useState(new Set())
   const [rows, setRows] = useState([])
   const [playlists, setPlaylists] = useState([])
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
@@ -150,6 +154,24 @@ export default function Homework() {
   }
   useEffect(() => { refresh() }, [])
 
+  useEffect(() => {
+    if (!userId) return
+    if (userRole === 'admin' || userRole === 'assistant') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const access = await listStudentContentAccess(userId)
+        if (!cancelled) {
+          const ids = new Set(access.filter(a => a.content_type === 'homework').map(a => a.content_id))
+          setAllowedContentIds(ids)
+        }
+      } catch (err) {
+        console.error('Failed to load content access:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [userId])
+
   // Load submission status for ALL homeworks the student can see, in one shot.
   // Admins don't have submissions of their own — skip entirely.
   useEffect(() => {
@@ -169,7 +191,8 @@ export default function Homework() {
   const homeworks = useMemo(() => {
     const grouped = {
       first: [], second: [], third: [],
-      'first-sec': [], 'second-sec': [], 'third-sec': []
+      'first-sec': [], 'second-sec': [], 'third-sec': [],
+      packages: []
     }
     if (!Array.isArray(rows)) return grouped
     for (const r of rows) {
@@ -520,7 +543,7 @@ export default function Homework() {
                               key={hw.id}
                               hw={hw}
                               isAdmin={userRole === 'admin' || userRole === 'assistant'}
-                              isInactive={userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false}
+                              isInactive={userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false && !allowedContentIds.has(hw.id)}
                               submission={submissions[hw.id] || null}
                               onOpen={() => {
                                 if (hw.pdf_url) setPdfViewer({ url: hw.pdf_url, title: hw.title })

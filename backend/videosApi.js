@@ -19,7 +19,20 @@ export async function listVideos() {
     `)
     .order('created_at', { ascending: false })
   if (error) throw error
-  const rows = data || []
+  let rows = data || []
+
+  // Package-level gating for student role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile && profile.role === 'student') {
+      const { listStudentContentAccess } = await import('./packagesApi')
+      const access = await listStudentContentAccess(user.id)
+      const allowedVideoIds = new Set(access.filter(a => a.content_type === 'video').map(a => a.content_id))
+      rows = rows.filter(v => v.grade !== 'packages' || allowedVideoIds.has(v.id))
+    }
+  }
+
   for (const v of rows) {
     v.video_parts = (v.video_parts || []).sort((a, b) => a.part_index - b.part_index)
     // Back-compat: if an old row only has youtube_url, derive the id here.

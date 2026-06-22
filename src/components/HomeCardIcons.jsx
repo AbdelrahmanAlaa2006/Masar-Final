@@ -102,3 +102,17 @@ export function ExamsIcon(props) {
     </svg>
   )
 }
+
+/* Packages — a ribbon-tied gift box / bundle representing a package. */
+export function PackagesIcon(props) {
+  return (
+    <svg {...SHARED} aria-hidden="true" {...props}>
+      <rect x="22" y="34" width="52" height="42" rx="4" {...PRIMARY} />
+      <path d="M18 24 H 78 V 34 H 18 Z" {...PRIMARY} />
+      <path d="M48 24 V 76" {...ACCENT} strokeWidth="3" />
+      <path d="M18 45 H 78" {...ACCENT} strokeWidth="3" opacity="0.6" />
+      <path d="M48 24 C 38 14, 48 10, 48 24 C 48 10, 58 14, 48 24" {...ACCENT} fill="none" strokeWidth="2.5" />
+    </svg>
+  )
+}
+

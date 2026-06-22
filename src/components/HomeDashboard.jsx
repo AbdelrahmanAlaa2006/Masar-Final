@@ -240,40 +240,64 @@ function StudentDashboard() {
           exams: completedExs,
         })
 
-        // 2. Resolve "Next/Upcoming Exam"
-        // Find the newest exam available for this student's grade that they have NOT completed yet
-        const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
-          supabase
-            .from('exams')
-            .select('id, title, created_at, available_hours')
-            .eq('grade', userGrade)
-            .order('created_at', { ascending: false })
-            .then((r) => { if (r.error) throw r.error; return r.data || [] })
-        )
+        // 2. Query scheduled_events first
+        const nowIso = new Date().toISOString()
+        const { data: dbEvents } = await supabase
+          .from('scheduled_events')
+          .select('id, title, event_type, starts_at')
+          .eq('grade', userGrade)
+          .gte('starts_at', nowIso)
+          .order('starts_at', { ascending: true })
+          .limit(1)
 
         if (cancelled) return
 
-        if (dbExams && dbExams.length > 0) {
-          const nextExam = dbExams.find(e => !completedExs.has(e.id))
-          if (nextExam) {
-            const createdTime = new Date(nextExam.created_at).getTime()
-            const availableHours = nextExam.available_hours || 72
-            const availableUntil = createdTime + availableHours * 60 * 60 * 1000
-            
-            if (availableUntil > Date.now()) {
-              setUpcoming({
-                id: nextExam.id,
-                title: nextExam.title,
-                at: new Date(availableUntil).toISOString()
-              })
+        if (dbEvents && dbEvents.length > 0) {
+          const nextEvent = dbEvents[0]
+          setUpcoming({
+            id: nextEvent.id,
+            title: nextEvent.title,
+            event_type: nextEvent.event_type,
+            at: nextEvent.starts_at,
+            isScheduledEvent: true
+          })
+        } else {
+          // Fallback: Resolve "Next/Upcoming Exam" from the old exams system
+          const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
+            supabase
+              .from('exams')
+              .select('id, title, created_at, available_hours')
+              .eq('grade', userGrade)
+              .order('created_at', { ascending: false })
+              .then((r) => { if (r.error) throw r.error; return r.data || [] })
+          )
+
+          if (cancelled) return
+
+          if (dbExams && dbExams.length > 0) {
+            const nextExam = dbExams.find(e => !completedExs.has(e.id))
+            if (nextExam) {
+              const createdTime = new Date(nextExam.created_at).getTime()
+              const availableHours = nextExam.available_hours || 72
+              const availableUntil = createdTime + availableHours * 60 * 60 * 1000
+              
+              if (availableUntil > Date.now()) {
+                setUpcoming({
+                  id: nextExam.id,
+                  title: nextExam.title,
+                  event_type: 'exam',
+                  at: new Date(availableUntil).toISOString(),
+                  isScheduledEvent: false
+                })
+              } else {
+                setUpcoming(null)
+              }
             } else {
               setUpcoming(null)
             }
           } else {
             setUpcoming(null)
           }
-        } else {
-          setUpcoming(null)
         }
       } catch (err) {
         console.error('Error loading live student dashboard stats:', err)
@@ -285,6 +309,41 @@ function StudentDashboard() {
 
   const lastItem = recentNav[0]
   const countdown = useCountdown(upcoming?.at)
+
+  const cardTitle = useMemo(() => {
+    if (!upcoming) return 'الامتحان القادم'
+    switch (upcoming.event_type) {
+      case 'video': return 'المحاضرة القادمة 🎥'
+      case 'homework': return 'الواجب القادم 📖'
+      case 'exam': return 'الامتحان القادم 📝'
+      case 'payment': return 'موعد الدفع القادم 💳'
+      case 'announcement': return 'تنبيه هام 🔔'
+      default: return 'الفعالية القادمة 📅'
+    }
+  }, [upcoming])
+
+  const cardIcon = useMemo(() => {
+    if (!upcoming) return 'fa-hourglass-half'
+    switch (upcoming.event_type) {
+      case 'video': return 'fa-video'
+      case 'homework': return 'fa-clipboard-list'
+      case 'exam': return 'fa-file-signature'
+      case 'payment': return 'fa-credit-card'
+      case 'announcement': return 'fa-bullhorn'
+      default: return 'fa-calendar-days'
+    }
+  }, [upcoming])
+
+  const linkInfo = useMemo(() => {
+    if (!upcoming) return { to: '/exams', label: 'استعد الآن' }
+    switch (upcoming.event_type) {
+      case 'video': return { to: '/videos', label: 'شاهد الآن' }
+      case 'homework': return { to: '/homework', label: 'افتح الواجب' }
+      case 'exam': return { to: '/exams', label: 'استعد الآن' }
+      case 'payment': return { to: '/payments', label: 'تفاصيل الدفع' }
+      default: return { to: '/shop', label: 'افتح المتجر' }
+    }
+  }, [upcoming])
 
   return (
     <section className="hdash hdash-student">
@@ -329,8 +388,8 @@ function StudentDashboard() {
       </WidgetCard>
 
       <WidgetCard
-        icon="fa-hourglass-half"
-        title="الامتحان القادم"
+        icon={cardIcon}
+        title={cardTitle}
         accent="amber"
       >
         {upcoming && countdown ? (
@@ -342,12 +401,12 @@ function StudentDashboard() {
               <CountCell value={countdown.minutes} label="دقيقة" />
               <CountCell value={countdown.seconds} label="ثانية" />
             </div>
-            <Link to="/exams" className="hdash-countdown-cta">
-              استعد الآن <i className="fas fa-arrow-left"></i>
+            <Link to={linkInfo.to} className="hdash-countdown-cta">
+              {linkInfo.label} <i className="fas fa-arrow-left"></i>
             </Link>
           </div>
         ) : (
-          <EmptyHint icon="fa-calendar-check" text="لا توجد امتحانات مجدولة حاليًا" />
+          <EmptyHint icon="fa-calendar-check" text="لا توجد محاضرات أو امتحانات مجدولة حالياً" />
         )}
       </WidgetCard>
     </section>

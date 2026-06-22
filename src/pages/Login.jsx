@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { listPackages } from '@backend/packagesApi'
 import { useTenant } from '../contexts/TenantContext'
 import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
@@ -75,7 +76,7 @@ const translations = {
 }
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, isLoggedIn, user } = useAuth()
   const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled } = useTenant()
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
@@ -105,6 +106,7 @@ export default function Login() {
 
   // NEW: auth modal
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [activePackages, setActivePackages] = useState([])
 
   // Parent Reports Lookup States
   const [showParentModal, setShowParentModal] = useState(false)
@@ -218,6 +220,39 @@ export default function Login() {
     if (theme === 'dark') document.body.classList.add('dark')
     else document.body.classList.remove('dark')
   }, [theme])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const pkgs = await listPackages()
+        if (!cancelled) {
+          const isStaff = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'assistant'
+          const studentGrade = user?.grade || null
+          const active = pkgs.filter(p => {
+            if (!p.is_active) return false
+            if (isLoggedIn && !isStaff && studentGrade) {
+              return p.grade === studentGrade
+            }
+            return true
+          })
+          setActivePackages(active)
+        }
+      } catch (err) {
+        console.error('Failed to load packages for landing page:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isLoggedIn, user])
+
+  const handleBuyClick = (pkg) => {
+    if (isLoggedIn) {
+      navigate(`/shop?packageId=${pkg.id}`)
+    } else {
+      localStorage.setItem('pendingCheckoutPkgId', pkg.id)
+      setShowAuthModal(true)
+    }
+  }
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -388,7 +423,13 @@ export default function Login() {
       else localStorage.removeItem('masaar-remembered-phone')
       clearFailures()
       showSuccessMessage()
-      setTimeout(() => { login(response.token, response.user); window.location.href = '/' }, 1500)
+      const pendingPkg = localStorage.getItem('pendingCheckoutPkgId')
+      if (pendingPkg) {
+        localStorage.removeItem('pendingCheckoutPkgId')
+        setTimeout(() => { login(response.token, response.user); window.location.href = '/shop?packageId=' + pendingPkg }, 1500)
+      } else {
+        setTimeout(() => { login(response.token, response.user); window.location.href = '/' }, 1500)
+      }
     } catch (err) {
       console.error('Login error:', err); recordFailure()
       const cd = getCooldownRemaining()
@@ -629,6 +670,71 @@ export default function Login() {
           </aside>
         </div>
       </section>
+
+      {/* ─────────── PACKAGES SHOWCASE SECTION ─────────── */}
+      {activePackages.length > 0 && (
+        <section id="packages" className="login-packages-showcase">
+          <div className="section-inner">
+            <h2 className="section-heading">
+              {lang === 'ar' ? 'الباقات المتاحة حالياً 📦' : 'Currently Available Packages 📦'}
+            </h2>
+            <p className="section-sub">
+              {lang === 'ar' 
+                ? 'اختر باقتك المفضلة وابدأ التعلم الآن مع أفضل المميزات والدعم المستمر.' 
+                : 'Choose your favorite package and start learning now with premium features.'}
+            </p>
+            
+            <div className="landing-packages-grid">
+              {activePackages.map((pkg, idx) => {
+                const itemsCount = pkg.package_items?.length || 0;
+                const itemsCountLabel = lang === 'ar' ? `${itemsCount} عناصر` : `${itemsCount} items`;
+                return (
+                  <div 
+                    key={pkg.id} 
+                    className="landing-package-card"
+                    style={{ animationDelay: `${idx * 0.1}s` }}
+                  >
+                    <div className="landing-package-image" style={{ background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+                      {pkg.thumbnail ? (
+                        <img 
+                          src={pkg.thumbnail} 
+                          alt={pkg.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                          className="landing-pkg-img"
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #7c3aed, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-box-open" style={{ fontSize: '2.5rem', color: '#fff', opacity: 0.8 }}></i>
+                        </div>
+                      )}
+                      <span className="landing-package-badge">
+                        {itemsCountLabel}
+                      </span>
+                    </div>
+                    <div className="landing-package-body">
+                      <h3>{pkg.title}</h3>
+                      <p>{pkg.description || (lang === 'ar' ? 'لا يوجد وصف مضاف لهذه الباقة.' : 'No description available for this package.')}</p>
+                      
+                      <div className="landing-package-footer">
+                        <div className="landing-package-price">
+                          <span className="price-num">{pkg.price}</span>
+                          <span className="price-curr">{lang === 'ar' ? ' ج.م' : ' EGP'}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleBuyClick(pkg)}
+                          className="landing-package-btn"
+                        >
+                          {lang === 'ar' ? 'اشترك الآن 🚀' : 'Subscribe Now 🚀'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ─────────── MARKETING SECTIONS ─────────── */}
       <section id="features" className="login-features">

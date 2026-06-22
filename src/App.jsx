@@ -29,6 +29,7 @@ const Payments = lazy(() => import('./pages/Payments'))
 const StudentChat = lazy(() => import('./pages/StudentChat'))
 const PublicReport = lazy(() => import('./pages/PublicReport'))
 const Shop = lazy(() => import('./pages/Shop'))
+const Packages = lazy(() => import('./pages/Packages'))
 
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
@@ -580,6 +581,7 @@ function AppContent() {
             <Route path="/exam-taking" element={isFeatureEnabled('exams') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute> : <Navigate to="/" replace />} />
             <Route path="/videos" element={isFeatureEnabled('videos') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute> : <Navigate to="/" replace />} />
             <Route path="/shop" element={isFeatureEnabled('payments') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Shop /></ProtectedRoute> : <Navigate to="/" replace />} />
+            <Route path="/packages" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Packages /></ProtectedRoute>} />
             <Route path="/payments" element={isFeatureEnabled('payments') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute> : <Navigate to="/" replace />} />
 
             <Route path="/chat" element={isFeatureEnabled('chat') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute> : <Navigate to="/" replace />} />

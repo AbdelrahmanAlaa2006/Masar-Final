@@ -2567,3 +2567,202 @@ body.dark .auth-modal-close:hover {
   margin: 0 auto;
   max-width: 200px;
 }
+
+/* --- Landing Page Packages Showcase --- */
+.login-packages-showcase {
+  padding: 80px 0;
+  background: #f8fafc;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Tajawal', sans-serif;
+}
+
+body.dark .login-packages-showcase {
+  background: #0f172a;
+}
+
+.login-packages-showcase .section-heading {
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--card-title-from, #7c3aed), var(--card-title-to, #2563eb));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: #7c3aed; /* Fallback for browsers that don't support text clipping */
+}
+
+.login-packages-showcase .section-sub {
+  text-align: center;
+  font-size: 1.05rem;
+  color: #64748b;
+  margin-bottom: 40px;
+}
+
+body.dark .login-packages-showcase .section-sub {
+  color: #94a3b8;
+}
+
+.landing-packages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.landing-package-card {
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: landingFadeInUp 0.6s forwards;
+}
+
+body.dark .landing-package-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.landing-package-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+body.dark .landing-package-card:hover {
+  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.landing-package-image {
+  height: 190px;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.landing-package-card:hover .landing-package-image {
+  filter: brightness(1.05);
+}
+
+.landing-package-card:hover .landing-pkg-img {
+  transform: scale(1.06);
+}
+
+.landing-package-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.landing-package-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  text-align: right;
+}
+
+.landing-package-body h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+  transition: color 0.3s;
+}
+
+body.dark .landing-package-body h3 {
+  color: #f8fafc;
+}
+
+.landing-package-card:hover .landing-package-body h3 {
+  color: #7c3aed;
+}
+
+.landing-package-body p {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+  flex-grow: 1;
+}
+
+body.dark .landing-package-body p {
+  color: #cbd5e1;
+}
+
+.landing-package-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 18px;
+  margin-top: auto;
+}
+
+body.dark .landing-package-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.landing-package-price {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+body.dark .landing-package-price {
+  color: #f8fafc;
+}
+
+.landing-package-price .price-num {
+  font-size: 1.5rem;
+}
+
+.landing-package-price .price-curr {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.landing-package-btn {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+}
+
+.landing-package-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35);
+  filter: brightness(1.1);
+}
+
+@keyframes landingFadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

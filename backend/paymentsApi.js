@@ -194,9 +194,39 @@ export async function resolvePayment(paymentId, { status, adminNotes, adminId, s
     console.error('Failed to create payment resolution notification:', err)
   }
 
+  // If this payment is bound to a package, update the package purchase status to trigger access grant
+  if (data.package_id) {
+    try {
+      const { error: pkgErr } = await supabase
+        .from('package_purchases')
+        .update({
+          payment_status: status,
+          approved_by: adminId,
+          approved_at: new Date().toISOString()
+        })
+        .eq('student_id', studentId)
+        .eq('package_id', data.package_id)
+        .eq('payment_status', 'pending')
+
+      if (pkgErr) {
+        console.error('Failed to sync package purchase status from payment resolve:', pkgErr)
+      }
+    } catch (err) {
+      console.error('Failed to sync package purchase from payment resolve:', err)
+    }
+  }
+
   // Invalidate caches
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
+  if (data.package_id) {
+    invalidatePrefix('purchases:')
+    invalidatePrefix('student-content:')
+    invalidatePrefix('videos')
+    invalidatePrefix('exams')
+    invalidatePrefix('homeworks')
+  }
+
 
   return data
 }

@@ -6,11 +6,35 @@ import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { notify } from '../../utils/notify'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
+import { uploadQuizImage } from '@backend/r2'
+import { useTenant } from '../../contexts/TenantContext'
+
+const GRADES = [
+  ['first-prep', 'الصف الأول الإعدادي'],
+  ['second-prep', 'الصف الثاني الإعدادي'],
+  ['third-prep', 'الصف الثالث الإعدادي'],
+  ['first-sec', 'الصف الأول الثانوي'],
+  ['second-sec', 'الصف الثاني الثانوي'],
+  ['third-sec', 'الصف الثالث الثانوي'],
+]
+
+const CONTENT_GRADES = [
+  ['packages', 'باقات مدفوعة 📦'],
+  ['first-prep', 'الصف الأول الإعدادي'],
+  ['second-prep', 'الصف الثاني الإعدادي'],
+  ['third-prep', 'الصف الثالث الإعدادي'],
+  ['first-sec', 'الصف الأول الثانوي'],
+  ['second-sec', 'الصف الثاني الثانوي'],
+  ['third-sec', 'الصف الثالث الثانوي'],
+]
 
 export default function PackagesPanel({ onBack, flash }) {
+  const { isGradeEnabled } = useTenant()
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   // Catalogs
   const [playlists, setPlaylists] = useState([])
@@ -30,11 +54,34 @@ export default function PackagesPanel({ onBack, flash }) {
   const [price, setPrice] = useState('')
   const [isActive, setIsActive] = useState(true)
   const [thumbnail, setThumbnail] = useState('')
+  const [grade, setGrade] = useState('first-sec')
   const [selectedItems, setSelectedItems] = useState([]) // array of { item_type, item_id }
 
   // Catalog item add selectors in form
   const [currentAddType, setCurrentAddType] = useState('playlist')
   const [currentAddId, setCurrentAddId] = useState('')
+  const [contentGrade, setContentGrade] = useState('packages')
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    setUploading(true)
+    setUploadProgress(1)
+    try {
+      const { publicUrl } = await uploadQuizImage(file, {
+        onProgress: (pct) => setUploadProgress(pct)
+      })
+      setThumbnail(publicUrl)
+      notify('تم رفع صورة الغلاف بنجاح ✅', 'success')
+    } catch (err) {
+      console.error(err)
+      notify(err.message || 'فشل رفع الصورة', 'danger')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -79,15 +126,26 @@ export default function PackagesPanel({ onBack, flash }) {
     }
   }, [showCreateModal])
 
-  // Select first item id when catalog loads or category changes
+  // Select first item id when catalog loads, category changes, or content grade changes
   useEffect(() => {
     if (!catalogLoaded) return
-    if (currentAddType === 'playlist' && playlists.length > 0) setCurrentAddId(playlists[0].id)
-    else if (currentAddType === 'video' && videos.length > 0) setCurrentAddId(videos[0].id)
-    else if (currentAddType === 'exam' && exams.length > 0) setCurrentAddId(exams[0].id)
-    else if (currentAddType === 'homework' && homeworks.length > 0) setCurrentAddId(homeworks[0].id)
-    else setCurrentAddId('')
-  }, [currentAddType, catalogLoaded, playlists, videos, exams, homeworks])
+    if (currentAddType === 'playlist') {
+      if (playlists.length > 0) setCurrentAddId(playlists[0].id)
+      else setCurrentAddId('')
+    } else if (currentAddType === 'video') {
+      const filtered = videos.filter(v => v.grade === contentGrade)
+      if (filtered.length > 0) setCurrentAddId(filtered[0].id)
+      else setCurrentAddId('')
+    } else if (currentAddType === 'exam') {
+      const filtered = exams.filter(e => e.grade === contentGrade)
+      if (filtered.length > 0) setCurrentAddId(filtered[0].id)
+      else setCurrentAddId('')
+    } else if (currentAddType === 'homework') {
+      const filtered = homeworks.filter(h => h.grade === contentGrade)
+      if (filtered.length > 0) setCurrentAddId(filtered[0].id)
+      else setCurrentAddId('')
+    }
+  }, [currentAddType, catalogLoaded, contentGrade, playlists, videos, exams, homeworks])
 
   const handleCreateOrUpdate = async (e) => {
     e.preventDefault()
@@ -109,6 +167,7 @@ export default function PackagesPanel({ onBack, flash }) {
           price: parseFloat(price),
           is_active: isActive,
           thumbnail: thumbnail.trim() || null,
+          grade,
           items: selectedItems
         })
         notify('تم تحديث الباقة بنجاح! 🎉', 'success')
@@ -119,6 +178,7 @@ export default function PackagesPanel({ onBack, flash }) {
           price: parseFloat(price),
           is_active: isActive,
           thumbnail: thumbnail.trim() || null,
+          grade,
           items: selectedItems
         })
         notify('تم إنشاء الباقة بنجاح! 🎉', 'success')
@@ -130,6 +190,8 @@ export default function PackagesPanel({ onBack, flash }) {
       setPrice('')
       setThumbnail('')
       setIsActive(true)
+      setGrade('first-sec')
+      setContentGrade('packages')
       setSelectedItems([])
       loadData()
     } catch (err) {
@@ -162,6 +224,7 @@ export default function PackagesPanel({ onBack, flash }) {
     setPrice(String(pkg.price))
     setThumbnail(pkg.thumbnail || '')
     setIsActive(pkg.is_active)
+    setGrade(pkg.grade || 'first-sec')
     setSelectedItems((pkg.package_items || []).map(pi => ({
       item_type: pi.item_type,
       item_id: pi.item_id
@@ -224,309 +287,397 @@ export default function PackagesPanel({ onBack, flash }) {
         <div>
           <h2>
             <i className="fas fa-box-open" style={{ color: '#8b5cf6', marginInlineEnd: 8 }}></i>
-            <span>إدارة الباقات والاشتراكات الأونلاين</span>
+            <span>{showCreateModal ? (editPackageObj ? 'تعديل باقة دراسية' : 'إنشاء باقة دراسية جديدة') : 'إدارة الباقات والاشتراكات الأونلاين'}</span>
           </h2>
-          <p>قم بتجميع قوائم التشغيل، والامتحانات، والمحاضرات في باقات دراسية مدفوعة يتم تفعيلها للطالب أوتوماتيكياً بعد الدفع.</p>
+          <p>
+            {showCreateModal
+              ? 'قم بتعديل تفاصيل الباقة، وإضافة أو إزالة المحتويات وتعيين الصف الدراسي الموجهة له.'
+              : 'قم بتجميع قوائم التشغيل، والامتحانات، والمحاضرات في باقات دراسية مدفوعة يتم تفعيلها للطالب أوتوماتيكياً بعد الدفع.'}
+          </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditPackageObj(null)
-            setTitle('')
-            setDescription('')
-            setPrice('')
-            setThumbnail('')
-            setIsActive(true)
-            setSelectedItems([])
-            setShowCreateModal(true)
-          }}
-          className="cp-btn cp-btn-primary"
-          style={{ background: '#8b5cf6', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-        >
-          <i className="fas fa-plus"></i>
-          <span>إنشاء باقة جديدة</span>
-        </button>
+        {!showCreateModal && (
+          <button
+            onClick={() => {
+              setEditPackageObj(null)
+              setTitle('')
+              setDescription('')
+              setPrice('')
+              setThumbnail('')
+              setIsActive(true)
+              setGrade('first-sec')
+              setSelectedItems([])
+              setShowCreateModal(true)
+            }}
+            className="cp-btn cp-btn-primary"
+            style={{ background: '#8b5cf6', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
+            <i className="fas fa-plus"></i>
+            <span>إنشاء باقة جديدة</span>
+          </button>
+        )}
       </div>
 
       <div className="cp-header-divider" />
 
-      {loading ? (
-        <div className="cp-empty">
-          <i className="fas fa-spinner fa-spin"></i>
-          <p>جاري تحميل الباقات المدفوعة...</p>
-        </div>
-      ) : packages.length === 0 ? (
-        <div className="cp-empty">
-          <i className="fas fa-box-archive" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
-          <h3>لا توجد باقات مفعلة</h3>
-          <p>الباقات تساعد طلاب الأونلاين على شراء أبواب أو فصول دراسية محددة. قم بإنشاء أول باقة الآن.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20, marginTop: 20 }}>
-          {packages.map(pkg => (
-            <div
-              key={pkg.id}
-              style={{
-                background: 'var(--cp-card-bg, #fff)',
-                border: pkg.is_active ? '1px solid var(--border-light, #e2e8f0)' : '1px dashed #ef4444',
-                borderRadius: 20,
-                overflow: 'hidden',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'transform 0.2s, box-shadow 0.2s'
-              }}
-              className="cp-card-hover"
-            >
-              <div>
-                {/* Thumbnail header */}
-                <div style={{
-                  height: 120,
-                  background: pkg.thumbnail ? `url(${pkg.thumbnail}) center/cover no-repeat` : 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                  position: 'relative'
-                }}>
-                  <div style={{
-                    position: 'absolute', bottom: 12, right: 12,
-                    background: '#10b981', color: '#fff',
-                    padding: '4px 12px', borderRadius: 10,
-                    fontWeight: 'bold', fontSize: '1rem'
-                  }}>
-                    {pkg.price} ج.م
-                  </div>
-
-                  <span style={{
-                    position: 'absolute', top: 12, left: 12,
-                    fontSize: '0.75rem', padding: '3px 8px', borderRadius: 8,
-                    background: pkg.is_active ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
-                    color: '#fff', fontWeight: 'bold'
-                  }}>
-                    {pkg.is_active ? 'نشطة' : 'مغلقة'}
-                  </span>
-                </div>
-
-                <div style={{ padding: 18 }}>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-color)' }}>{pkg.title}</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: 1.4 }}>
-                    {pkg.description || 'لا يوجد وصف لهذه الباقة.'}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ padding: 18, borderTop: '1px solid var(--border-light, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', color: '#8b5cf6', fontWeight: 'bold' }}>
-                  <i className="fas fa-tags"></i> {(pkg.package_items || []).length} عناصر مجمعة
-                </span>
-
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={(e) => openEditModal(pkg, e)}
-                    className="cp-btn"
-                    style={{ padding: '6px 12px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: 8, fontSize: '0.8rem', fontWeight: 'bold' }}
-                  >
-                    ✏️ تعديل
-                  </button>
-                  <button
-                    onClick={(e) => openDeleteConfirm(pkg, e)}
-                    className="cp-btn"
-                    style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 8, fontSize: '0.8rem', fontWeight: 'bold' }}
-                  >
-                    🗑 حذف
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ─────────── Create/Edit Package Modal ─────────── */}
+      {/* ─────────── Create/Edit Package Inline Form ─────────── */}
       {showCreateModal && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 99999, padding: 20
+          background: 'var(--card-bg, #ffffff)',
+          borderRadius: '24px',
+          border: '1px solid var(--border-color, rgba(99, 102, 241, 0.2))',
+          padding: '28px',
+          width: '100%',
+          color: 'var(--text-color)',
+          direction: 'rtl',
+          display: 'flex',
+          flexDirection: 'column',
+          marginTop: 20,
+          marginBottom: 30
         }}>
-          <div style={{
-            background: 'var(--card-bg, #ffffff)', borderRadius: '24px',
-            border: '1px solid var(--border-color, rgba(99, 102, 241, 0.2))',
-            padding: '28px', maxWidth: '640px', width: '100%',
-            color: 'var(--text-color)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-            position: 'relative', direction: 'rtl', display: 'flex', flexDirection: 'column', maxHeight: '90vh'
-          }}>
-            <button 
-              onClick={() => { setShowCreateModal(false); setEditPackageObj(null); }}
-              style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: '#64748b', fontSize: '1.2rem', cursor: 'pointer' }}
-            >
-              <i className="fas fa-times"></i>
-            </button>
-
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
               {editPackageObj ? 'تعديل بيانات الباقة' : 'إنشاء باقة دراسية جديدة'}
             </h3>
+            <button 
+              onClick={() => { setShowCreateModal(false); setEditPackageObj(null); }}
+              className="cp-btn cp-btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+            >
+              إلغاء وإغلاق
+            </button>
+          </div>
 
-            <form onSubmit={handleCreateOrUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1, padding: 4 }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الباقة *</label>
-                  <input 
-                    type="text" 
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
-                    placeholder="مثال: باقة مراجعة الفصل الأول كاملاً" 
-                    required
-                    className="cp-input" 
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>السعر (ج.م) *</label>
-                  <input 
-                    type="number" 
-                    value={price} 
-                    onChange={(e) => setPrice(e.target.value)} 
-                    placeholder="150" 
-                    required
-                    min="0"
-                    className="cp-input" 
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
-                  />
-                </div>
-              </div>
-
+          <form onSubmit={handleCreateOrUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 120px', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>وصف الباقة ومميزاتها</label>
-                <textarea 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)} 
-                  placeholder="اكتب ما يحصل عليه الطالب عند شراء الباقة بالتفصيل..." 
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الباقة *</label>
+                <input 
+                  type="text" 
+                  value={title} 
+                  onChange={(e) => setTitle(e.target.value)} 
+                  placeholder="مثال: باقة مراجعة الفصل الأول كاملاً" 
+                  required
                   className="cp-input" 
-                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)', minHeight: 60 }}
+                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>رابط صورة الباقة (Thumbnail URL)</label>
-                  <input 
-                    type="text" 
-                    value={thumbnail} 
-                    onChange={(e) => setThumbnail(e.target.value)} 
-                    placeholder="رابط خارجي لصورة معبرة أو اتركه فارغاً" 
-                    className="cp-input" 
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', marginTop: 24 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={isActive} 
-                      onChange={(e) => setIsActive(e.target.checked)} 
-                    />
-                    <span>نشطة ومتاحة</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Package bundling contents builder */}
-              <div style={{ border: '1px solid var(--border-color, #e2e8f0)', borderRadius: 16, padding: 16, marginTop: 8 }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 800 }}>تجميع المحتوى في الباقة</h4>
-                
-                <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-                  <select
-                    value={currentAddType}
-                    onChange={(e) => setCurrentAddType(e.target.value)}
-                    className="cp-input"
-                    style={{ width: 130, padding: 8, background: 'var(--card-bg)' }}
-                  >
-                    <option value="playlist">قائمة تشغيل</option>
-                    <option value="video">فيديو منفرد</option>
-                    <option value="exam">امتحان منفرد</option>
-                    <option value="homework">واجب منفرد</option>
-                  </select>
-
-                  <select
-                    value={currentAddId}
-                    onChange={(e) => setCurrentAddId(e.target.value)}
-                    className="cp-input"
-                    style={{ flex: 1, minWidth: 150, padding: 8, background: 'var(--card-bg)' }}
-                  >
-                    {currentAddType === 'playlist' && playlists.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                    {currentAddType === 'video' && videos.map(v => <option key={v.id} value={v.id}>{v.title}</option>)}
-                    {currentAddType === 'exam' && exams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                    {currentAddType === 'homework' && homeworks.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
-                    
-                    {currentAddType === 'playlist' && playlists.length === 0 && <option value="">لا توجد قوائم تشغيل متاحة</option>}
-                    {currentAddType === 'video' && videos.length === 0 && <option value="">لا توجد فيديوهات متاحة</option>}
-                    {currentAddType === 'exam' && exams.length === 0 && <option value="">لا توجد امتحانات متاحة</option>}
-                    {currentAddType === 'homework' && homeworks.length === 0 && <option value="">لا توجد واجبات متاحة</option>}
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={handleAddItemToBundle}
-                    className="cp-btn cp-btn-success"
-                    style={{ padding: '8px 16px', borderRadius: 10 }}
-                  >
-                    أضف للباقة
-                  </button>
-                </div>
-
-                {/* Selected items list */}
-                <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedItems.length === 0 ? (
-                    <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', display: 'block', textAlign: 'center', padding: '10px 0' }}>الباقة فارغة حالياً. اجمع بداخلها محتوى للطلاب.</span>
-                  ) : (
-                    selectedItems.map((item, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          padding: '6px 12px', background: 'var(--cp-hover-bg, #fafafa)', borderRadius: 10,
-                          fontSize: '0.82rem', border: '1px solid var(--border-light, #e2e8f0)'
-                        }}
-                      >
-                        <span style={{ fontWeight: 600 }}>{resolveItemName(item.item_type, item.item_id)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItemFromBundle(item.item_type, item.item_id)}
-                          style={{ border: 'none', background: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          إزالة
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="cp-btn cp-btn-primary"
-                  style={{ flex: 1, padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, background: '#8b5cf6' }}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>الصف الدراسي *</label>
+                <select
+                  value={grade}
+                  onChange={(e) => {
+                    setGrade(e.target.value)
+                    setSelectedItems([])
+                  }}
+                  className="cp-input"
+                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
                 >
-                  {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-                  <span>حفظ الباقة الدراسية</span>
-                </button>
+                  {GRADES.filter(([val]) => isGradeEnabled(val)).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>السعر (ج.م) *</label>
+                <input 
+                  type="number" 
+                  value={price} 
+                  onChange={(e) => setPrice(e.target.value)} 
+                  placeholder="150" 
+                  required
+                  min="0"
+                  className="cp-input" 
+                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>وصف الباقة ومميزاتها</label>
+              <textarea 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                placeholder="اكتب ما يحصل عليه الطالب عند شراء الباقة بالتفصيل..." 
+                className="cp-input" 
+                style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)', minHeight: 60 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>صورة غلاف الباقة (Cover Image)</label>
+                {thumbnail ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--cp-hover-bg, #fafafa)', padding: 8, borderRadius: 12, border: '1px solid var(--border-color, #e2e8f0)' }}>
+                    <img src={thumbnail} alt="Cover Preview" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+                    <button 
+                      type="button" 
+                      onClick={() => setThumbnail('')}
+                      style={{ border: 'none', background: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+                    >
+                      إزالة الصورة 🗑️
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleFileUpload} 
+                      disabled={uploading}
+                      style={{ display: 'none' }}
+                      id="package-cover-upload"
+                    />
+                    <label 
+                      htmlFor="package-cover-upload"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '10px', border: '1.5px dashed var(--border-color, #e2e8f0)',
+                        borderRadius: 10, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold',
+                        color: '#6366f1', textAlign: 'center', background: 'var(--card-bg, #fff)'
+                      }}
+                    >
+                      <i className="fas fa-cloud-upload-alt"></i>
+                      <span>اختر صورة للغلاف (JPG, PNG)</span>
+                    </label>
+                  </div>
+                )}
+                {uploading && (
+                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${uploadProgress}%`, height: '100%', background: '#6366f1', transition: 'width 0.2s' }} />
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>جاري الرفع... {uploadProgress}%</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', marginTop: 24 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isActive} 
+                    onChange={(e) => setIsActive(e.target.checked)} 
+                  />
+                  <span>نشطة ومتاحة للطلاب</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Package bundling contents builder */}
+            <div style={{ border: '1px solid var(--border-color, #e2e8f0)', borderRadius: 16, padding: 16, marginTop: 8 }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 800 }}>تجميع المحتوى في الباقة (من أي صف دراسي)</h4>
+              
+              <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                <select
+                  value={currentAddType}
+                  onChange={(e) => setCurrentAddType(e.target.value)}
+                  className="cp-input"
+                  style={{ width: 130, padding: 8, background: 'var(--card-bg)' }}
+                >
+                  <option value="playlist">قائمة تشغيل</option>
+                  <option value="video">فيديو منفرد</option>
+                  <option value="exam">امتحان منفرد</option>
+                  <option value="homework">واجب منفرد</option>
+                </select>
+
+                {currentAddType !== 'playlist' && (
+                  <select
+                    value={contentGrade}
+                    onChange={(e) => setContentGrade(e.target.value)}
+                    className="cp-input"
+                    style={{ width: 180, padding: 8, background: 'var(--card-bg)' }}
+                  >
+                    {CONTENT_GRADES.filter(([val]) => val === 'packages' || isGradeEnabled(val)).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                )}
+
+                <select
+                  value={currentAddId}
+                  onChange={(e) => setCurrentAddId(e.target.value)}
+                  className="cp-input"
+                  style={{ flex: 1, minWidth: 150, padding: 8, background: 'var(--card-bg)' }}
+                >
+                  {currentAddType === 'playlist' && playlists.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                  {currentAddType === 'video' && videos.filter(v => v.grade === contentGrade).map(v => <option key={v.id} value={v.id}>{v.title}</option>)}
+                  {currentAddType === 'exam' && exams.filter(e => e.grade === contentGrade).map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+                  {currentAddType === 'homework' && homeworks.filter(h => h.grade === contentGrade).map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
+                  
+                  {currentAddType === 'playlist' && playlists.length === 0 && <option value="">لا توجد قوائم تشغيل متاحة</option>}
+                  {currentAddType === 'video' && videos.filter(v => v.grade === contentGrade).length === 0 && <option value="">لا توجد فيديوهات متاحة لهذا الصف</option>}
+                  {currentAddType === 'exam' && exams.filter(e => e.grade === contentGrade).length === 0 && <option value="">لا توجد امتحانات متاحة لهذا الصف</option>}
+                  {currentAddType === 'homework' && homeworks.filter(h => h.grade === contentGrade).length === 0 && <option value="">لا توجد واجبات متاحة لهذا الصف</option>}
+                </select>
+
                 <button
                   type="button"
-                  onClick={() => { setShowCreateModal(false); setEditPackageObj(null); }}
-                  className="cp-btn cp-btn-secondary"
-                  style={{ padding: '12px 24px' }}
+                  onClick={handleAddItemToBundle}
+                  className="cp-btn cp-btn-success"
+                  style={{ padding: '8px 16px', borderRadius: 10 }}
                 >
-                  إلغاء
+                  أضف للباقة
                 </button>
               </div>
-            </form>
-          </div>
+
+              {/* Selected items list */}
+              <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {selectedItems.length === 0 ? (
+                  <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', display: 'block', textAlign: 'center', padding: '10px 0' }}>الباقة فارغة حالياً. اجمع بداخلها محتوى للطلاب.</span>
+                ) : (
+                  selectedItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '6px 12px', background: 'var(--cp-hover-bg, #fafafa)', borderRadius: 10,
+                        fontSize: '0.82rem', border: '1px solid var(--border-light, #e2e8f0)'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{resolveItemName(item.item_type, item.item_id)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItemFromBundle(item.item_type, item.item_id)}
+                        style={{ border: 'none', background: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        إزالة
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+              <button
+                type="submit"
+                disabled={busy}
+                className="cp-btn cp-btn-primary"
+                style={{ flex: 1, padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, background: '#8b5cf6' }}
+              >
+                {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                <span>حفظ الباقة الدراسية</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowCreateModal(false); setEditPackageObj(null); }}
+                className="cp-btn cp-btn-secondary"
+                style={{ padding: '12px 24px' }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
         </div>
+      )}
+
+      {/* Packages list display (only shown if not currently editing/creating) */}
+      {!showCreateModal && (
+        <>
+          {loading ? (
+            <div className="cp-empty">
+              <i className="fas fa-spinner fa-spin"></i>
+              <p>جاري تحميل الباقات المدفوعة...</p>
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="cp-empty">
+              <i className="fas fa-box-archive" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
+              <h3>لا توجد باقات مفعلة</h3>
+              <p>الباقات تساعد طلاب الأونلاين على شراء أبواب أو فصول دراسية محددة. قم بإنشاء أول باقة الآن.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20, marginTop: 20 }}>
+              {packages.map(pkg => (
+                <div
+                  key={pkg.id}
+                  style={{
+                    background: 'var(--cp-card-bg, #fff)',
+                    border: pkg.is_active ? '1px solid var(--border-light, #e2e8f0)' : '1px dashed #ef4444',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  className="cp-card-hover"
+                >
+                  <div>
+                    {/* Thumbnail header */}
+                    <div style={{
+                      height: 120,
+                      background: pkg.thumbnail ? `url(${pkg.thumbnail}) center/cover no-repeat` : 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        position: 'absolute', bottom: 12, right: 12,
+                        background: '#10b981', color: '#fff',
+                        padding: '4px 12px', borderRadius: 10,
+                        fontWeight: 'bold', fontSize: '1rem'
+                      }}>
+                        {pkg.price} ج.م
+                      </div>
+
+                      <span style={{
+                        position: 'absolute', top: 12, left: 12,
+                        fontSize: '0.75rem', padding: '3px 8px', borderRadius: 8,
+                        background: pkg.is_active ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                        color: '#fff', fontWeight: 'bold'
+                      }}>
+                        {pkg.is_active ? 'نشطة' : 'مغلقة'}
+                      </span>
+                    </div>
+
+                    <div style={{ padding: 18 }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-color)' }}>{pkg.title}</h3>
+                      
+                      <div style={{ marginBottom: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6,
+                          background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 'bold'
+                        }}>
+                          {GRADES.find(([g]) => g === pkg.grade)?.[1] || pkg.grade || 'عام'}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: '0.85rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: 1.4 }}>
+                        {pkg.description || 'لا يوجد وصف لهذه الباقة.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 18, borderTop: '1px solid var(--border-light, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#8b5cf6', fontWeight: 'bold' }}>
+                      <i className="fas fa-tags"></i> {(pkg.package_items || []).length} عناصر مجمعة
+                    </span>
+
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        onClick={(e) => openEditModal(pkg, e)}
+                        className="cp-btn"
+                        style={{ padding: '6px 12px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: 8, fontSize: '0.8rem', fontWeight: 'bold' }}
+                      >
+                        ✏️ تعديل
+                      </button>
+                      <button
+                        onClick={(e) => openDeleteConfirm(pkg, e)}
+                        className="cp-btn"
+                        style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 8, fontSize: '0.8rem', fontWeight: 'bold' }}
+                      >
+                        🗑 حذف
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}

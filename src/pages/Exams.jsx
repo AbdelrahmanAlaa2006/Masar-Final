@@ -5,6 +5,7 @@ import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
+import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
@@ -19,6 +20,7 @@ const PREP_META = {
   'first-sec': { ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
   'second-sec': { ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
   'third-sec': { ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  packages: { ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
 }
 
 export default function Exams() {
@@ -29,9 +31,10 @@ export default function Exams() {
   const { isGradeEnabled } = useTenant()
   const userId = user?.id || null
 
-  const filteredLevels = Object.keys(PREP_META).filter(
-    key => isGradeEnabled(uiToDbGrade(key) || key)
-  )
+  const filteredLevels = [
+    ...Object.keys(PREP_META).filter(key => key !== 'packages' && isGradeEnabled(uiToDbGrade(key) || key)),
+    ...(userRole === 'admin' || userRole === 'assistant' ? ['packages'] : [])
+  ]
 
   const [currentLevel, setCurrentLevel] = useState(() => {
     if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
@@ -42,12 +45,31 @@ export default function Exams() {
 
   const [showModal, setShowModal] = useState(false)
   const [showLockModal, setShowLockModal] = useState(false)
+  const [allowedContentIds, setAllowedContentIds] = useState(new Set())
   const [rows, setRows] = useState([])
   const [playlists, setPlaylists] = useState([])
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
+
+  useEffect(() => {
+    if (!userId) return
+    if (userRole === 'admin' || userRole === 'assistant') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const access = await listStudentContentAccess(userId)
+        if (!cancelled) {
+          const ids = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+          setAllowedContentIds(ids)
+        }
+      } catch (err) {
+        console.error('Failed to load content access:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [userId])
   const [overridesMap, setOverridesMap] = useState(new Map()) // examId -> {allowed, attempts}
 
   const refresh = async () => {
@@ -208,7 +230,8 @@ export default function Exams() {
     Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
   const startExam = (exam) => {
-    if (userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false) {
+    const isAllowedByPackage = allowedContentIds.has(exam.id)
+    if (userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false && !isAllowedByPackage) {
       setShowLockModal(true)
       return
     }
@@ -314,10 +337,15 @@ export default function Exams() {
     const effectiveHours = o?.availableHours ?? exam.available_hours
     const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
     const isAvailable = new Date() < availableUntil
-    const formattedDate = availableUntil.toLocaleDateString('ar-EG', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    })
+    let formattedDate = ''
+    try {
+      formattedDate = availableUntil.toLocaleDateString('ar-EG', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+    } catch (e) {
+      formattedDate = availableUntil.toLocaleDateString()
+    }
     const qCount = exam.questions_count !== undefined
       ? exam.questions_count
       : (Array.isArray(exam.questions) ? exam.questions.length : 0)
@@ -376,7 +404,7 @@ export default function Exams() {
         </div>
 
         <div className="ec-footer">
-          {userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false ? (
+          {userRole !== 'admin' && userRole !== 'assistant' && user?.is_active === false && !allowedContentIds.has(exam.id) ? (
             <span style={{ color: '#e0a96d', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <i className="fas fa-lock"></i> الامتحان مغلق (يتطلب تفعيل الحساب)
             </span>
@@ -1074,6 +1102,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
                 {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
                 {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
                 {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+                <option value="packages">باقات مدفوعة 📦</option>
               </select>
             </div>
             <div className="edit-field">

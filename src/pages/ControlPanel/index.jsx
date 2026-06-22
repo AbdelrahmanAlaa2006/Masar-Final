@@ -33,6 +33,7 @@ const PlaylistsPanel = lazy(() => import('./PlaylistsPanel'))
 const PackagesPanel = lazy(() => import('./PackagesPanel'))
 const PurchasesPanel = lazy(() => import('./PurchasesPanel'))
 const StudentAccessPanel = lazy(() => import('./StudentAccessPanel'))
+const CalendarPanel = lazy(() => import('./CalendarPanel'))
 
 export default function ControlPanelIndex() {
   const location = useLocation()
@@ -63,6 +64,7 @@ export default function ControlPanelIndex() {
 
     // Assistant gates
     if (s === 'playlists') return hasPermission('videos') || hasPermission('exams') || hasPermission('homework')
+    if (s === 'calendar') return hasPermission('videos') || hasPermission('exams') || hasPermission('homework')
     if (s === 'packages' || s === 'purchases') return hasPermission('payments')
     if (s === 'student_access') return hasPermission('students')
     if (s === 'attendance') return hasPermission('attendance')
@@ -498,6 +500,17 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
+                {/* Calendar & Events scheduling */}
+                {(user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
+                  <SectionCard
+                    icon="fa-calendar-alt"
+                    accent="blue"
+                    title="التقويم والفعاليات"
+                    desc="جدولة مواعيد المحاضرات والامتحانات والواجبات وتنبيهات الطلاب"
+                    onClick={() => enterSection('calendar')}
+                  />
+                )}
+
                 {/* Security Violations (Admin & Super Admin) */}
                 {(user?.role === 'admin' || user?.role === 'super_admin') && (
                   <SectionCard
@@ -551,6 +564,7 @@ export default function ControlPanelIndex() {
               {section === 'packages' && <PackagesPanel onBack={goHome} flash={flash} />}
               {section === 'purchases' && <PurchasesPanel onBack={goHome} flash={flash} />}
               {section === 'student_access' && <StudentAccessPanel onBack={goHome} flash={flash} />}
+              {section === 'calendar' && <CalendarPanel onBack={goHome} flash={flash} />}
 
               {/* Sub-tab navigation bar for dynamic settings */}
               {(section === 'videos' || section === 'exams') && (

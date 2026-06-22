@@ -348,6 +348,7 @@ export default function ExamAdd() {
             {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
             {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
             {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+            <option value="packages">باقات مدفوعة 📦</option>
           </select>
         </div>
 

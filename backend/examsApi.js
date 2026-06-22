@@ -8,7 +8,8 @@ const UI_TO_DB = {
   third: 'third-prep',
   'first-sec': 'first-sec',
   'second-sec': 'second-sec',
-  'third-sec': 'third-sec'
+  'third-sec': 'third-sec',
+  packages: 'packages'
 }
 const DB_TO_UI = {
   'first-prep': 'first',
@@ -16,7 +17,8 @@ const DB_TO_UI = {
   'third-prep': 'third',
   'first-sec': 'first-sec',
   'second-sec': 'second-sec',
-  'third-sec': 'third-sec'
+  'third-sec': 'third-sec',
+  packages: 'packages'
 }
 export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
 export const dbToUiGrade = (db) => DB_TO_UI[db] || null
@@ -35,7 +37,21 @@ export async function listExams({ lean = false } = {}) {
     .select(cols)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data || []
+  let rows = data || []
+
+  // Package-level gating for student role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile && profile.role === 'student') {
+      const { listStudentContentAccess } = await import('./packagesApi')
+      const access = await listStudentContentAccess(user.id)
+      const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+      rows = rows.filter(e => e.grade !== 'packages' || allowedExamIds.has(e.id))
+    }
+  }
+
+  return rows
 }
 
 /* Admin-only: flip the reveal_grades flag on an exam. Enforced by RLS. */
@@ -57,6 +73,21 @@ export async function getExam(id) {
     .eq('id', id)
     .single()
   if (error) throw error
+
+  // Check packages gating
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile && profile.role === 'student' && data.grade === 'packages') {
+      const { listStudentContentAccess } = await import('./packagesApi')
+      const access = await listStudentContentAccess(user.id)
+      const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+      if (!allowedExamIds.has(id)) {
+        throw new Error('This exam is locked inside a package you have not purchased.')
+      }
+    }
+  }
+
   return data
 }
 
@@ -154,7 +185,7 @@ export async function countSubmittedAttempts(examId, studentId, sinceIso = null)
 // filtering client-side (one round-trip) instead of issuing one filtered
 // query per exam.
 export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap = {}) {
-  if (!examIds?.length || !studentId) return new Map()
+  if (!examIds?.length || !studentId || studentId === 'undefined') return []
   const key = `student-exam-attempts-batch:${studentId}`
   return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
@@ -164,13 +195,14 @@ export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap =
       .in('exam_id', examIds)
       .not('submitted_at', 'is', null)
     if (error) throw error
-    const out = new Map(examIds.map((id) => [id, 0]))
+    const out = {}
+    for (const id of examIds) out[id] = 0
     for (const r of data || []) {
       const cutoff = sinceMap[r.exam_id]
       if (cutoff && r.submitted_at < cutoff) continue
-      out.set(r.exam_id, (out.get(r.exam_id) || 0) + 1)
+      out[r.exam_id] = (out[r.exam_id] || 0) + 1
     }
-    return out
+    return Object.entries(out)
   })
 }
 

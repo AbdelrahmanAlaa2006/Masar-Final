@@ -492,8 +492,8 @@ body:not(.dark) .aa-portrait-img {
 
 .aa-portrait:hover .aa-img-base,
 .aa-portrait:hover .aa-img-hover {
-  transform: scale(1.12) translateY(-24px);
-  filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.35));
+  transform: scale(1.06) translateY(-8px);
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.25));
 }
 
 .aa-portrait-vignette {

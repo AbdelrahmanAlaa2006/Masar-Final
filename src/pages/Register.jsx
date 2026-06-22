@@ -219,7 +219,13 @@ export default function Register() {
       setLoading(false)
       if (response.token) {
         login(response.token, response.user)
-        window.location.href = '/'
+        const pendingPkg = localStorage.getItem('pendingCheckoutPkgId')
+        if (pendingPkg) {
+          localStorage.removeItem('pendingCheckoutPkgId')
+          window.location.href = '/shop?packageId=' + pendingPkg
+        } else {
+          window.location.href = '/'
+        }
       } else {
         navigate('/login')
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { listPackages, purchasePackage, listMyPurchases } from '@backend/packagesApi'
 import { getPaymentSettings } from '@backend/paymentsApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
@@ -12,6 +13,7 @@ import { notify } from '../utils/notify'
 import './Shop.css'
 
 export default function Shop() {
+  const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
   const studentId = user?.id || null
 
@@ -54,7 +56,14 @@ export default function Shop() {
         getPaymentSettings().catch(() => null)
       ])
 
-      setPackages(pkgs.filter(p => p.is_active))
+      const isStaff = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'assistant'
+      const studentGrade = user?.grade || null
+      const filteredPkgs = pkgs.filter(p => {
+        if (!p.is_active) return false
+        if (isStaff) return true
+        return p.grade === studentGrade
+      })
+      setPackages(filteredPkgs)
       setPurchases(myPurchases)
       setPlaylists(plist)
       setVideos(vlist)
@@ -89,6 +98,21 @@ export default function Shop() {
       loadData()
     }
   }, [studentId, hasAccess])
+
+  useEffect(() => {
+    if (packages.length > 0) {
+      const params = new URLSearchParams(window.location.search)
+      const pkgId = params.get('packageId')
+      if (pkgId) {
+        const match = packages.find(p => p.id === pkgId)
+        if (match) {
+          setSelectedPkg(match)
+        } else {
+          notify('عذراً، هذه الباقة غير متاحة لصفك الدراسي أو غير صالحة ⚠️', 'warning')
+        }
+      }
+    }
+  }, [packages])
 
   const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text)
@@ -288,7 +312,16 @@ export default function Shop() {
                   const itemsCount = pkg.package_items?.length || 0
 
                   return (
-                    <div key={pkg.id} className={`pkg-card pkg-status-${status.code}`}>
+                    <div
+                      key={pkg.id}
+                      className={`pkg-card pkg-status-${status.code}`}
+                      onClick={() => {
+                        if (status.code === 'approved') {
+                          navigate(`/packages?id=${pkg.id}`)
+                        }
+                      }}
+                      style={{ cursor: status.code === 'approved' ? 'pointer' : 'initial' }}
+                    >
                       
                       {/* Package Thumbnail */}
                       <div className="pkg-thumbnail-wrapper">
@@ -324,18 +357,25 @@ export default function Shop() {
                       </div>
 
                       {/* Card Footer Action */}
-                      <div className="pkg-footer">
+                      <div className="pkg-footer" onClick={(e) => { if (status.code === 'approved') e.stopPropagation(); }}>
                         {status.code === 'approved' ? (
-                          <div className="pkg-status-label status-active">
-                            <i className="fas fa-circle-check"></i> تم التفعيل بنجاح
-                          </div>
+                          <button
+                            onClick={() => navigate(`/packages?id=${pkg.id}`)}
+                            className="pkg-buy-btn status-active-btn"
+                            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none' }}
+                          >
+                            <i className="fas fa-circle-check"></i> عرض المحتوى 🚀
+                          </button>
                         ) : status.code === 'pending' ? (
                           <div className="pkg-status-label status-pending">
                             <i className="fas fa-hourglass-half"></i> قيد المراجعة والتدقيق
                           </div>
                         ) : (
                           <button
-                            onClick={() => setSelectedPkg(pkg)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedPkg(pkg)
+                            }}
                             className={`pkg-buy-btn ${status.code === 'rejected' ? 'btn-retry' : ''}`}
                           >
                             {status.label}

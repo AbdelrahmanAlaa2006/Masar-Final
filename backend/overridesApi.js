@@ -91,6 +91,7 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
    the same either way. The `group` arg is optional; when omitted no group
    filter is added to the OR clause. */
 export async function listEffectiveOverrides({ studentId, grade, group, itemType }) {
+  if (!studentId || studentId === 'undefined') return []
   const key = `overrides:eff:${studentId}:${grade}:${group || ''}:${itemType}`
   return cached(key, LIST_TTL, async () => {
     // Compose the OR clause dynamically so we don't ask the server for

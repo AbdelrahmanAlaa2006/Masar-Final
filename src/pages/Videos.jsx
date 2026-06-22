@@ -13,6 +13,7 @@ import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import VideoComments from '../components/VideoComments'
 import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
+import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
@@ -43,7 +44,8 @@ export default function Videos() {
     { id: 'first-sec', ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
     { id: 'second-sec', ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
     { id: 'third-sec', ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
-  ].filter(p => isGradeEnabled(p.id))
+    { id: 'packages', ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
+  ].filter(p => p.id === 'packages' ? (userRole === 'admin' || userRole === 'assistant') : isGradeEnabled(p.id))
 
   // Convert a DB video row (with embedded video_parts) into the shape the
   // rest of the page was built around (parts[], totalParts, quizzes[]).
@@ -144,6 +146,7 @@ export default function Videos() {
   const [alertData, setAlertData] = useState({ title: '', message: '' })
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [showLockModal, setShowLockModal] = useState(false)
+  const [allowedContentIds, setAllowedContentIds] = useState(new Set())
 
   // ── Load videos from Supabase ────────────────────────────────
   // 60s cache: videos rarely change between navigations. Admins who just
@@ -166,6 +169,24 @@ export default function Videos() {
   }
 
   useEffect(() => { refreshVideos() }, [])
+
+  useEffect(() => {
+    if (!currentUser?.id) return
+    if (currentUser.role === 'admin' || currentUser.role === 'assistant') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const access = await listStudentContentAccess(currentUser.id)
+        if (!cancelled) {
+          const ids = new Set(access.filter(a => a.content_type === 'video').map(a => a.content_id))
+          setAllowedContentIds(ids)
+        }
+      } catch (err) {
+        console.error('Failed to load content access:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentUser?.id])
 
   // Load admin-set overrides — STUDENTS ONLY. Admins manage overrides
   // through ControlPanel; on the Videos page they see all videos as
@@ -473,7 +494,8 @@ export default function Videos() {
     }
   }
   const openVideoPlayer = (video) => {
-    if (userRole !== 'admin' && userRole !== 'assistant' && currentUser?.is_active === false) {
+    const isAllowedByPackage = allowedContentIds.has(video.id)
+    if (userRole !== 'admin' && userRole !== 'assistant' && currentUser?.is_active === false && !isAllowedByPackage) {
       setShowLockModal(true)
       return
     }
@@ -809,10 +831,17 @@ export default function Videos() {
                           // expiry window. If either says "no", the dot turns red.
                           const isAvailable = notExpired && isVideoAllowed(video)
                           const hours = effectiveHoursFor(video)
-                          const formattedExpiry = expiry ? expiry.toLocaleDateString('ar-EG', {
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          }) : '—'
+                          let formattedExpiry = '—'
+                          if (expiry) {
+                            try {
+                              formattedExpiry = expiry.toLocaleDateString('ar-EG', {
+                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })
+                            } catch {
+                              formattedExpiry = expiry.toLocaleDateString()
+                            }
+                          }
 
                           return (
                             <div
@@ -2156,6 +2185,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
                 {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
                 {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
                 {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+                <option value="packages">باقات مدفوعة 📦</option>
               </select>
             </div>
           </div>

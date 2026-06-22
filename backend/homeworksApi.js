@@ -8,7 +8,8 @@ const UI_TO_DB = {
   third: 'third-prep',
   'first-sec': 'first-sec',
   'second-sec': 'second-sec',
-  'third-sec': 'third-sec'
+  'third-sec': 'third-sec',
+  packages: 'packages'
 }
 const DB_TO_UI = {
   'first-prep': 'first',
@@ -16,7 +17,8 @@ const DB_TO_UI = {
   'third-prep': 'third',
   'first-sec': 'first-sec',
   'second-sec': 'second-sec',
-  'third-sec': 'third-sec'
+  'third-sec': 'third-sec',
+  packages: 'packages'
 }
 export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
 export const dbToUiGrade = (db) => DB_TO_UI[db] || null
@@ -42,7 +44,21 @@ export async function listHomeworks() {
     )
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data || []
+  let rows = data || []
+
+  // Package-level gating for student role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile && profile.role === 'student') {
+      const { listStudentContentAccess } = await import('./packagesApi')
+      const access = await listStudentContentAccess(user.id)
+      const allowedHomeworkIds = new Set(access.filter(a => a.content_type === 'homework').map(a => a.content_id))
+      rows = rows.filter(h => h.grade !== 'packages' || allowedHomeworkIds.has(h.id))
+    }
+  }
+
+  return rows
 }
 
 export async function createHomework(input) {
@@ -180,7 +196,7 @@ export async function getMySubmission(homeworkId, studentId) {
 // Batch: get the current student's submission status across many homeworks.
 // Returns Map<homeworkId, submissionRow>. One round-trip.
 export async function getMySubmissionsBatch(homeworkIds, studentId) {
-  if (!homeworkIds?.length || !studentId) return {}
+  if (!homeworkIds?.length || !studentId || studentId === 'undefined') return {}
   const key = `student-hw-subs-batch:${studentId}`
   return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
