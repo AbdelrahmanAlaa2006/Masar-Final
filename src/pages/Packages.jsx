@@ -505,7 +505,7 @@ export default function Packages() {
   const guardLabel = currentUser ? `${currentUser.name || ''} · ${currentUser.phone || ''}` : ''
 
   return (
-    <div className="packages-page" dir="rtl">
+    <div className={view === 'player' ? "videos-page" : "packages-page"} dir="rtl">
       <ScreenGuard active={guardActive} label={guardLabel} strict={false} />
 
       {/* 1. Catalog screen */}
@@ -788,19 +788,20 @@ export default function Packages() {
 
       {/* 3. Inline video player view */}
       {view === 'player' && currentVideo && (
-        <div className="packages-container">
-          <div className="vid-player-header">
-            <button className="btn-back-detail" onClick={goBackToDetail}><i className="fas fa-arrow-right"></i> العودة لمحتوى الباقة</button>
+        <div>
+          <div className="vid-player-header max-w-7xl mx-auto">
+            <button className="btn btn-outline vid-player-back" onClick={goBackToDetail}>← العودة لمحتوى الباقة</button>
             <div className="vid-player-titles">
-              <h2>{currentVideo.title}</h2>
-              <p>{currentVideo.description}</p>
+              <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
+              <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
             </div>
+            <div className="vid-player-spacer" />
           </div>
 
-          <div className="video-player-layout">
-            <div className="video-player-card">
+          <div className="video-player-container">
+            <div className="video-player-card card" style={{ padding: 12 }}>
               <div className="video-column">
-                {selectedPart ? (
+                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
                   (() => {
                     const handleProgress = ({ watchedSeconds }) => {
                       if (userRole === 'admin' || userRole === 'assistant' || !currentUser?.id) return
@@ -815,7 +816,7 @@ export default function Packages() {
                           const others = prev.filter((p) => p.part_id !== selectedPart.id)
                           return [...others, row]
                         })
-                      }).catch((e) => console.error(e))
+                      }).catch((e) => console.error('updatePartProgress failed', e))
                     }
                     const seed = progressRows.find((r) => r.part_id === selectedPart.id)?.seconds_watched || 0
                     return (
@@ -850,33 +851,63 @@ export default function Packages() {
                 ) : (
                   <div className="placeholder-video">
                     <div>
-                      <div className="placeholder-icon">▶️</div>
-                      <h3>اختر جزءاً لبدء المشاهدة</h3>
-                      <p>اضغط على أحد الأجزاء من القائمة الجانبية لبدء تشغيل الفيديو</p>
+                      <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
+                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
+            {showPdf && currentVideo?.pdf_url && (
+              <div className="video-pdf-card card" style={{ padding: '20px 24px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                  borderBottom: '1px solid var(--border-primary)',
+                  paddingBottom: 12
+                }}>
+                  <h3 className="title-section" style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
+                    <span>مذكرة المحاضرة: {currentVideo.title}</span>
+                  </h3>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline btn-sm"
+                    style={{ padding: '6px 14px', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444', background: 'transparent', margin: 0 }}
+                    onClick={() => setShowPdf(false)}
+                  >
+                    إخفاء المذكرة
+                  </button>
+                </div>
+                <div style={{ width: '100%', height: '800px', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
+                  <PdfInline url={currentVideo.pdf_url} title={currentVideo.title} />
+                </div>
+              </div>
+            )}
+
             <div className="video-sidebar">
-              {currentVideo.pdf_url && (
-                <div className="pdf-toggle-card">
+              {currentVideo?.pdf_url && (
+                <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
                     type="button"
-                    className={`btn-pdf ${showPdf ? 'active' : ''}`}
+                    className={`btn ${showPdf ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ width: '100%', justifyContent: 'center', gap: 8, padding: '12px', fontSize: '0.95rem', margin: 0, direction: 'rtl' }}
                     onClick={() => setShowPdf(!showPdf)}
                   >
-                    <i className={showPdf ? 'fas fa-eye-slash' : 'fas fa-file-pdf'}></i>
-                    <span>{showPdf ? 'إخفاء مذكرة المحاضرة' : 'عرض مذكرة المحاضرة'}</span>
+                    <i className={showPdf ? "fas fa-eye-slash" : "fas fa-file-pdf"} style={{ fontSize: '1.1rem' }}></i>
+                    <span>{showPdf ? "إخفاء مذكرة المحاضرة" : "عرض مذكرة المحاضرة"}</span>
                   </button>
                 </div>
               )}
 
-              <div className="parts-list-card">
-                <h3>أجزاء المحاضرة</h3>
-                <div className="parts-items-wrapper">
-                  {currentVideo.parts.map((part, index) => {
+              <div className="card">
+                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
+                <div id="partsList" data-quiz-tick={quizTick}>
+                  {currentVideo?.parts.map((part, index) => {
                     const blocking = findBlockingQuiz(currentVideo, part)
                     const left = partTrialsLeft(currentVideo, part)
                     const cap = partViewCap(currentVideo, part)
@@ -888,25 +919,43 @@ export default function Packages() {
                     return (
                       <div
                         key={part.id}
-                        className={`part-row-item ${locked ? 'locked' : ''} ${isActive ? 'active' : ''}`}
+                        className={`part-item ${locked ? 'part-item-locked' : ''} ${isActive ? 'part-item-active' : ''}`}
                         onClick={() => playVideoPart(part)}
                       >
-                        <div className="part-title-line">
-                          <span>
-                            {locked && <i className="fas fa-lock lock-icon"></i>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className="title-card" style={{ color: 'var(--text-primary)', flex: 1 }}>
+                            {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
                             الجزء {index + 1}: {part.title}
-                          </span>
+                          </div>
                           {showTrials && (
-                            <span className="trials-capsule" style={{ color: trialColor, background: `${trialColor}15`, border: `1px solid ${trialColor}33` }}>
-                              <i className="fas fa-eye"></i> {left} / {cap}
+                            <span
+                              title="المحاولات المتبقية"
+                              style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                padding: '4px 10px',
+                                borderRadius: 999,
+                                background: `${trialColor}1a`,
+                                color: trialColor,
+                                border: `1px solid ${trialColor}55`,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <i className="fas fa-eye" style={{ marginInlineEnd: 4 }}></i>
+                              {left} / {cap}
                             </span>
                           )}
                         </div>
                         {blocking && userRole !== 'admin' && userRole !== 'assistant' && (
-                          <div className="part-warn"><i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                          </div>
                         )}
                         {outOfTrials && (
-                          <div className="part-error"><i className="fas fa-circle-xmark"></i> انتهت محاولاتك</div>
+                          <div style={{ fontSize: '0.8rem', color: '#e53e3e', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-circle-xmark"></i> انتهت محاولاتك لهذا الجزء
+                          </div>
                         )}
                       </div>
                     )
@@ -914,64 +963,91 @@ export default function Packages() {
                 </div>
               </div>
 
+              {/* Personal Smart Notes Card */}
               {selectedPart?.source === 'youtube' && (
-                <div className="notes-list-card">
-                  <h3><i className="fas fa-book-open"></i> ملاحظات وتوقيت الفيديو</h3>
+                <div className="card notes-card mt-6" style={{ direction: 'rtl' }}>
+                  <h3 className="title-section text-center" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
+                    <i className="fas fa-book-open" style={{ marginInlineEnd: 8, color: 'var(--educational-primary)' }}></i>
+                    ملاحظات وتوقيت الفيديو
+                  </h3>
+
                   {(userRole === 'admin' || userRole === 'assistant') && (
-                    <form onSubmit={handleSaveNote} className="note-editor-form">
-                      <textarea
-                        placeholder="اكتب ملاحظة هنا أثناء المشاهدة..."
-                        value={noteContent}
-                        onChange={(e) => setNoteContent(e.target.value)}
-                        rows={2}
-                      />
-                      <div className="note-editor-actions">
-                        <span className="note-time"><i className="fas fa-clock"></i> {formatTime(currentTime)}</span>
-                        <button type="submit" disabled={!noteContent.trim()}>حفظ الملاحظة</button>
+                    <form onSubmit={handleSaveNote} className="note-form mb-4">
+                      <div className="note-input-container">
+                        <textarea
+                          className="note-textarea"
+                          placeholder="اكتب ملاحظة هنا أثناء المشاهدة..."
+                          value={noteContent}
+                          onChange={(e) => setNoteContent(e.target.value)}
+                          rows={3}
+                        />
+                        <div className="note-form-actions">
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm note-timestamp-btn"
+                            title="التوقيت الحالي"
+                          >
+                            <i className="fas fa-clock" style={{ marginInlineEnd: 4 }}></i>
+                            {formatTime(currentTime)}
+                          </button>
+                          <button type="submit" className="btn btn-primary btn-sm note-submit-btn" disabled={!noteContent.trim()}>
+                            حفظ الملاحظة
+                          </button>
+                        </div>
                       </div>
                     </form>
                   )}
 
-                  <div className="notes-scroll-area">
+                  {/* Notes list */}
+                  <div className="notes-list-container">
                     {loadingNotes ? (
-                      <div className="notes-msg"><i className="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+                      <div className="text-center p-4" style={{ color: 'var(--text-muted)' }}>
+                        <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }}></i>
+                        جاري تحميل الملاحظات...
+                      </div>
                     ) : notes.length === 0 ? (
-                      <div className="notes-msg">لا توجد ملاحظات محفوظة في هذا الجزء بعد.</div>
+                      <div className="text-center p-6 notes-empty-state">
+                        <i className="far fa-note-sticky" style={{ fontSize: '2rem', display: 'block', marginBottom: 8, opacity: 0.5 }}></i>
+                        <span>لا توجد ملاحظات محفوظة في هذا الجزء بعد.</span>
+                      </div>
                     ) : (
-                      notes.map((note) => (
-                        <div key={note.id} className="note-row">
-                          <div className="note-meta">
-                            <button className="btn-seek-time" onClick={() => handleSeekToNote(note.timestamp_seconds)}>
-                              <i className="fas fa-play"></i> {formatTime(note.timestamp_seconds)}
-                            </button>
-                            {(userRole === 'admin' || userRole === 'assistant') && (
-                              <button className="btn-del-note" onClick={() => handleDeleteNote(note.id)}><i className="fas fa-trash"></i></button>
-                            )}
+                      <div className="notes-list">
+                        {notes.map((note) => (
+                          <div key={note.id} className="note-item">
+                            <div className="note-header">
+                              <button
+                                onClick={() => handleSeekToNote(note.timestamp_seconds)}
+                                className="note-time-badge"
+                                title="انتقل إلى هذا الوقت"
+                              >
+                                <i className="fas fa-play" style={{ fontSize: '0.65rem', marginInlineEnd: 4 }}></i>
+                                {formatTime(note.timestamp_seconds)}
+                              </button>
+                              {(userRole === 'admin' || userRole === 'assistant') && (
+                                <button
+                                  onClick={() => handleDeleteNote(note.id)}
+                                  className="note-delete-btn"
+                                  title="حذف الملاحظة"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              )}
+                            </div>
+                            <p className="note-text">{note.content}</p>
                           </div>
-                          <p>{note.content}</p>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {showPdf && currentVideo.pdf_url && (
-            <div className="video-pdf-block">
-              <div className="pdf-block-head">
-                <h3><i className="fas fa-file-pdf"></i> مذكرة المحاضرة</h3>
-                <button onClick={() => setShowPdf(false)}>إخفاء</button>
+            {currentVideo && (
+              <div className="video-comments-area">
+                <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
               </div>
-              <div className="pdf-block-body">
-                <PdfInline url={currentVideo.pdf_url} title={currentVideo.title} />
-              </div>
-            </div>
-          )}
-
-          <div className="video-comments-wrap">
-            <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
+            )}
           </div>
         </div>
       )}

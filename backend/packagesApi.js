@@ -4,9 +4,10 @@ import { createNotification } from './notificationsApi'
 
 // List all packages and their bundled items
 export async function listPackages(tenantId) {
-  const key = tenantId ? `packages:list:${tenantId}` : 'packages:list'
+  if (!tenantId) return []
+  const key = `packages:list:${tenantId}`
   return cached(key, LIST_TTL, async () => {
-    let query = supabase
+    const { data, error } = await supabase
       .from('packages')
       .select(`
         id, title, description, price, is_active, thumbnail, grade, created_at, tenant_id,
@@ -14,10 +15,8 @@ export async function listPackages(tenantId) {
           id, package_id, item_type, item_id, created_at
         )
       `)
-    if (tenantId) {
-      query = query.eq('tenant_id', tenantId)
-    }
-    const { data, error } = await query.order('created_at', { ascending: false })
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
     if (error) throw error
     return data || []
   })
