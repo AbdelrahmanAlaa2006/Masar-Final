@@ -1,0 +1,12 @@
+.aa-page.aa-math-theme {
+  --background: oklch(0.99 0.005 220);
+  --surface: oklch(0.96 0.01 220);
+  --card: oklch(1 0 0);
+}
+
+.dark .aa-page.aa-math-theme {
+  --background: oklch(0.14 0.02 230);
+  --surface: oklch(0.18 0.025 230);
+  --card: oklch(0.20 0.03 230);
+  --border: oklch(1 0 0 / 8%);
+}

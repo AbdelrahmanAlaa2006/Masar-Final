@@ -7,7 +7,7 @@ import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
 import { cached } from '../utils/cache'
 import masarLogo from '../assets/logo.white.png'
-import { getTenantThemeConfig } from '../utils/tenantThemes'
+// getTenantThemeConfig is now dynamically resolved inside TenantContext
 import './Header.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -34,8 +34,7 @@ const ADMIN_ITEMS = [
 ]
 
 export default function Header() {
-  const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
-  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const { tenant, tenantSlug, isFeatureEnabled, themeConfig } = useTenant()
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))

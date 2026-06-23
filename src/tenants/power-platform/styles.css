@@ -1,0 +1,879 @@
+/* ─────────── POWER PLATFORM THEME (power-platform) ─────────── */
+
+.aa-power-theme {
+  --background: #f8fafc !important; /* Premium light slate-blue background */
+  --surface: #f1f5f9 !important; /* Lighter surface */
+  --card: #ffffff !important; /* Solid crisp white cards */
+  --primary: #ea580c !important; /* Vibrant deep orange */
+  --secondary: #d4af37 !important; /* Gold */
+  
+  --primary-glow: rgba(234, 88, 12, 0.25) !important;
+  --primary-soft: rgba(234, 88, 12, 0.1) !important;
+  --btn-from: #ea580c !important;
+  --btn-to: #f97316 !important;
+  --btn-text: #ffffff !important;
+  --btn-shadow: 0 10px 24px rgba(234, 88, 12, 0.2) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(234, 88, 12, 0.35) !important;
+  
+  --foreground: #0f172a !important; /* Premium deep blue slate text */
+  --card-foreground: #1e293b !important;
+  --ink: #0f172a !important;
+  --muted-foreground: #475569 !important; /* Slate grey instead of faded default */
+  --border: rgba(15, 23, 42, 0.16) !important;
+}
+
+/* Light Mode Section Headings: Vibrant Orange to Deep Blue gradient (very premium) */
+body:not(.dark).aa-power-theme .section-heading,
+body:not(.dark).aa-power-theme h1,
+body:not(.dark).aa-power-theme h2 {
+  background: linear-gradient(135deg, #ea580c, #d4af37) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+/* Light Mode Cards: Crisp borders, solid backgrounds and dynamic shadows */
+body:not(.dark).aa-power-theme .feature-card,
+body:not(.dark).aa-power-theme .step-card,
+body:not(.dark).aa-power-theme .location-info-card,
+body:not(.dark).aa-power-theme .about-stat,
+body:not(.dark).aa-power-theme .landing-package-card {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.01) !important;
+}
+
+body:not(.dark).aa-power-theme .feature-card:hover,
+body:not(.dark).aa-power-theme .step-card:hover,
+body:not(.dark).aa-power-theme .location-info-card:hover,
+body:not(.dark).aa-power-theme .about-stat:hover,
+body:not(.dark).aa-power-theme .landing-package-card:hover {
+  background: #ffffff !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08), 0 0 15px rgba(234, 88, 12, 0.15) !important;
+}
+
+/* Premium gradient buttons with Gold accent border */
+.aa-power-theme .hero-btn,
+.aa-power-theme .premium-action-btn.btn-primary,
+.aa-power-theme .aa-btn-primary,
+.aa-power-theme .location-directions-btn,
+.aa-power-theme button.btn-primary,
+.aa-power-theme button.aa-btn-primary,
+.aa-power-theme .modern-btn,
+.aa-power-theme button.modern-btn {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Premium orange gradient */
+  border: 1px solid #d4af37 !important; /* Gold border accent for premium feel */
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(234, 88, 12, 0.25) !important;
+  text-shadow: none !important;
+}
+
+.aa-power-theme .hero-btn:hover,
+.aa-power-theme .premium-action-btn.btn-primary:hover,
+.aa-power-theme .aa-btn-primary:hover,
+.aa-power-theme .location-directions-btn:hover,
+.aa-power-theme button.btn-primary:hover,
+.aa-power-theme button.aa-btn-primary:hover,
+.aa-power-theme .modern-btn:hover:not(:disabled),
+.aa-power-theme button.modern-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f97316, #f59e0b) !important; /* Gold/Amber hover */
+  border-color: #ffd700 !important;
+  box-shadow: 0 14px 30px rgba(234, 88, 12, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
+}
+
+/* Brand Logo Sizing: Make it bigger and adjust header height for Power theme */
+.aa-power-theme .aa-nav-inner {
+  height: 85px !important;
+}
+
+.aa-power-theme .aa-brand-logo {
+  height: 80px !important;
+  max-height: 80px !important;
+  width: auto;
+  object-fit: contain;
+  margin-top: -8px;
+  margin-bottom: -8px;
+}
+
+/* Header logo (mark container) */
+.aa-power-theme .mh__mark {
+  width: 90px !important;
+  height: 60px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+.aa-power-theme .mh__mark::before,
+.aa-power-theme .mh__mark::after {
+  display: none !important;
+}
+
+.aa-power-theme .mh__mark-img {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.aa-power-theme .mh__brand:hover .mh__mark {
+  transform: scale(1.05) !important;
+  box-shadow: none !important;
+}
+
+/* Footer Brand Logo sizing override */
+.aa-power-theme .sf-brand-logo {
+  width: 90px !important;
+  height: 60px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.aa-power-theme .sf-brand-logo::after {
+  display: none !important;
+}
+
+.aa-power-theme .sf-brand-logo-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* Footer logo inside login page */
+.aa-power-theme .footer-logo {
+  height: 80px !important;
+  max-height: 80px !important;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Quote card custom gradient styling for Power theme - Light Mode */
+body:not(.dark) .aa-power-theme .about-quote,
+body:not(.dark).aa-power-theme .about-quote {
+  background: linear-gradient(135deg, #fffcf5 0%, #fff7e6 100%) !important; /* Premium warm ivory-orange gradient */
+  border: 1.5px solid #ea580c !important; /* Solid orange border trim */
+  color: #0f172a !important; /* Dark slate text */
+  box-shadow: 0 20px 40px rgba(234, 88, 12, 0.08), 0 0 15px rgba(234, 88, 12, 0.03) !important;
+}
+body:not(.dark) .aa-power-theme .about-quote-icon,
+body:not(.dark).aa-power-theme .about-quote-icon,
+body:not(.dark) .aa-power-theme .about-quote-author,
+body:not(.dark).aa-power-theme .about-quote-author {
+  color: #ea580c !important; /* Orange quote icon and author text */
+}
+
+/* Light Mode Card Icons: Orange gradient with gold border */
+.aa-power-theme .feature-icon,
+.aa-power-theme .location-info-icon {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Orange gradient */
+  border: 1px solid #d4af37 !important; /* Gold border trim */
+  color: #ffd700 !important; /* Gold icon */
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.15) !important;
+}
+.aa-power-theme .feature-card:hover .feature-icon,
+.aa-power-theme .location-info-card:hover .location-info-icon {
+  background: linear-gradient(135deg, #f97316, #f59e0b) !important; /* Brighter gold gradient on hover */
+  color: #ffffff !important;
+  border-color: #d4af37 !important;
+}
+
+/* Light Mode Step Numbers (Orange circle with gold border) */
+.aa-power-theme .step-number {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 2px solid #d4af37 !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+.aa-power-theme .step-card:hover .step-number {
+  background: linear-gradient(135deg, #f97316, #f59e0b) !important;
+  border-color: #d4af37 !important;
+  color: #ffffff !important;
+}
+
+/* Light Mode Location Background: Warm cream gradient with very soft glows */
+.aa-power-theme .login-location {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(30, 58, 138, 0.05), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(234, 88, 12, 0.05), transparent 60%),
+    linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
+}
+.aa-power-theme .loc-bg-blob--a {
+  background: #1e3a8a !important;
+  opacity: 0.06 !important;
+}
+.aa-power-theme .loc-bg-blob--b {
+  background: #ea580c !important;
+  opacity: 0.05 !important;
+}
+
+.aa-power-theme .location-directions-btn--ghost {
+  background: transparent !important;
+  border: 1px solid rgba(30, 58, 138, 0.4) !important;
+  color: #1e3a8a !important;
+}
+.aa-power-theme .location-directions-btn--ghost:hover {
+  background: rgba(30, 58, 138, 0.06) !important;
+  border-color: #1e3a8a !important;
+  color: #1e3a8a !important;
+}
+
+/* Light Mode Location Pointer: Styled orange gradient with gold border */
+.aa-power-theme .map-pin__dot {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 2px solid #d4af37 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 10px 25px -5px rgba(234, 88, 12, 0.35) !important;
+}
+
+.aa-power-theme .map-frame {
+  background: linear-gradient(135deg, #ffd700, #d4af37) !important;
+}
+
+/* Modal Close Button: Premium high contrast style */
+.aa-power-theme .auth-modal-close {
+  background: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+  opacity: 1 !important;
+}
+.aa-power-theme .auth-modal-close:hover {
+  background: rgba(15, 23, 42, 0.16) !important;
+  color: #000000 !important;
+}
+
+/* Modal and Register Input Icons: Orange color, highly visible */
+.aa-power-theme .input-wrapper i,
+.aa-power-theme .register-input-wrapper i {
+  color: #ea580c !important;
+  opacity: 1 !important;
+}
+.aa-power-theme .input-wrapper input:focus + i,
+.aa-power-theme .register-input-wrapper:focus-within i {
+  color: #f97316 !important;
+}
+
+/* Parent Modal Header Icon: Orange gradient, gold border, gold icon */
+.aa-power-theme .auth-modal-icon {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 1.5px solid #d4af37 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.25) !important;
+}
+.aa-power-theme .auth-modal-icon i {
+  color: #ffd700 !important;
+}
+
+/* Input Fields (Forms, Modals, Register Page): Crisp readability */
+.aa-power-theme input,
+.aa-power-theme select,
+.aa-power-theme textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.22) !important;
+}
+
+.aa-power-theme input:hover,
+.aa-power-theme select:hover,
+.aa-power-theme textarea:hover {
+  border-color: rgba(15, 23, 42, 0.35) !important;
+  background-color: #ffffff !important;
+}
+
+.aa-power-theme input:focus,
+.aa-power-theme select:focus,
+.aa-power-theme textarea:focus {
+  border-color: #ea580c !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15) !important;
+  color: #0f172a !important;
+}
+
+.aa-power-theme input::placeholder,
+.aa-power-theme textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+/* Dropdown option text colors */
+.aa-power-theme select option,
+.aa-power-theme select optgroup {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Portrait Chips (Badges): Clean contrast styling */
+.aa-power-theme .aa-chip {
+  background: rgba(212, 175, 55, 0.08) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  color: #8c6b12 !important;
+  text-shadow: none !important;
+}
+
+.aa-power-theme .aa-chip-accent {
+  background: rgba(234, 88, 12, 0.08) !important;
+  border: 1px solid rgba(234, 88, 12, 0.22) !important;
+  color: #ea580c !important;
+}
+
+
+
+
+/* Dark Mode Overrides (matches .dark body.aa-power-theme / .dark .aa-power-theme) */
+.dark .aa-power-theme, .dark.aa-power-theme {
+  --background: #070e1f !important; /* Premium deep space navy blue background */
+  --surface: #0c152b !important; /* Navy surface */
+  --card: #121e36 !important; /* Card content navy */
+  
+  --primary: #f97316 !important; /* Luminous orange */
+  --secondary: #ffd700 !important; /* Gold */
+  
+  --primary-glow: rgba(249, 115, 22, 0.3) !important;
+  --primary-soft: rgba(249, 115, 22, 0.15) !important;
+  --btn-from: #ea580c !important;
+  --btn-to: #f97316 !important;
+  --btn-text: #ffffff !important;
+  --btn-shadow: 0 10px 24px rgba(249, 115, 22, 0.25) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(249, 115, 22, 0.45) !important;
+  
+  --foreground: #f8fafc !important;
+  --card-foreground: #cbd5e1 !important;
+  --ink: #f8fafc !important;
+  --muted-foreground: #94a3b8 !important;
+  --border: rgba(249, 115, 22, 0.2) !important;
+}
+
+/* Luminous orange-to-gold gradient buttons in dark mode */
+.dark.aa-power-theme .hero-btn,
+.dark.aa-power-theme .premium-action-btn.btn-primary,
+.dark.aa-power-theme .aa-btn-primary,
+.dark.aa-power-theme .location-directions-btn,
+.dark.aa-power-theme button.btn-primary,
+.dark.aa-power-theme button.aa-btn-primary,
+.dark .aa-power-theme .hero-btn,
+.dark .aa-power-theme .premium-action-btn.btn-primary,
+.dark .aa-power-theme .aa-btn-primary,
+.dark .aa-power-theme .location-directions-btn,
+.dark .aa-power-theme button.btn-primary,
+.dark .aa-power-theme button.aa-btn-primary,
+.dark.aa-power-theme .modern-btn,
+.dark.aa-power-theme button.modern-btn,
+.dark .aa-power-theme .modern-btn,
+.dark .aa-power-theme button.modern-btn {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Solid orange gradient */
+  border: 1px solid #ffd700 !important; /* Gold border accent */
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.35) !important;
+}
+
+.dark.aa-power-theme .hero-btn:hover,
+.dark.aa-power-theme .premium-action-btn.btn-primary:hover,
+.dark.aa-power-theme .aa-btn-primary:hover,
+.dark.aa-power-theme .location-directions-btn:hover,
+.dark.aa-power-theme button.btn-primary:hover,
+.dark.aa-power-theme button.aa-btn-primary:hover,
+.dark .aa-power-theme .hero-btn:hover,
+.dark .aa-power-theme .premium-action-btn.btn-primary:hover,
+.dark .aa-power-theme .aa-btn-primary:hover,
+.dark .aa-power-theme .location-directions-btn:hover,
+.dark .aa-power-theme button.btn-primary:hover,
+.dark .aa-power-theme button.aa-btn-primary:hover,
+.dark.aa-power-theme .modern-btn:hover:not(:disabled),
+.dark.aa-power-theme button.modern-btn:hover:not(:disabled),
+.dark .aa-power-theme .modern-btn:hover:not(:disabled),
+.dark .aa-power-theme button.modern-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f97316, #eab308) !important;
+  border-color: #ffd700 !important;
+  box-shadow: 0 14px 30px rgba(249, 115, 22, 0.55), 0 0 15px rgba(212, 175, 55, 0.35) !important;
+}
+
+.dark .aa-power-theme .about-quote, .dark.aa-power-theme .about-quote {
+  background: linear-gradient(135deg, #0b1329, #070e1f) !important; /* Space navy gradient */
+  border: 1.5px solid #ffd700 !important; /* Premium gold border */
+  color: #ffffff !important;
+  box-shadow: 0 20px 50px rgba(7, 14, 31, 0.6), 0 0 20px rgba(212, 175, 55, 0.15) !important;
+}
+.dark .aa-power-theme .about-quote-icon, .dark.aa-power-theme .about-quote-icon,
+.dark .aa-power-theme .about-quote-author, .dark.aa-power-theme .about-quote-author {
+  color: #ffffff !important;
+}
+
+/* Location section dark overrides */
+.dark .aa-power-theme .login-location, .dark.aa-power-theme .login-location {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(249, 115, 22, 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(30, 64, 175, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
+}
+.dark .aa-power-theme .loc-bg-blob--a, .dark.aa-power-theme .loc-bg-blob--a {
+  background: #3b82f6 !important;
+  opacity: 0.2 !important;
+}
+.dark .aa-power-theme .loc-bg-blob--b, .dark.aa-power-theme .loc-bg-blob--b {
+  background: #ea580c !important;
+  opacity: 0.15 !important;
+}
+
+/* Gold section heading text gradient (highly premium) */
+.dark .aa-power-theme .section-heading, .dark.aa-power-theme .section-heading,
+.dark .aa-power-theme h1, .dark.aa-power-theme h1,
+.dark .aa-power-theme h2, .dark.aa-power-theme h2 {
+  background: linear-gradient(135deg, #ffd700, #f97316) !important; /* Pure gold-orange text gradient */
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+/* Feature & Location Icons */
+.dark .aa-power-theme .feature-icon, .dark.aa-power-theme .feature-icon,
+.dark .aa-power-theme .location-info-icon, .dark.aa-power-theme .location-info-icon {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  color: #ffd700 !important;
+  border: 1px solid #ffd700 !important;
+}
+
+.dark .aa-power-theme .feature-card:hover .feature-icon, .dark.aa-power-theme .feature-card:hover .feature-icon,
+.dark .aa-power-theme .location-info-card:hover .location-info-icon, .dark.aa-power-theme .location-info-card:hover .location-info-icon {
+  background: linear-gradient(135deg, #f97316, #ffd700) !important;
+  color: #070e1f !important;
+  border-color: #ffd700 !important;
+}
+
+/* Step Cards step numbers in dark mode */
+.dark .aa-power-theme .step-number, .dark.aa-power-theme .step-number {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.2), rgba(249, 115, 22, 0.15)) !important;
+  border: 2px solid rgba(249, 115, 22, 0.3) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(249, 115, 22, 0.3) !important;
+}
+.dark .aa-power-theme .step-card:hover .step-number, .dark.aa-power-theme .step-card:hover .step-number {
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  border-color: #ffd700 !important;
+  color: #ffffff !important;
+}
+
+.dark .aa-power-theme .location-directions-btn--ghost, .dark.aa-power-theme .location-directions-btn--ghost {
+  background: transparent !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  color: #ffd700 !important;
+}
+.dark .aa-power-theme .location-directions-btn--ghost:hover, .dark.aa-power-theme .location-directions-btn--ghost:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+}
+
+/* Dark Mode Location Pointer */
+.dark .aa-power-theme .map-pin__dot, .dark.aa-power-theme .map-pin__dot {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 2px solid #ffd700 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.45) !important;
+}
+
+.dark .aa-power-theme .map-frame {
+  background: linear-gradient(135deg, #ffd700, #d4af37) !important;
+}
+
+/* Dark Mode Modal Close Button */
+.dark.aa-power-theme .auth-modal-close,
+.dark .aa-power-theme .auth-modal-close {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+.dark.aa-power-theme .auth-modal-close:hover,
+.dark .aa-power-theme .auth-modal-close:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffd700 !important;
+}
+
+/* Dark Mode input icons */
+.dark.aa-power-theme .input-wrapper i,
+.dark .aa-power-theme .input-wrapper i,
+.dark.aa-power-theme .register-input-wrapper i,
+.dark .aa-power-theme .register-input-wrapper i {
+  color: #ffd700 !important;
+  opacity: 1 !important;
+}
+.dark.aa-power-theme .input-wrapper input:focus + i,
+.dark .aa-power-theme .input-wrapper input:focus + i,
+.dark.aa-power-theme .register-input-wrapper:focus-within i,
+.dark .aa-power-theme .register-input-wrapper:focus-within i {
+  color: #f97316 !important;
+}
+
+/* Dark Mode parent modal header icon */
+.dark.aa-power-theme .auth-modal-icon,
+.dark .aa-power-theme .auth-modal-icon {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 1.5px solid #ffd700 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35) !important;
+}
+.dark.aa-power-theme .auth-modal-icon i,
+.dark .aa-power-theme .auth-modal-icon i {
+  color: #ffd700 !important;
+}
+
+/* Dark Mode Inputs */
+.dark.aa-power-theme input,
+.dark .aa-power-theme input,
+.dark.aa-power-theme select,
+.dark .aa-power-theme select,
+.dark.aa-power-theme textarea,
+.dark .aa-power-theme textarea {
+  background-color: #121e36 !important;
+  color: #f1f5f9 !important;
+  border: 1.5px solid rgba(249, 115, 22, 0.22) !important;
+}
+
+.dark.aa-power-theme input:hover,
+.dark .aa-power-theme input:hover,
+.dark.aa-power-theme select:hover,
+.dark .aa-power-theme select:hover,
+.dark.aa-power-theme textarea:hover,
+.dark .aa-power-theme textarea:hover {
+  border-color: rgba(249, 115, 22, 0.35) !important;
+  background-color: #17243e !important;
+}
+
+.dark.aa-power-theme input:focus,
+.dark .aa-power-theme input:focus,
+.dark.aa-power-theme select:focus,
+.dark .aa-power-theme select:focus,
+.dark.aa-power-theme textarea:focus,
+.dark .aa-power-theme textarea:focus {
+  border-color: #f97316 !important;
+  background-color: #17243e !important;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.dark.aa-power-theme input::placeholder,
+.dark .aa-power-theme input::placeholder,
+.dark.aa-power-theme textarea::placeholder,
+.dark .aa-power-theme textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+/* Dark Mode Dropdown options */
+.dark.aa-power-theme select option,
+.dark .aa-power-theme select option,
+.dark.aa-power-theme select optgroup,
+.dark .aa-power-theme select optgroup {
+  background-color: #121e36 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Dark Mode Chips */
+.dark.aa-power-theme .aa-chip,
+.dark .aa-power-theme .aa-chip {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.dark.aa-power-theme .aa-chip-accent,
+.dark .aa-power-theme .aa-chip-accent {
+  background: rgba(249, 115, 22, 0.15) !important;
+  border: 1px solid rgba(249, 115, 22, 0.3) !important;
+  color: #f97316 !important;
+}
+
+
+
+
+/* ──────────────────────────────────────────────────────────────
+   PREMIUM CUSTOM BACKGROUNDS AND STYLES OVERRIDES
+   ────────────────────────────────────────────────────────────── */
+
+.aa-power-theme {
+  --bg-color: #f8fafc !important;
+  --bg-primary: #f8fafc !important;
+  --bg-secondary: #f8fafc !important;
+  --page-bg: #f8fafc !important;
+  --cp-bg: #f8fafc !important;
+  --cp-bg-image: none !important;
+}
+
+.dark.aa-power-theme,
+.dark .aa-power-theme {
+  --bg-color: #070e1f !important;
+  --bg-primary: #070e1f !important;
+  --bg-secondary: #070e1f !important;
+  --page-bg: #070e1f !important;
+  --cp-bg: #070e1f !important;
+  --cp-bg-image: none !important;
+}
+
+/* Explicit Page backgrounds overrides for premium consistent look */
+body.aa-power-theme,
+.aa-power-theme .aa-page,
+.aa-power-theme .videos-page,
+.aa-power-theme .lec-page,
+.aa-power-theme .hw-page,
+.aa-power-theme .exams-container,
+.aa-power-theme .vr-page,
+.aa-power-theme .vgr-page,
+.aa-power-theme .hr-page,
+.aa-power-theme .hgr-page,
+.aa-power-theme .er-page,
+.aa-power-theme .egr-page,
+.aa-power-theme .report-page,
+.aa-power-theme .cp-page,
+.aa-power-theme .video-add-page,
+.aa-power-theme .exam-add-page,
+.aa-power-theme .profile-page,
+.aa-power-theme .shop-page,
+.aa-power-theme .packages-page,
+.aa-power-theme .pp-page,
+.aa-power-theme .sc-page {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  background-image: none !important;
+}
+
+.dark.aa-power-theme,
+.dark .aa-power-theme,
+.dark.aa-power-theme .aa-page,
+.dark .aa-power-theme .aa-page,
+.dark.aa-power-theme .videos-page,
+.dark .aa-power-theme .videos-page,
+.dark.aa-power-theme .lec-page,
+.dark .aa-power-theme .lec-page,
+.dark.aa-power-theme .hw-page,
+.dark .aa-power-theme .hw-page,
+.dark.aa-power-theme .exams-container,
+.dark .aa-power-theme .exams-container,
+.dark.aa-power-theme .vr-page,
+.dark .aa-power-theme .vr-page,
+.dark.aa-power-theme .vgr-page,
+.dark .aa-power-theme .vgr-page,
+.dark.aa-power-theme .hr-page,
+.dark .aa-power-theme .hr-page,
+.dark.aa-power-theme .hgr-page,
+.dark .aa-power-theme .hgr-page,
+.dark.aa-power-theme .er-page,
+.dark .aa-power-theme .er-page,
+.dark.aa-power-theme .egr-page,
+.dark .aa-power-theme .egr-page,
+.dark.aa-power-theme .report-page,
+.dark .aa-power-theme .report-page,
+.dark.aa-power-theme .cp-page,
+.dark .aa-power-theme .cp-page,
+.dark.aa-power-theme .video-add-page,
+.dark .aa-power-theme .video-add-page,
+.dark.aa-power-theme .exam-add-page,
+.dark .aa-power-theme .exam-add-page,
+.dark.aa-power-theme .profile-page,
+.dark .aa-power-theme .profile-page,
+.dark.aa-power-theme .shop-page,
+.dark .aa-power-theme .shop-page,
+.dark.aa-power-theme .packages-page,
+.dark .aa-power-theme .packages-page,
+.dark.aa-power-theme .pp-page,
+.dark .aa-power-theme .pp-page,
+.dark.aa-power-theme .sc-page,
+.dark .aa-power-theme .sc-page {
+  background: #070e1f !important;
+  background-color: #070e1f !important;
+  background-image: none !important;
+}
+
+/* Ambient glows */
+.aa-power-theme .videos-page::before {
+  background:
+    radial-gradient(circle at 10% 90%, rgba(234, 88, 12, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(30, 58, 138, 0.05) 0%, transparent 45%) !important;
+}
+.dark.aa-power-theme .videos-page::before,
+.dark .aa-power-theme .videos-page::before {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(30, 58, 138, 0.1) 0%, transparent 50%) !important;
+}
+
+/* Avatar and Title Icons: Orange-to-gold premium gradient */
+.aa-power-theme .mh__avatar,
+.aa-power-theme .vid-prep-icon,
+.aa-power-theme .lec-prep-icon,
+.aa-power-theme .lec-page-icon,
+.aa-power-theme .lec-modal-icon,
+.aa-power-theme .hw-prep-icon,
+.aa-power-theme .hw-page-icon,
+.aa-power-theme .hw-modal-icon,
+.aa-power-theme .exm-prep-icon,
+.aa-power-theme .exm-page-icon,
+.aa-power-theme .report-header-icon,
+.aa-power-theme .report-selected-avatar,
+.aa-power-theme .rs-avatar,
+.aa-power-theme .report-card-icon--purple,
+.aa-power-theme .rp-modal-icon,
+.aa-power-theme .rp-modal-avatar,
+.aa-power-theme .vr-student-avatar,
+.aa-power-theme .vr-header-icon,
+.aa-power-theme .vr-modal-icon-wrap,
+.aa-power-theme .vr-card-icon-wrap {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 1px solid #d4af37 !important;
+  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.25) !important;
+}
+
+.aa-power-theme .mh__avatar,
+.aa-power-theme .report-selected-avatar,
+.aa-power-theme .rs-avatar,
+.aa-power-theme .rp-modal-avatar,
+.aa-power-theme .vr-student-avatar {
+  color: #ffffff !important;
+}
+
+.aa-power-theme .vid-prep-icon i,
+.aa-power-theme .lec-prep-icon i,
+.aa-power-theme .lec-page-icon i,
+.aa-power-theme .lec-modal-icon i,
+.aa-power-theme .hw-prep-icon i,
+.aa-power-theme .hw-page-icon i,
+.aa-power-theme .hw-modal-icon i,
+.aa-power-theme .exm-prep-icon i,
+.aa-power-theme .exm-page-icon i,
+.aa-power-theme .report-header-icon i,
+.aa-power-theme .report-card-icon--purple i,
+.aa-power-theme .rp-modal-icon i,
+.aa-power-theme .vr-header-icon i,
+.aa-power-theme .vr-modal-icon-wrap i,
+.aa-power-theme .vr-card-icon-wrap i {
+  color: #ffd700 !important;
+}
+
+/* User avatar glow override */
+.aa-power-theme .mh__avatar {
+  box-shadow: 
+    0 0 0 2px var(--mh-bg-solid),
+    0 0 0 3px rgba(234, 88, 12, 0.25),
+    0 6px 16px -4px rgba(234, 88, 12, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+.aa-power-theme .mh__user:hover .mh__avatar {
+  box-shadow: 
+    0 0 0 2px var(--mh-bg-solid),
+    0 0 0 3px rgba(234, 88, 12, 0.45),
+    0 8px 20px -4px rgba(234, 88, 12, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Dark Mode User Avatar and Page/Section Icons */
+.dark .aa-power-theme .mh__avatar,
+.dark.aa-power-theme .mh__avatar,
+.dark .aa-power-theme .vid-prep-icon,
+.dark.aa-power-theme .vid-prep-icon,
+.dark .aa-power-theme .lec-prep-icon,
+.dark.aa-power-theme .lec-prep-icon,
+.dark .aa-power-theme .lec-page-icon,
+.dark.aa-power-theme .lec-page-icon,
+.dark .aa-power-theme .lec-modal-icon,
+.dark.aa-power-theme .lec-modal-icon,
+.dark .aa-power-theme .hw-prep-icon,
+.dark.aa-power-theme .hw-prep-icon,
+.dark .aa-power-theme .hw-page-icon,
+.dark.aa-power-theme .hw-page-icon,
+.dark .aa-power-theme .hw-modal-icon,
+.dark.aa-power-theme .hw-modal-icon,
+.dark .aa-power-theme .exm-prep-icon,
+.dark.aa-power-theme .exm-prep-icon,
+.dark .aa-power-theme .exm-page-icon,
+.dark.aa-power-theme .exm-page-icon,
+.dark .aa-power-theme .report-header-icon,
+.dark.aa-power-theme .report-header-icon,
+.dark .aa-power-theme .report-selected-avatar,
+.dark.aa-power-theme .report-selected-avatar,
+.dark .aa-power-theme .rs-avatar,
+.dark.aa-power-theme .rs-avatar,
+.dark .aa-power-theme .report-card-icon--purple,
+.dark.aa-power-theme .report-card-icon--purple,
+.dark .aa-power-theme .rp-modal-icon,
+.dark.aa-power-theme .rp-modal-icon,
+.dark .aa-power-theme .rp-modal-avatar,
+.dark.aa-power-theme .rp-modal-avatar,
+.dark .aa-power-theme .vr-student-avatar,
+.dark.aa-power-theme .vr-student-avatar,
+.dark .aa-power-theme .vr-header-icon,
+.dark.aa-power-theme .vr-header-icon,
+.dark .aa-power-theme .vr-modal-icon-wrap,
+.dark.aa-power-theme .vr-modal-icon-wrap,
+.dark .aa-power-theme .vr-card-icon-wrap,
+.dark.aa-power-theme .vr-card-icon-wrap {
+  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  border: 1px solid #ffd700 !important;
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35) !important;
+}
+
+.dark .aa-power-theme .mh__avatar,
+.dark.aa-power-theme .mh__avatar,
+.dark .aa-power-theme .report-selected-avatar,
+.dark.aa-power-theme .report-selected-avatar,
+.dark .aa-power-theme .rs-avatar,
+.dark.aa-power-theme .rs-avatar,
+.dark .aa-power-theme .rp-modal-avatar,
+.dark.aa-power-theme .rp-modal-avatar,
+.dark .aa-power-theme .vr-student-avatar,
+.dark.aa-power-theme .vr-student-avatar {
+  color: #ffffff !important;
+}
+
+.dark .aa-power-theme .vid-prep-icon i,
+.dark.aa-power-theme .vid-prep-icon i,
+.dark .aa-power-theme .lec-prep-icon i,
+.dark.aa-power-theme .lec-prep-icon i,
+.dark .aa-power-theme .lec-page-icon i,
+.dark.aa-power-theme .lec-page-icon i,
+.dark .aa-power-theme .lec-modal-icon i,
+.dark.aa-power-theme .lec-modal-icon i,
+.dark .aa-power-theme .hw-prep-icon i,
+.dark.aa-power-theme .hw-prep-icon i,
+.dark .aa-power-theme .hw-page-icon i,
+.dark.aa-power-theme .hw-page-icon i,
+.dark .aa-power-theme .hw-modal-icon i,
+.dark.aa-power-theme .hw-modal-icon i,
+.dark .aa-power-theme .exm-prep-icon i,
+.dark.aa-power-theme .exm-prep-icon i,
+.dark .aa-power-theme .exm-page-icon i,
+.dark.aa-power-theme .exm-page-icon i,
+.dark .aa-power-theme .report-header-icon i,
+.dark.aa-power-theme .report-header-icon i,
+.dark .aa-power-theme .report-card-icon--purple i,
+.dark.aa-power-theme .report-card-icon--purple i,
+.dark .aa-power-theme .rp-modal-icon i,
+.dark.aa-power-theme .rp-modal-icon i,
+.dark .aa-power-theme .vr-header-icon i,
+.dark.aa-power-theme .vr-header-icon i,
+.dark .aa-power-theme .vr-modal-icon-wrap i,
+.dark.aa-power-theme .vr-modal-icon-wrap i,
+.dark .aa-power-theme .vr-card-icon-wrap i,
+.dark.aa-power-theme .vr-card-icon-wrap i {
+  color: #ffd700 !important;
+}
+
+/* Dark mode user avatar glow */
+.dark.aa-power-theme .mh__avatar,
+.dark .aa-power-theme .mh__avatar {
+  box-shadow: 
+    0 0 0 2px var(--mh-bg-solid),
+    0 0 0 3px rgba(249, 115, 22, 0.35),
+    0 6px 16px -4px rgba(249, 115, 22, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+.dark.aa-power-theme .mh__user:hover .mh__avatar,
+.dark .aa-power-theme .mh__user:hover .mh__avatar {
+  box-shadow: 
+    0 0 0 2px var(--mh-bg-solid),
+    0 0 0 3px rgba(249, 115, 22, 0.55),
+    0 8px 20px -4px rgba(249, 115, 22, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}

@@ -1,0 +1,12 @@
+.aa-page.aa-chem-theme {
+  --background: oklch(0.99 0.005 190);
+  --surface: oklch(0.96 0.01 190);
+  --card: oklch(1 0 0);
+}
+
+.dark .aa-page.aa-chem-theme {
+  --background: oklch(0.14 0.025 200);
+  --surface: oklch(0.18 0.03 200);
+  --card: oklch(0.20 0.03 200);
+  --border: oklch(1 0 0 / 8%);
+}

@@ -1,0 +1,12 @@
+.aa-page.aa-phys-theme {
+  --background: oklch(0.99 0.005 140);
+  --surface: oklch(0.96 0.01 140);
+  --card: oklch(1 0 0);
+}
+
+.dark .aa-page.aa-phys-theme {
+  --background: oklch(0.14 0.02 150);
+  --surface: oklch(0.18 0.025 150);
+  --card: oklch(0.20 0.03 150);
+  --border: oklch(1 0 0 / 8%);
+}

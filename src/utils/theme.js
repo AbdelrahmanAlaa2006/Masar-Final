@@ -1,14 +1,11 @@
-import { getTenantThemeConfig } from './tenantThemes'
-
 /**
  * Dynamically applies the tenant's theme configuration (colors, title, logo)
  * to the document root, headers, and browser window.
  * @param {Object} tenant The resolved tenant database row.
+ * @param {Object} themeConfig The resolved tenant theme config module.
  */
-export function applyTenantTheme(tenant) {
-  if (!tenant) return
-
-  const themeConfig = getTenantThemeConfig(tenant, tenant?.slug)
+export function applyTenantTheme(tenant, themeConfig) {
+  if (!tenant || !themeConfig) return
   const primary = themeConfig.primaryColor || tenant.primary_color || '#7c3aed'
   const secondary = themeConfig.secondaryColor || tenant.secondary_color || '#06b6d4'
 
@@ -19,7 +16,7 @@ export function applyTenantTheme(tenant) {
   const tenantThemeClasses = [
     'aa-chem-theme', 'aa-phys-theme', 'aa-math-theme', 'aa-bio-theme',
     'aa-science-theme', 'aa-geo-theme', 'aa-english-theme',
-    'aa-humanities-theme', 'aa-cyber-theme', 'aa-default-theme'
+    'aa-humanities-theme', 'aa-cyber-theme', 'aa-power-theme', 'aa-default-theme'
   ]
   tenantThemeClasses.forEach(cls => body.classList.remove(cls))
   if (themeConfig.themeClass) {
@@ -111,6 +108,7 @@ export function applyTenantTheme(tenant) {
       document.head.appendChild(favicon)
     }
     favicon.setAttribute('href', dbLogo)
+    favicon.removeAttribute('type')
   }
 }
 

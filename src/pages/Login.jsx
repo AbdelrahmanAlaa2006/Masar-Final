@@ -13,8 +13,7 @@ import { useTenant } from '../contexts/TenantContext'
 import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
 import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
-import './tenant-themes.css'    // custom theme overrides (chemistry, physics, etc.)
-import { getTenantThemeConfig } from '../utils/tenantThemes'
+// Custom theme overrides are now dynamically loaded at runtime inside TenantContext
 
 /* ─────────── translations ─────────── */
 const translations = {
@@ -77,9 +76,8 @@ const translations = {
 
 export default function Login() {
   const { login, isLoggedIn, user } = useAuth()
-  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled } = useTenant()
+  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, themeConfig } = useTenant()
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
-  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
@@ -148,17 +146,19 @@ export default function Login() {
   const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
   const teacherImageHover = themeConfig.teacher?.image_hover || tenant?.config?.teacher?.image_hover || "/images/me.png"
   const teacherExp = getLocalized(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience, '+10', '+10')
-  const teacherStudents = getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, '+2,000', '+2,000')
+  const teacherStudents = (themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
+    ? getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, null, null)
+    : null
   const teacherSatisfaction = getLocalized(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction, '98%', '98%')
   const teacherTargetStage = getLocalized(
     themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage,
-    'الإعدادية والثانوية',
-    'Prep & Secondary'
+    'البرمجة والذكاء الاصطناعي',
+    'Programming & AI'
   )
   const teacherTargetStageLabel = getLocalized(
     themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
-    'المراحل التي يدرّسها',
-    'Stages he teaches'
+    'التخصص',
+    'Specialty'
   )
   const teacherLearningSystem = getLocalized(
     themeConfig.teacher?.learning_system || tenant?.config?.teacher?.learning_system,
@@ -189,6 +189,7 @@ export default function Login() {
   const locationHoursTime = getLocalized(themeConfig.location?.hours_time || tenant?.config?.location?.hours_time, '٩ صباحًا – ٩ مساءً', '9 AM – 9 PM')
   const locationDirectionsLink = themeConfig.location?.directions_link || tenant?.config?.location?.directions_link || "https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
   const locationWhatsappLink = themeConfig.location?.whatsapp_link || tenant?.config?.location?.whatsapp_link || "https://wa.me/20XXXXXXXXXX"
+  const branchesList = themeConfig.location?.branches || tenant?.config?.location?.branches || null
 
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
@@ -257,7 +258,13 @@ export default function Login() {
   useEffect(() => {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
-  }, [lang])
+    
+    // Update tab title dynamically based on active language
+    const localizedTitle = themeConfig?.branding?.brand_short
+      ? (themeConfig.branding.brand_short[lang] || themeConfig.branding.brand_short['ar'] || tenantName)
+      : tenantName
+    document.title = localizedTitle
+  }, [lang, themeConfig, tenantName])
 
   // Remember Me: prefill phone
   useEffect(() => {
@@ -642,6 +649,16 @@ export default function Login() {
                 </div>
               </div>
 
+              {teacherStudents && (
+                <div className="about-stat">
+                  <i className="fas fa-users"></i>
+                  <div className="about-stat-value">{teacherStudents}</div>
+                  <div className="about-stat-label">
+                    {lang === 'ar' ? 'طالب تم تدريسهم' : 'Students taught'}
+                  </div>
+                </div>
+              )}
+
               <div className="about-stat">
                 <i className="fas fa-book-open"></i>
                 <div className="about-stat-value">{teacherSatisfaction}</div>
@@ -781,93 +798,199 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="location-grid">
-            <div className="location-map-wrapper">
-              <div className="map-shell">
-                <iframe
-                  title="Location Map"
-                  src={locationMapUrl}
-                  className="location-map"
-                  allowFullScreen=""
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                ></iframe>
+          {branchesList && branchesList.length > 0 ? (
+            branchesList.map((branch, index) => {
+              const bName = getLocalized(branch.name, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`)
+              const bAddress = getLocalized(branch.address, '', '')
+              const bPhone = branch.phone ? getLocalized(branch.phone, '', '') : null
+              const bMapUrl = branch.map_iframe_url || locationMapUrl
+              const bDirections = branch.directions_link || locationDirectionsLink
+              const bHoursDays = branch.hours_days ? getLocalized(branch.hours_days, '', '') : locationHoursDays
+              const bHoursTime = branch.hours_time ? getLocalized(branch.hours_time, '', '') : locationHoursTime
 
-                <div className="map-pin" aria-hidden="true">
-                  <span className="map-pin__pulse"></span>
-                  <span className="map-pin__pulse map-pin__pulse--2"></span>
-                  <span className="map-pin__dot">
-                    <i className="fas fa-graduation-cap"></i>
-                  </span>
+              return (
+                <div className="location-grid" key={index} style={{ marginTop: index > 0 ? '50px' : '0px', borderTop: index > 0 ? '1px dashed rgba(255, 255, 255, 0.15)' : 'none', paddingTop: index > 0 ? '50px' : '0px' }}>
+                  <div className="location-map-wrapper">
+                    <div className="map-shell">
+                      <iframe
+                        title={`Location Map - ${bName}`}
+                        src={bMapUrl}
+                        className="location-map"
+                        allowFullScreen=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      ></iframe>
+
+                      <div className="map-pin" aria-hidden="true">
+                        <span className="map-pin__pulse"></span>
+                        <span className="map-pin__pulse map-pin__pulse--2"></span>
+                        <span className="map-pin__dot">
+                          <i className="fas fa-graduation-cap"></i>
+                        </span>
+                      </div>
+
+                      <div className="map-badge">
+                        <span className="map-badge__dot"></span>
+                        {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
+                      </div>
+
+                      <div className="map-frame" aria-hidden="true"></div>
+                    </div>
+                  </div>
+
+                  <div className="location-info">
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '16px', color: 'var(--primary)' }}>
+                      {bName}
+                    </h3>
+
+                    <div className="location-info-card">
+                      <div className="location-info-icon">
+                        <i className="fas fa-map-marker-alt"></i>
+                      </div>
+                      <div className="loc-card-body">
+                        <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
+                        <h4 style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>{bAddress}</h4>
+                        <p>{locationCountry}</p>
+                      </div>
+                    </div>
+
+                    <div className="location-info-card">
+                      <div className="location-info-icon">
+                        <i className="fas fa-phone-alt"></i>
+                      </div>
+                      <div className="loc-card-body">
+                        <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
+                        <h4 dir="ltr">{bPhone || locationPhone}</h4>
+                        <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
+                      </div>
+                    </div>
+
+                    <div className="location-info-card">
+                      <div className="location-info-icon">
+                        <i className="fas fa-clock"></i>
+                      </div>
+                      <div className="loc-card-body">
+                        <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
+                        <h4>{bHoursDays}</h4>
+                        <p>{bHoursTime}</p>
+                      </div>
+                    </div>
+
+                    <div className="loc-actions">
+                      <a
+                        href={bDirections}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="location-directions-btn"
+                      >
+                        <i className="fas fa-directions"></i>
+                        {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+                        <span className="loc-btn-shine" aria-hidden="true"></span>
+                      </a>
+
+                      <a
+                        href={locationWhatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="location-directions-btn location-directions-btn--ghost"
+                      >
+                        <i className="fab fa-whatsapp"></i>
+                        {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="location-grid">
+              <div className="location-map-wrapper">
+                <div className="map-shell">
+                  <iframe
+                    title="Location Map"
+                    src={locationMapUrl}
+                    className="location-map"
+                    allowFullScreen=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  ></iframe>
+
+                  <div className="map-pin" aria-hidden="true">
+                    <span className="map-pin__pulse"></span>
+                    <span className="map-pin__pulse map-pin__pulse--2"></span>
+                    <span className="map-pin__dot">
+                      <i className="fas fa-graduation-cap"></i>
+                    </span>
+                  </div>
+
+                  <div className="map-badge">
+                    <span className="map-badge__dot"></span>
+                    {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
+                  </div>
+
+                  <div className="map-frame" aria-hidden="true"></div>
+                </div>
+              </div>
+
+              <div className="location-info">
+                <div className="location-info-card">
+                  <div className="location-info-icon">
+                    <i className="fas fa-map-marker-alt"></i>
+                  </div>
+                  <div className="loc-card-body">
+                    <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
+                    <h4 style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>{locationAddress}</h4>
+                    <p>{locationCountry}</p>
+                  </div>
                 </div>
 
-                <div className="map-badge">
-                  <span className="map-badge__dot"></span>
-                  {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
+                <div className="location-info-card">
+                  <div className="location-info-icon">
+                    <i className="fas fa-phone-alt"></i>
+                  </div>
+                  <div className="loc-card-body">
+                    <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
+                    <h4 dir="ltr">{locationPhone}</h4>
+                    <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
+                  </div>
                 </div>
 
-                <div className="map-frame" aria-hidden="true"></div>
+                <div className="location-info-card">
+                  <div className="location-info-icon">
+                    <i className="fas fa-clock"></i>
+                  </div>
+                  <div className="loc-card-body">
+                    <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
+                    <h4>{locationHoursDays}</h4>
+                    <p>{locationHoursTime}</p>
+                  </div>
+                </div>
+
+                <div className="loc-actions">
+                  <a
+                    href={locationDirectionsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="location-directions-btn"
+                  >
+                    <i className="fas fa-directions"></i>
+                    {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+                    <span className="loc-btn-shine" aria-hidden="true"></span>
+                  </a>
+
+                  <a
+                    href={locationWhatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="location-directions-btn location-directions-btn--ghost"
+                  >
+                    <i className="fab fa-whatsapp"></i>
+                    {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
+                  </a>
+                </div>
               </div>
             </div>
-
-            <div className="location-info">
-              <div className="location-info-card">
-                <div className="location-info-icon">
-                  <i className="fas fa-map-marker-alt"></i>
-                </div>
-                <div className="loc-card-body">
-                  <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
-                  <h4>{locationAddress}</h4>
-                  <p>{locationCountry}</p>
-                </div>
-              </div>
-
-              <div className="location-info-card">
-                <div className="location-info-icon">
-                  <i className="fas fa-phone-alt"></i>
-                </div>
-                <div className="loc-card-body">
-                  <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                  <h4 dir="ltr">{locationPhone}</h4>
-                  <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
-                </div>
-              </div>
-
-              <div className="location-info-card">
-                <div className="location-info-icon">
-                  <i className="fas fa-clock"></i>
-                </div>
-                <div className="loc-card-body">
-                  <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
-                  <h4>{locationHoursDays}</h4>
-                  <p>{locationHoursTime}</p>
-                </div>
-              </div>
-
-              <div className="loc-actions">
-                <a
-                  href={locationDirectionsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="location-directions-btn"
-                >
-                  <i className="fas fa-directions"></i>
-                  {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
-                  <span className="loc-btn-shine" aria-hidden="true"></span>
-                </a>
-
-                <a
-                  href={locationWhatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="location-directions-btn location-directions-btn--ghost"
-                >
-                  <i className="fab fa-whatsapp"></i>
-                  {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
-                </a>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

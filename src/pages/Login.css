@@ -1857,6 +1857,8 @@ body:not(.dark) .location-info-card:hover {
   margin: 0 0 6px;
   letter-spacing: 0.2px;
   transition: color 0.3s ease;
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
 .location-info-card p {

@@ -1,0 +1,12 @@
+.aa-page.aa-default-theme {
+  --background: oklch(0.99 0.005 230);
+  --surface: oklch(0.97 0.012 230);
+  --card: oklch(1 0 0);
+}
+
+.dark .aa-page.aa-default-theme {
+  --background: oklch(0.16 0.025 240);
+  --surface: oklch(0.20 0.03 240);
+  --card: oklch(0.22 0.03 240);
+  --border: oklch(1 0 0 / 10%);
+}

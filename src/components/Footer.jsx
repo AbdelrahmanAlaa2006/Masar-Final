@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
-import { getTenantThemeConfig } from '../utils/tenantThemes'
+// getTenantThemeConfig is now dynamically resolved inside TenantContext
 import './Footer.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -24,8 +24,7 @@ const TICKER_ITEMS = [
 ]
 
 export default function Footer() {
-  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, gradesList } = useTenant()
-  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, gradesList, themeConfig } = useTenant()
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const hasCustomLogo = !!(themeConfig.logoUrl || dbLogo)

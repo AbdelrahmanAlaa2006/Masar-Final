@@ -4,7 +4,7 @@ import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
-import { getTenantThemeConfig } from '../utils/tenantThemes'
+// getTenantThemeConfig is now dynamically resolved inside TenantContext
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
 // old assets are kept on disk in case anywhere else still loads
@@ -16,8 +16,7 @@ import {
 export default function Home() {
   const navigate = useNavigate()
   const { user, role, hasPermission } = useAuth()
-  const { tenant, tenantSlug, isFeatureEnabled } = useTenant()
-  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const { tenant, tenantSlug, isFeatureEnabled, themeConfig } = useTenant()
   const username = user?.name || ''
   const brandName = tenant?.name || 'مسار'
   const canvasRef = useRef(null)

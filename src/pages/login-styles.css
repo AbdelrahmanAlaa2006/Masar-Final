@@ -118,6 +118,13 @@ body:not(.dark) .aa-nav {
   min-width: 0;
 }
 
+.aa-brand-logo {
+  height: 36px;
+  max-height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
 .aa-brand-mark {
   width: 36px;
   height: 36px;

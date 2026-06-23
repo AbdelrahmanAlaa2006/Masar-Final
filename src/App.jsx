@@ -35,10 +35,8 @@ const Packages = lazy(() => import('./pages/Packages'))
 import { TenantProvider, useTenant } from './contexts/TenantContext'
 import { tokenAPI } from '@backend/authApi'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { getTenantThemeConfig } from './utils/tenantThemes'
 import SeasonalDecor from './seasonal/SeasonalDecor'
 import './seasonal/seasonal.css'
-import './pages/tenant-themes.css'
 import './App.css'
 import DevToolsBlocker from './components/DevToolsBlocker'
 import { detectDevTools } from './utils/devtools'
@@ -350,7 +348,7 @@ function AppContent() {
   const isExamTaking = location.pathname === '/exam-taking'
   const isPublicReportPage = location.pathname === '/public-report'
   const { user, isLoggedIn, loading, logout } = useAuth()
-  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig } = useTenant()
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
@@ -382,20 +380,19 @@ function AppContent() {
     const isDark = localStorage.getItem('theme') === 'dark'
     document.body.classList.toggle('dark', isDark)
 
-    if (tenant) {
-      const themeConfig = getTenantThemeConfig(tenant, tenantSlug || tenant.slug)
-      const themeClass = themeConfig?.themeClass
+    if (tenant && themeConfig) {
+      const themeClass = themeConfig.themeClass
       const tenantThemeClasses = [
         'aa-chem-theme', 'aa-phys-theme', 'aa-math-theme', 'aa-bio-theme',
         'aa-science-theme', 'aa-geo-theme', 'aa-english-theme',
-        'aa-humanities-theme', 'aa-cyber-theme', 'aa-default-theme'
+        'aa-humanities-theme', 'aa-cyber-theme', 'aa-power-theme', 'aa-default-theme'
       ]
       tenantThemeClasses.forEach(cls => document.body.classList.remove(cls))
       if (themeClass) {
         document.body.classList.add(themeClass)
       }
     }
-  }, [location, tenant, tenantSlug])
+  }, [location, tenant, themeConfig])
 
 
   /* Anti-cheating + anti-tampering: students can't select/copy text,

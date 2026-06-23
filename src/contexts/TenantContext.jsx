@@ -7,6 +7,7 @@ const TenantContext = createContext(null)
 
 export function TenantProvider({ children }) {
   const [tenant, setTenant] = useState(null)
+  const [themeConfig, setThemeConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [availableTenants, setAvailableTenants] = useState([])
 
@@ -21,6 +22,11 @@ export function TenantProvider({ children }) {
 
         // For development on localhost: check query param first, then sessionStorage
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          try {
+            localStorage.removeItem('masar-cache:tenant-config:power-platform')
+            localStorage.removeItem('masar-cache:tenant-config:cyber')
+            localStorage.removeItem('masar-cache:tenant-config:sherif-programming')
+          } catch {}
           const queryTenant = urlParams.get('tenant')
           if (queryTenant) {
             candidate = queryTenant
@@ -55,6 +61,9 @@ export function TenantProvider({ children }) {
             if (t.slug === 'sherif-english' || t.slug === 'waled-english') {
               return { slug: 'waled-english', name: 'The Miracle in English' }
             }
+            if (t.slug === 'cyber' || t.slug === 'power-platform' || t.slug === 'sherif-programming') {
+              return { slug: 'power-platform', name: 'منصة باور' }
+            }
             return t
           })
           setAvailableTenants(mapped)
@@ -65,8 +74,14 @@ export function TenantProvider({ children }) {
         if (candidate === 'waled-english') {
           querySlug = 'sherif-english'
         }
+        if (candidate === 'power-platform') {
+          querySlug = 'sherif-programming'
+        }
 
-        const tenantData = await cached(`tenant-config:${candidate}`, 10 * 60 * 1000, async () => {
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+        const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
+
+        const tenantData = await cached(`tenant-config:${candidate}`, cacheTtl, async () => {
           let resolvedData = null
           if (querySlug && querySlug !== 'default') {
             const { data, error } = await supabase
@@ -113,11 +128,66 @@ export function TenantProvider({ children }) {
             resolvedData.logo_url = '/images/Logo The Miracle.png'
           }
 
+          // Decorate power platform tenant dynamically
+          const isPower = resolvedData && (
+            resolvedData.slug === 'cyber' || 
+            resolvedData.slug === 'power-platform' || 
+            resolvedData.slug === 'sherif-programming' ||
+            resolvedData.config?.subject === 'cyber' || 
+            resolvedData.config?.subject === 'computer' || 
+            resolvedData.config?.subject === 'programming' ||
+            resolvedData.slug?.includes('cyber') ||
+            resolvedData.slug?.includes('prog') ||
+            resolvedData.slug?.includes('power')
+          )
+          
+          if (isPower) {
+            resolvedData.name = 'منصة باور'
+            resolvedData.slug = 'power-platform'
+            resolvedData.primary_color = '#ea580c'
+            resolvedData.secondary_color = '#d4af37'
+            resolvedData.logo_url = '/images/Power Logo.png'
+          }
+
           return resolvedData
         })
 
         setTenant(tenantData)
-        applyTenantTheme(tenantData)
+
+        // Dynamically resolve theme config and load tenant styling chunk
+        const folder = getTenantFolder(tenantData)
+        let themeConfigObj = null
+        try {
+          const [configModule] = await Promise.all([
+            import(`../tenants/${folder}/config.js`),
+            import(`../tenants/${folder}/styles.css`)
+          ])
+          themeConfigObj = configModule.default || configModule.themeConfig
+        } catch (loadErr) {
+          console.error(`Failed to load dynamic assets for tenant folder "${folder}", falling back to default:`, loadErr)
+          try {
+            const [defaultModule] = await Promise.all([
+              import('../tenants/default/config.js'),
+              import('../tenants/default/styles.css')
+            ])
+            themeConfigObj = defaultModule.default || defaultModule.themeConfig
+          } catch (fallbackErr) {
+            console.error('Failed to load fallback default theme assets:', fallbackErr)
+          }
+        }
+
+        if (themeConfigObj) {
+          setThemeConfig(themeConfigObj)
+          applyTenantTheme(tenantData, themeConfigObj)
+        } else {
+          const fallbackConfig = {
+            themeClass: 'aa-default-theme',
+            primaryColor: '#7c3aed',
+            secondaryColor: '#06b6d4'
+          }
+          setThemeConfig(fallbackConfig)
+          applyTenantTheme(tenantData, fallbackConfig)
+        }
       } catch (err) {
         console.error('Failed to resolve tenant:', err)
       } finally {
@@ -218,11 +288,12 @@ export function TenantProvider({ children }) {
     tenantId: tenant?.id || null,
     tenantSlug: tenant?.slug || 'default',
     tenantName: tenant?.name || '',
+    themeConfig,
     isFeatureEnabled,
     isGradeEnabled,
     gradesList,
     loading
-  }), [tenant, isFeatureEnabled, isGradeEnabled, gradesList, loading])
+  }), [tenant, themeConfig, isFeatureEnabled, isGradeEnabled, gradesList, loading])
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
@@ -304,6 +375,21 @@ export function TenantProvider({ children }) {
       )}
     </TenantContext.Provider>
   )
+}
+
+function getTenantFolder(tenant) {
+  const subject = tenant?.config?.subject || ''
+  const slug = tenant?.slug || ''
+  if (subject === 'chemistry' || slug === 'mona-chem') return 'chemistry'
+  if (subject === 'physics' || slug === 'sherif-physics') return 'physics'
+  if (subject === 'math' || subject === 'mathematics' || slug?.includes('math')) return 'math'
+  if (subject === 'biology' || slug?.includes('bio')) return 'biology'
+  if (subject === 'science' || slug?.includes('science')) return 'science'
+  if (subject === 'geology' || slug?.includes('geo')) return 'geology'
+  if (subject === 'english' || slug === 'sherif-english' || slug === 'waled-english' || slug?.includes('english') || slug?.includes('eng')) return 'english'
+  if (subject === 'humanities' || subject === 'geography' || subject === 'history' || slug?.includes('humanities') || slug?.includes('geo-hist')) return 'humanities'
+  if (subject === 'cyber' || subject === 'computer' || subject === 'programming' || slug?.includes('cyber') || slug?.includes('prog') || slug?.includes('baccalaureate') || slug?.includes('power')) return 'power-platform'
+  return 'default'
 }
 
 export function useTenant() {

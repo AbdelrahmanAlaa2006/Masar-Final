@@ -4,7 +4,7 @@ import { authAPI, tokenAPI } from '@backend/authApi'
 import { useTenant } from '../contexts/TenantContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
-import { getTenantThemeConfig } from '../utils/tenantThemes'
+// getTenantThemeConfig is now dynamically resolved inside TenantContext
 import { GRADE_LABEL } from './ControlPanel/shared'
 import './Register.css'
 import './login-styles.css'
@@ -40,8 +40,7 @@ const translations = {
 
 export default function Register() {
   const { login } = useAuth()
-  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, gradesList } = useTenant()
-  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, gradesList, themeConfig } = useTenant()
   const navigate = useNavigate()
 
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
@@ -123,17 +122,19 @@ export default function Register() {
   const teacherRole = getLocalized(themeConfig.teacher?.role || tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
   const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
   const teacherExp = getLocalized(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience, '+10', '+10')
-  const teacherStudents = getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, '+2,000', '+2,000')
+  const teacherStudents = (themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
+    ? getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, null, null)
+    : null
   const teacherSatisfaction = getLocalized(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction, '98%', '98%')
   const teacherTargetStage = getLocalized(
     themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage,
-    'الإعدادية والثانوية',
-    'Prep & Secondary'
+    'البرمجة والذكاء الاصطناعي',
+    'Programming & AI'
   )
   const teacherTargetStageLabel = getLocalized(
     themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
-    'المراحل التي يدرّسها',
-    'Stages he teaches'
+    'التخصص',
+    'Specialty'
   )
 
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
@@ -448,6 +449,13 @@ export default function Register() {
                 <div className="register-stat-label">{lang === 'ar' ? 'الخبرة' : 'Experience'}</div>
                 <div className="register-stat-value">{teacherExp}</div>
               </div>
+
+              {teacherStudents && (
+                <div className="register-stat-item">
+                  <div className="register-stat-label">{lang === 'ar' ? 'الطلاب المستفيدين' : 'Students taught'}</div>
+                  <div className="register-stat-value">{teacherStudents}</div>
+                </div>
+              )}
 
               <div className="register-stat-item">
                 <div className="register-stat-label">{teacherTargetStageLabel}</div>
