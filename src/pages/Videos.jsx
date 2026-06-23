@@ -28,24 +28,58 @@ import {
   updatePartProgress,
 } from '@backend/progressApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
+import { dbToUiGrade, uiToDbGrade } from '@backend/examsApi'
+
+const PREP_META = {
+  first: { ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
+  third: { ar: 'الصف الثالث الإعدادي', en: 'Third Prep', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  'first-sec': { ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
+  'second-sec': { ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
+  'third-sec': { ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  // Primary
+  'primary-1': { ar: 'الصف الأول الابتدائي', en: 'Primary 1', accent: 'black', desc: 'المرحلة الابتدائية - الصف الأول' },
+  'primary-2': { ar: 'الصف الثاني الابتدائي', en: 'Primary 2', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثاني' },
+  'primary-3': { ar: 'الصف الثالث الابتدائي', en: 'Primary 3', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثالث' },
+  'primary-4': { ar: 'الصف الرابع الابتدائي', en: 'Primary 4', accent: 'black', desc: 'المرحلة الابتدائية - الصف الرابع' },
+  'primary-5': { ar: 'الصف الخامس الابتدائي', en: 'Primary 5', accent: 'black', desc: 'المرحلة الابتدائية - الصف الخامس' },
+  'primary-6': { ar: 'الصف السادس الابتدائي', en: 'Primary 6', accent: 'black', desc: 'المرحلة الابتدائية - الصف السادس' },
+  // Baccalaureate
+  'bac-1': { ar: 'البكالوريا - المستوى الأول', en: 'Bac 1', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الأول' },
+  'bac-2': { ar: 'البكالوريا - المستوى الثاني', en: 'Bac 2', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثاني' },
+  'bac-3': { ar: 'البكالوريا - المستوى الثالث', en: 'Bac 3', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثالث' },
+  packages: { ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
+}
 
 export default function Videos() {
   const navigate = useNavigate()
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
 
   const { user: currentUser, role: userRole } = useAuth()
 
-  const GRADES = [
-    { id: 'first-prep', ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
-    { id: 'second-prep', ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
-    { id: 'third-prep', ar: 'الصف الثالث الإعدادي', en: 'Third Prep', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-    { id: 'first-sec', ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
-    { id: 'second-sec', ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
-    { id: 'third-sec', ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
-    { id: 'packages', ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
-  ].filter(p => p.id === 'packages' ? (userRole === 'admin' || userRole === 'assistant') : isGradeEnabled(p.id))
+  const levelsMeta = useMemo(() => {
+    const meta = {}
+    for (const g of gradesList || []) {
+      const legacyKey = dbToUiGrade(g.id)
+      const key = legacyKey || g.id
+      const legacyMeta = PREP_META[key]
+      meta[key] = {
+        ar: g.name,
+        en: legacyMeta?.en || g.stageName || g.stageId,
+        accent: legacyMeta?.accent || 'violet',
+        desc: legacyMeta?.desc || `فيديوهات ومحاضرات ${g.name}`,
+        dbGrade: g.id
+      }
+    }
+    if (userRole === 'admin' || userRole === 'assistant') {
+      meta['packages'] = PREP_META['packages']
+    }
+    return meta
+  }, [gradesList, userRole])
+
+  const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   // Convert a DB video row (with embedded video_parts) into the shape the
   // rest of the page was built around (parts[], totalParts, quizzes[]).
@@ -81,7 +115,7 @@ export default function Videos() {
 
   const [currentGrade, setCurrentGrade] = useState(() => {
     if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'assistant' && currentUser.grade) {
-      return currentUser.grade
+      return dbToUiGrade(currentUser.grade) || currentUser.grade
     }
     return ''
   })
@@ -212,21 +246,23 @@ export default function Videos() {
     return () => { cancelled = true }
   }, [currentUser?.id, currentUser?.grade, currentUser?.group, currentUser?.role])
 
-  // ── Group by grade for the grid ──────────────────────────────
-  const videosByGrade = useMemo(() => {
-    const out = {
-      'first-prep': [], 'second-prep': [], 'third-prep': [],
-      'first-sec': [], 'second-sec': [], 'third-sec': []
+  // ── Group by level for the grid ──────────────────────────────
+  const videosByLevel = useMemo(() => {
+    const out = {}
+    for (const key of Object.keys(levelsMeta)) {
+      out[key] = []
     }
     for (const v of allVideos) {
-      if (out[v.grade]) out[v.grade].push(v)
+      const legacyKey = dbToUiGrade(v.grade)
+      const key = legacyKey || v.grade
+      if (out[key]) out[key].push(v)
     }
     return out
-  }, [allVideos])
+  }, [allVideos, levelsMeta])
 
   // Group active/accessible videos by Playlist
   const playlistGroups = useMemo(() => {
-    const gradeVideos = videosByGrade[currentGrade] || []
+    const gradeVideos = videosByLevel[currentGrade] || []
     if (gradeVideos.length === 0) return []
 
     const grouped = []
@@ -274,7 +310,7 @@ export default function Videos() {
     }
 
     return grouped
-  }, [playlists, videosByGrade, currentGrade, userRole])
+  }, [playlists, videosByLevel, currentGrade, userRole])
 
   const togglePlaylistExpanded = (playlistId) => {
     setExpandedPlaylists(prev => ({
@@ -522,7 +558,7 @@ export default function Videos() {
   }, [isWatching])
 
   const goToAddVideo = () => {
-    localStorage.setItem('selectedVideoGrade', currentGrade)
+    localStorage.setItem('selectedVideoGrade', uiToDbGrade(currentGrade) || currentGrade)
     navigate('/video-add')
   }
 
@@ -704,25 +740,27 @@ export default function Videos() {
           </div>
 
           <div className="prep-grid">
-            {GRADES.map((p, index) => {
-              const count = (videosByGrade[p.id] || []).length
+            {filteredLevels.map((key, index) => {
+              const m = levelsMeta[key]
+              if (!m) return null
+              const count = (videosByLevel[key] || []).length
               return (
                 <button
-                  key={p.id}
-                  className={`prep-card prep-${p.accent}`}
+                  key={key}
+                  className={`prep-card prep-${m.accent}`}
                   style={{
                     animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
                     animationDelay: `${index * 0.06}s`
                   }}
-                  onClick={() => selectGrade(p.id)}
+                  onClick={() => selectGrade(key)}
                 >
                   <div className="prep-cover">
                     <div className="prep-cover-deco" />
-                    <PrepIllustration kind={p.id.replace('-prep', '')} stage={p.en} />
+                    <PrepIllustration kind={key} stage={m.en} />
                   </div>
                   <div className="prep-body">
-                    <h3>{p.ar}</h3>
-                    <p>{p.desc}</p>
+                    <h3>{m.ar}</h3>
+                    <p>{m.desc}</p>
                     <div className="prep-foot">
                       <span className="prep-count"><i className="fas fa-play-circle"></i> {count} فيديو</span>
                       <span className="prep-cta">عرض <i className="fas fa-arrow-left"></i></span>
@@ -744,7 +782,7 @@ export default function Videos() {
               <h1 id="gradeTitle" className="premium-title-main">
                 الفيديوهات التعليمية
                 <span className="premium-title-accent">
-                  ({GRADES.find(g => g.id === currentGrade)?.ar || ''})
+                  ({levelsMeta[currentGrade]?.ar || ''})
                 </span>
               </h1>
               <p className="premium-subtitle-desc">
@@ -1506,7 +1544,7 @@ function formatSecondsToTimestamp(sec) {
 }
 
 function EditVideoModal({ video, onCancel, onSave }) {
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const [title, setTitle] = useState(video.title || '')
   const [desc, setDesc] = useState(video.description || '')
   const [grade, setGrade] = useState(video.grade || 'first-prep')
@@ -2179,12 +2217,9 @@ function EditVideoModal({ video, onCancel, onSave }) {
             <div className="edit-field">
               <label>الصف الدراسي</label>
               <select className="edit-select" value={grade} onChange={(e) => setGrade(e.target.value)}>
-                {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
-                {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
-                {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
-                {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
-                {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
-                {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+                {gradesList.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
                 <option value="packages">باقات مدفوعة 📦</option>
               </select>
             </div>
@@ -2736,7 +2771,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 15, marginBottom: 20 }}>
               <div><strong>العنوان:</strong> {previewData.title}</div>
               <div><strong>الوصف:</strong> {previewData.description || 'بدون وصف'}</div>
-              <div><strong>الصف:</strong> {gradeNames[previewData.grade]}</div>
+              <div><strong>الصف:</strong> {gradesList?.find(g => g.id === previewData.grade)?.name || (previewData.grade === 'packages' ? 'باقات مدفوعة 📦' : previewData.grade)}</div>
               <div><strong>مدة التفعيل:</strong> {previewData.active_hours} ساعة</div>
             </div>
 

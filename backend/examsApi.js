@@ -20,8 +20,8 @@ const DB_TO_UI = {
   'third-sec': 'third-sec',
   packages: 'packages'
 }
-export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
-export const dbToUiGrade = (db) => DB_TO_UI[db] || null
+export const uiToDbGrade = (ui) => UI_TO_DB[ui] || ui
+export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 
 // Default returns full exam rows (including the `questions` JSON column)
 // because ExamsReport / ExamsGroupReport / Exams render question counts

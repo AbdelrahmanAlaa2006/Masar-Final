@@ -14,13 +14,15 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { cached, LIST_TTL } from '../../utils/cache'
 import StudentDetailsModal from '../../components/StudentDetailsModal'
+import { GRADE_LABEL } from './shared'
+
 
 export default function AttendancePanel({ onBack, flash }) {
-  const { tenantId } = useTenant()
+  const { tenantId, gradesList } = useTenant()
   const { user: currentUser } = useAuth()
   
   // Scopes & Filters
-  const [grade, setGrade] = useState('first-sec')
+  const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState('')
@@ -70,15 +72,7 @@ export default function AttendancePanel({ onBack, flash }) {
 
   const html5QrcodeRef = useRef(null)
 
-  // Grade labels mapping
-  const GRADE_LABEL = {
-    'first-prep':  'الصف الأول الإعدادي',
-    'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep':  'الصف الثالث الإعدادي',
-    'first-sec':   'الصف الأول الثانوي',
-    'second-sec':  'الصف الثاني الثانوي',
-    'third-sec':   'الصف الثالث الثانوي',
-  }
+
 
   // Play audio beeps
   const playSuccessBeep = () => {
@@ -666,8 +660,8 @@ export default function AttendancePanel({ onBack, flash }) {
         <div>
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>المرحلة الدراسية</label>
           <select value={grade} onChange={(e) => setGrade(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-            {Object.entries(GRADE_LABEL).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
+            {gradesList.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>

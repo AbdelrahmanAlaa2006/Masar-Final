@@ -3,18 +3,21 @@ import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
 
 // List all packages and their bundled items
-export async function listPackages() {
-  const key = 'packages:list'
+export async function listPackages(tenantId) {
+  const key = tenantId ? `packages:list:${tenantId}` : 'packages:list'
   return cached(key, LIST_TTL, async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('packages')
       .select(`
-        id, title, description, price, is_active, thumbnail, grade, created_at,
+        id, title, description, price, is_active, thumbnail, grade, created_at, tenant_id,
         package_items (
           id, package_id, item_type, item_id, created_at
         )
       `)
-      .order('created_at', { ascending: false })
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId)
+    }
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return data || []
   })

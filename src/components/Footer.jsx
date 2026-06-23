@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
+import { getTenantThemeConfig } from '../utils/tenantThemes'
 import './Footer.css'
 
 /* ──────────────────────────────────────────────────────────────
@@ -23,7 +24,12 @@ const TICKER_ITEMS = [
 ]
 
 export default function Footer() {
-  const { tenant, isFeatureEnabled, isGradeEnabled } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, gradesList } = useTenant()
+  const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
+  const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
+  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  const hasCustomLogo = !!(themeConfig.logoUrl || dbLogo)
+
   const year = new Date().getFullYear()
 
   const brandName = tenant?.name || 'منصة مسار'
@@ -50,6 +56,36 @@ export default function Footer() {
     }
     return item
   })
+
+  const stagesGrouped = React.useMemo(() => {
+    const groups = {
+      primary: { name: 'المرحلة الابتدائية', grades: [], icon: 'fa-child' },
+      preparatory: { name: 'المرحلة الإعدادية', grades: [], icon: 'fa-seedling' },
+      secondary: { name: 'المرحلة الثانوية', grades: [], icon: 'fa-graduation-cap' },
+      baccalaureate: { name: 'مرحلة البكالوريا', grades: [], icon: 'fa-award' }
+    }
+
+    ;(gradesList || []).forEach((g) => {
+      let sKey = g.stageId
+      if (!sKey) {
+        if (g.id.includes('primary')) sKey = 'primary'
+        else if (g.id.includes('prep')) sKey = 'preparatory'
+        else if (g.id.includes('sec')) sKey = 'secondary'
+        else if (g.id.includes('bac')) sKey = 'baccalaureate'
+      }
+
+      if (groups[sKey]) {
+        groups[sKey].grades.push(g)
+      } else {
+        if (!groups[sKey]) {
+          groups[sKey] = { name: g.stageName || 'أخرى', grades: [], icon: 'fa-graduation-cap' }
+        }
+        groups[sKey].grades.push(g)
+      }
+    })
+
+    return groups
+  }, [gradesList])
 
   return (
     <footer className="site-footer" dir="rtl" role="contentinfo">
@@ -81,7 +117,11 @@ export default function Footer() {
           <div className="sf-col sf-brand-col">
             <div className="sf-brand">
               <div className="sf-brand-logo">
-                <i className="fas fa-graduation-cap"></i>
+                {hasCustomLogo ? (
+                  <img src={brandLogo} alt="Logo" className="sf-brand-logo-img" />
+                ) : (
+                  <i className="fas fa-graduation-cap"></i>
+                )}
               </div>
               <div>
                 <h3 className="sf-brand-name">{brandName}</h3>
@@ -112,16 +152,41 @@ export default function Footer() {
           </div>
 
           {/* Stages */}
-          <div className="sf-col">
+          <div className="sf-col sf-stages-col">
             <h4 className="sf-col-title"><i className="fas fa-graduation-cap"></i> المراحل الدراسية</h4>
-            <ul className="sf-links sf-links--text">
-              {isGradeEnabled('first-prep') && <li><span><i className="fas fa-seedling"></i> الصف الأول الإعدادي</span></li>}
-              {isGradeEnabled('second-prep') && <li><span><i className="fas fa-book-open-reader"></i> الصف الثاني الإعدادي</span></li>}
-              {isGradeEnabled('third-prep') && <li><span><i className="fas fa-trophy"></i> الصف الثالث الإعدادي</span></li>}
-              {isGradeEnabled('first-sec') && <li><span><i className="fas fa-graduation-cap"></i> الصف الأول الثانوي</span></li>}
-              {isGradeEnabled('second-sec') && <li><span><i className="fas fa-book"></i> الصف الثاني الثانوي</span></li>}
-              {isGradeEnabled('third-sec') && <li><span><i className="fas fa-award"></i> الصف الثالث الثانوي</span></li>}
-            </ul>
+            <div className="sf-stages-groups">
+              {Object.entries(stagesGrouped).map(([key, group]) => {
+                if (group.grades.length === 0) return null
+                return (
+                  <div key={key} className="sf-stage-group">
+                    <h5 className="sf-stage-group-title">
+                      <i className={`fas ${group.icon}`}></i> {group.name}
+                    </h5>
+                    <ul className="sf-links sf-links--text">
+                      {group.grades.map((g) => {
+                        let icon = 'fa-circle'
+                        if (g.id.includes('prep')) {
+                          icon = g.id.includes('first') ? 'fa-seedling' : g.id.includes('second') ? 'fa-book-open-reader' : 'fa-trophy'
+                        } else if (g.id.includes('sec')) {
+                          icon = g.id.includes('first') ? 'fa-graduation-cap' : g.id.includes('second') ? 'fa-book' : 'fa-award'
+                        } else if (g.id.includes('primary')) {
+                          icon = 'fa-child'
+                        } else if (g.id.includes('bac')) {
+                          icon = 'fa-award'
+                        }
+                        return (
+                          <li key={g.id}>
+                            <span>
+                              <i className={`fas ${icon}`}></i> {g.name}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
             <div className="sf-badges sf-badges--text">
               <span className="sf-badge sf-badge--text"><i className="fas fa-shield-halved"></i> آمن</span>
               <span className="sf-badge sf-badge--text"><i className="fas fa-bolt"></i> سريع</span>

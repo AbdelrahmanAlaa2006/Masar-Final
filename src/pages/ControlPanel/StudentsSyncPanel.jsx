@@ -2,14 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { syncStudentsCsv } from '@backend/studentsSyncApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
 
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-  'first-sec':   'الأول الثانوي',
-  'second-sec':  'الثاني الثانوي',
-  'third-sec':   'الثالث الثانوي',
-}
+import { GRADE_LABEL } from './shared'
+import { useTenant } from '../../contexts/TenantContext'
+
 
 // ── IndexedDB tiny helper for storing the FileSystemFileHandle ─────
 const IDB_NAME = 'masar-cp'
@@ -65,6 +60,8 @@ const CSV_TEXT_KEY   = 'masar-students-csv-text'
 const CSV_NAME_KEY   = 'masar-students-csv-name'
 
 export default function StudentsSyncPanel() {
+  const { gradesList } = useTenant()
+
   const [csvText, setCsvText] = useState('')
   const [fileName, setFileName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -300,8 +297,12 @@ export default function StudentsSyncPanel() {
         <div className="sync-format-foot">
           <i className="fas fa-circle-info"></i>
           <span>
-            القيم المسموحة لعمود <code>grade</code>:
-            <code>first-prep</code> ، <code>second-prep</code> ، <code>third-prep</code> ، <code>first-sec</code> ، <code>second-sec</code> ، <code>third-sec</code>
+            القيم المسموحة لعمود <code>grade</code> حسب إعدادات المنصة الحالية:
+            {gradesList.map((g, idx) => (
+              <React.Fragment key={g.id}>
+                <code>{g.id}</code> ({g.name}){idx < gradesList.length - 1 ? ' ، ' : ''}
+              </React.Fragment>
+            ))}
           </span>
         </div>
       </div>

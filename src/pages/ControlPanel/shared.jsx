@@ -1,15 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useTenant } from '../../contexts/TenantContext'
 
 export const GRADE_LABEL = {
+  'primary-1':   'الأول الابتدائي',
+  'primary-2':   'الثاني الابتدائي',
+  'primary-3':   'الثالث الابتدائي',
+  'primary-4':   'الرابع الابتدائي',
+  'primary-5':   'الخامس الابتدائي',
+  'primary-6':   'السادس الابتدائي',
   'first-prep':  'الأول الإعدادي',
   'second-prep': 'الثاني الإعدادي',
   'third-prep':  'الثالث الإعدادي',
   'first-sec':   'الأول الثانوي',
   'second-sec':  'الثاني الثانوي',
   'third-sec':   'الثالث الثانوي',
+  'bac-1':       'البكالوريا المستوى الأول',
+  'bac-2':       'البكالوريا المستوى الثاني',
+  'bac-3':       'البكالوريا المستوى الثالث',
 }
 
-export const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
+export const GRADE_ORDER = [
+  'primary-1', 'primary-2', 'primary-3', 'primary-4', 'primary-5', 'primary-6',
+  'first-prep', 'second-prep', 'third-prep',
+  'first-sec', 'second-sec', 'third-sec',
+  'bac-1', 'bac-2', 'bac-3'
+]
 
 export const initials = (name = '') =>
   name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('')
@@ -455,14 +470,23 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
 }
 
 export function GradePickerCards({ value, onChange, students = [] }) {
+  const { isGradeEnabled } = useTenant()
   const counts = useMemo(() => {
-    const out = {
-      'first-prep': 0, 'second-prep': 0, 'third-prep': 0,
-      'first-sec': 0, 'second-sec': 0, 'third-sec': 0
+    const out = {}
+    for (const g of GRADE_ORDER) {
+      out[g] = 0
     }
-    for (const s of students) if (s?.grade && out[s.grade] !== undefined) out[s.grade]++
+    for (const s of students) {
+      if (s?.grade && out[s.grade] !== undefined) {
+        out[s.grade]++
+      }
+    }
     return out
   }, [students])
+
+  const activeGrades = useMemo(() => {
+    return GRADE_ORDER.filter(isGradeEnabled)
+  }, [isGradeEnabled])
 
   return (
     <div
@@ -474,7 +498,7 @@ export function GradePickerCards({ value, onChange, students = [] }) {
         marginTop: 12,
       }}
     >
-      {GRADE_ORDER.map((g) => {
+      {activeGrades.map((g) => {
         const active = value === g
         return (
           <button

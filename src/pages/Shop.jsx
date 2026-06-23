@@ -9,12 +9,14 @@ import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import { notify } from '../utils/notify'
 import './Shop.css'
 
 export default function Shop() {
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
+  const { tenantId } = useTenant()
   const studentId = user?.id || null
 
   const isOnlineOrHybrid = user?.enrollment_type === 'ONLINE' || user?.enrollment_type === 'HYBRID'
@@ -47,7 +49,7 @@ export default function Shop() {
     try {
       setLoading(true)
       const [pkgs, myPurchases, plist, vlist, elist, hlist, dbConfig] = await Promise.all([
-        listPackages(),
+        listPackages(tenantId),
         studentId ? listMyPurchases(studentId) : Promise.resolve([]),
         listPlaylists(),
         listVideos(),
@@ -97,7 +99,7 @@ export default function Shop() {
     if (hasAccess) {
       loadData()
     }
-  }, [studentId, hasAccess])
+  }, [studentId, hasAccess, tenantId])
 
   useEffect(() => {
     if (packages.length > 0) {

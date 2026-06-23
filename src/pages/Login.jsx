@@ -225,7 +225,7 @@ export default function Login() {
     let cancelled = false
     ;(async () => {
       try {
-        const pkgs = await listPackages()
+        const pkgs = await listPackages(tenantId)
         if (!cancelled) {
           const isStaff = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'assistant'
           const studentGrade = user?.grade || null
@@ -243,7 +243,7 @@ export default function Login() {
       }
     })()
     return () => { cancelled = true }
-  }, [isLoggedIn, user])
+  }, [isLoggedIn, user, tenantId])
 
   const handleBuyClick = (pkg) => {
     if (isLoggedIn) {
@@ -519,7 +519,7 @@ export default function Login() {
       <header className="aa-nav">
         <div className="aa-nav-inner">
           <div className="aa-brand">
-            <img src={brandLogo} alt="Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+            <img src={brandLogo} alt="Logo" className="aa-brand-logo" />
             <span className="aa-brand-name">{brandShort}</span>
           </div>
 
@@ -584,8 +584,7 @@ export default function Login() {
               onTouchEnd={() => setPortraitHover(false)}
             >
               <div className="aa-portrait-img">
-                <img src={teacherImageBase} alt={lang === 'ar' ? `الأستاذ ${teacherName}` : `Mr. ${teacherName}`} className={`aa-img-base ${portraitHover ? 'is-hidden' : ''}`} />
-                <img src={teacherImageHover} alt="" aria-hidden="true" className={`aa-img-hover ${portraitHover ? 'is-shown' : ''}`} />
+                <img src={teacherImageBase} alt={lang === 'ar' ? `الأستاذ ${teacherName}` : `Mr. ${teacherName}`} className="aa-img-base" />
                 <div className="aa-portrait-vignette" />
                 <div className="aa-portrait-chips">
                   <div className="aa-chip aa-chip-accent">{lang === 'ar' ? 'اعتماد أكاديمي' : 'Certified Lecturer'}</div>
@@ -642,13 +641,7 @@ export default function Login() {
                   {lang === 'ar' ? 'سنوات خبرة' : 'Years of experience'}
                 </div>
               </div>
-              <div className="about-stat">
-                <i className="fas fa-users"></i>
-                <div className="about-stat-value">{teacherStudents}</div>
-                <div className="about-stat-label">
-                  {lang === 'ar' ? 'طالب وطالبة' : 'Students taught'}
-                </div>
-              </div>
+
               <div className="about-stat">
                 <i className="fas fa-book-open"></i>
                 <div className="about-stat-value">{teacherSatisfaction}</div>
@@ -703,7 +696,7 @@ export default function Login() {
                           className="landing-pkg-img"
                         />
                       ) : (
-                        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #7c3aed, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--primary, #7c3aed), var(--secondary, #6366f1))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <i className="fas fa-box-open" style={{ fontSize: '2.5rem', color: '#fff', opacity: 0.8 }}></i>
                         </div>
                       )}
@@ -1028,7 +1021,7 @@ export default function Login() {
             <button className="auth-modal-close" onClick={() => setShowParentModal(false)} aria-label="Close">✕</button>
             
             <div className="auth-modal-header" style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div className="auth-modal-icon" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justify: 'center', margin: '0 auto 16px', fontSize: '1.6rem' }}>
+              <div className="auth-modal-icon" style={{ width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justify: 'center', margin: '0 auto 16px', fontSize: '1.6rem' }}>
                 <i className="fas fa-user-shield"></i>
               </div>
               <h3>{lang === 'ar' ? 'استعلام تقارير أولياء الأمور' : 'Parent Report Lookup'}</h3>
@@ -1072,7 +1065,7 @@ export default function Login() {
                         <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{student.name}</div>
                         <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 2 }}>{t[`grade-${student.grade}`] || student.grade}</div>
                       </div>
-                      <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'}`} style={{ color: '#7c3aed' }}></i>
+                      <i className={`fas ${lang === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right'}`} style={{ color: 'var(--primary, #7c3aed)' }}></i>
                     </button>
                   ))}
                 </div>

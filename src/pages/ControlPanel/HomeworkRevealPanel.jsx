@@ -4,6 +4,8 @@ import { createNotification } from '@backend/notificationsApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../../utils/cache'
+import { useTenant } from '../../contexts/TenantContext'
+
 import {
   GRADE_LABEL,
   GRADE_ORDER,
@@ -11,6 +13,8 @@ import {
 
 export default function HomeworkRevealPanel({ onBack, flash }) {
   const { user: me } = useAuth()
+  const { gradesList } = useTenant()
+
   const [homeworks, setHomeworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -138,6 +142,30 @@ export default function HomeworkRevealPanel({ onBack, flash }) {
     return counts
   }, [homeworks])
 
+  const tabs = useMemo(() => {
+    const list = [{ id: 'all', icon: 'fa-layer-group', label: 'الكل' }]
+    const iconMap = {
+      'first-prep': 'fa-seedling',
+      'second-prep': 'fa-book-open-reader',
+      'third-prep': 'fa-trophy',
+      'first-sec': 'fa-graduation-cap',
+      'second-sec': 'fa-user-graduate',
+      'third-sec': 'fa-award',
+      'primary-1': 'fa-child', 'primary-2': 'fa-child', 'primary-3': 'fa-child',
+      'primary-4': 'fa-child', 'primary-5': 'fa-child', 'primary-6': 'fa-child',
+      'bac-1': 'fa-graduation-cap', 'bac-2': 'fa-graduation-cap', 'bac-3': 'fa-graduation-cap',
+    }
+    for (const g of gradesList) {
+      list.push({
+        id: g.id,
+        icon: iconMap[g.id] || 'fa-graduation-cap',
+        label: g.name
+      })
+    }
+    return list
+  }, [gradesList])
+
+
   return (
     <section className="cp-panel">
       {onBack && (
@@ -153,15 +181,7 @@ export default function HomeworkRevealPanel({ onBack, flash }) {
 
       {/* Grade filter tabs */}
       <div className="cp-stats-row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        {[
-          { id: 'all',         icon: 'fa-layer-group',   label: 'الكل' },
-          { id: 'first-prep',  icon: 'fa-seedling',      label: 'الأول الإعدادي' },
-          { id: 'second-prep', icon: 'fa-book-open-reader', label: 'الثاني الإعدادي' },
-          { id: 'third-prep',  icon: 'fa-trophy',        label: 'الثالث الإعدادي' },
-          { id: 'first-sec',   icon: 'fa-graduation-cap', label: 'الأول الثانوي' },
-          { id: 'second-sec',  icon: 'fa-user-graduate', label: 'الثاني الثانوي' },
-          { id: 'third-sec',   icon: 'fa-award',         label: 'الثالث الثانوي' },
-        ].map((opt) => (
+        {tabs.map((opt) => (
           <button
             key={opt.id}
             type="button"

@@ -11,6 +11,8 @@ import {
 } from '@backend/notificationsApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
+import { GRADE_LABEL } from '../pages/ControlPanel/shared'
 
 // Notifications need to be responsive. A 30-minute cache makes them feel sluggish.
 // Set to 10 seconds so they update almost instantly on mount or dropdown click.
@@ -29,18 +31,11 @@ const formatWhen = (iso) => {
   }
 }
 
-const GRADE_LABELS = {
-  all: 'كل المراحل',
-  'first-prep': 'الصف الأول الإعدادي',
-  'second-prep': 'الصف الثاني الإعدادي',
-  'third-prep': 'الصف الثالث الإعدادي',
-  'first-sec': 'الصف الأول الثانوي',
-  'second-sec': 'الصف الثاني الثانوي',
-  'third-sec': 'الصف الثالث الثانوي',
-}
+
 
 export default function Notifications() {
   const navigate = useNavigate()
+  const { gradesList } = useTenant()
   const [open, setOpen] = useState(false)
   const [list, setList] = useState([])
   const [readIds, setReadIds] = useState(new Set())
@@ -289,8 +284,8 @@ export default function Notifications() {
   // For admin display: produce a readable "target" label per row.
   const targetLabel = (n) => {
     if (n.meta?.kind === 'student_chat_message') return 'المشرفين'
-    if (n.scope === 'all') return GRADE_LABELS.all
-    if (n.scope === 'grade') return GRADE_LABELS[n.target_grade] || n.target_grade
+    if (n.scope === 'all') return 'كل المراحل'
+    if (n.scope === 'grade') return GRADE_LABEL[n.target_grade] || n.target_grade
     if (n.scope === 'student') return 'طالب محدد'
     return ''
   }
@@ -361,12 +356,9 @@ export default function Notifications() {
                   aria-label="المرحلة المستهدفة"
                 >
                   <option value="all">كل المراحل</option>
-                  <option value="first-prep">الصف الأول الإعدادي</option>
-                  <option value="second-prep">الصف الثاني الإعدادي</option>
-                  <option value="third-prep">الصف الثالث الإعدادي</option>
-                  <option value="first-sec">الصف الأول الثانوي</option>
-                  <option value="second-sec">الصف الثاني الثانوي</option>
-                  <option value="third-sec">الصف الثالث الثانوي</option>
+                  {(gradesList || []).map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
                 </select>
                 <button type="submit" className="notif-send">
                   <i className="fas fa-paper-plane"></i> إرسال

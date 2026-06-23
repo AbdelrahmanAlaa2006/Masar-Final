@@ -5,15 +5,7 @@ import { listStudents } from '@backend/profilesApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import './Report.css'
 
-/* Map DB grade enum → Arabic label shown in the UI */
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-  'first-sec':   'الأول الثانوي',
-  'second-sec':  'الثاني الثانوي',
-  'third-sec':   'الثالث الثانوي',
-}
+import { GRADE_LABEL } from './ControlPanel/shared'
 
 export default function Report() {
   const navigate = useNavigate()

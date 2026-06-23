@@ -17,8 +17,8 @@ const DB_TO_UI = {
   'second-sec': 'second-sec',
   'third-sec': 'third-sec'
 }
-export const uiToDbGrade = (ui) => UI_TO_DB[ui] || null
-export const dbToUiGrade = (db) => DB_TO_UI[db] || null
+export const uiToDbGrade = (ui) => UI_TO_DB[ui] || ui
+export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 
 // List lectures. RLS scopes students to their own grade; admins see all.
 export async function listLectures() {

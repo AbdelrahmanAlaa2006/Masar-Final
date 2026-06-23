@@ -7,14 +7,7 @@ import { listHomeworks } from '@backend/homeworksApi'
 import { notify } from '../../utils/notify'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 
-const GRADE_LABELS = {
-  'first-prep': 'الصف الأول الإعدادي',
-  'second-prep': 'الصف الثاني الإعدادي',
-  'third-prep': 'الصف الثالث الإعدادي',
-  'first-sec': 'الصف الأول الثانوي',
-  'second-sec': 'الصف الثاني الثانوي',
-  'third-sec': 'الصف الثالث الثانوي'
-}
+import { GRADE_LABEL as GRADE_LABELS } from './shared'
 
 export default function PlaylistsPanel({ onBack, flash }) {
   const [playlists, setPlaylists] = useState([])

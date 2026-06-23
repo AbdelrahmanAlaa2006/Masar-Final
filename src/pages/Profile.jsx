@@ -4,6 +4,7 @@ import { supabase } from '@backend/supabase'
 import { uploadAvatarImage, deleteR2Object } from '@backend/r2'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
+import { GRADE_LABEL } from './ControlPanel/shared'
 import './Profile.css'
 
 export default function Profile() {
@@ -78,15 +79,6 @@ export default function Profile() {
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
   const isAssistant = user?.role === 'assistant'
 
-  // Map DB grade enum → Arabic label for display.
-  const GRADE_LABEL = {
-    'first-prep': 'الصف الأول الإعدادي',
-    'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep': 'الصف الثالث الإعدادي',
-    'first-sec': 'الصف الأول الثانوي',
-    'second-sec': 'الصف الثاني الثانوي',
-    'third-sec': 'الصف الثالث الثانوي',
-  }
   const gradeLabel = GRADE_LABEL[user?.grade] || '—'
 
   const joinDate = (() => {

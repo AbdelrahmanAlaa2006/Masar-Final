@@ -4,11 +4,15 @@ import { listHomeworks } from '@backend/homeworksApi'
 import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation } from '@backend/gradesApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, LIST_TTL } from '../../utils/cache'
+import { useTenant } from '../../contexts/TenantContext'
+import { dbToUiGrade } from '@backend/examsApi'
+import { GRADE_LABEL } from './shared'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
+  const { gradesList } = useTenant()
+  const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
 
-  const [grade, setGrade] = useState('first-sec')
   const [group, setGroup] = useState('')
   
   // Evaluation settings
@@ -40,14 +44,7 @@ export default function GradesPanel({ onBack, flash }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
   // Map DB grade enum → Arabic label
-  const GRADE_LABEL = {
-    'first-prep':  'الصف الأول الإعدادي',
-    'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep':  'الصف الثالث الإعدادي',
-    'first-sec':   'الصف الأول الثانوي',
-    'second-sec':  'الصف الثاني الثانوي',
-    'third-sec':   'الصف الثالث الثانوي',
-  }
+
 
   const loadUniqueEvaluationsList = async (targetGrade) => {
     try {
@@ -78,7 +75,7 @@ export default function GradesPanel({ onBack, flash }) {
         const filtered = allStudents.filter(s => s.grade === grade && s.is_approved)
         setStudents(filtered)
         
-        const mappedGrade = grade === 'first-prep' ? 'first' : grade === 'second-prep' ? 'second' : grade === 'third-prep' ? 'third' : grade
+        const mappedGrade = dbToUiGrade(grade)
         const filteredHomeworks = allHomeworks.filter(h => h.grade === mappedGrade)
         setHomeworksList(filteredHomeworks)
 
@@ -425,8 +422,8 @@ export default function GradesPanel({ onBack, flash }) {
         <div>
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>المرحلة الدراسية</label>
           <select value={grade} onChange={(e) => setGrade(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-            {Object.entries(GRADE_LABEL).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
+            {gradesList.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>

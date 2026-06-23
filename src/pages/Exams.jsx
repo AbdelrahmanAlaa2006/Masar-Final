@@ -20,6 +20,17 @@ const PREP_META = {
   'first-sec': { ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
   'second-sec': { ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
   'third-sec': { ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  // Primary
+  'primary-1': { ar: 'الصف الأول الابتدائي', en: 'Primary 1', accent: 'black', desc: 'المرحلة الابتدائية - الصف الأول' },
+  'primary-2': { ar: 'الصف الثاني الابتدائي', en: 'Primary 2', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثاني' },
+  'primary-3': { ar: 'الصف الثالث الابتدائي', en: 'Primary 3', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثالث' },
+  'primary-4': { ar: 'الصف الرابع الابتدائي', en: 'Primary 4', accent: 'black', desc: 'المرحلة الابتدائية - الصف الرابع' },
+  'primary-5': { ar: 'الصف الخامس الابتدائي', en: 'Primary 5', accent: 'black', desc: 'المرحلة الابتدائية - الصف الخامس' },
+  'primary-6': { ar: 'الصف السادس الابتدائي', en: 'Primary 6', accent: 'black', desc: 'المرحلة الابتدائية - الصف السادس' },
+  // Baccalaureate
+  'bac-1': { ar: 'البكالوريا - المستوى الأول', en: 'Bac 1', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الأول' },
+  'bac-2': { ar: 'البكالوريا - المستوى الثاني', en: 'Bac 2', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثاني' },
+  'bac-3': { ar: 'البكالوريا - المستوى الثالث', en: 'Bac 3', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثالث' },
   packages: { ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
 }
 
@@ -28,13 +39,30 @@ export default function Exams() {
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
   const { user, role: userRole } = useAuth()
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const userId = user?.id || null
 
-  const filteredLevels = [
-    ...Object.keys(PREP_META).filter(key => key !== 'packages' && isGradeEnabled(uiToDbGrade(key) || key)),
-    ...(userRole === 'admin' || userRole === 'assistant' ? ['packages'] : [])
-  ]
+  const levelsMeta = useMemo(() => {
+    const meta = {}
+    for (const g of gradesList || []) {
+      const legacyKey = dbToUiGrade(g.id)
+      const key = legacyKey || g.id
+      const legacyMeta = PREP_META[key]
+      meta[key] = {
+        ar: g.name,
+        en: g.stageName || g.stageId,
+        accent: legacyMeta?.accent || 'violet',
+        desc: legacyMeta?.desc || `محتوى وأسئلة ${g.name}`,
+        dbGrade: g.id
+      }
+    }
+    if (userRole === 'admin' || userRole === 'assistant') {
+      meta['packages'] = PREP_META['packages']
+    }
+    return meta
+  }, [gradesList, userRole])
+
+  const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   const [currentLevel, setCurrentLevel] = useState(() => {
     if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
@@ -143,16 +171,18 @@ export default function Exams() {
   }, [rows, userId, userRole, overridesMap])
 
   const examsByLevel = useMemo(() => {
-    const out = {
-      first: [], second: [], third: [],
-      'first-sec': [], 'second-sec': [], 'third-sec': []
+    const out = {}
+    for (const key of Object.keys(levelsMeta)) {
+      out[key] = []
     }
     for (const r of rows) {
-      const ui = dbToUiGrade(r.grade)
-      if (ui && out[ui]) out[ui].push(r)
+      const ui = dbToUiGrade(r.grade) || r.grade
+      if (out[ui]) {
+        out[ui].push(r)
+      }
     }
     return out
-  }, [rows])
+  }, [rows, levelsMeta])
 
   // Group active/accessible exams by Playlist
   const playlistGroups = useMemo(() => {
@@ -286,22 +316,14 @@ export default function Exams() {
     }
   }
 
-  const levelTitles = {
-    first: 'امتحانات الصف الأول الإعدادي',
-    second: 'امتحانات الصف الثاني الإعدادي',
-    third: 'امتحانات الصف الثالث الإعدادي',
-    'first-sec': 'امتحانات الصف الأول الثانوي',
-    'second-sec': 'امتحانات الصف الثاني الثانوي',
-    'third-sec': 'امتحانات الصف الثالث الثانوي',
-  }
-
-  const levelEmojis = {
-    first: '1️⃣', second: '2️⃣', third: '3️⃣',
-    'first-sec': '1️⃣', 'second-sec': '2️⃣', 'third-sec': '3️⃣'
+  const getLevelTitle = (lvl) => {
+    if (lvl === 'packages') return 'الباقات المدفوعة 📦'
+    return levelsMeta[lvl]?.ar ? `امتحانات ${levelsMeta[lvl].ar}` : 'امتحانات'
   }
 
   const renderLevelCard = (level, index) => {
-    const m = PREP_META[level]
+    const m = levelsMeta[level]
+    if (!m) return null
     return (
       <button
         key={level}
@@ -425,7 +447,7 @@ export default function Exams() {
         <div className="premium-header-content">
           <span className="premium-pre-title">التقييمات والاختبارات</span>
           <h1 className="premium-title-main">
-            {levelTitles[level]}
+            {getLevelTitle(level)}
           </h1>
           <p className="premium-subtitle-desc">
             اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية
@@ -539,7 +561,7 @@ export default function Exams() {
         <div className="breadcrumb" id="breadcrumb">
           <span className="breadcrumb-item active" onClick={() => setCurrentLevel(null)}>الامتحانات</span>
           <span>›</span>
-          <span className="breadcrumb-item active">{levelTitles[currentLevel]}</span>
+          <span className="breadcrumb-item active">{getLevelTitle(currentLevel)}</span>
         </div>
       )}
 
@@ -612,7 +634,7 @@ export default function Exams() {
    Editing the questions array is intentionally NOT supported here —
    delete + recreate the exam if you need to change question content. */
 function EditExamModal({ exam, onCancel, onSave }) {
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const [title, setTitle] = useState(exam.title || '')
   const [number, setNumber] = useState(exam.number || '')
   const [grade, setGrade] = useState(exam.grade || 'first-prep')
@@ -1096,12 +1118,9 @@ function EditExamModal({ exam, onCancel, onSave }) {
             <div className="edit-field">
               <label>الصف الدراسي</label>
               <select className="edit-select" value={grade} onChange={(e) => setGrade(e.target.value)}>
-                {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
-                {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
-                {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
-                {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
-                {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
-                {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+                {(gradesList || []).map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
                 <option value="packages">باقات مدفوعة 📦</option>
               </select>
             </div>

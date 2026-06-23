@@ -95,7 +95,7 @@ const makeQuiz = () => ({
 
 export default function VideoAdd() {
   const navigate = useNavigate()
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const [videoTitle, setVideoTitle] = useState('')
   const [videoDescription, setVideoDescription] = useState('')
   const [videoParts, setVideoParts] = useState([])
@@ -107,17 +107,23 @@ export default function VideoAdd() {
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [selectedGrade] = useState(() => {
-    const selected = localStorage.getItem('selectedVideoGrade') || 'first-prep'
-    if (isGradeEnabled(selected)) return selected
-    const grades = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
-    for (const g of grades) {
-      if (isGradeEnabled(g)) return g
-    }
+    const selected = localStorage.getItem('selectedVideoGrade')
+    if (selected && isGradeEnabled(selected)) return selected
+    if (gradesList && gradesList.length > 0) return gradesList[0].id
     return 'first-prep'
   })
   const [videoGrade, setVideoGrade] = useState(selectedGrade)
   const [activeHours, setActiveHours] = useState(24)
   const [pdfFile, setPdfFile] = useState(null)
+
+  useEffect(() => {
+    if (gradesList && gradesList.length > 0) {
+      const exists = gradesList.some(g => g.id === videoGrade)
+      if (!exists) {
+        setVideoGrade(gradesList[0].id)
+      }
+    }
+  }, [gradesList])
   const [uploadPct, setUploadPct] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
@@ -672,12 +678,9 @@ export default function VideoAdd() {
               <div className="form-group flex-1">
                 <label>الصف الدراسي</label>
                 <select value={videoGrade} onChange={(e) => setVideoGrade(e.target.value)}>
-                  {isGradeEnabled('first-prep') && <option value="first-prep">الصف الأول الإعدادي</option>}
-                  {isGradeEnabled('second-prep') && <option value="second-prep">الصف الثاني الإعدادي</option>}
-                  {isGradeEnabled('third-prep') && <option value="third-prep">الصف الثالث الإعدادي</option>}
-                  {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
-                  {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
-                  {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+                  {gradesList.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
                   <option value="packages">باقات مدفوعة 📦</option>
                 </select>
               </div>

@@ -34,15 +34,26 @@ import { useAuth } from '../contexts/AuthContext'
    - Admins can open a homework's submission list and grade each.
    ────────────────────────────────────────────────────────────── */
 
-const PREPS = [
-  { id: 'first', nameAr: 'الصف الأول الإعدادي', nameEn: 'First Prep', icon: 'fa-seedling', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
-  { id: 'second', nameAr: 'الصف الثاني الإعدادي', nameEn: 'Second Prep', icon: 'fa-book-open-reader', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
-  { id: 'third', nameAr: 'الصف الثالث الإعدادي', nameEn: 'Third Prep', icon: 'fa-trophy', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
-  { id: 'first-sec', nameAr: 'الصف الأول الثانوي', nameEn: 'First Sec', icon: 'fa-graduation-cap', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
-  { id: 'second-sec', nameAr: 'الصف الثاني الثانوي', nameEn: 'Second Sec', icon: 'fa-user-graduate', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
-  { id: 'third-sec', nameAr: 'الصف الثالث الثانوي', nameEn: 'Third Sec', icon: 'fa-award', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
-  { id: 'packages', nameAr: 'باقات مدفوعة 📦', nameEn: 'Paid Packages', icon: 'fa-box', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' }
-]
+const PREP_META = {
+  first: { ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
+  second: { ar: 'الصف الثاني الإعدادي', en: 'Second Prep', accent: 'blue', desc: 'تعميق المفاهيم وبناء المهارات' },
+  third: { ar: 'الصف الثالث الإعدادي', en: 'Third Prep', accent: 'orange', desc: 'الاستعداد لاختبارات الشهادة' },
+  'first-sec': { ar: 'الصف الأول الثانوي', en: 'First Sec', accent: 'teal', desc: 'بداية المرحلة الثانوية والتأسيس' },
+  'second-sec': { ar: 'الصف الثاني الثانوي', en: 'Second Sec', accent: 'pink', desc: 'تحديد المسار وبناء المهارات' },
+  'third-sec': { ar: 'الصف الثالث الثانوي', en: 'Third Sec', accent: 'red', desc: 'الاستعداد لاختبارات الثانوية العامة' },
+  // Primary
+  'primary-1': { ar: 'الصف الأول الابتدائي', en: 'Primary 1', accent: 'black', desc: 'المرحلة الابتدائية - الصف الأول' },
+  'primary-2': { ar: 'الصف الثاني الابتدائي', en: 'Primary 2', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثاني' },
+  'primary-3': { ar: 'الصف الثالث الابتدائي', en: 'Primary 3', accent: 'black', desc: 'المرحلة الابتدائية - الصف الثالث' },
+  'primary-4': { ar: 'الصف الرابع الابتدائي', en: 'Primary 4', accent: 'black', desc: 'المرحلة الابتدائية - الصف الرابع' },
+  'primary-5': { ar: 'الصف الخامس الابتدائي', en: 'Primary 5', accent: 'black', desc: 'المرحلة الابتدائية - الصف الخامس' },
+  'primary-6': { ar: 'الصف السادس الابتدائي', en: 'Primary 6', accent: 'black', desc: 'المرحلة الابتدائية - الصف السادس' },
+  // Baccalaureate
+  'bac-1': { ar: 'البكالوريا - المستوى الأول', en: 'Bac 1', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الأول' },
+  'bac-2': { ar: 'البكالوريا - المستوى الثاني', en: 'Bac 2', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثاني' },
+  'bac-3': { ar: 'البكالوريا - المستوى الثالث', en: 'Bac 3', accent: 'black', desc: 'مرحلة البكالوريا - المستوى الثالث' },
+  packages: { ar: 'باقات مدفوعة 📦', en: 'Paid Packages', accent: 'violet', desc: 'محتويات الباقات المدفوعة والخاصة' },
+}
 
 const PLACEHOLDER_COVER =
   'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -89,13 +100,30 @@ export default function Homework() {
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('homeworks')) }, [])
 
   const { user, role: userRole } = useAuth()
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const userId = user?.id || null
 
-  const filteredPreps = [
-    ...PREPS.filter(p => p.id !== 'packages' && isGradeEnabled(uiToDbGrade(p.id) || p.id)),
-    ...(userRole === 'admin' || userRole === 'assistant' ? [PREPS.find(p => p.id === 'packages')] : [])
-  ].filter(Boolean)
+  const levelsMeta = useMemo(() => {
+    const meta = {}
+    for (const g of gradesList || []) {
+      const legacyKey = dbToUiGrade(g.id)
+      const key = legacyKey || g.id
+      const legacyMeta = PREP_META[key]
+      meta[key] = {
+        ar: g.name,
+        en: legacyMeta?.en || g.stageName || g.stageId,
+        accent: legacyMeta?.accent || 'violet',
+        desc: legacyMeta?.desc || `واجبات ومهام ${g.name}`,
+        dbGrade: g.id
+      }
+    }
+    if (userRole === 'admin' || userRole === 'assistant') {
+      meta['packages'] = PREP_META['packages']
+    }
+    return meta
+  }, [gradesList, userRole])
+
+  const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   const [grade, setGrade] = useState(() => {
     if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
@@ -188,26 +216,26 @@ export default function Homework() {
     return () => { cancelled = true }
   }, [rows, userId, userRole])
 
-  const homeworks = useMemo(() => {
-    const grouped = {
-      first: [], second: [], third: [],
-      'first-sec': [], 'second-sec': [], 'third-sec': [],
-      packages: []
+  const homeworksByLevel = useMemo(() => {
+    const grouped = {}
+    for (const key of Object.keys(levelsMeta)) {
+      grouped[key] = []
     }
     if (!Array.isArray(rows)) return grouped
     for (const r of rows) {
       if (!r) continue
       const ui = dbToUiGrade(r.grade)
-      if (ui && grouped[ui]) {
+      const key = ui || r.grade
+      if (key && grouped[key]) {
         try {
-          grouped[ui].push(rowToCard(r))
+          grouped[key].push(rowToCard(r))
         } catch (e) {
           console.error("Failed to parse row:", r, e)
         }
       }
     }
     return grouped
-  }, [rows])
+  }, [rows, levelsMeta])
 
   const flash = (msg, kind = 'success') => {
     setToast({ msg, kind })
@@ -216,7 +244,7 @@ export default function Homework() {
 
   const filtered = useMemo(() => {
     if (!grade) return []
-    const list = homeworks[grade] || []
+    const list = homeworksByLevel[grade] || []
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter((l) =>
@@ -224,7 +252,7 @@ export default function Homework() {
         .map(val => val || '')
         .join(' ').toLowerCase().includes(q)
     )
-  }, [homeworks, grade, search])
+  }, [homeworksByLevel, grade, search])
 
   // Group active/accessible homeworks by Playlist
   const playlistGroups = useMemo(() => {
@@ -292,7 +320,7 @@ export default function Homework() {
     setEditingId(null)
     setForm({
       title: '', desc: '', week: '',
-      cover_url: '', grade: grade || (filteredPreps[0]?.id || 'first'),
+      cover_url: '', grade: grade || (filteredLevels[0] || 'first'),
       due_at: '', max_score: 0,
       answer_key: [{ options: 4, correct: 0 }],   // start with one question
     })
@@ -313,7 +341,7 @@ export default function Homework() {
       desc: hw.desc || '',
       week: hw.week || '',
       cover_url: hw.cover || (hw.cover_url || ''),
-      grade: dbToUiGrade(hw.grade) || (filteredPreps[0]?.id || 'first'),
+      grade: dbToUiGrade(hw.grade) || (filteredLevels[0] || 'first'),
       due_at: due,
       max_score: hw.max_score ?? 0,
       answer_key: Array.isArray(hw.answer_key) ? hw.answer_key.map(q => ({ ...q })) : [],
@@ -428,15 +456,36 @@ export default function Homework() {
               </div>
             </div>
             <div className="prep-grid">
-              {filteredPreps.map((p, index) => (
-                <PrepCard
-                  key={p.id}
-                  prep={p}
-                  index={index}
-                  count={(homeworks[p.id] || []).length}
-                  onClick={() => setGrade(p.id)}
-                />
-              ))}
+              {filteredLevels.map((key, index) => {
+                const m = levelsMeta[key]
+                if (!m) return null
+                return (
+                  <button
+                    key={key}
+                    className={`prep-card prep-${m.accent}`}
+                    style={{
+                      animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
+                      animationDelay: `${index * 0.06}s`
+                    }}
+                    onClick={() => setGrade(key)}
+                  >
+                    <div className="prep-cover">
+                      <div className="prep-cover-deco" />
+                      <PrepIllustration kind={key} stage={m.en} />
+                    </div>
+                    <div className="prep-body">
+                      <h3>{m.ar}</h3>
+                      <p>{m.desc}</p>
+                      <div className="prep-foot">
+                        <span className="prep-count">
+                          <i className="fas fa-clipboard-list"></i> {(homeworksByLevel[key] || []).length} واجب
+                        </span>
+                        <span className="prep-cta">استعراض <i className="fas fa-arrow-left"></i></span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -447,7 +496,7 @@ export default function Homework() {
               <div className="premium-header-content">
                 <span className="premium-pre-title">المهام الدراسية والواجبات</span>
                 <h1 className="premium-title-main">
-                  واجبات {PREPS.find((p) => p.id === grade)?.nameAr}
+                  واجبات {levelsMeta[grade]?.ar || ''}
                   <span className="premium-title-accent">({filtered.length} واجب)</span>
                 </h1>
                 <p className="premium-subtitle-desc">
@@ -592,16 +641,19 @@ export default function Homework() {
 
               <Field label="الصف الدراسي" icon="fa-graduation-cap" required>
                 <div className="hw-grade-picker" role="radiogroup">
-                  {PREPS.map((p) => {
-                    const active = form.grade === p.id
+                  {filteredLevels.map((key) => {
+                    const m = levelsMeta[key]
+                    if (!m) return null
+                    const active = form.grade === key
+                    const icon = key.includes('sec') ? 'fa-book-open' : 'fa-graduation-cap'
                     return (
-                      <button key={p.id} type="button" role="radio" aria-checked={active}
-                        className={`hw-grade-opt hw-grade-${p.accent} ${active ? 'is-on' : ''}`}
-                        onClick={() => setForm({ ...form, grade: p.id })}>
-                        <span className="hw-grade-opt-icon"><i className={`fas ${p.icon}`}></i></span>
+                      <button key={key} type="button" role="radio" aria-checked={active}
+                        className={`hw-grade-opt hw-grade-${m.accent} ${active ? 'is-on' : ''}`}
+                        onClick={() => setForm({ ...form, grade: key })}>
+                        <span className="hw-grade-opt-icon"><i className={`fas ${icon}`}></i></span>
                         <span className="hw-grade-opt-text">
-                          <span className="hw-grade-opt-name">{p.nameAr}</span>
-                          <span className="hw-grade-opt-en">{p.nameEn}</span>
+                          <span className="hw-grade-opt-name">{m.ar}</span>
+                          <span className="hw-grade-opt-en">{m.en}</span>
                         </span>
                         {active && <i className="fas fa-circle-check hw-grade-opt-tick"></i>}
                       </button>
@@ -1194,34 +1246,6 @@ function PdfViewerModal({ viewer, onClose }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function PrepCard({ prep, count, index, onClick }) {
-  return (
-    <button
-      className={`prep-card prep-${prep.accent}`}
-      style={{
-        animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
-        animationDelay: `${index * 0.06}s`
-      }}
-      onClick={onClick}
-    >
-      <div className="prep-cover">
-        <div className="prep-cover-deco" />
-        <PrepIllustration kind={prep.id} stage={prep.nameEn} />
-      </div>
-      <div className="prep-body">
-        <h3>{prep.nameAr}</h3>
-        <p>{prep.desc}</p>
-        <div className="prep-foot">
-          <span className="prep-count">
-            <i className="fas fa-clipboard-list"></i> {count} واجب
-          </span>
-          <span className="prep-cta">استعراض <i className="fas fa-arrow-left"></i></span>
-        </div>
-      </div>
-    </button>
   )
 }
 

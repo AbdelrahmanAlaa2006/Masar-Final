@@ -6,16 +6,10 @@ import { listStudents } from '@backend/profilesApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
 import { invalidate as invalidateCache } from '../utils/cache'
+import { useTenant } from '../contexts/TenantContext'
+import { GRADE_LABEL } from './ControlPanel/shared'
 import './Payments.css'
 
-const GRADE_SHORT = {
-  'first-prep':  'أولى إعدادي',
-  'second-prep': 'تانية إعدادي',
-  'third-prep':  'تالتة إعدادي',
-  'first-sec':   'أولى ثانوي',
-  'second-sec':  'تانية ثانوي',
-  'third-sec':   'تالتة ثانوي',
-}
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -649,6 +643,8 @@ export default function Payments() {
 function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigChange, setPreviewUrl, setRotateDeg }) {
   const { user } = useAuth()
   const adminId = user?.id || null
+  const { gradesList } = useTenant()
+
 
   const [activeTab, setActiveTab] = useState('pending') // 'pending' is default for immediate attention, can switch to 'all', 'approved', 'rejected'
   const [searchQuery, setSearchQuery] = useState('')
@@ -932,7 +928,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     const headers = ['اسم الطالب', 'المرحلة الدراسية', 'المبلغ (ج.م)', 'طريقة الدفع', 'الباقة المطلوبة', 'تاريخ الطلب', 'الحالة', 'ملاحظات الإدارة']
     const rows = filteredPayments.map(p => {
       const studentName = p.profiles?.name || '—'
-      const grade = GRADE_SHORT[p.profiles?.grade] || p.profiles?.grade || '—'
+      const grade = GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || '—'
       const amount = p.amount || 0
       const method = p.payment_method === 'InstaPay' ? 'InstaPay' : p.payment_method === 'Cash' ? 'دفع نقدي' : 'Vodafone Cash'
       const packageName = p.package_name || '—'
@@ -1168,12 +1164,9 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 style={{ height: 42, cursor: 'pointer', fontWeight: 600 }}
               >
                 <option value="all">كل المراحل الدراسية</option>
-                <option value="first-prep">الصف الأول الإعدادي</option>
-                <option value="second-prep">الصف الثاني الإعدادي</option>
-                <option value="third-prep">الصف الثالث الإعدادي</option>
-                <option value="first-sec">الصف الأول الثانوي</option>
-                <option value="second-sec">الصف الثاني الثانوي</option>
-                <option value="third-sec">الصف الثالث الثانوي</option>
+                {gradesList.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
               </select>
 
               {/* Text Search Field */}
@@ -1311,7 +1304,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                           <span><i className="fas fa-phone" style={{ fontSize: '0.75rem', opacity: 0.7 }}></i> {p.profiles?.phone || '—'}</span>
                           <span style={{ height: 4, width: 4, borderRadius: '50%', background: '#cbd5e1' }}></span>
                           <span className="paypg-student-grade">
-                            {GRADE_SHORT[p.profiles?.grade] || p.profiles?.grade || '—'}
+                            {GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || '—'}
                           </span>
                           {p.package_name && (
                             <>

@@ -9,28 +9,21 @@ import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { uploadQuizImage } from '@backend/r2'
 import { useTenant } from '../../contexts/TenantContext'
 
-const GRADES = [
-  ['first-prep', 'الصف الأول الإعدادي'],
-  ['second-prep', 'الصف الثاني الإعدادي'],
-  ['third-prep', 'الصف الثالث الإعدادي'],
-  ['first-sec', 'الصف الأول الثانوي'],
-  ['second-sec', 'الصف الثاني الثانوي'],
-  ['third-sec', 'الصف الثالث الثانوي'],
-]
-
-const CONTENT_GRADES = [
-  ['packages', 'باقات مدفوعة 📦'],
-  ['first-prep', 'الصف الأول الإعدادي'],
-  ['second-prep', 'الصف الثاني الإعدادي'],
-  ['third-prep', 'الصف الثالث الإعدادي'],
-  ['first-sec', 'الصف الأول الثانوي'],
-  ['second-sec', 'الصف الثاني الثانوي'],
-  ['third-sec', 'الصف الثالث الثانوي'],
-]
+import { GRADE_LABEL } from './shared'
 
 export default function PackagesPanel({ onBack, flash }) {
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, tenantId, gradesList } = useTenant()
   const [packages, setPackages] = useState([])
+  const dynamicGrades = useMemo(() => {
+    return (gradesList || []).map(g => [g.id, g.name])
+  }, [gradesList])
+
+  const dynamicContentGrades = useMemo(() => {
+    return [
+      ['packages', 'باقات مدفوعة 📦'],
+      ...(gradesList || []).map(g => [g.id, g.name])
+    ]
+  }, [gradesList])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -62,6 +55,17 @@ export default function PackagesPanel({ onBack, flash }) {
   const [currentAddId, setCurrentAddId] = useState('')
   const [contentGrade, setContentGrade] = useState('packages')
 
+  useEffect(() => {
+    if (gradesList && gradesList.length > 0) {
+      if (!gradesList.some(g => g.id === grade)) {
+        setGrade(gradesList[0].id)
+      }
+      if (contentGrade !== 'packages' && !gradesList.some(g => g.id === contentGrade)) {
+        setContentGrade(gradesList[0].id)
+      }
+    }
+  }, [gradesList, grade, contentGrade])
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -86,7 +90,7 @@ export default function PackagesPanel({ onBack, flash }) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const data = await listPackages()
+      const data = await listPackages(tenantId)
       setPackages(data)
     } catch (err) {
       console.error(err)
@@ -118,7 +122,7 @@ export default function PackagesPanel({ onBack, flash }) {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     if (showCreateModal) {
@@ -375,7 +379,7 @@ export default function PackagesPanel({ onBack, flash }) {
                   className="cp-input"
                   style={{ width: '100%', padding: '10px', border: '1.5px solid var(--border-color, #e2e8f0)', color: 'var(--text-color)', background: 'var(--card-bg, #fff)' }}
                 >
-                  {GRADES.filter(([val]) => isGradeEnabled(val)).map(([val, label]) => (
+                  {dynamicGrades.map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
                   ))}
                 </select>
@@ -491,7 +495,7 @@ export default function PackagesPanel({ onBack, flash }) {
                     className="cp-input"
                     style={{ width: 180, padding: 8, background: 'var(--card-bg)' }}
                   >
-                    {CONTENT_GRADES.filter(([val]) => val === 'packages' || isGradeEnabled(val)).map(([val, label]) => (
+                    {dynamicContentGrades.map(([val, label]) => (
                       <option key={val} value={val}>{label}</option>
                     ))}
                   </select>
@@ -641,7 +645,7 @@ export default function PackagesPanel({ onBack, flash }) {
                           fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6,
                           background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 'bold'
                         }}>
-                          {GRADES.find(([g]) => g === pkg.grade)?.[1] || pkg.grade || 'عام'}
+                          {GRADE_LABEL[pkg.grade] || pkg.grade || 'عام'}
                         </span>
                       </div>
 

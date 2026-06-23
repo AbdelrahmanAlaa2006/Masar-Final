@@ -3,23 +3,24 @@ import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
-import { createExam, uiToDbGrade } from '@backend/examsApi'
+import { createExam, uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { invalidate as invalidateCache } from '../utils/cache'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
-  const { isGradeEnabled } = useTenant()
+  const { isGradeEnabled, gradesList } = useTenant()
   const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
   const [examGrade, setExamGrade] = useState(() => {
     const selected = localStorage.getItem('selectedGrade')
-    if (selected && isGradeEnabled(uiToDbGrade(selected) || selected)) {
+    const dbSelected = uiToDbGrade(selected) || selected
+    if (dbSelected && (gradesList || []).some(g => g.id === dbSelected)) {
       return selected
     }
-    const grades = ['first', 'second', 'third', 'first-sec', 'second-sec', 'third-sec']
-    for (const g of grades) {
-      if (isGradeEnabled(uiToDbGrade(g) || g)) return g
+    if (gradesList && gradesList.length > 0) {
+      const dbFirst = gradesList[0].id
+      return dbToUiGrade(dbFirst) || dbFirst
     }
     return 'first'
   })
@@ -34,6 +35,17 @@ export default function ExamAdd() {
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (gradesList && gradesList.length > 0) {
+      const dbSelected = uiToDbGrade(examGrade) || examGrade
+      const exists = gradesList.some(g => g.id === dbSelected)
+      if (!exists) {
+        const dbFirst = gradesList[0].id
+        setExamGrade(dbToUiGrade(dbFirst) || dbFirst)
+      }
+    }
+  }, [gradesList])
 
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
@@ -342,12 +354,10 @@ export default function ExamAdd() {
             value={examGrade}
             onChange={(e) => setExamGrade(e.target.value)}
           >
-            {isGradeEnabled('first-prep') && <option value="first">الصف الأول الإعدادي</option>}
-            {isGradeEnabled('second-prep') && <option value="second">الصف الثاني الإعدادي</option>}
-            {isGradeEnabled('third-prep') && <option value="third">الصف الثالث الإعدادي</option>}
-            {isGradeEnabled('first-sec') && <option value="first-sec">الصف الأول الثانوي</option>}
-            {isGradeEnabled('second-sec') && <option value="second-sec">الصف الثاني الثانوي</option>}
-            {isGradeEnabled('third-sec') && <option value="third-sec">الصف الثالث الثانوي</option>}
+            {(gradesList || []).map((g) => {
+              const uiKey = dbToUiGrade(g.id) || g.id
+              return <option key={g.id} value={uiKey}>{g.name}</option>
+            })}
             <option value="packages">باقات مدفوعة 📦</option>
           </select>
         </div>

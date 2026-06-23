@@ -87,7 +87,7 @@
 
 .sf-main > .sf-container {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1.2fr 1.4fr;
+  grid-template-columns: 1.5fr 0.9fr 2fr 1.4fr;
   gap: 2.2rem;
   padding-bottom: 2.2rem;
 }
@@ -333,6 +333,33 @@
   color: #43e97b;
 }
 body:not(.dark) .sf-links--static li > span { color: #475569; }
+
+/* Stages Grouping and Grid Layout */
+.sf-stages-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1.5rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+.sf-stage-group-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.6rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.4rem;
+}
+.sf-stage-group-title i {
+  color: #4facfe;
+  font-size: 0.9rem;
+}
+body:not(.dark) .sf-stage-group-title {
+  color: #0f172a;
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
 
 /* Contact */
 .sf-contact {

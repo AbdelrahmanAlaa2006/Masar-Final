@@ -10,6 +10,7 @@ import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cac
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
+import { useTenant } from '../../contexts/TenantContext'
 
 const fmtDate = (iso) => {
   if (!iso) return ''
@@ -26,6 +27,7 @@ const fmtDate = (iso) => {
 
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
+  const { gradesList } = useTenant()
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -308,8 +310,8 @@ export default function AccountsPanel({ onBack, flash }) {
         <div>
           <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
             <option value="all">جميع المراحل</option>
-            {Object.entries(GRADE_LABEL).map(([val, lbl]) => (
-              <option key={val} value={val}>{lbl}</option>
+            {(gradesList || []).map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>

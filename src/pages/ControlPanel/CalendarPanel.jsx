@@ -2,15 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { listScheduledEvents, createScheduledEvent, updateScheduledEvent, deleteScheduledEvent } from '@backend/calendarApi'
 import { listPackages } from '@backend/packagesApi'
 import { supabase } from '@backend/supabase'
+import { useTenant } from '../../contexts/TenantContext'
 
-const GRADES = [
-  ['first-prep', 'الأول الإعدادي'],
-  ['second-prep', 'الثاني الإعدادي'],
-  ['third-prep', 'الثالث الإعدادي'],
-  ['first-sec', 'الأول الثانوي'],
-  ['second-sec', 'الثاني الثانوي'],
-  ['third-sec', 'الثالث الثانوي'],
-]
+
 
 const EVENT_TYPE_INFO = {
   video: { label: 'فيديو محاضرة', icon: 'fa-play-circle', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
@@ -22,6 +16,7 @@ const EVENT_TYPE_INFO = {
 }
 
 export default function CalendarPanel({ onBack, flash }) {
+  const { tenantId, gradesList } = useTenant()
   const [events, setEvents] = useState([])
   const [packages, setPackages] = useState([])
   const [groups, setGroups] = useState([])
@@ -41,7 +36,7 @@ export default function CalendarPanel({ onBack, flash }) {
   const [formTitle, setFormTitle] = useState('')
   const [formType, setFormType] = useState('custom')
   const [formStartsAt, setFormStartsAt] = useState('')
-  const [formGrade, setFormGrade] = useState('first-prep')
+  const [formGrade, setFormGrade] = useState(() => gradesList?.[0]?.id || 'first-prep')
   const [formGroupId, setFormGroupId] = useState('')
   const [formPackageId, setFormPackageId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -54,7 +49,7 @@ export default function CalendarPanel({ onBack, flash }) {
       setEvents(evs || [])
 
       // Load packages & groups for dropdowns
-      const pkgs = await listPackages()
+      const pkgs = await listPackages(tenantId)
       setPackages(pkgs || [])
 
       const { data: grps } = await supabase.from('groups').select('id, name')
@@ -68,7 +63,7 @@ export default function CalendarPanel({ onBack, flash }) {
 
   useEffect(() => {
     loadData()
-  }, [gradeFilter])
+  }, [gradeFilter, tenantId])
 
   // Month navigation helpers
   const handlePrevMonth = () => {
@@ -116,7 +111,7 @@ export default function CalendarPanel({ onBack, flash }) {
     setEditingEvent(null)
     setFormTitle('')
     setFormType('custom')
-    setFormGrade(gradeFilter !== 'all' ? gradeFilter : 'first-prep')
+    setFormGrade(gradeFilter !== 'all' ? gradeFilter : (gradesList?.[0]?.id || 'first-prep'))
     setFormGroupId('')
     setFormPackageId('')
     
@@ -278,8 +273,8 @@ export default function CalendarPanel({ onBack, flash }) {
             }}
           >
             <option value="all">كل المراحل</option>
-            {GRADES.map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
+            {gradesList.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
@@ -553,8 +548,8 @@ export default function CalendarPanel({ onBack, flash }) {
                     fontFamily: 'Tajawal'
                   }}
                 >
-                  {GRADES.map(([id, name]) => (
-                    <option key={id} value={id}>{name}</option>
+                  {gradesList.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
                 </select>
               </div>

@@ -7,16 +7,7 @@ import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
 import { cached, LIST_TTL } from '../utils/cache'
 
-// DB grade enum → Arabic label shown in the UI.
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-  'first-sec':   'الأول الثانوي',
-  'second-sec':  'الثاني الثانوي',
-  'third-sec':   'الثالث الثانوي',
-}
-const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
+import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
 const initials = (name = '') => {
   return name.trim().split(' ').map(n => n[0]).slice(0, 2).join('')

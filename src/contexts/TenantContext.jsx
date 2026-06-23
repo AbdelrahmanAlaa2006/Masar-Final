@@ -108,8 +108,9 @@ export function TenantProvider({ children }) {
           if (resolvedData && (resolvedData.slug === 'sherif-english' || resolvedData.slug === 'waled-english' || resolvedData.config?.subject === 'english')) {
             resolvedData.name = 'The Miracle in English'
             resolvedData.slug = 'waled-english'
-            resolvedData.primary_color = '#1b439c'
-            resolvedData.secondary_color = '#df8d27'
+            resolvedData.primary_color = '#d4af37'
+            resolvedData.secondary_color = '#cbd5e1'
+            resolvedData.logo_url = '/images/Logo The Miracle.png'
           }
 
           return resolvedData
@@ -152,6 +153,22 @@ export function TenantProvider({ children }) {
   }, [tenant])
 
   const isGradeEnabled = useCallback((gradeKey) => {
+    // 1. Check if the new stages array exists
+    if (tenant?.config?.stages) {
+      const stages = Array.isArray(tenant.config.stages) ? tenant.config.stages : []
+      for (const stage of stages) {
+        if (stage.enabled === false) {
+          const hasGrade = stage.grades?.some(g => g.id === gradeKey)
+          if (hasGrade) return false
+        }
+        const gradeObj = stage.grades?.find(g => g.id === gradeKey)
+        if (gradeObj) {
+          return gradeObj.enabled !== false
+        }
+      }
+    }
+
+    // 2. Legacy fallback
     if (!tenant?.config?.grades) return true
     // Support both standard enums (first-prep) and alternative conventions (grade_1_prep / grade_3_sec)
     const legacyMap = {
@@ -168,6 +185,34 @@ export function TenantProvider({ children }) {
     return true
   }, [tenant])
 
+  const gradesList = useMemo(() => {
+    if (tenant?.config?.stages) {
+      const stages = Array.isArray(tenant.config.stages) ? tenant.config.stages : []
+      const list = []
+      for (const stage of stages) {
+        if (stage.enabled === false) continue
+        const grades = Array.isArray(stage.grades) ? stage.grades : []
+        for (const g of grades) {
+          if (g.enabled !== false) {
+            list.push({ id: g.id, name: g.name, stageId: stage.id, stageName: stage.name })
+          }
+        }
+      }
+      return list
+    }
+    
+    // Legacy fallback list
+    const legacyGrades = [
+      { id: 'first-prep', name: 'الصف الأول الإعدادي', stageId: 'preparatory', stageName: 'المرحلة الإعدادية' },
+      { id: 'second-prep', name: 'الصف الثاني الإعدادي', stageId: 'preparatory', stageName: 'المرحلة الإعدادية' },
+      { id: 'third-prep', name: 'الصف الثالث الإعدادي', stageId: 'preparatory', stageName: 'المرحلة الإعدادية' },
+      { id: 'first-sec', name: 'الصف الأول الثانوي', stageId: 'secondary', stageName: 'المرحلة الثانوية' },
+      { id: 'second-sec', name: 'الصف الثاني الثانوي', stageId: 'secondary', stageName: 'المرحلة الثانوية' },
+      { id: 'third-sec', name: 'الصف الثالث الثانوي', stageId: 'secondary', stageName: 'المرحلة الثانوية' },
+    ]
+    return legacyGrades.filter(g => isGradeEnabled(g.id))
+  }, [tenant, isGradeEnabled])
+
   const value = useMemo(() => ({
     tenant,
     tenantId: tenant?.id || null,
@@ -175,8 +220,9 @@ export function TenantProvider({ children }) {
     tenantName: tenant?.name || '',
     isFeatureEnabled,
     isGradeEnabled,
+    gradesList,
     loading
-  }), [tenant, isFeatureEnabled, isGradeEnabled, loading])
+  }), [tenant, isFeatureEnabled, isGradeEnabled, gradesList, loading])
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
 import { sendGatewayMessage } from '@backend/parentNotificationsApi'
 import { useTenant } from '../contexts/TenantContext'
+import { GRADE_LABEL } from './ControlPanel/shared'
 import './Report.css' // Reuse general report styles
 
 export default function PublicReport() {
@@ -141,15 +142,7 @@ export default function PublicReport() {
     setSearchParams(params)
   }
 
-  // Map DB grade enum → Arabic label
-  const GRADE_LABEL = {
-    'first-prep':  'الصف الأول الإعدادي',
-    'second-prep': 'الصف الثاني الإعدادي',
-    'third-prep':  'الصف الثالث الإعدادي',
-    'first-sec':   'الصف الأول الثانوي',
-    'second-sec':  'الصف الثاني الثانوي',
-    'third-sec':   'الصف الثالث الثانوي',
-  }
+
 
   // Academic months config in correct RTL grid order matching mockup
   const ACADEMIC_MONTHS = useMemo(() => [

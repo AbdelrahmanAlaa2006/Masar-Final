@@ -3,6 +3,7 @@ import { listPayments, resolvePayment } from '@backend/paymentsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { notify } from '../../utils/notify'
 import { invalidate as invalidateCache } from '../../utils/cache'
+import { GRADE_LABEL } from './shared'
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -11,14 +12,7 @@ const fmtDate = (d) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
 }
 
-const GRADE_SHORT = {
-  'first-prep':  'أولى إعدادي',
-  'second-prep': 'تانية إعدادي',
-  'third-prep':  'تالتة إعدادي',
-  'first-sec':   'أولى ثانوي',
-  'second-sec':  'تانية ثانوي',
-  'third-sec':   'تالتة ثانوي',
-}
+
 
 export default function PaymentsPanel() {
   const { user } = useAuth()
@@ -231,7 +225,7 @@ export default function PaymentsPanel() {
                     <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', gap: 6, marginTop: 4 }}>
                       <span>{p.profiles?.phone || '—'}</span>
                       <span style={{ color: '#7c3aed', fontWeight: 600 }}>
-                        {GRADE_SHORT[p.profiles?.grade] || p.profiles?.grade}
+                        {GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade}
                       </span>
                     </div>
                   </td>

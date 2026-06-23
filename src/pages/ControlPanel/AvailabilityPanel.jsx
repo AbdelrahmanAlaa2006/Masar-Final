@@ -13,12 +13,15 @@ import {
   GroupPickerCards,
   GRADE_LABEL,
 } from './shared'
+import { useTenant } from '../../contexts/TenantContext'
+
 
 export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
+  const { gradesList } = useTenant()
   const [tab, setTab] = useState(restrictTo || 'exams')
 
   const [audience, setAudience] = useState('all')
-  const [grade, setGrade]       = useState('first-prep')
+  const [grade, setGrade]       = useState(() => gradesList?.[0]?.id || 'first-prep')
   const [groupValue, setGroupValue] = useState('')
   const [studentId, setStudentId] = useState('')
 

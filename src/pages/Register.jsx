@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
 import { useTenant } from '../contexts/TenantContext'
@@ -40,7 +40,7 @@ const translations = {
 
 export default function Register() {
   const { login } = useAuth()
-  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled } = useTenant()
+  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, gradesList } = useTenant()
   const themeConfig = getTenantThemeConfig(tenant, tenantSlug)
   const navigate = useNavigate()
 
@@ -77,6 +77,25 @@ export default function Register() {
   const [enrollmentType, setEnrollmentType] = useState('CENTER')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  const groupedGrades = useMemo(() => {
+    const acc = {}
+    for (const g of gradesList || []) {
+      const stageName = lang === 'ar' ? g.stageName : (g.stageId === 'preparatory' ? 'Preparatory' : g.stageId === 'secondary' ? 'Secondary' : g.stageId === 'primary' ? 'Primary' : g.stageId === 'baccalaureate' ? 'Egyptian Baccalaureate' : g.stageId)
+      if (!acc[stageName]) acc[stageName] = []
+      acc[stageName].push(g)
+    }
+    return acc
+  }, [gradesList, lang])
+
+  useEffect(() => {
+    if (gradesList && gradesList.length > 0) {
+      const exists = gradesList.some(g => g.id === grade)
+      if (!exists) {
+        setGrade(gradesList[0].id)
+      }
+    }
+  }, [gradesList])
 
   // Toggle password visibility
   const [showPassword, setShowPassword] = useState(false)
@@ -242,7 +261,7 @@ export default function Register() {
       <header className="aa-nav">
         <div className="aa-nav-inner">
           <div className="aa-brand">
-            <img src={brandLogo} alt="Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+            <img src={brandLogo} alt="Logo" className="aa-brand-logo" />
             <span className="aa-brand-name">{brandShort}</span>
           </div>
 
@@ -312,16 +331,13 @@ export default function Register() {
               <div className="register-input-wrapper">
                 <i className="fas fa-graduation-cap"></i>
                 <select value={grade} onChange={e => setGrade(e.target.value)} required>
-                  <optgroup label={lang === 'ar' ? 'المرحلة الإعدادية' : 'Preparatory'}>
-                    {isGradeEnabled('first-prep') && <option value="first-prep">{GRADE_LABEL['first-prep']}</option>}
-                    {isGradeEnabled('second-prep') && <option value="second-prep">{GRADE_LABEL['second-prep']}</option>}
-                    {isGradeEnabled('third-prep') && <option value="third-prep">{GRADE_LABEL['third-prep']}</option>}
-                  </optgroup>
-                  <optgroup label={lang === 'ar' ? 'المرحلة الثانوية' : 'Secondary'}>
-                    {isGradeEnabled('first-sec') && <option value="first-sec">{GRADE_LABEL['first-sec']}</option>}
-                    {isGradeEnabled('second-sec') && <option value="second-sec">{GRADE_LABEL['second-sec']}</option>}
-                    {isGradeEnabled('third-sec') && <option value="third-sec">{GRADE_LABEL['third-sec']}</option>}
-                  </optgroup>
+                  {Object.entries(groupedGrades).map(([stageName, list]) => (
+                    <optgroup key={stageName} label={stageName}>
+                      {list.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
 
@@ -432,10 +448,7 @@ export default function Register() {
                 <div className="register-stat-label">{lang === 'ar' ? 'الخبرة' : 'Experience'}</div>
                 <div className="register-stat-value">{teacherExp}</div>
               </div>
-              <div className="register-stat-item">
-                <div className="register-stat-label">{lang === 'ar' ? 'الطلاب' : 'Students'}</div>
-                <div className="register-stat-value">{teacherStudents}</div>
-              </div>
+
               <div className="register-stat-item">
                 <div className="register-stat-label">{teacherTargetStageLabel}</div>
                 <div className="register-stat-value">{teacherTargetStage}</div>

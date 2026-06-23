@@ -218,7 +218,7 @@ body:not(.dark) .aa-btn-ghost:hover {
 
 .aa-btn-primary {
   background: linear-gradient(135deg, var(--btn-from), var(--btn-to));
-  color: #fff;
+  color: var(--btn-text, #fff);
   box-shadow: var(--btn-shadow);
 }
 
@@ -911,7 +911,7 @@ body:not(.dark) .aa-footer {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 14px;
+  padding: 5px 14px 7px;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -920,7 +920,7 @@ body:not(.dark) .aa-footer {
   background: var(--primary-soft);
   border: 1px solid var(--primary-glow);
   border-radius: 999px;
-  margin-bottom: 18px;
+  margin-bottom: 12px !important;
 }
 
 .aa-page .loc-title {
@@ -930,15 +930,18 @@ body:not(.dark) .aa-footer {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  margin: 0 0 12px;
-  line-height: 1.15;
+  margin: 0 0 12px !important;
+  margin-block-start: 0 !important;
+  margin-block-end: 12px !important;
+  line-height: 1.35;
+  padding-bottom: 12px;
 }
 
 .aa-page .section-sub {
   color: #5b5b73;
   font-size: 1.05rem;
   max-width: 560px;
-  margin: 0 auto;
+  margin: 0 auto 48px;
 }
 
 /* grid */

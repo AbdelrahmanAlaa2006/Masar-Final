@@ -28,7 +28,7 @@ const OPT_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي
 export default function Packages() {
   const navigate = useNavigate()
   const { user: currentUser, role: userRole } = useAuth()
-  const { isFeatureEnabled } = useTenant()
+  const { isFeatureEnabled, tenantId } = useTenant()
 
   const [packages, setPackages] = useState([])
   const [selectedPackage, setSelectedPackage] = useState(null)
@@ -83,7 +83,7 @@ export default function Packages() {
       try {
         let list = []
         if (userRole === 'admin' || userRole === 'assistant') {
-          list = await listPackages()
+          list = await listPackages(tenantId)
         } else {
           const purchases = await listMyPurchases(currentUser.id)
           list = purchases
@@ -102,7 +102,7 @@ export default function Packages() {
     }
     fetchPackages()
     return () => { cancelled = true }
-  }, [currentUser?.id, userRole])
+  }, [currentUser?.id, userRole, tenantId])
 
   // 1.5. Auto-select package from query parameter
   useEffect(() => {

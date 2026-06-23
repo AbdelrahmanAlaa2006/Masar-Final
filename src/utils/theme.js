@@ -14,6 +14,18 @@ export function applyTenantTheme(tenant) {
 
   const root = document.documentElement
 
+  // Apply tenant theme class to document.body (so overrides apply site-wide)
+  const body = document.body
+  const tenantThemeClasses = [
+    'aa-chem-theme', 'aa-phys-theme', 'aa-math-theme', 'aa-bio-theme',
+    'aa-science-theme', 'aa-geo-theme', 'aa-english-theme',
+    'aa-humanities-theme', 'aa-cyber-theme', 'aa-default-theme'
+  ]
+  tenantThemeClasses.forEach(cls => body.classList.remove(cls))
+  if (themeConfig.themeClass) {
+    body.classList.add(themeConfig.themeClass)
+  }
+
   // Set branding color variables
   root.style.setProperty('--primary', primary)
   root.style.setProperty('--secondary', secondary)
@@ -78,7 +90,7 @@ export function applyTenantTheme(tenant) {
   }
 
   // Update browser window tab title
-  document.title = `${tenant.name} | منصة مسار التعليمية`
+  document.title = tenant.name
 
   // Update meta theme-color for mobile browser address bars
   let metaTheme = document.querySelector('meta[name="theme-color"]')

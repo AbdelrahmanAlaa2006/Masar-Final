@@ -6,15 +6,9 @@ import { listHomeworks } from '@backend/homeworksApi'
 import { listPackages, listStudentContentAccess, grantManualAccess, revokeManualAccess } from '@backend/packagesApi'
 import { notify } from '../../utils/notify'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTenant } from '../../contexts/TenantContext'
 
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-  'first-sec':   'الأول الثانوي',
-  'second-sec':  'الثاني الثانوي',
-  'third-sec':   'الثالث الثانوي',
-}
+import { GRADE_LABEL } from './shared'
 
 const fmtDate = (iso) => {
   if (!iso) return 'دائم مدى الحياة'
@@ -29,6 +23,7 @@ const fmtDate = (iso) => {
 
 export default function StudentAccessPanel({ onBack, flash }) {
   const { user } = useAuth()
+  const { tenantId } = useTenant()
   const adminId = user?.id || null
 
   const [students, setStudents] = useState([])
@@ -58,7 +53,7 @@ export default function StudentAccessPanel({ onBack, flash }) {
         listVideos(),
         listExams({ lean: true }),
         listHomeworks(),
-        listPackages()
+        listPackages(tenantId)
       ])
       setStudents(s)
       setVideos(v)
@@ -75,7 +70,7 @@ export default function StudentAccessPanel({ onBack, flash }) {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [tenantId])
 
   const loadGrants = async (studentId) => {
     if (!studentId) return

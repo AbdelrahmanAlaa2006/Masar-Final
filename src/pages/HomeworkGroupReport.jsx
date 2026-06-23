@@ -5,15 +5,7 @@ import { listStudents } from '@backend/profilesApi'
 import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { cached, LIST_TTL } from '../utils/cache'
 
-const GRADE_LABEL = {
-  'first-prep':  'الأول الإعدادي',
-  'second-prep': 'الثاني الإعدادي',
-  'third-prep':  'الثالث الإعدادي',
-  'first-sec':   'الأول الثانوي',
-  'second-sec':  'الثاني الثانوي',
-  'third-sec':   'الثالث الثانوي',
-}
-const GRADE_ORDER = ['first-prep', 'second-prep', 'third-prep', 'first-sec', 'second-sec', 'third-sec']
+import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
 export default function HomeworkGroupReport() {
   const navigate = useNavigate()

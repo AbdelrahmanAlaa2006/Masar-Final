@@ -5,8 +5,11 @@ import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { GRADE_LABEL, GRADE_ORDER } from './shared'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
+import { useTenant } from '../../contexts/TenantContext'
+
 
 export default function GroupsPanel({ onBack, flash }) {
+  const { gradesList } = useTenant()
   const [groups, setGroups] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -27,7 +30,7 @@ export default function GroupsPanel({ onBack, flash }) {
   
   // Form fields
   const [name, setName] = useState('')
-  const [grade, setGrade] = useState('first-prep')
+  const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-prep')
   const [branchId, setBranchId] = useState('')
   const [academicYearId, setAcademicYearId] = useState('')
 
@@ -57,7 +60,7 @@ export default function GroupsPanel({ onBack, flash }) {
     setModalMode('create')
     setEditingGroupId(null)
     setName('')
-    setGrade('first-prep')
+    setGrade(gradesList?.[0]?.id || 'first-prep')
     setBranchId(branches[0]?.id || '')
     setAcademicYearId(academicYears[0]?.id || '')
     setShowFormModal(true)
@@ -169,8 +172,8 @@ export default function GroupsPanel({ onBack, flash }) {
         <div>
           <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
             <option value="all">جميع المراحل</option>
-            {Object.entries(GRADE_LABEL).map(([val, lbl]) => (
-              <option key={val} value={val}>{lbl}</option>
+            {gradesList.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
@@ -298,8 +301,8 @@ export default function GroupsPanel({ onBack, flash }) {
                   className="cp-input" 
                   style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
                 >
-                  {Object.entries(GRADE_LABEL).map(([val, lbl]) => (
-                    <option key={val} value={val} style={{ background: '#0f172a', color: '#fff' }}>{lbl}</option>
+                  {gradesList.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
                 </select>
               </div>
