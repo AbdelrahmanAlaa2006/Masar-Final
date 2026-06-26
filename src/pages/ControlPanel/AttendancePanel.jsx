@@ -439,7 +439,17 @@ export default function AttendancePanel({ onBack, flash }) {
       // Play success audio
       playSuccessBeep()
 
+      const isDifferentGrade = studentData.grade !== grade
+
       if (autoCheckIn && selectedSessionId && selectedSessionId !== 'new') {
+        if (isDifferentGrade) {
+          playWarningBeep()
+          flash(`لا يمكن تحضير ${studentData.name} تلقائياً لأنه ينتمي لصف دراسي مختلف`, 'error')
+          // Open details modal to show error
+          setScannedStudent(studentData)
+          return
+        }
+
         // Automatically check-in student to session
         setStudents(prev => {
           if (prev.some(s => s.id === studentData.student_id)) return prev
@@ -1208,7 +1218,14 @@ export default function AttendancePanel({ onBack, flash }) {
           onClose={() => setScannedStudent(null)} 
           selectedGroupId={selectedGroupId}
           groups={groups}
+          currentGrade={grade}
           onMarkAttendance={async (stud) => {
+            // Guard: Reject cross-grade check-in
+            if (stud.grade !== grade) {
+              flash('لا يمكن تسجيل حضور طالب مسجل في صف دراسي مختلف', 'error')
+              return
+            }
+
             // 1. Ensure student is added to local students state so they show up in the table
             setStudents(prev => {
               if (prev.some(s => s.id === stud.student_id)) return prev

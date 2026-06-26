@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function StudentDetailsModal({ student, onClose, onMarkAttendance, selectedGroupId, groups }) {
+export default function StudentDetailsModal({ student, onClose, onMarkAttendance, selectedGroupId, groups, currentGrade }) {
   if (!student) return null
 
   const isDark = document.body.classList.contains('dark')
@@ -8,6 +8,8 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   // Mismatch detection
   const selectedGroup = groups?.find(g => g.id === selectedGroupId)
   const isDifferentGroup = selectedGroupId && selectedGroup && student && (student.group_name !== selectedGroup.name)
+  const isDifferentGrade = currentGrade && student && (student.grade !== currentGrade)
+  const hasWarning = isDifferentGroup || isDifferentGrade
 
   // Listen to 'n' / 'N' key to close the modal
   React.useEffect(() => {
@@ -28,6 +30,17 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [onClose])
+
+  // Grade translation mappers
+  const GRADE_LABEL = {
+    'first-prep': 'الصف الأول الإعدادي',
+    'second-prep': 'الصف الثاني الإعدادي',
+    'third-prep': 'الصف الثالث الإعدادي',
+    'first-sec': 'الصف الأول الثانوي',
+    'second-sec': 'الصف الثاني الثانوي',
+    'third-sec': 'الصف الثالث الثانوي',
+  }
+  const getGradeLabel = (g) => GRADE_LABEL[g] || g
 
   // Status mapping
   const STATUS_LABEL = {
@@ -67,15 +80,15 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   const hasDebt = student.outstanding_balance > 0
 
-  const modalBackground = isDifferentGroup
+  const modalBackground = hasWarning
     ? (isDark ? 'rgba(45, 34, 12, 0.85)' : 'rgba(254, 243, 199, 0.95)')
     : (isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)')
 
-  const modalBorder = isDifferentGroup
+  const modalBorder = hasWarning
     ? (isDark ? '2px solid rgba(245, 158, 11, 0.5)' : '2px solid rgba(217, 119, 6, 0.5)')
     : '1px solid rgba(255, 255, 255, 0.1)'
 
-  const modalShadow = isDifferentGroup
+  const modalShadow = hasWarning
     ? (isDark ? '0 25px 50px -12px rgba(245, 158, 11, 0.3)' : '0 25px 50px -12px rgba(217, 119, 6, 0.25)')
     : '0 25px 50px -12px rgba(0, 0, 0, 0.4)'
 
@@ -136,7 +149,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             width: '72px',
             height: '72px',
             borderRadius: '50%',
-            background: isDifferentGroup
+            background: hasWarning
               ? 'linear-gradient(135deg, #fbbf24, #d97706)'
               : 'linear-gradient(135deg, var(--secondary, #38bdf8), var(--primary, #8b5cf6))',
             color: '#fff',
@@ -151,12 +164,32 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
           </div>
           <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 6px' }}>{student.name}</h3>
           <p style={{ fontSize: '0.9rem', color: isDark ? '#94a3b8' : '#64748b', margin: 0 }}>
-            {student.grade} | {student.group_name || 'بدون مجموعة'}
+            {getGradeLabel(student.grade)} | {student.group_name || 'بدون مجموعة'}
           </p>
         </div>
 
-        {/* Different Group Warning Alert */}
-        {isDifferentGroup && (
+        {/* Warnings Alerts */}
+        {isDifferentGrade ? (
+          <div style={{
+            background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: isDark ? '#fca5a5' : '#b91c1c',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.05)'
+          }}>
+            <i className="fas fa-circle-xmark" style={{ fontSize: '1.25rem' }} />
+            <div>
+              <strong>خطأ صف دراسي مختلف:</strong> لا يمكن تسجيل الحضور! الطالب مسجل في <strong>{getGradeLabel(student.grade)}</strong> بينما كشف الحضور الحالي مخصص لـ <strong>{getGradeLabel(currentGrade)}</strong>.
+            </div>
+          </div>
+        ) : isDifferentGroup ? (
           <div style={{
             background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
             border: '1px solid rgba(245, 158, 11, 0.3)',
@@ -176,7 +209,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
               <strong>تنبيه مجموعة مختلفة:</strong> الطالب مسجل في مجموعة <strong>({student.group_name || 'بدون مجموعة'})</strong> وليس في مجموعة الحصة الحالية <strong>({selectedGroup.name})</strong>.
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Warnings & Flags alerts */}
         {(student.warnings.length > 0 || student.flags?.length > 0) && (
@@ -347,10 +380,12 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
         {onMarkAttendance && (
           <button
             onClick={() => {
+              if (isDifferentGrade) return
               onMarkAttendance(student)
               onClose()
             }}
-            className="cp-btn cp-btn-success"
+            disabled={isDifferentGrade}
+            className={`cp-btn ${isDifferentGrade ? 'cp-btn-secondary' : 'cp-btn-success'}`}
             style={{
               width: '100%',
               padding: '14px',
@@ -361,13 +396,14 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              cursor: 'pointer',
+              cursor: isDifferentGrade ? 'not-allowed' : 'pointer',
               border: 'none',
-              marginTop: '10px'
+              marginTop: '10px',
+              opacity: isDifferentGrade ? 0.5 : 1
             }}
           >
-            <i className="fas fa-calendar-check" />
-            <span>تسجيل حضور الطالب الآن</span>
+            <i className={isDifferentGrade ? "fas fa-ban" : "fas fa-calendar-check"} />
+            <span>{isDifferentGrade ? "غير مسموح بالتحضير (صف دراسي مختلف)" : "تسجيل حضور الطالب الآن"}</span>
           </button>
         )}
 
