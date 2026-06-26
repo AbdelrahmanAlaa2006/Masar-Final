@@ -1,9 +1,33 @@
 import React from 'react'
 
-export default function StudentDetailsModal({ student, onClose, onMarkAttendance }) {
+export default function StudentDetailsModal({ student, onClose, onMarkAttendance, selectedGroupId, groups }) {
   if (!student) return null
 
   const isDark = document.body.classList.contains('dark')
+
+  // Mismatch detection
+  const selectedGroup = groups?.find(g => g.id === selectedGroupId)
+  const isDifferentGroup = selectedGroupId && selectedGroup && student && (student.group_name !== selectedGroup.name)
+
+  // Listen to 'n' / 'N' key to close the modal
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't close if they are typing in an input or textarea
+      if (document.activeElement && (
+        document.activeElement.tagName === 'INPUT' || 
+        document.activeElement.tagName === 'TEXTAREA'
+      )) {
+        return
+      }
+      if (e.key === 'n' || e.key === 'N' || e.key === 'Esc' || e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
 
   // Status mapping
   const STATUS_LABEL = {
@@ -43,6 +67,18 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   const hasDebt = student.outstanding_balance > 0
 
+  const modalBackground = isDifferentGroup
+    ? (isDark ? 'rgba(45, 34, 12, 0.85)' : 'rgba(254, 243, 199, 0.95)')
+    : (isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)')
+
+  const modalBorder = isDifferentGroup
+    ? (isDark ? '2px solid rgba(245, 158, 11, 0.5)' : '2px solid rgba(217, 119, 6, 0.5)')
+    : '1px solid rgba(255, 255, 255, 0.1)'
+
+  const modalShadow = isDifferentGroup
+    ? (isDark ? '0 25px 50px -12px rgba(245, 158, 11, 0.3)' : '0 25px 50px -12px rgba(217, 119, 6, 0.25)')
+    : '0 25px 50px -12px rgba(0, 0, 0, 0.4)'
+
   return (
     <div style={{
       position: 'fixed',
@@ -61,11 +97,11 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
       <div style={{
         maxWidth: '540px',
         width: '100%',
-        background: isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: modalBackground,
+        border: modalBorder,
         borderRadius: '24px',
         padding: '30px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+        boxShadow: modalShadow,
         maxHeight: '90vh',
         overflowY: 'auto',
         position: 'relative',
@@ -100,7 +136,9 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             width: '72px',
             height: '72px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--secondary, #38bdf8), var(--primary, #8b5cf6))',
+            background: isDifferentGroup
+              ? 'linear-gradient(135deg, #fbbf24, #d97706)'
+              : 'linear-gradient(135deg, var(--secondary, #38bdf8), var(--primary, #8b5cf6))',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -112,10 +150,33 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             {student.name.charAt(0)}
           </div>
           <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 6px' }}>{student.name}</h3>
-          <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: '0.9rem', color: isDark ? '#94a3b8' : '#64748b', margin: 0 }}>
             {student.grade} | {student.group_name || 'بدون مجموعة'}
           </p>
         </div>
+
+        {/* Different Group Warning Alert */}
+        {isDifferentGroup && (
+          <div style={{
+            background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            color: isDark ? '#fbbf24' : '#d97706',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.05)'
+          }}>
+            <i className="fas fa-triangle-exclamation" style={{ fontSize: '1.2rem' }} />
+            <div>
+              <strong>تنبيه مجموعة مختلفة:</strong> الطالب مسجل في مجموعة <strong>({student.group_name || 'بدون مجموعة'})</strong> وليس في مجموعة الحصة الحالية <strong>({selectedGroup.name})</strong>.
+            </div>
+          </div>
+        )}
 
         {/* Warnings & Flags alerts */}
         {(student.warnings.length > 0 || student.flags?.length > 0) && (
@@ -172,6 +233,29 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
           <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '12px', borderRadius: '12px' }}>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>العام الأكاديمي</span>
             <div style={{ fontWeight: 'bold', marginTop: '4px' }}>{student.academic_year_name}</div>
+          </div>
+
+          {/* Group Name (Prominent Card) */}
+          <div style={{ 
+            background: isDifferentGroup 
+              ? (isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(254, 243, 199, 0.5)')
+              : 'rgba(255, 255, 255, 0.03)', 
+            border: isDifferentGroup
+              ? (isDark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(217, 119, 6, 0.3)')
+              : '1px solid rgba(255, 255, 255, 0.05)', 
+            padding: '12px', 
+            borderRadius: '12px', 
+            gridColumn: 'span 2' 
+          }}>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>المجموعة الدراسية</span>
+            <div style={{ 
+              fontWeight: 'bold', 
+              marginTop: '4px', 
+              color: isDifferentGroup ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#38bdf8' : '#0284c7'),
+              fontSize: '1.05rem'
+            }}>
+              {student.group_name || 'بدون مجموعة'}
+            </div>
           </div>
 
           {/* Status & Enrollment */}

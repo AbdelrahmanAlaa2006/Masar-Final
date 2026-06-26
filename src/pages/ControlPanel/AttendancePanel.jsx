@@ -199,12 +199,36 @@ export default function AttendancePanel({ onBack, flash }) {
         if (!active) return
 
         const mapping = {}
+        const extraStudents = []
         records.forEach(r => {
           mapping[r.student_id] = r.status
+          if (r.profiles && !students.some(s => s.id === r.student_id)) {
+            extraStudents.push({
+              id: r.student_id,
+              name: r.profiles.name,
+              phone: r.profiles.phone,
+              parent_phone: r.profiles.parent_phone,
+              grade: r.profiles.grade,
+              group: r.profiles.group || ''
+            })
+          }
         })
 
+        if (extraStudents.length > 0) {
+          setStudents(prev => {
+            const next = [...prev]
+            extraStudents.forEach(es => {
+              if (!next.some(s => s.id === es.id)) {
+                next.push(es)
+              }
+            })
+            return next
+          })
+        }
+
         const nextRecords = {}
-        students.forEach(s => {
+        const allCurrentStudents = [...students, ...extraStudents]
+        allCurrentStudents.forEach(s => {
           nextRecords[s.id] = mapping[s.id] || 'absent'
         })
         setAttendanceRecords(nextRecords)
@@ -241,11 +265,14 @@ export default function AttendancePanel({ onBack, flash }) {
     const targetGroup = groups.find(g => g.id === selectedGroupId)
     if (!targetGroup) return students
     return students.filter(s => {
+      // Always show if student is explicitly marked present/late/excused in this session
+      if (attendanceRecords[s.id] && attendanceRecords[s.id] !== 'absent') return true
+
       if (s.group === targetGroup.name) return true
       if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
       return false
     })
-  }, [students, selectedGroupId, groups])
+  }, [students, selectedGroupId, groups, attendanceRecords])
 
   // Merged history records: every student in the current group/class merged with their database attendance record
   const mergedHistoryRecords = useMemo(() => {
@@ -414,6 +441,18 @@ export default function AttendancePanel({ onBack, flash }) {
 
       if (autoCheckIn && selectedSessionId && selectedSessionId !== 'new') {
         // Automatically check-in student to session
+        setStudents(prev => {
+          if (prev.some(s => s.id === studentData.student_id)) return prev
+          return [...prev, {
+            id: studentData.student_id,
+            name: studentData.name,
+            phone: studentData.phone,
+            parent_phone: studentData.parent_phone,
+            grade: studentData.grade,
+            group: studentData.group_name
+          }]
+        })
+
         handleStatusChange(studentData.student_id, 'present')
         
         const currentSession = sessions.find(s => s.id === selectedSessionId)
@@ -1167,8 +1206,44 @@ export default function AttendancePanel({ onBack, flash }) {
         <StudentDetailsModal 
           student={scannedStudent} 
           onClose={() => setScannedStudent(null)} 
+          selectedGroupId={selectedGroupId}
+          groups={groups}
           onMarkAttendance={async (stud) => {
+            // 1. Ensure student is added to local students state so they show up in the table
+            setStudents(prev => {
+              if (prev.some(s => s.id === stud.student_id)) return prev
+              return [...prev, {
+                id: stud.student_id,
+                name: stud.name,
+                phone: stud.phone,
+                parent_phone: stud.parent_phone,
+                grade: stud.grade,
+                group: stud.group_name
+              }]
+            })
+
+            // 2. Set status to present locally
             handleStatusChange(stud.student_id, 'present')
+            
+            // 3. Save to database immediately
+            if (selectedSessionId && selectedSessionId !== 'new') {
+              const currentSession = sessions.find(s => s.id === selectedSessionId)
+              const sessionTitle = currentSession ? currentSession.title : 'حصة دراسية'
+              try {
+                await saveAttendanceBatch([{
+                  student_id: stud.student_id,
+                  student_name: stud.name,
+                  parent_phone: stud.parent_phone,
+                  session_id: selectedSessionId,
+                  status: 'present',
+                  notes: 'حضر عن طريق مسح الكارت الذكي (مجموعة مختلفة)',
+                  created_by: currentUser?.id
+                }], sessionTitle)
+              } catch (e) {
+                console.error('Failed to auto-save attendance:', e)
+              }
+            }
+
             flash(`تم تسجيل حضور: ${stud.name}`, 'success')
           }}
         />
