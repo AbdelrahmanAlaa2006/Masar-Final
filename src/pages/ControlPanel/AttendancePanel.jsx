@@ -235,25 +235,46 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedSessionId])
 
+  // Merged history records: every student in the current group/class merged with their database attendance record
+  const mergedHistoryRecords = useMemo(() => {
+    const recordMap = {}
+    historyRecords.forEach(r => {
+      recordMap[r.student_id] = r
+    })
+
+    return filteredStudentsList.map(s => {
+      if (recordMap[s.id]) {
+        return recordMap[s.id]
+      }
+      return {
+        id: `dummy-${s.id}`,
+        student_id: s.id,
+        status: 'absent',
+        notes: '',
+        profiles: s
+      }
+    })
+  }, [filteredStudentsList, historyRecords])
+
   // Computed history stats
   const historyStats = useMemo(() => {
-    const total = historyRecords.length
-    const present = historyRecords.filter(r => r.status === 'present').length
-    const absent = historyRecords.filter(r => r.status === 'absent').length
-    const late = historyRecords.filter(r => r.status === 'late').length
-    const excused = historyRecords.filter(r => r.status === 'excused').length
+    const total = mergedHistoryRecords.length
+    const present = mergedHistoryRecords.filter(r => r.status === 'present').length
+    const absent = mergedHistoryRecords.filter(r => r.status === 'absent').length
+    const late = mergedHistoryRecords.filter(r => r.status === 'late').length
+    const excused = mergedHistoryRecords.filter(r => r.status === 'excused').length
     const totalMarked = present + absent + late
     const rate = totalMarked > 0 ? Math.round(((present + late) / totalMarked) * 100) : 100
     return { total, present, absent, late, excused, rate }
-  }, [historyRecords])
+  }, [mergedHistoryRecords])
 
   const searchedHistoryRecords = useMemo(() => {
-    return historyRecords.filter(r => {
+    return mergedHistoryRecords.filter(r => {
       if (!historySearchQuery.trim()) return true
       const name = r.profiles?.name || ''
       return name.toLowerCase().includes(historySearchQuery.toLowerCase())
     })
-  }, [historyRecords, historySearchQuery])
+  }, [mergedHistoryRecords, historySearchQuery])
 
   // Filter student list by Group
   const filteredStudentsList = useMemo(() => {
