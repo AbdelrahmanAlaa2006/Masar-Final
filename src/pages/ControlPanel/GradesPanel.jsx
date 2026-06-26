@@ -315,13 +315,52 @@ export default function GradesPanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedEvaluation, grade, group, groupsList])
 
+  // Combine all active class students with their history grades
+  const combinedHistoryRows = useMemo(() => {
+    // 1. Get all active students of the current grade & group
+    const activeClassStudents = students.filter(s => isStudentInSelectedGroup(s))
+
+    // 2. Map them to their grade record if it exists
+    const rows = activeClassStudents.map(student => {
+      const record = historyGrades.find(r => r.student_id === student.id)
+      return {
+        id: record?.id || `dummy-${student.id}`,
+        student_id: student.id,
+        student_name: student.name,
+        profile: student,
+        score: record ? record.score : null,
+        max_score: record ? record.max_score : null,
+        notes: record ? record.notes : null,
+        created_at: record ? record.created_at : null
+      }
+    })
+
+    // 3. Add any records in historyGrades that are not in the active class list (to cover deleted/moved students)
+    historyGrades.forEach(record => {
+      if (!rows.some(row => row.student_id === record.student_id)) {
+        rows.push({
+          id: record.id,
+          student_id: record.student_id,
+          student_name: record.profiles?.name || '—',
+          profile: record.profiles || { name: record.profiles?.name || '—', phone: record.profiles?.phone || '—', group: record.profiles?.group || '—' },
+          score: record.score,
+          max_score: record.max_score,
+          notes: record.notes,
+          created_at: record.created_at
+        })
+      }
+    })
+
+    return rows
+  }, [students, historyGrades, group, groupsList])
+
   // Calculate history stats
   const historyStats = useMemo(() => {
-    if (historyGrades.length === 0) return { total: 0, max: 0, min: 0, avg: 0, passRate: 0 }
+    const classTotal = combinedHistoryRows.length
+    if (historyGrades.length === 0) return { total: classTotal, max: 0, min: 0, avg: 0, passRate: 0 }
 
     const scores = historyGrades.map(r => parseFloat(r.score)).filter(s => !isNaN(s))
-    const total = historyGrades.length
-    if (scores.length === 0) return { total, max: 0, min: 0, avg: 0, passRate: 0 }
+    if (scores.length === 0) return { total: classTotal, max: 0, min: 0, avg: 0, passRate: 0 }
 
     const max = Math.max(...scores)
     const min = Math.min(...scores)
@@ -330,19 +369,19 @@ export default function GradesPanel({ onBack, flash }) {
 
     const maxScoreLimit = historyGrades[0]?.max_score || 10
     const passCount = scores.filter(s => s >= maxScoreLimit * 0.5).length
-    const passRate = Math.round((passCount / total) * 100)
+    const passRate = Math.round((passCount / scores.length) * 100)
 
-    return { total, max, min, avg, passRate }
-  }, [historyGrades])
+    return { total: classTotal, max, min, avg, passRate }
+  }, [combinedHistoryRows, historyGrades])
 
   // Filter history records by search query
-  const searchedHistoryGrades = useMemo(() => {
-    return historyGrades.filter(r => {
+  const searchedHistoryRows = useMemo(() => {
+    return combinedHistoryRows.filter(r => {
       if (!historySearchQuery.trim()) return true
-      const name = r.profiles?.name || ''
+      const name = r.student_name || ''
       return name.toLowerCase().includes(historySearchQuery.toLowerCase())
     })
-  }, [historyGrades, historySearchQuery])
+  }, [combinedHistoryRows, historySearchQuery])
 
   // Print history function
   const handlePrintGrades = () => {
@@ -362,18 +401,22 @@ export default function GradesPanel({ onBack, flash }) {
     const selectedGroupObj = groupsList.find(g => g.id === group)
     const groupText = group ? `المجموعة ${selectedGroupObj?.name || ''}` : 'جميع المجموعات'
 
-    const rowsHtml = searchedHistoryGrades.map((r, idx) => `
-      <tr>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${r.profiles?.name || '—'}</td>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${r.profiles?.group || '—'}</td>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: center; direction: ltr;">${r.profiles?.phone || '—'}</td>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: #7c3aed;">
-          ${r.score} / ${r.max_score}
-        </td>
-        <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-size: 0.9em; color: #555;">${r.notes || '—'}</td>
-      </tr>
-    `).join('')
+    const rowsHtml = searchedHistoryRows.map((r, idx) => {
+      const studentGroup = r.profile?.group || (r.profile?.student_groups?.[0] ? groupsList.find(g => g.id === r.profile.student_groups[0].group_id)?.name : '') || '—'
+      const scoreText = r.score !== null ? `${r.score} / ${r.max_score}` : '—'
+      return `
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${r.student_name || '—'}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${studentGroup}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center; direction: ltr;">${r.profile?.phone || '—'}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: #7c3aed;">
+            ${scoreText}
+          </td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-size: 0.9em; color: #555;">${r.notes || '—'}</td>
+        </tr>
+      `
+    }).join('')
 
     const htmlContent = `
       <html dir="rtl">
@@ -743,7 +786,7 @@ export default function GradesPanel({ onBack, flash }) {
               <i className="fas fa-search" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
             </div>
 
-            {searchedHistoryGrades.length > 0 && (
+            {searchedHistoryRows.length > 0 && (
               <button 
                 onClick={handlePrintGrades}
                 className="cp-btn cp-btn-info"
@@ -761,7 +804,7 @@ export default function GradesPanel({ onBack, flash }) {
               <i className="fas fa-spinner fa-spin"></i>
               <p>جاري تحميل درجات التقييم المحفوظ...</p>
             </div>
-          ) : searchedHistoryGrades.length === 0 ? (
+          ) : searchedHistoryRows.length === 0 ? (
             <div className="cp-empty">
               <i className="fas fa-clipboard-question"></i>
               <p>لا توجد درجات مرصودة محفوظة مطابقة لخيارات التصفية</p>
@@ -781,17 +824,18 @@ export default function GradesPanel({ onBack, flash }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {searchedHistoryGrades.map((record, index) => {
+                    {searchedHistoryRows.map((record, index) => {
+                      const studentGroup = record.profile?.group || (record.profile?.student_groups?.[0] ? groupsList.find(g => g.id === record.profile.student_groups[0].group_id)?.name : '') || '—'
                       return (
-                        <tr key={record.id} style={{ borderBottom: '1px solid var(--cp-list-item-border)' }}>
+                        <tr key={record.id} style={{ borderBottom: '1px solid var(--cp-list-item-border)', opacity: record.score !== null ? 1 : 0.6 }}>
                           <td style={{ padding: '14px 20px', color: 'var(--cp-text-muted)', textAlign: 'center' }}>{index + 1}</td>
-                          <td style={{ padding: '14px 20px', fontWeight: 'bold' }}>{record.profiles?.name || '—'}</td>
+                          <td style={{ padding: '14px 20px', fontWeight: 'bold' }}>{record.student_name}</td>
                           <td style={{ padding: '14px' }}>
-                            <span className="cp-id-pill">{record.profiles?.group || '—'}</span>
+                            <span className="cp-id-pill">{studentGroup}</span>
                           </td>
-                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{record.profiles?.phone || '—'}</td>
-                          <td style={{ padding: '14px', textAlign: 'center', fontWeight: 'bold', color: '#7c3aed' }}>
-                            {record.score} / {record.max_score}
+                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{record.profile?.phone || '—'}</td>
+                          <td style={{ padding: '14px', textAlign: 'center', fontWeight: 'bold', color: record.score !== null ? '#7c3aed' : 'var(--cp-text-muted)' }}>
+                            {record.score !== null ? `${record.score} / ${record.max_score}` : '—'}
                           </td>
                           <td style={{ padding: '14px 20px', color: 'var(--cp-text-muted)' }}>{record.notes || '—'}</td>
                         </tr>
