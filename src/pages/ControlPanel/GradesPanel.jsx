@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { listStudents } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation } from '@backend/gradesApi'
+import { listGroups } from '@backend/groupsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, LIST_TTL } from '../../utils/cache'
 import { useTenant } from '../../contexts/TenantContext'
@@ -12,13 +13,14 @@ export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
   const { gradesList } = useTenant()
   const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
-
   const [group, setGroup] = useState('')
+  const [groupsList, setGroupsList] = useState([])
   
   // Evaluation settings
   const [evalType, setEvalType] = useState('homework')
   const [evalSubject, setEvalSubject] = useState('')
   const [maxScore, setMaxScore] = useState(10)
+  const [customTitle, setCustomTitle] = useState('')
 
   // Students list
   const [students, setStudents] = useState([])
@@ -60,20 +62,25 @@ export default function GradesPanel({ onBack, flash }) {
     }
   }
 
-  // Load students, homeworks (lessons), and evaluations list
+  // Load students, homeworks (lessons), groups, and evaluations list
   useEffect(() => {
     let active = true
     setLoading(true)
+    setGroup('') // Reset group filter when grade changes
     ;(async () => {
       try {
-        const [allStudents, allHomeworks] = await Promise.all([
+        const [allStudents, allHomeworks, allGroups] = await Promise.all([
           cached('students', LIST_TTL, listStudents),
-          cached('homeworks', LIST_TTL, listHomeworks)
+          cached('homeworks', LIST_TTL, listHomeworks),
+          listGroups()
         ])
         if (!active) return
 
         const filtered = allStudents.filter(s => s.grade === grade && s.is_approved)
         setStudents(filtered)
+
+        const filteredGroups = allGroups.filter(g => g.grade === grade)
+        setGroupsList(filteredGroups)
         
         const mappedGrade = dbToUiGrade(grade)
         const filteredHomeworks = allHomeworks.filter(h => h.grade === mappedGrade)
@@ -95,7 +102,7 @@ export default function GradesPanel({ onBack, flash }) {
         await loadUniqueEvaluationsList(grade)
       } catch (err) {
         console.error(err)
-        flash('فشل تحميل قائمة الطلاب والحصص', 'error')
+        flash('فشل تحميل قائمة الطلاب والحصص والمجموعات', 'error')
       } finally {
         if (active) setLoading(false)
       }
@@ -104,22 +111,30 @@ export default function GradesPanel({ onBack, flash }) {
     return () => { active = false }
   }, [grade])
 
-  // Helper to auto-generate default title based on selected type, lesson, and date
-  const getAutoTitle = (type, sId, dateVal) => {
+  // Helper to auto-generate default title based on selected type, lesson, date, and custom title
+  const getAutoTitle = (type, sId, dateVal, customTitleVal) => {
     const typeLabels = {
       'homework': 'واجب',
-      'exam': 'امتحان',
-      'participation': 'مشاركة وتفاعل',
-      'behavior': 'سلوك'
+      'quiz': 'امتحان قصير',
+      'exam': 'امتحان شامل',
+      'attendance': 'ملاحظة سلوكية',
+      'behavior': 'ملاحظة سلوكية'
     }
     const typeLabel = typeLabels[type] || type
 
     const getDayName = (dateStr) => {
       if (!dateStr) return ''
       try {
-        const d = new Date(dateStr)
-        const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
-        return dayNames[d.getDay()]
+        const parts = dateStr.split('-')
+        if (parts.length === 3) {
+          const year = parseInt(parts[0], 10)
+          const month = parseInt(parts[1], 10) - 1
+          const day = parseInt(parts[2], 10)
+          const d = new Date(year, month, day)
+          const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+          return dayNames[d.getDay()]
+        }
+        return ''
       } catch (e) {
         return ''
       }
@@ -127,20 +142,24 @@ export default function GradesPanel({ onBack, flash }) {
 
     const dateSuffix = dateVal ? ` - ${dateVal} (${getDayName(dateVal)})` : ''
 
+    const baseLabel = customTitleVal?.trim()
+      ? `${typeLabel} - ${customTitleVal.trim()}`
+      : typeLabel
+
     if (sId && sId !== 'custom') {
       const lesson = homeworksList.find(h => h.id === sId)
       if (lesson) {
-        return `${typeLabel}: ${lesson.title}${dateSuffix}`
+        return `${baseLabel}: ${lesson.title}${dateSuffix}`
       }
     }
-    return `${typeLabel}${dateSuffix}`
+    return `${baseLabel}${dateSuffix}`
   }
 
   // Bulk fill utility
   const handleBulkFill = (fillValue) => {
     const next = { ...sheetData }
     students.forEach(s => {
-      if (!group || s.group === group) {
+      if (isStudentInSelectedGroup(s)) {
         next[s.id] = {
           ...next[s.id],
           score: fillValue
@@ -162,13 +181,13 @@ export default function GradesPanel({ onBack, flash }) {
 
   // Save all scores
   const handleSaveGrades = async () => {
-    const finalTitle = getAutoTitle(evalType, sessionId, date)
+    const finalTitle = getAutoTitle(evalType, sessionId, date, customTitle)
 
     const records = []
     let scoreValidationError = false
 
     students.forEach(s => {
-      if (group && s.group !== group) return // Skip if filtered out
+      if (!isStudentInSelectedGroup(s)) return // Skip if filtered out
 
       const val = sheetData[s.id]?.score
       const notesVal = sheetData[s.id]?.notes || ''
@@ -211,6 +230,7 @@ export default function GradesPanel({ onBack, flash }) {
       await saveGradesBatch(records)
       flash(`تم حفظ درجات ${records.length} طلاب بنجاح، وتجري جدولة إشعارات أولياء الأمور.`, 'success')
       
+      setCustomTitle('') // Clear custom title after saving
       // Reload unique evaluations list
       await loadUniqueEvaluationsList(grade)
 
@@ -228,16 +248,34 @@ export default function GradesPanel({ onBack, flash }) {
     }
   }
 
+  // Helper to check if a student belongs to the selected group
+  const isStudentInSelectedGroup = (studentProfile) => {
+    if (!group) return true
+    
+    // 1. Check student_groups relation (UUID match)
+    if (studentProfile.student_groups && studentProfile.student_groups.some(sg => sg.group_id === group)) {
+      return true
+    }
+    
+    // 2. Fallback to legacy string matching
+    const selectedGroupObj = groupsList.find(g => g.id === group)
+    if (selectedGroupObj && studentProfile.group === selectedGroupObj.name) {
+      return true
+    }
+    
+    return false
+  }
+
   // Filter active student list by search query and group
   const searchedActiveStudents = useMemo(() => {
     return students.filter(s => {
-      const matchesGroup = group ? s.group === group : true
+      const matchesGroup = isStudentInSelectedGroup(s)
       const matchesSearch = searchQuery.trim() 
         ? s.name.toLowerCase().includes(searchQuery.toLowerCase())
         : true
       return matchesGroup && matchesSearch
     })
-  }, [students, group, searchQuery])
+  }, [students, group, searchQuery, groupsList])
 
   // Load grades records for selected history evaluation
   useEffect(() => {
@@ -258,7 +296,10 @@ export default function GradesPanel({ onBack, flash }) {
         const filtered = data.filter(r => {
           if (!r.profiles) return false
           const matchesGrade = r.profiles.grade === grade
-          const matchesGroup = group ? r.profiles.group === group : true
+          const selectedGroupObj = groupsList.find(g => g.id === group)
+          const matchesGroup = group 
+            ? (r.profiles.group === (selectedGroupObj?.name || '') || (r.profiles.student_groups && r.profiles.student_groups.some(sg => sg.group_id === group)))
+            : true
           return matchesGrade && matchesGroup
         })
 
@@ -272,7 +313,7 @@ export default function GradesPanel({ onBack, flash }) {
     })()
 
     return () => { active = false }
-  }, [activeSubTab, selectedEvaluation, grade, group])
+  }, [activeSubTab, selectedEvaluation, grade, group, groupsList])
 
   // Calculate history stats
   const historyStats = useMemo(() => {
@@ -318,7 +359,8 @@ export default function GradesPanel({ onBack, flash }) {
 
     const typeText = typeLabels[type] || type
     const gradeText = GRADE_LABEL[grade] || grade
-    const groupText = group ? `المجموعة ${group}` : 'جميع المجموعات'
+    const selectedGroupObj = groupsList.find(g => g.id === group)
+    const groupText = group ? `المجموعة ${selectedGroupObj?.name || ''}` : 'جميع المجموعات'
 
     const rowsHtml = searchedHistoryGrades.map((r, idx) => `
       <tr>
@@ -432,10 +474,9 @@ export default function GradesPanel({ onBack, flash }) {
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>تصفية بالمجموعة</label>
           <select value={group} onChange={(e) => setGroup(e.target.value)} className="cp-input" style={{ width: '100%' }}>
             <option value="">جميع المجموعات</option>
-            <option value="A">المجموعة A</option>
-            <option value="B">المجموعة B</option>
-            <option value="C">المجموعة C</option>
-            <option value="D">المجموعة D</option>
+            {groupsList.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
           </select>
         </div>
 
@@ -496,6 +537,18 @@ export default function GradesPanel({ onBack, flash }) {
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="cp-input" style={{ width: '100%' }} />
             </div>
 
+            <div>
+              <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>اسم الاختبار / التقييم (اختياري)</label>
+              <input 
+                type="text" 
+                value={customTitle} 
+                onChange={(e) => setCustomTitle(e.target.value)} 
+                placeholder="مثال: الباب الأول" 
+                className="cp-input" 
+                style={{ width: '100%' }} 
+              />
+            </div>
+
 
 
             <div>
@@ -521,6 +574,28 @@ export default function GradesPanel({ onBack, flash }) {
                 min="1"
               />
             </div>
+          </div>
+
+          {/* Title Preview Alert */}
+          <div style={{
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            fontSize: '0.88rem',
+            color: '#818cf8',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <i className="fas fa-info-circle" style={{ color: '#6366f1' }}></i>
+            <span>
+              <strong>اسم التقييم الناتج: </strong>
+              <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>
+                {getAutoTitle(evalType, sessionId, date, customTitle)}
+              </span>
+            </span>
           </div>
 
           {/* Spreadsheet sheet utilities & Search */}

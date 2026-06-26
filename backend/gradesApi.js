@@ -209,7 +209,8 @@ export async function listGradesForEvaluation(type, title) {
         name,
         phone,
         grade,
-        "group"
+        "group",
+        student_groups(group_id)
       )
     `)
     .eq('type', type)
