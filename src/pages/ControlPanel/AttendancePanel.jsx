@@ -316,6 +316,7 @@ export default function AttendancePanel({ onBack, flash }) {
         branchId: selectedBranchId,
         academicYearId: selectedAcademicYearId,
         groupId: selectedGroupId || null,
+        grade,
         createdBy: currentUser?.id
       })
       flash('تم إنشاء الحصة بنجاح', 'success')

@@ -13,8 +13,10 @@ export async function listAttendanceSessions(grade, branchId = null) {
       group_id,
       branch_id,
       academic_year_id,
+      grade,
       groups ( name, grade )
     `)
+    .eq('grade', grade)
   
   if (branchId) {
     query = query.eq('branch_id', branchId)
@@ -23,12 +25,11 @@ export async function listAttendanceSessions(grade, branchId = null) {
   const { data, error } = await query.order('date', { ascending: false })
   if (error) throw error
 
-  // Filter by grade client-side or from joined groups grade
-  return (data || []).filter(s => !s.groups || s.groups.grade === grade)
+  return data || []
 }
 
 // Create a new attendance session
-export async function createAttendanceSession({ title, date, branchId, academicYearId, groupId, createdBy }) {
+export async function createAttendanceSession({ title, date, branchId, academicYearId, groupId, grade, createdBy }) {
   const { data, error } = await supabase
     .from('attendance_sessions')
     .insert({
@@ -37,6 +38,7 @@ export async function createAttendanceSession({ title, date, branchId, academicY
       branch_id: branchId || null,
       academic_year_id: academicYearId || null,
       group_id: groupId || null,
+      grade,
       created_by: createdBy
     })
     .select()
