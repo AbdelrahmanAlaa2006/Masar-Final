@@ -132,3 +132,33 @@ export async function bulkTransferStudents(studentIds, targetGroupId, tenantId) 
   invalidateCache('students')
   return true
 }
+
+export async function transferStudentGroup(studentId, sourceGroupId, targetGroupId) {
+  if (sourceGroupId) {
+    const { error: delError } = await supabase
+      .from('student_groups')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('group_id', sourceGroupId)
+    if (delError) throw delError
+  }
+  return assignStudentToGroup(studentId, targetGroupId)
+}
+
+export async function listStudentsByGroup(groupId) {
+  const { data, error } = await supabase
+    .from('student_groups')
+    .select(`
+      student_id,
+      profiles:student_id (
+        id,
+        name,
+        phone,
+        grade,
+        "group"
+      )
+    `)
+    .eq('group_id', groupId)
+  if (error) throw error
+  return data.map(d => d.profiles).filter(Boolean)
+}

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { listGroups, createGroup, updateGroup, deleteGroup } from '@backend/groupsApi'
+import { listGroups, createGroup, updateGroup, deleteGroup, listStudentsByGroup, transferStudentGroup } from '@backend/groupsApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { GRADE_LABEL, GRADE_ORDER } from './shared'
@@ -33,6 +33,79 @@ export default function GroupsPanel({ onBack, flash }) {
   const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-prep')
   const [branchId, setBranchId] = useState('')
   const [academicYearId, setAcademicYearId] = useState('')
+
+  // Transfer Modal states
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [transferGrade, setTransferGrade] = useState(() => gradesList?.[0]?.id || 'first-prep')
+  const [transferBranchId, setTransferBranchId] = useState('')
+  const [transferSourceGroupId, setTransferSourceGroupId] = useState('')
+  const [transferStudentId, setTransferStudentId] = useState('')
+  const [transferTargetGroupId, setTransferTargetGroupId] = useState('')
+  const [transferStudents, setTransferStudents] = useState([])
+  const [transferLoadingStudents, setTransferLoadingStudents] = useState(false)
+  const [transferStudentQuery, setTransferStudentQuery] = useState('')
+  const [transferBusy, setTransferBusy] = useState(false)
+
+  // Reset transfer modal states when grade or branch changes
+  const handleTransferGradeBranchChange = (newGrade, newBranchId) => {
+    setTransferGrade(newGrade)
+    setTransferBranchId(newBranchId)
+    setTransferSourceGroupId('')
+    setTransferStudentId('')
+    setTransferTargetGroupId('')
+    setTransferStudents([])
+  }
+
+  // Load students for the selected source group
+  useEffect(() => {
+    if (!transferSourceGroupId) {
+      setTransferStudents([])
+      return
+    }
+    let active = true
+    setTransferLoadingStudents(true)
+    ;(async () => {
+      try {
+        const list = await listStudentsByGroup(transferSourceGroupId)
+        if (!active) return
+        setTransferStudents(list || [])
+      } catch (err) {
+        console.error(err)
+        flash('تعذر تحميل طلاب المجموعة المصدر', 'error')
+      } finally {
+        if (active) setTransferLoadingStudents(false)
+      }
+    })()
+    return () => { active = false }
+  }, [transferSourceGroupId])
+
+  const handleExecuteTransfer = async (e) => {
+    e.preventDefault()
+    if (!transferStudentId) {
+      flash('يرجى اختيار الطالب المراد نقله', 'warning')
+      return
+    }
+    if (!transferTargetGroupId) {
+      flash('يرجى اختيار المجموعة المستهدفة للنقل', 'warning')
+      return
+    }
+    setTransferBusy(true)
+    try {
+      await transferStudentGroup(transferStudentId, transferSourceGroupId, transferTargetGroupId)
+      flash('تم نقل الطالب بنجاح وإزالته من المجموعة القديمة', 'success')
+      
+      // Refresh students of source group
+      const list = await listStudentsByGroup(transferSourceGroupId)
+      setTransferStudents(list || [])
+      setTransferStudentId('')
+      setTransferTargetGroupId('')
+    } catch (err) {
+      console.error(err)
+      flash('فشل نقل الطالب: ' + err.message, 'error')
+    } finally {
+      setTransferBusy(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -150,11 +223,16 @@ export default function GroupsPanel({ onBack, flash }) {
       <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h2><i className="fas fa-user-group" style={{ color: '#6366f1' }}></i> إدارة المجموعات الدراسية</h2>
-          <p>إضافة وتعديل وحذف المجموعات الدراسية لكل مرحلة وفرع دراسي.</p>
+          <p>إضافة وتعديل وحذف المجموعات الدراسية لكل مرحلة وفرع دراسي، ونقل الطلاب بين المجموعات.</p>
         </div>
-        <button className="cp-btn cp-btn-success" onClick={handleOpenAdd}>
-          <i className="fas fa-plus"></i> إضافة مجموعة جديدة
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="cp-btn cp-btn-info" onClick={() => setShowTransferModal(true)}>
+            <i className="fas fa-right-left"></i> نقل الطلاب
+          </button>
+          <button className="cp-btn cp-btn-success" onClick={handleOpenAdd}>
+            <i className="fas fa-plus"></i> إضافة مجموعة جديدة
+          </button>
+        </div>
       </div>
 
       {/* Filters Row */}
@@ -353,6 +431,150 @@ export default function GroupsPanel({ onBack, flash }) {
                 disabled={busyId === 'modal'}
               >
                 {busyId === 'modal' ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {/* Transfer Students Modal */}
+      {showTransferModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <form onSubmit={handleExecuteTransfer} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '520px', width: '100%', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+              <i className="fas fa-right-left" style={{ color: '#38bdf8', marginInlineEnd: 8 }}></i> نقل الطلاب بين المجموعات الدراسية
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '28px' }}>
+              {/* Grade and Branch Filter */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المرحلة الدراسية</label>
+                  <select 
+                    value={transferGrade} 
+                    onChange={(e) => handleTransferGradeBranchChange(e.target.value, transferBranchId)} 
+                    className="cp-input" 
+                    style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    {gradesList.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المقر / الفرع</label>
+                  <select 
+                    value={transferBranchId} 
+                    onChange={(e) => handleTransferGradeBranchChange(transferGrade, e.target.value)} 
+                    className="cp-input" 
+                    style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <option value="">بدون فرع (عام)</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Source Group */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>من مجموعة (المجموعة الحالية)</label>
+                <select
+                  value={transferSourceGroupId}
+                  onChange={(e) => {
+                    setTransferSourceGroupId(e.target.value)
+                    setTransferStudentId('')
+                  }}
+                  className="cp-input"
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  required
+                >
+                  <option value="">اختر المجموعة المصدر...</option>
+                  {groups.filter(g => g.grade === transferGrade && (!transferBranchId || g.branch_id === transferBranchId)).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Student Search and Selection */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>البحث عن الطالب</label>
+                <input
+                  type="text"
+                  placeholder={transferSourceGroupId ? "ابحث باسم الطالب داخل المجموعة..." : "اختر المجموعة المصدر أولاً لتفعيل البحث"}
+                  value={transferStudentQuery}
+                  onChange={(e) => setTransferStudentQuery(e.target.value)}
+                  className="cp-input"
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 8 }}
+                  disabled={!transferSourceGroupId}
+                />
+                
+                <select
+                  value={transferStudentId}
+                  onChange={(e) => setTransferStudentId(e.target.value)}
+                  className="cp-input"
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  required
+                  disabled={!transferSourceGroupId || transferLoadingStudents || transferStudents.length === 0}
+                >
+                  {!transferSourceGroupId ? (
+                    <option value="">اختر مجموعة لعرض الطلاب...</option>
+                  ) : transferLoadingStudents ? (
+                    <option value="">جاري تحميل الطلاب...</option>
+                  ) : transferStudents.length === 0 ? (
+                    <option value="">لا يوجد طلاب في هذه المجموعة</option>
+                  ) : (
+                    <>
+                      <option value="">اختر الطالب...</option>
+                      {transferStudents
+                        .filter(s => s.name.toLowerCase().includes(transferStudentQuery.toLowerCase()))
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.phone || 'بدون هاتف'})</option>
+                        ))}
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* Target Group */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>إلى مجموعة (المجموعة الجديدة)</label>
+                <select
+                  value={transferTargetGroupId}
+                  onChange={(e) => setTransferTargetGroupId(e.target.value)}
+                  className="cp-input"
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                  required
+                  disabled={!transferSourceGroupId}
+                >
+                  <option value="">اختر المجموعة المستهدفة...</option>
+                  {groups
+                    .filter(g => g.grade === transferGrade && (!transferBranchId || g.branch_id === transferBranchId) && g.id !== transferSourceGroupId)
+                    .map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowTransferModal(false)} 
+                className="cp-btn cp-btn-secondary"
+                disabled={transferBusy}
+              >
+                إلغاء
+              </button>
+              <button 
+                type="submit" 
+                className="cp-btn cp-btn-info"
+                disabled={transferBusy || !transferStudentId || !transferTargetGroupId}
+              >
+                {transferBusy ? 'جاري النقل...' : 'تأكيد النقل الآن'}
               </button>
             </div>
           </form>
