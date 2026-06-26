@@ -79,6 +79,22 @@ export const authAPI = {
     if (!clientTenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
     if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
 
+    // Fetch active academic year
+    let activeYearId = null
+    try {
+      const { data: activeYear } = await supabase
+        .from('academic_years')
+        .select('id')
+        .eq('tenant_id', clientTenantId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (activeYear) {
+        activeYearId = activeYear.id
+      }
+    } catch (err) {
+      console.error('Failed to fetch active academic year on signup:', err)
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: phoneToEmail(phone, clientTenantId),
       password,
@@ -93,7 +109,8 @@ export const authAPI = {
           enrollment_type: enrollmentType || 'CENTER',
           branch_id: branchId || null,
           group_id: groupId || null,
-          group: groupName || null
+          group: groupName || null,
+          academic_year_id: activeYearId
         },
       },
     })
@@ -114,10 +131,26 @@ export const authAPI = {
         parent_phone: parentPhone ? parentPhone.trim() : '',
         enrollment_type: enrollmentType || 'CENTER',
         branch_id: branchId || null,
-        group: groupName || null
+        group: groupName || null,
+        academic_year_id: activeYearId
       }, { onConflict: 'id' })
 
     if (upsertError) throw new Error('فشل إنشاء الملف الشخصي: ' + upsertError.message)
+
+    // Assign to group in student_groups join table if groupId is provided
+    if (groupId) {
+      try {
+        await supabase
+          .from('student_groups')
+          .upsert({
+            student_id: data.user.id,
+            group_id: groupId,
+            is_primary: true
+          }, { onConflict: 'student_id,group_id' })
+      } catch (err) {
+        console.error('Failed to link student to group on register:', err)
+      }
+    }
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')

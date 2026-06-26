@@ -157,12 +157,12 @@ export default function AttendancePanel({ onBack, flash }) {
         ])
         if (!active) return
 
-        // Filter students by grade, branch, academic year
+        // Filter students by grade, branch, academic year (include students with no year assigned)
         const filtered = allStudents.filter(s => 
           s.grade === grade &&
           s.is_approved &&
           (!selectedBranchId || s.branch_id === selectedBranchId) &&
-          (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId)
+          (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId || !s.academic_year_id)
         )
         setStudents(filtered)
         setSessions(sessionsList)
@@ -257,9 +257,14 @@ export default function AttendancePanel({ onBack, flash }) {
 
   // Filter student list by Group
   const filteredStudentsList = useMemo(() => {
-    return selectedGroupId
-      ? students.filter(s => s.group === groups.find(g => g.id === selectedGroupId)?.name)
-      : students
+    if (!selectedGroupId) return students
+    const targetGroup = groups.find(g => g.id === selectedGroupId)
+    if (!targetGroup) return students
+    return students.filter(s => {
+      if (s.group === targetGroup.name) return true
+      if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
+      return false
+    })
   }, [students, selectedGroupId, groups])
 
   // Bulk status change
@@ -429,7 +434,7 @@ export default function AttendancePanel({ onBack, flash }) {
         s.grade === grade &&
         s.is_approved &&
         (!selectedBranchId || s.branch_id === selectedBranchId) &&
-        (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId)
+        (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId || !s.academic_year_id)
       )
       setStudents(filtered)
     } catch (err) {
