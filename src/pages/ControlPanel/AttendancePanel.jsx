@@ -288,6 +288,30 @@ export default function AttendancePanel({ onBack, flash }) {
     })
   }, [mergedHistoryRecords, historySearchQuery])
 
+  // Filter sessions by selected group (or general sessions if no group is selected)
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(s => {
+      if (selectedGroupId) {
+        return s.group_id === selectedGroupId
+      } else {
+        return s.group_id === null
+      }
+    })
+  }, [sessions, selectedGroupId])
+
+  // Automatically select the first available filtered session if current selectedSessionId is no longer in list
+  useEffect(() => {
+    if (selectedSessionId === 'new') return
+    const exists = filteredSessions.some(s => s.id === selectedSessionId)
+    if (!exists) {
+      if (filteredSessions.length > 0) {
+        setSelectedSessionId(filteredSessions[0].id)
+      } else {
+        setSelectedSessionId('new')
+      }
+    }
+  }, [filteredSessions, selectedSessionId])
+
   // Bulk status change
   const setAllStatus = (status) => {
     const next = { ...attendanceRecords }
@@ -706,7 +730,7 @@ export default function AttendancePanel({ onBack, flash }) {
         <div>
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>الحصة / الدرس</label>
           <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-            {sessions.map(s => (
+            {filteredSessions.map(s => (
               <option key={s.id} value={s.id}>{s.title} ({s.date})</option>
             ))}
             <option value="new">+ إنشاء حصة دراسية جديدة</option>
