@@ -235,6 +235,18 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedSessionId])
 
+  // Filter student list by Group
+  const filteredStudentsList = useMemo(() => {
+    if (!selectedGroupId) return students
+    const targetGroup = groups.find(g => g.id === selectedGroupId)
+    if (!targetGroup) return students
+    return students.filter(s => {
+      if (s.group === targetGroup.name) return true
+      if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
+      return false
+    })
+  }, [students, selectedGroupId, groups])
+
   // Merged history records: every student in the current group/class merged with their database attendance record
   const mergedHistoryRecords = useMemo(() => {
     const recordMap = {}
@@ -275,18 +287,6 @@ export default function AttendancePanel({ onBack, flash }) {
       return name.toLowerCase().includes(historySearchQuery.toLowerCase())
     })
   }, [mergedHistoryRecords, historySearchQuery])
-
-  // Filter student list by Group
-  const filteredStudentsList = useMemo(() => {
-    if (!selectedGroupId) return students
-    const targetGroup = groups.find(g => g.id === selectedGroupId)
-    if (!targetGroup) return students
-    return students.filter(s => {
-      if (s.group === targetGroup.name) return true
-      if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
-      return false
-    })
-  }, [students, selectedGroupId, groups])
 
   // Bulk status change
   const setAllStatus = (status) => {
