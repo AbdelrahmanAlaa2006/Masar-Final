@@ -187,7 +187,7 @@ export default function AttendancePanel({ onBack, flash }) {
     if (!selectedSessionId || selectedSessionId === 'new') {
       const defaults = {}
       students.forEach(s => {
-        defaults[s.id] = 'present'
+        defaults[s.id] = 'absent'
       })
       setAttendanceRecords(defaults)
       return
@@ -205,7 +205,7 @@ export default function AttendancePanel({ onBack, flash }) {
 
         const nextRecords = {}
         students.forEach(s => {
-          nextRecords[s.id] = mapping[s.id] || 'present'
+          nextRecords[s.id] = mapping[s.id] || 'absent'
         })
         setAttendanceRecords(nextRecords)
       } catch (err) {
@@ -322,7 +322,7 @@ export default function AttendancePanel({ onBack, flash }) {
       student_name: s.name,
       parent_phone: s.parent_phone,
       session_id: selectedSessionId,
-      status: attendanceRecords[s.id] || 'present',
+      status: attendanceRecords[s.id] || 'absent',
       notes: '',
       created_by: currentUser?.id
     }))
@@ -875,7 +875,7 @@ export default function AttendancePanel({ onBack, flash }) {
                   </thead>
                   <tbody>
                     {filteredStudentsList.map((student) => {
-                      const currentStatus = attendanceRecords[student.id] || 'present'
+                      const currentStatus = attendanceRecords[student.id] || 'absent'
                       const isSelected = selectedStudentIds.includes(student.id)
                       return (
                         <tr key={student.id} style={{ borderBottom: '1px solid var(--cp-list-item-border)', background: isSelected ? 'rgba(139, 92, 246, 0.03)' : 'transparent' }}>
