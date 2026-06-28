@@ -1,46 +1,47 @@
 /* ─────────── POWER PLATFORM THEME (power-platform) ─────────── */
 
+/* Global variable overrides for Power theme (matches body.aa-power-theme) */
 .aa-power-theme {
-  --background: #f8fafc !important; /* Premium light slate-blue background */
-  --surface: #f1f5f9 !important; /* Lighter surface */
-  --card: #ffffff !important; /* Solid crisp white cards */
-  --primary: #ea580c !important; /* Vibrant deep orange */
-  --secondary: #d4af37 !important; /* Gold */
+  --background: #fcf7e9 !important; /* Rich luxury warm ivory/parchment background */
+  --surface: #f5ebd2 !important; /* Vibrant warm cream/surface */
+  --card: #ffffff !important; /* Crisp solid white card for high contrast */
+  --primary: #1e3a8a !important; /* Premium deep navy/royal blue */
+  --secondary: #d4af37 !important; /* Luxury gold */
   
-  --primary-glow: rgba(234, 88, 12, 0.25) !important;
-  --primary-soft: rgba(234, 88, 12, 0.1) !important;
-  --btn-from: #ea580c !important;
-  --btn-to: #f97316 !important;
-  --btn-text: #ffffff !important;
-  --btn-shadow: 0 10px 24px rgba(234, 88, 12, 0.2) !important;
-  --btn-shadow-hover: 0 14px 30px rgba(234, 88, 12, 0.35) !important;
+  --primary-glow: rgba(30, 58, 138, 0.25) !important;
+  --primary-soft: rgba(30, 58, 138, 0.1) !important;
+  --btn-from: #1e3a8a !important; /* Deep navy */
+  --btn-to: #2563eb !important; /* Royal Blue */
+  --btn-text: #ffffff !important; /* White text for maximum legibility */
+  --btn-shadow: 0 10px 24px rgba(30, 58, 138, 0.2) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(30, 58, 138, 0.35) !important;
   
-  --foreground: #0f172a !important; /* Premium deep blue slate text */
-  --card-foreground: #1e293b !important;
-  --ink: #0f172a !important;
-  --muted-foreground: #475569 !important; /* Slate grey instead of faded default */
-  --border: rgba(15, 23, 42, 0.16) !important;
+  --foreground: #111c3a !important; /* Deep navy text for maximum contrast */
+  --card-foreground: #182854 !important;
+  --ink: #111c3a !important;
+  --muted-foreground: #475a8f !important; /* Deep navy-grey instead of faded slate */
+  --border: rgba(30, 58, 138, 0.16) !important;
 }
 
-/* Light Mode Section Headings: Vibrant Orange to Deep Blue gradient (very premium) */
+/* Light Mode Section Headings: Vibrant navy-to-blue text gradient (high contrast, no fade) */
 body:not(.dark).aa-power-theme .section-heading,
 body:not(.dark).aa-power-theme h1,
 body:not(.dark).aa-power-theme h2 {
-  background: linear-gradient(135deg, #ea580c, #d4af37) !important;
+  background: linear-gradient(135deg, #1e3a8a, #111c3a) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
 }
 
-/* Light Mode Cards: Crisp borders, solid backgrounds and dynamic shadows */
+/* Light Mode Cards: Crisp borders, solid background, and luxury shadows to prevent pale/faded look */
 body:not(.dark).aa-power-theme .feature-card,
 body:not(.dark).aa-power-theme .step-card,
 body:not(.dark).aa-power-theme .location-info-card,
 body:not(.dark).aa-power-theme .about-stat,
 body:not(.dark).aa-power-theme .landing-package-card {
   background: #ffffff !important;
-  border: 1.5px solid rgba(15, 23, 42, 0.12) !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.01) !important;
+  border: 1.5px solid rgba(30, 58, 138, 0.14) !important;
+  box-shadow: 0 10px 30px rgba(30, 58, 138, 0.06), 0 1px 3px rgba(30, 58, 138, 0.02) !important;
 }
 
 body:not(.dark).aa-power-theme .feature-card:hover,
@@ -49,11 +50,11 @@ body:not(.dark).aa-power-theme .location-info-card:hover,
 body:not(.dark).aa-power-theme .about-stat:hover,
 body:not(.dark).aa-power-theme .landing-package-card:hover {
   background: #ffffff !important;
-  border-color: #ea580c !important;
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08), 0 0 15px rgba(234, 88, 12, 0.15) !important;
+  border-color: #d4af37 !important;
+  box-shadow: 0 20px 40px rgba(30, 58, 138, 0.12), 0 0 15px rgba(212, 175, 55, 0.2) !important;
 }
 
-/* Premium gradient buttons with Gold accent border */
+/* Ensure the great navy-to-blue gradient is shown in every button in the app for the Power theme */
 .aa-power-theme .hero-btn,
 .aa-power-theme .premium-action-btn.btn-primary,
 .aa-power-theme .aa-btn-primary,
@@ -62,10 +63,10 @@ body:not(.dark).aa-power-theme .landing-package-card:hover {
 .aa-power-theme button.aa-btn-primary,
 .aa-power-theme .modern-btn,
 .aa-power-theme button.modern-btn {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Premium orange gradient */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
   border: 1px solid #d4af37 !important; /* Gold border accent for premium feel */
   color: #ffffff !important;
-  box-shadow: 0 10px 24px rgba(234, 88, 12, 0.25) !important;
+  box-shadow: 0 10px 24px rgba(30, 58, 138, 0.25) !important;
   text-shadow: none !important;
 }
 
@@ -77,9 +78,9 @@ body:not(.dark).aa-power-theme .landing-package-card:hover {
 .aa-power-theme button.aa-btn-primary:hover,
 .aa-power-theme .modern-btn:hover:not(:disabled),
 .aa-power-theme button.modern-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #f97316, #f59e0b) !important; /* Gold/Amber hover */
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter blue on hover */
   border-color: #ffd700 !important;
-  box-shadow: 0 14px 30px rgba(234, 88, 12, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
+  box-shadow: 0 14px 30px rgba(30, 58, 138, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
 }
 
 /* Brand Logo Sizing: Make it bigger and adjust header height for Power theme */
@@ -96,7 +97,7 @@ body:not(.dark).aa-power-theme .landing-package-card:hover {
   margin-bottom: -8px;
 }
 
-/* Header logo (mark container) */
+/* Header logo (mark container): Bigger, transparent background, contain fitting */
 .aa-power-theme .mh__mark {
   width: 90px !important;
   height: 60px !important;
@@ -154,54 +155,52 @@ body:not(.dark).aa-power-theme .landing-package-card:hover {
   object-fit: contain;
 }
 
-/* Quote card custom gradient styling for Power theme - Light Mode */
-body:not(.dark) .aa-power-theme .about-quote,
-body:not(.dark).aa-power-theme .about-quote {
-  background: linear-gradient(135deg, #fffcf5 0%, #fff7e6 100%) !important; /* Premium warm ivory-orange gradient */
-  border: 1.5px solid #ea580c !important; /* Solid orange border trim */
-  color: #0f172a !important; /* Dark slate text */
-  box-shadow: 0 20px 40px rgba(234, 88, 12, 0.08), 0 0 15px rgba(234, 88, 12, 0.03) !important;
+/* Quote card custom gradient styling for Power theme */
+.aa-power-theme .about-quote {
+  background: linear-gradient(135deg, #1e3a8a, #0f172a) !important; /* Deep navy gradient */
+  border: 1.5px solid #d4af37 !important; /* Solid gold border trim */
+  color: #ffffff !important;
+  box-shadow: 0 20px 50px rgba(30, 58, 138, 0.35), 0 0 20px rgba(212, 175, 55, 0.1) !important;
 }
-body:not(.dark) .aa-power-theme .about-quote-icon,
-body:not(.dark).aa-power-theme .about-quote-icon,
-body:not(.dark) .aa-power-theme .about-quote-author,
-body:not(.dark).aa-power-theme .about-quote-author {
-  color: #ea580c !important; /* Orange quote icon and author text */
+.aa-power-theme .about-quote-icon,
+.aa-power-theme .about-quote-author {
+  color: #ffffff !important;
 }
 
-/* Light Mode Card Icons: Orange gradient with gold border */
+/* Light Mode Card Icons: Deep navy gradient with gold border (vibrant and high contrast) */
 .aa-power-theme .feature-icon,
 .aa-power-theme .location-info-icon {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Orange gradient */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Navy-to-blue gradient */
   border: 1px solid #d4af37 !important; /* Gold border trim */
   color: #ffd700 !important; /* Gold icon */
-  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.15) !important;
+  box-shadow: 0 4px 10px rgba(30, 58, 138, 0.15) !important;
 }
 .aa-power-theme .feature-card:hover .feature-icon,
 .aa-power-theme .location-info-card:hover .location-info-icon {
-  background: linear-gradient(135deg, #f97316, #f59e0b) !important; /* Brighter gold gradient on hover */
-  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter blue gradient on hover */
+  color: #ffd700 !important;
   border-color: #d4af37 !important;
 }
 
-/* Light Mode Step Numbers (Orange circle with gold border) */
+/* Light Mode Step Numbers (clean navy/blue circles with gold border) */
 .aa-power-theme .step-number {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
   border: 2px solid #d4af37 !important;
   color: #ffffff !important;
   text-shadow: none !important;
 }
 .aa-power-theme .step-card:hover .step-number {
-  background: linear-gradient(135deg, #f97316, #f59e0b) !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
   border-color: #d4af37 !important;
   color: #ffffff !important;
+  text-shadow: none !important;
 }
 
 /* Light Mode Location Background: Warm cream gradient with very soft glows */
 .aa-power-theme .login-location {
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(30, 58, 138, 0.05), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(234, 88, 12, 0.05), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(212, 175, 55, 0.05), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
 }
 .aa-power-theme .loc-bg-blob--a {
@@ -209,61 +208,61 @@ body:not(.dark).aa-power-theme .about-quote-author {
   opacity: 0.06 !important;
 }
 .aa-power-theme .loc-bg-blob--b {
-  background: #ea580c !important;
+  background: #d4af37 !important;
   opacity: 0.05 !important;
 }
 
 .aa-power-theme .location-directions-btn--ghost {
   background: transparent !important;
   border: 1px solid rgba(30, 58, 138, 0.4) !important;
-  color: #1e3a8a !important;
+  color: #a0782a !important;
 }
 .aa-power-theme .location-directions-btn--ghost:hover {
   background: rgba(30, 58, 138, 0.06) !important;
-  border-color: #1e3a8a !important;
-  color: #1e3a8a !important;
+  border-color: #a0782a !important;
+  color: #a0782a !important;
 }
 
-/* Light Mode Location Pointer: Styled orange gradient with gold border */
+/* Light Mode Location Pointer: Styled navy-to-blue gradient with gold border (matches rest of location cards) */
 .aa-power-theme .map-pin__dot {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
   border: 2px solid #d4af37 !important;
   color: #ffd700 !important;
-  box-shadow: 0 10px 25px -5px rgba(234, 88, 12, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.35) !important;
 }
 
 .aa-power-theme .map-frame {
-  background: linear-gradient(135deg, #ffd700, #d4af37) !important;
+  background: linear-gradient(135deg, #d4af37, #ffd700) !important;
 }
 
 /* Modal Close Button: Premium high contrast style */
 .aa-power-theme .auth-modal-close {
-  background: rgba(15, 23, 42, 0.08) !important;
-  color: #0f172a !important;
+  background: rgba(30, 58, 138, 0.08) !important;
+  color: #1e3a8a !important;
   opacity: 1 !important;
 }
 .aa-power-theme .auth-modal-close:hover {
-  background: rgba(15, 23, 42, 0.16) !important;
-  color: #000000 !important;
+  background: rgba(30, 58, 138, 0.16) !important;
+  color: #111c3a !important;
 }
 
-/* Modal and Register Input Icons: Orange color, highly visible */
+/* Modal and Register Input Icons: Rich navy color, highly visible */
 .aa-power-theme .input-wrapper i,
 .aa-power-theme .register-input-wrapper i {
-  color: #ea580c !important;
+  color: #1e3a8a !important;
   opacity: 1 !important;
 }
 .aa-power-theme .input-wrapper input:focus + i,
 .aa-power-theme .register-input-wrapper:focus-within i {
-  color: #f97316 !important;
+  color: #2563eb !important;
 }
 
-/* Parent Modal Header Icon: Orange gradient, gold border, gold icon */
+/* Parent Modal Header Icon: Premium navy-to-blue gradient, gold border, gold icon */
 .aa-power-theme .auth-modal-icon {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
   border: 1.5px solid #d4af37 !important;
   color: #ffd700 !important;
-  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.25) !important;
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25) !important;
 }
 .aa-power-theme .auth-modal-icon i {
   color: #ffd700 !important;
@@ -274,29 +273,29 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .aa-power-theme select,
 .aa-power-theme textarea {
   background-color: #ffffff !important;
-  color: #0f172a !important;
-  border: 1.5px solid rgba(15, 23, 42, 0.22) !important;
+  color: #111c3a !important;
+  border: 1.5px solid rgba(30, 58, 138, 0.22) !important;
 }
 
 .aa-power-theme input:hover,
 .aa-power-theme select:hover,
 .aa-power-theme textarea:hover {
-  border-color: rgba(15, 23, 42, 0.35) !important;
+  border-color: rgba(30, 58, 138, 0.35) !important;
   background-color: #ffffff !important;
 }
 
 .aa-power-theme input:focus,
 .aa-power-theme select:focus,
 .aa-power-theme textarea:focus {
-  border-color: #ea580c !important;
+  border-color: #1e3a8a !important;
   background-color: #ffffff !important;
-  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15) !important;
-  color: #0f172a !important;
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.15) !important;
+  color: #111c3a !important;
 }
 
 .aa-power-theme input::placeholder,
 .aa-power-theme textarea::placeholder {
-  color: #64748b !important;
+  color: #6b7a99 !important; /* Highly readable neutral placeholder text */
   opacity: 1 !important;
 }
 
@@ -304,21 +303,21 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .aa-power-theme select option,
 .aa-power-theme select optgroup {
   background-color: #ffffff !important;
-  color: #0f172a !important;
+  color: #111c3a !important;
 }
 
 /* Portrait Chips (Badges): Clean contrast styling */
 .aa-power-theme .aa-chip {
   background: rgba(212, 175, 55, 0.08) !important;
   border: 1px solid rgba(212, 175, 55, 0.3) !important;
-  color: #8c6b12 !important;
+  color: #8c6b12 !important; /* Goldish bronze text */
   text-shadow: none !important;
 }
 
 .aa-power-theme .aa-chip-accent {
-  background: rgba(234, 88, 12, 0.08) !important;
-  border: 1px solid rgba(234, 88, 12, 0.22) !important;
-  color: #ea580c !important;
+  background: rgba(30, 58, 138, 0.08) !important;
+  border: 1px solid rgba(30, 58, 138, 0.22) !important;
+  color: #1e3a8a !important; /* Deep navy text */
 }
 
 
@@ -326,29 +325,29 @@ body:not(.dark).aa-power-theme .about-quote-author {
 
 /* Dark Mode Overrides (matches .dark body.aa-power-theme / .dark .aa-power-theme) */
 .dark .aa-power-theme, .dark.aa-power-theme {
-  --background: #070e1f !important; /* Premium deep space navy blue background */
-  --surface: #0c152b !important; /* Navy surface */
-  --card: #121e36 !important; /* Card content navy */
+  --background: #050a15 !important; /* Very dark navy background */
+  --surface: #0a0f1d !important; /* Navy surface */
+  --card: #101726 !important; /* Lighter navy card content */
   
-  --primary: #f97316 !important; /* Luminous orange */
-  --secondary: #ffd700 !important; /* Gold */
+  --primary: #3b82f6 !important; /* Luminous sapphire blue */
+  --secondary: #ffd700 !important; /* Luxury gold accents */
   
-  --primary-glow: rgba(249, 115, 22, 0.3) !important;
-  --primary-soft: rgba(249, 115, 22, 0.15) !important;
-  --btn-from: #ea580c !important;
-  --btn-to: #f97316 !important;
-  --btn-text: #ffffff !important;
-  --btn-shadow: 0 10px 24px rgba(249, 115, 22, 0.25) !important;
-  --btn-shadow-hover: 0 14px 30px rgba(249, 115, 22, 0.45) !important;
+  --primary-glow: rgba(59, 130, 246, 0.3) !important;
+  --primary-soft: rgba(59, 130, 246, 0.15) !important;
+  --btn-from: #1e40af !important; /* Deep blue button start */
+  --btn-to: #3b82f6 !important; /* Luminous blue button end */
+  --btn-text: #ffffff !important; /* White text on blue buttons */
+  --btn-shadow: 0 10px 24px rgba(59, 130, 246, 0.25) !important;
+  --btn-shadow-hover: 0 14px 30px rgba(59, 130, 246, 0.45) !important;
   
-  --foreground: #f8fafc !important;
+  --foreground: #f1f5f9 !important;
   --card-foreground: #cbd5e1 !important;
   --ink: #f8fafc !important;
   --muted-foreground: #94a3b8 !important;
-  --border: rgba(249, 115, 22, 0.2) !important;
+  --border: rgba(59, 130, 246, 0.2) !important;
 }
 
-/* Luminous orange-to-gold gradient buttons in dark mode */
+/* Ensure the great navy-to-blue gradient is shown in every button in the app for the Power theme in dark mode */
 .dark.aa-power-theme .hero-btn,
 .dark.aa-power-theme .premium-action-btn.btn-primary,
 .dark.aa-power-theme .aa-btn-primary,
@@ -365,10 +364,10 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .dark.aa-power-theme button.modern-btn,
 .dark .aa-power-theme .modern-btn,
 .dark .aa-power-theme button.modern-btn {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important; /* Solid orange gradient */
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Dark mode luminous sapphire gradient */
   border: 1px solid #ffd700 !important; /* Gold border accent */
   color: #ffffff !important;
-  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 10px 24px rgba(59, 130, 246, 0.35) !important;
 }
 
 .dark.aa-power-theme .hero-btn:hover,
@@ -387,26 +386,26 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .dark.aa-power-theme button.modern-btn:hover:not(:disabled),
 .dark .aa-power-theme .modern-btn:hover:not(:disabled),
 .dark .aa-power-theme button.modern-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #f97316, #eab308) !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
   border-color: #ffd700 !important;
-  box-shadow: 0 14px 30px rgba(249, 115, 22, 0.55), 0 0 15px rgba(212, 175, 55, 0.35) !important;
+  box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55), 0 0 15px rgba(212, 175, 55, 0.35) !important;
 }
 
 .dark .aa-power-theme .about-quote, .dark.aa-power-theme .about-quote {
-  background: linear-gradient(135deg, #0b1329, #070e1f) !important; /* Space navy gradient */
-  border: 1.5px solid #ffd700 !important; /* Premium gold border */
+  background: linear-gradient(135deg, #0f1e3d, #081026) !important; /* Deep navy-blue gradient */
+  border: 1.5px solid #d4af37 !important; /* Premium luxury gold border */
   color: #ffffff !important;
-  box-shadow: 0 20px 50px rgba(7, 14, 31, 0.6), 0 0 20px rgba(212, 175, 55, 0.15) !important;
+  box-shadow: 0 20px 50px rgba(13, 30, 61, 0.6), 0 0 20px rgba(212, 175, 55, 0.15) !important;
 }
 .dark .aa-power-theme .about-quote-icon, .dark.aa-power-theme .about-quote-icon,
 .dark .aa-power-theme .about-quote-author, .dark.aa-power-theme .about-quote-author {
   color: #ffffff !important;
 }
 
-/* Location section dark overrides */
+/* Location section dark overrides: clean blue glows instead of yellow clouds */
 .dark .aa-power-theme .login-location, .dark.aa-power-theme .login-location {
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(249, 115, 22, 0.12), transparent 60%),
+    radial-gradient(1200px 600px at 80% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgba(30, 64, 175, 0.1), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
 }
@@ -415,46 +414,48 @@ body:not(.dark).aa-power-theme .about-quote-author {
   opacity: 0.2 !important;
 }
 .dark .aa-power-theme .loc-bg-blob--b, .dark.aa-power-theme .loc-bg-blob--b {
-  background: #ea580c !important;
+  background: #1e40af !important;
   opacity: 0.15 !important;
 }
 
-/* Gold section heading text gradient (highly premium) */
+/* Prevent blue-to-gold text and icon gradients (avoids muddy green transitions) */
 .dark .aa-power-theme .section-heading, .dark.aa-power-theme .section-heading,
 .dark .aa-power-theme h1, .dark.aa-power-theme h1,
 .dark .aa-power-theme h2, .dark.aa-power-theme h2 {
-  background: linear-gradient(135deg, #ffd700, #f97316) !important; /* Pure gold-orange text gradient */
+  background: linear-gradient(135deg, #ffd700, #d4af37) !important; /* Pure gold text gradient */
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
 }
 
-/* Feature & Location Icons */
+/* Feature & Location Icons: Deep blue gradient with gold border (always active, no muddy green) */
 .dark .aa-power-theme .feature-icon, .dark.aa-power-theme .feature-icon,
 .dark .aa-power-theme .location-info-icon, .dark.aa-power-theme .location-info-icon {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
-  color: #ffd700 !important;
-  border: 1px solid #ffd700 !important;
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Deep blue-to-blue gradient */
+  color: #ffd700 !important; /* Pure gold icon */
+  border: 1px solid #ffd700 !important; /* Gold border trim */
 }
 
+/* Maintain active style on hover */
 .dark .aa-power-theme .feature-card:hover .feature-icon, .dark.aa-power-theme .feature-card:hover .feature-icon,
 .dark .aa-power-theme .location-info-card:hover .location-info-icon, .dark.aa-power-theme .location-info-card:hover .location-info-icon {
-  background: linear-gradient(135deg, #f97316, #ffd700) !important;
-  color: #070e1f !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Slightly brighter blue gradient */
+  color: #ffd700 !important;
   border-color: #ffd700 !important;
 }
 
-/* Step Cards step numbers in dark mode */
+/* Dark Mode Step Numbers: Clean blue circles (no cyan-gold mix) */
 .dark .aa-power-theme .step-number, .dark.aa-power-theme .step-number {
-  background: linear-gradient(135deg, rgba(234, 88, 12, 0.2), rgba(249, 115, 22, 0.15)) !important;
-  border: 2px solid rgba(249, 115, 22, 0.3) !important;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.2), rgba(59, 130, 246, 0.15)) !important;
+  border: 2px solid rgba(59, 130, 246, 0.3) !important;
   color: #ffffff !important;
-  text-shadow: 0 0 10px rgba(249, 115, 22, 0.3) !important;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
 }
 .dark .aa-power-theme .step-card:hover .step-number, .dark.aa-power-theme .step-card:hover .step-number {
-  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
   border-color: #ffd700 !important;
   color: #ffffff !important;
+  text-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
 }
 
 .dark .aa-power-theme .location-directions-btn--ghost, .dark.aa-power-theme .location-directions-btn--ghost {
@@ -468,19 +469,19 @@ body:not(.dark).aa-power-theme .about-quote-author {
   color: #ffd700 !important;
 }
 
-/* Dark Mode Location Pointer */
+/* Dark Mode Location Pointer: Styled deep blue gradient with gold border */
 .dark .aa-power-theme .map-pin__dot, .dark.aa-power-theme .map-pin__dot {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
   border: 2px solid #ffd700 !important;
   color: #ffd700 !important;
-  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.45) !important;
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.45) !important;
 }
 
 .dark .aa-power-theme .map-frame {
   background: linear-gradient(135deg, #ffd700, #d4af37) !important;
 }
 
-/* Dark Mode Modal Close Button */
+/* Dark Mode Modal Close Button: Clean high contrast style */
 .dark.aa-power-theme .auth-modal-close,
 .dark .aa-power-theme .auth-modal-close {
   background: rgba(255, 255, 255, 0.08) !important;
@@ -493,7 +494,7 @@ body:not(.dark).aa-power-theme .about-quote-author {
   color: #ffd700 !important;
 }
 
-/* Dark Mode input icons */
+/* Dark Mode Modal and Register Input Icons: Gold/Luminous blue icons for premium feel */
 .dark.aa-power-theme .input-wrapper i,
 .dark .aa-power-theme .input-wrapper i,
 .dark.aa-power-theme .register-input-wrapper i,
@@ -505,32 +506,32 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .dark .aa-power-theme .input-wrapper input:focus + i,
 .dark.aa-power-theme .register-input-wrapper:focus-within i,
 .dark .aa-power-theme .register-input-wrapper:focus-within i {
-  color: #f97316 !important;
+  color: #3b82f6 !important;
 }
 
-/* Dark Mode parent modal header icon */
+/* Dark Mode Parent Modal Header Icon: Sapphire gradient, gold border, gold icon */
 .dark.aa-power-theme .auth-modal-icon,
 .dark .aa-power-theme .auth-modal-icon {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
   border: 1.5px solid #ffd700 !important;
   color: #ffd700 !important;
-  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35) !important;
 }
 .dark.aa-power-theme .auth-modal-icon i,
 .dark .aa-power-theme .auth-modal-icon i {
   color: #ffd700 !important;
 }
 
-/* Dark Mode Inputs */
+/* Dark Mode Input Fields: Crisp readability */
 .dark.aa-power-theme input,
 .dark .aa-power-theme input,
 .dark.aa-power-theme select,
 .dark .aa-power-theme select,
 .dark.aa-power-theme textarea,
 .dark .aa-power-theme textarea {
-  background-color: #121e36 !important;
+  background-color: #101726 !important; /* Lighter navy surface */
   color: #f1f5f9 !important;
-  border: 1.5px solid rgba(249, 115, 22, 0.22) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.22) !important;
 }
 
 .dark.aa-power-theme input:hover,
@@ -539,8 +540,8 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .dark .aa-power-theme select:hover,
 .dark.aa-power-theme textarea:hover,
 .dark .aa-power-theme textarea:hover {
-  border-color: rgba(249, 115, 22, 0.35) !important;
-  background-color: #17243e !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  background-color: #131b2e !important;
 }
 
 .dark.aa-power-theme input:focus,
@@ -549,9 +550,9 @@ body:not(.dark).aa-power-theme .about-quote-author {
 .dark .aa-power-theme select:focus,
 .dark.aa-power-theme textarea:focus,
 .dark .aa-power-theme textarea:focus {
-  border-color: #f97316 !important;
-  background-color: #17243e !important;
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.3) !important;
+  border-color: #3b82f6 !important;
+  background-color: #131b2e !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
   color: #ffffff !important;
 }
 
@@ -563,16 +564,16 @@ body:not(.dark).aa-power-theme .about-quote-author {
   opacity: 1 !important;
 }
 
-/* Dark Mode Dropdown options */
+/* Dark Mode Dropdown option text colors */
 .dark.aa-power-theme select option,
 .dark .aa-power-theme select option,
 .dark.aa-power-theme select optgroup,
 .dark .aa-power-theme select optgroup {
-  background-color: #121e36 !important;
+  background-color: #101726 !important;
   color: #f1f5f9 !important;
 }
 
-/* Dark Mode Chips */
+/* Dark Mode Portrait Chips (Badges): Clean contrast styling */
 .dark.aa-power-theme .aa-chip,
 .dark .aa-power-theme .aa-chip {
   background: rgba(255, 255, 255, 0.05) !important;
@@ -582,38 +583,37 @@ body:not(.dark).aa-power-theme .about-quote-author {
 
 .dark.aa-power-theme .aa-chip-accent,
 .dark .aa-power-theme .aa-chip-accent {
-  background: rgba(249, 115, 22, 0.15) !important;
-  border: 1px solid rgba(249, 115, 22, 0.3) !important;
-  color: #f97316 !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #3b82f6 !important; /* Luminous blue accent text */
 }
-
-
 
 
 /* ──────────────────────────────────────────────────────────────
    PREMIUM CUSTOM BACKGROUNDS AND STYLES OVERRIDES
    ────────────────────────────────────────────────────────────── */
 
+/* Custom background variables overrides for Power theme */
 .aa-power-theme {
-  --bg-color: #f8fafc !important;
-  --bg-primary: #f8fafc !important;
-  --bg-secondary: #f8fafc !important;
-  --page-bg: #f8fafc !important;
-  --cp-bg: #f8fafc !important;
+  --bg-color: #fcf7e9 !important;
+  --bg-primary: #fcf7e9 !important;
+  --bg-secondary: #fcf7e9 !important;
+  --page-bg: #fcf7e9 !important;
+  --cp-bg: #fcf7e9 !important;
   --cp-bg-image: none !important;
 }
 
 .dark.aa-power-theme,
 .dark .aa-power-theme {
-  --bg-color: #070e1f !important;
-  --bg-primary: #070e1f !important;
-  --bg-secondary: #070e1f !important;
-  --page-bg: #070e1f !important;
-  --cp-bg: #070e1f !important;
+  --bg-color: #050a15 !important;
+  --bg-primary: #050a15 !important;
+  --bg-secondary: #050a15 !important;
+  --page-bg: #050a15 !important;
+  --cp-bg: #050a15 !important;
   --cp-bg-image: none !important;
 }
 
-/* Explicit Page backgrounds overrides for premium consistent look */
+/* Explicit Page backgrounds overrides (match the luxury login page background) */
 body.aa-power-theme,
 .aa-power-theme .aa-page,
 .aa-power-theme .videos-page,
@@ -635,8 +635,8 @@ body.aa-power-theme,
 .aa-power-theme .packages-page,
 .aa-power-theme .pp-page,
 .aa-power-theme .sc-page {
-  background: #f8fafc !important;
-  background-color: #f8fafc !important;
+  background: #fcf7e9 !important;
+  background-color: #fcf7e9 !important;
   background-image: none !important;
 }
 
@@ -682,25 +682,25 @@ body.aa-power-theme,
 .dark .aa-power-theme .pp-page,
 .dark.aa-power-theme .sc-page,
 .dark .aa-power-theme .sc-page {
-  background: #070e1f !important;
-  background-color: #070e1f !important;
+  background: #050a15 !important;
+  background-color: #050a15 !important;
   background-image: none !important;
 }
 
-/* Ambient glows */
+/* Soft ambient constellation mesh glow updates for Power theme */
 .aa-power-theme .videos-page::before {
   background:
-    radial-gradient(circle at 10% 90%, rgba(234, 88, 12, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 90% 10%, rgba(30, 58, 138, 0.05) 0%, transparent 45%) !important;
+    radial-gradient(circle at 10% 90%, rgba(30, 58, 138, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(212, 175, 55, 0.05) 0%, transparent 45%) !important;
 }
 .dark.aa-power-theme .videos-page::before,
 .dark .aa-power-theme .videos-page::before {
   background:
-    radial-gradient(circle at 20% 80%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(30, 58, 138, 0.1) 0%, transparent 50%) !important;
 }
 
-/* Avatar and Title Icons: Orange-to-gold premium gradient */
+/* User Avatar Circle and Page/Section title icons: Premium navy-to-blue gradient */
 .aa-power-theme .mh__avatar,
 .aa-power-theme .vid-prep-icon,
 .aa-power-theme .lec-prep-icon,
@@ -721,11 +721,12 @@ body.aa-power-theme,
 .aa-power-theme .vr-header-icon,
 .aa-power-theme .vr-modal-icon-wrap,
 .aa-power-theme .vr-card-icon-wrap {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
-  border: 1px solid #d4af37 !important;
-  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.25) !important;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
+  border: 1px solid #d4af37 !important; /* Gold border trim for premium feel */
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25) !important;
 }
 
+/* User avatar text should be white */
 .aa-power-theme .mh__avatar,
 .aa-power-theme .report-selected-avatar,
 .aa-power-theme .rs-avatar,
@@ -734,6 +735,7 @@ body.aa-power-theme,
   color: #ffffff !important;
 }
 
+/* Icons inside prep blocks / pages should be gold */
 .aa-power-theme .vid-prep-icon i,
 .aa-power-theme .lec-prep-icon i,
 .aa-power-theme .lec-page-icon i,
@@ -756,15 +758,15 @@ body.aa-power-theme,
 .aa-power-theme .mh__avatar {
   box-shadow: 
     0 0 0 2px var(--mh-bg-solid),
-    0 0 0 3px rgba(234, 88, 12, 0.25),
-    0 6px 16px -4px rgba(234, 88, 12, 0.5),
+    0 0 0 3px rgba(30, 58, 138, 0.25),
+    0 6px 16px -4px rgba(30, 58, 138, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
 }
 .aa-power-theme .mh__user:hover .mh__avatar {
   box-shadow: 
     0 0 0 2px var(--mh-bg-solid),
-    0 0 0 3px rgba(234, 88, 12, 0.45),
-    0 8px 20px -4px rgba(234, 88, 12, 0.6),
+    0 0 0 3px rgba(30, 58, 138, 0.45),
+    0 8px 20px -4px rgba(30, 58, 138, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
 
@@ -809,11 +811,12 @@ body.aa-power-theme,
 .dark.aa-power-theme .vr-modal-icon-wrap,
 .dark .aa-power-theme .vr-card-icon-wrap,
 .dark.aa-power-theme .vr-card-icon-wrap {
-  background: linear-gradient(135deg, #ea580c, #f97316) !important;
-  border: 1px solid #ffd700 !important;
-  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35) !important;
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Dark mode luminous sapphire gradient */
+  border: 1px solid #ffd700 !important; /* Premium gold border */
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35) !important;
 }
 
+/* User avatar text should be white in dark mode too */
 .dark .aa-power-theme .mh__avatar,
 .dark.aa-power-theme .mh__avatar,
 .dark .aa-power-theme .report-selected-avatar,
@@ -827,6 +830,7 @@ body.aa-power-theme,
   color: #ffffff !important;
 }
 
+/* Icons inside prep blocks / pages should be gold in dark mode too */
 .dark .aa-power-theme .vid-prep-icon i,
 .dark.aa-power-theme .vid-prep-icon i,
 .dark .aa-power-theme .lec-prep-icon i,
@@ -860,20 +864,185 @@ body.aa-power-theme,
   color: #ffd700 !important;
 }
 
-/* Dark mode user avatar glow */
-.dark.aa-power-theme .mh__avatar,
-.dark .aa-power-theme .mh__avatar {
+.dark .aa-power-theme .mh__avatar,
+.dark.aa-power-theme .mh__avatar {
   box-shadow: 
     0 0 0 2px var(--mh-bg-solid),
-    0 0 0 3px rgba(249, 115, 22, 0.35),
-    0 6px 16px -4px rgba(249, 115, 22, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    0 0 0 3px rgba(59, 130, 246, 0.35),
+    0 6px 16px -4px rgba(59, 130, 246, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
-.dark.aa-power-theme .mh__user:hover .mh__avatar,
-.dark .aa-power-theme .mh__user:hover .mh__avatar {
+.dark .aa-power-theme .mh__user:hover .mh__avatar,
+.dark.aa-power-theme .mh__user:hover .mh__avatar {
   box-shadow: 
     0 0 0 2px var(--mh-bg-solid),
-    0 0 0 3px rgba(249, 115, 22, 0.55),
-    0 8px 20px -4px rgba(249, 115, 22, 0.8),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+    0 0 0 3px rgba(59, 130, 246, 0.55),
+    0 8px 20px -4px rgba(59, 130, 246, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
+
+/* Ensure the great navy-to-blue gradient is shown in every button/action in the app for the Power theme */
+.aa-power-theme .hero-btn,
+.aa-power-theme .premium-action-btn.btn-primary,
+.aa-power-theme .aa-btn-primary,
+.aa-power-theme .location-directions-btn,
+.aa-power-theme button.btn-primary,
+.aa-power-theme button.aa-btn-primary,
+.aa-power-theme .modern-btn,
+.aa-power-theme button.modern-btn,
+.aa-power-theme .lec-btn-primary,
+.aa-power-theme .lec-add-btn,
+.aa-power-theme .hw-btn-primary,
+.aa-power-theme .hw-add-btn,
+.aa-power-theme .hw-file-btn,
+.aa-power-theme .videos-page .btn-primary,
+.aa-power-theme .exam-add-page .btn,
+.aa-power-theme .exam-add-page .btn-save,
+.aa-power-theme .vr-print-btn,
+.aa-power-theme .vr-detail-btn {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
+  border: 1px solid #d4af37 !important; /* Gold border accent for premium feel */
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(30, 58, 138, 0.25) !important;
+  text-shadow: none !important;
+}
+
+.aa-power-theme .hero-btn:hover,
+.aa-power-theme .premium-action-btn.btn-primary:hover,
+.aa-power-theme .aa-btn-primary:hover,
+.aa-power-theme .location-directions-btn:hover,
+.aa-power-theme button.btn-primary:hover,
+.aa-power-theme button.aa-btn-primary:hover,
+.aa-power-theme .modern-btn:hover:not(:disabled),
+.aa-power-theme button.modern-btn:hover:not(:disabled),
+.aa-power-theme .lec-btn-primary:hover,
+.aa-power-theme .lec-add-btn:hover,
+.aa-power-theme .hw-btn-primary:hover,
+.aa-power-theme .hw-add-btn:hover,
+.aa-power-theme .hw-file-btn:hover,
+.aa-power-theme .videos-page .btn-primary:hover,
+.aa-power-theme .exam-add-page .btn:hover,
+.aa-power-theme .exam-add-page .btn-save:hover,
+.aa-power-theme .vr-print-btn:hover,
+.aa-power-theme .vr-detail-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter shift on hover */
+  border-color: #ffd700 !important;
+  box-shadow: 0 14px 30px rgba(30, 58, 138, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
+}
+
+/* Dark Mode Buttons */
+.dark.aa-power-theme .hero-btn,
+.dark.aa-power-theme .premium-action-btn.btn-primary,
+.dark.aa-power-theme .aa-btn-primary,
+.dark.aa-power-theme .location-directions-btn,
+.dark.aa-power-theme button.btn-primary,
+.dark.aa-power-theme button.aa-btn-primary,
+.dark .aa-power-theme .hero-btn,
+.dark .aa-power-theme .premium-action-btn.btn-primary,
+.dark .aa-power-theme .aa-btn-primary,
+.dark .aa-power-theme .location-directions-btn,
+.dark .aa-power-theme button.btn-primary,
+.dark .aa-power-theme button.aa-btn-primary,
+.dark.aa-power-theme .modern-btn,
+.dark.aa-power-theme button.modern-btn,
+.dark .aa-power-theme .modern-btn,
+.dark .aa-power-theme button.modern-btn,
+.dark.aa-power-theme .lec-btn-primary,
+.dark.aa-power-theme .lec-add-btn,
+.dark .aa-power-theme .lec-btn-primary,
+.dark .aa-power-theme .lec-add-btn,
+.dark.aa-power-theme .hw-btn-primary,
+.dark.aa-power-theme .hw-add-btn,
+.dark.aa-power-theme .hw-file-btn,
+.dark .aa-power-theme .hw-btn-primary,
+.dark .aa-power-theme .hw-add-btn,
+.dark .aa-power-theme .hw-file-btn,
+.dark.aa-power-theme .videos-page .btn-primary,
+.dark .aa-power-theme .videos-page .btn-primary,
+.dark.aa-power-theme .exam-add-page .btn,
+.dark.aa-power-theme .exam-add-page .btn-save,
+.dark .aa-power-theme .exam-add-page .btn,
+.dark .aa-power-theme .exam-add-page .btn-save,
+.dark.aa-power-theme .vr-print-btn,
+.dark.aa-power-theme .vr-detail-btn,
+.dark .aa-power-theme .vr-print-btn,
+.dark .aa-power-theme .vr-detail-btn {
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+  border: 1px solid #ffd700 !important; /* Gold border accent */
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(59, 130, 246, 0.35) !important;
+}
+
+.dark.aa-power-theme .hero-btn:hover,
+.dark.aa-power-theme .premium-action-btn.btn-primary:hover,
+.dark.aa-power-theme .aa-btn-primary:hover,
+.dark.aa-power-theme .location-directions-btn:hover,
+.dark.aa-power-theme button.btn-primary:hover,
+.dark.aa-power-theme button.aa-btn-primary:hover,
+.dark .aa-power-theme .hero-btn:hover,
+.dark .aa-power-theme .premium-action-btn.btn-primary:hover,
+.dark .aa-power-theme .aa-btn-primary:hover,
+.dark .aa-power-theme .location-directions-btn:hover,
+.dark .aa-power-theme button.btn-primary:hover,
+.dark .aa-power-theme button.aa-btn-primary:hover,
+.dark.aa-power-theme .modern-btn:hover:not(:disabled),
+.dark.aa-power-theme button.modern-btn:hover:not(:disabled),
+.dark .aa-power-theme .modern-btn:hover:not(:disabled),
+.dark .aa-power-theme button.modern-btn:hover:not(:disabled),
+.dark.aa-power-theme .lec-btn-primary:hover,
+.dark.aa-power-theme .lec-add-btn:hover,
+.dark .aa-power-theme .lec-btn-primary:hover,
+.dark .aa-power-theme .lec-add-btn:hover,
+.dark.aa-power-theme .hw-btn-primary:hover,
+.dark.aa-power-theme .hw-add-btn:hover,
+.dark.aa-power-theme .hw-file-btn:hover,
+.dark .aa-power-theme .hw-btn-primary:hover,
+.dark .aa-power-theme .hw-add-btn:hover,
+.dark .aa-power-theme .hw-file-btn:hover,
+.dark.aa-power-theme .videos-page .btn-primary:hover,
+.dark .aa-power-theme .videos-page .btn-primary:hover,
+.dark.aa-power-theme .exam-add-page .btn:hover,
+.dark.aa-power-theme .exam-add-page .btn-save:hover,
+.dark .aa-power-theme .exam-add-page .btn:hover,
+.dark .aa-power-theme .exam-add-page .btn-save:hover,
+.dark.aa-power-theme .vr-print-btn:hover,
+.dark.aa-power-theme .vr-detail-btn:hover,
+.dark .aa-power-theme .vr-print-btn:hover,
+.dark .aa-power-theme .vr-detail-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  border-color: #ffd700 !important;
+  box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55), 0 0 15px rgba(212, 175, 55, 0.35) !important;
+}
+
+/* Progress fill override */
+.aa-power-theme .hw-card-progress-fill {
+  background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
+}
+.dark.aa-power-theme .hw-card-progress-fill,
+.dark .aa-power-theme .hw-card-progress-fill {
+  background: linear-gradient(90deg, #1e40af, #3b82f6) !important;
+}
+
+/* Active link line indicator under nav items (pure navy-to-blue gradient instead of muddy gold mix) */
+.aa-power-theme .mh__link.is-active::after {
+  background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.4) !important;
+}
+.dark.aa-power-theme .mh__link.is-active::after,
+.dark .aa-power-theme .mh__link.is-active::after {
+  background: linear-gradient(90deg, #1e40af, #3b82f6) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5) !important;
+}
+
+/* Table headers override for Power theme */
+.aa-power-theme .vr-table thead tr,
+.aa-power-theme .report-table thead tr {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+}
+.dark.aa-power-theme .vr-table thead tr,
+.dark .aa-power-theme .vr-table thead tr,
+.dark.aa-power-theme .report-table thead tr,
+.dark .aa-power-theme .report-table thead tr {
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+}
+

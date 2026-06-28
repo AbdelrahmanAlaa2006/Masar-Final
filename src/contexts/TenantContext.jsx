@@ -144,8 +144,8 @@ export function TenantProvider({ children }) {
           if (isPower) {
             resolvedData.name = 'منصة باور'
             resolvedData.slug = 'power-platform'
-            resolvedData.primary_color = '#ea580c'
-            resolvedData.secondary_color = '#d4af37'
+            resolvedData.primary_color = '#d4af37'
+            resolvedData.secondary_color = '#cbd5e1'
             resolvedData.logo_url = '/images/Power Logo.png'
           }
 

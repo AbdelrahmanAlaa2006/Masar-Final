@@ -208,11 +208,11 @@ export default function Login() {
   ]
 
   const steps = lang === 'ar' ? [
-    { n: '1', title: 'احصل على حسابك', desc: 'تواصل مع المعلم أو إدارة المنصة لتسجيل حسابك واستلام بيانات الدخول الخاصة بك.' },
+    { n: '1', title: tenantSlug === 'power-platform' ? 'انشئ حسابك' : 'احصل على حسابك', desc: 'تواصل مع المعلم أو إدارة المنصة لتسجيل حسابك واستلام بيانات الدخول الخاصة بك.' },
     { n: '2', title: 'سجّل دخولك', desc: 'أدخل رقم هاتفك وكلمة المرور الخاصة بك في النموذج بالأعلى للدخول الآمن إلى حسابك.' },
     { n: '3', title: 'انطلق في مسارك', desc: 'شاهد المحاضرات والملخصات، حلّ واجباتك واختباراتك، وتابع أداءك خطوة بخطوة للتميز.' },
   ] : [
-    { n: '1', title: 'Get Your Account', desc: 'Contact your teacher or the platform administration to register and receive your credentials.' },
+    { n: '1', title: tenantSlug === 'power-platform' ? 'Create Your Account' : 'Get Your Account', desc: 'Contact your teacher or the platform administration to register and receive your credentials.' },
     { n: '2', title: 'Log In Securely', desc: 'Enter your assigned phone number and password in the login form above to access your portal.' },
     { n: '3', title: 'Start Your Path', desc: 'Watch video lectures, submit homework assignments, complete exams, and track your achievements.' },
   ]
@@ -860,7 +860,7 @@ export default function Login() {
                       </div>
                       <div className="loc-card-body">
                         <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                        <h4 dir="ltr">{bPhone || locationPhone}</h4>
+                        <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{bPhone || locationPhone}</h4>
                         <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
                       </div>
                     </div>
@@ -950,7 +950,7 @@ export default function Login() {
                   </div>
                   <div className="loc-card-body">
                     <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                    <h4 dir="ltr">{locationPhone}</h4>
+                    <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{locationPhone}</h4>
                     <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
                   </div>
                 </div>

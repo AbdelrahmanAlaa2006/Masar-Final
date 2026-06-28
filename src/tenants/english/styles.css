@@ -2,24 +2,34 @@
 
 /* Global variable overrides for English theme (matches body.aa-english-theme) */
 .aa-english-theme {
-  --background: #fcf7e9 !important; /* Rich luxury warm ivory/parchment background */
-  --surface: #f5ebd2 !important; /* Vibrant warm cream/surface */
-  --card: #ffffff !important; /* Crisp solid white card for high contrast */
-  --primary: #1e3a8a !important; /* Premium deep navy/royal blue */
-  --secondary: #d4af37 !important; /* Luxury gold */
-  
+  --background: #fcf7e9 !important;
+  /* Rich luxury warm ivory/parchment background */
+  --surface: #f5ebd2 !important;
+  /* Vibrant warm cream/surface */
+  --card: #ffffff !important;
+  /* Crisp solid white card for high contrast */
+  --primary: #1e3a8a !important;
+  /* Premium deep navy/royal blue */
+  --secondary: #d4af37 !important;
+  /* Luxury gold */
+
   --primary-glow: rgba(30, 58, 138, 0.25) !important;
   --primary-soft: rgba(30, 58, 138, 0.1) !important;
-  --btn-from: #1e3a8a !important; /* Deep navy */
-  --btn-to: #2563eb !important; /* Royal Blue */
-  --btn-text: #ffffff !important; /* White text for maximum legibility */
+  --btn-from: #1e3a8a !important;
+  /* Deep navy */
+  --btn-to: #2563eb !important;
+  /* Royal Blue */
+  --btn-text: #ffffff !important;
+  /* White text for maximum legibility */
   --btn-shadow: 0 10px 24px rgba(30, 58, 138, 0.2) !important;
   --btn-shadow-hover: 0 14px 30px rgba(30, 58, 138, 0.35) !important;
-  
-  --foreground: #111c3a !important; /* Deep navy text for maximum contrast */
+
+  --foreground: #111c3a !important;
+  /* Deep navy text for maximum contrast */
   --card-foreground: #182854 !important;
   --ink: #111c3a !important;
-  --muted-foreground: #475a8f !important; /* Deep navy-grey instead of faded slate */
+  --muted-foreground: #475a8f !important;
+  /* Deep navy-grey instead of faded slate */
   --border: rgba(30, 58, 138, 0.16) !important;
 }
 
@@ -63,8 +73,10 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .aa-english-theme button.aa-btn-primary,
 .aa-english-theme .modern-btn,
 .aa-english-theme button.modern-btn {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
-  border: 1px solid #d4af37 !important; /* Gold border accent for premium feel */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  /* Premium navy-to-blue gradient */
+  border: 1px solid #d4af37 !important;
+  /* Gold border accent for premium feel */
   color: #ffffff !important;
   box-shadow: 0 10px 24px rgba(30, 58, 138, 0.25) !important;
   text-shadow: none !important;
@@ -78,7 +90,8 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .aa-english-theme button.aa-btn-primary:hover,
 .aa-english-theme .modern-btn:hover:not(:disabled),
 .aa-english-theme button.modern-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter blue on hover */
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  /* Brighter blue on hover */
   border-color: #ffd700 !important;
   box-shadow: 0 14px 30px rgba(30, 58, 138, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
 }
@@ -157,11 +170,14 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 
 /* Quote card custom gradient styling for English theme */
 .aa-english-theme .about-quote {
-  background: linear-gradient(135deg, #1e3a8a, #0f172a) !important; /* Deep navy gradient */
-  border: 1.5px solid #d4af37 !important; /* Solid gold border trim */
+  background: linear-gradient(135deg, #1e3a8a, #0f172a) !important;
+  /* Deep navy gradient */
+  border: 1.5px solid #d4af37 !important;
+  /* Solid gold border trim */
   color: #ffffff !important;
   box-shadow: 0 20px 50px rgba(30, 58, 138, 0.35), 0 0 20px rgba(212, 175, 55, 0.1) !important;
 }
+
 .aa-english-theme .about-quote-icon,
 .aa-english-theme .about-quote-author {
   color: #ffffff !important;
@@ -170,14 +186,19 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 /* Light Mode Card Icons: Deep navy gradient with gold border (vibrant and high contrast) */
 .aa-english-theme .feature-icon,
 .aa-english-theme .location-info-icon {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Navy-to-blue gradient */
-  border: 1px solid #d4af37 !important; /* Gold border trim */
-  color: #ffd700 !important; /* Gold icon */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  /* Navy-to-blue gradient */
+  border: 1px solid #d4af37 !important;
+  /* Gold border trim */
+  color: #ffd700 !important;
+  /* Gold icon */
   box-shadow: 0 4px 10px rgba(30, 58, 138, 0.15) !important;
 }
+
 .aa-english-theme .feature-card:hover .feature-icon,
 .aa-english-theme .location-info-card:hover .location-info-icon {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter blue gradient on hover */
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  /* Brighter blue gradient on hover */
   color: #ffd700 !important;
   border-color: #d4af37 !important;
 }
@@ -189,6 +210,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #ffffff !important;
   text-shadow: none !important;
 }
+
 .aa-english-theme .step-card:hover .step-number {
   background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
   border-color: #d4af37 !important;
@@ -203,10 +225,12 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
     radial-gradient(900px 500px at -10% 110%, rgba(212, 175, 55, 0.05), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
 }
+
 .aa-english-theme .loc-bg-blob--a {
   background: #1e3a8a !important;
   opacity: 0.06 !important;
 }
+
 .aa-english-theme .loc-bg-blob--b {
   background: #d4af37 !important;
   opacity: 0.05 !important;
@@ -217,6 +241,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   border: 1px solid rgba(30, 58, 138, 0.4) !important;
   color: #a0782a !important;
 }
+
 .aa-english-theme .location-directions-btn--ghost:hover {
   background: rgba(30, 58, 138, 0.06) !important;
   border-color: #a0782a !important;
@@ -241,6 +266,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #1e3a8a !important;
   opacity: 1 !important;
 }
+
 .aa-english-theme .auth-modal-close:hover {
   background: rgba(30, 58, 138, 0.16) !important;
   color: #111c3a !important;
@@ -252,7 +278,8 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #1e3a8a !important;
   opacity: 1 !important;
 }
-.aa-english-theme .input-wrapper input:focus + i,
+
+.aa-english-theme .input-wrapper input:focus+i,
 .aa-english-theme .register-input-wrapper:focus-within i {
   color: #2563eb !important;
 }
@@ -264,6 +291,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #ffd700 !important;
   box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25) !important;
 }
+
 .aa-english-theme .auth-modal-icon i {
   color: #ffd700 !important;
 }
@@ -295,7 +323,8 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 
 .aa-english-theme input::placeholder,
 .aa-english-theme textarea::placeholder {
-  color: #6b7a99 !important; /* Highly readable neutral placeholder text */
+  color: #6b7a99 !important;
+  /* Highly readable neutral placeholder text */
   opacity: 1 !important;
 }
 
@@ -310,36 +339,47 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .aa-english-theme .aa-chip {
   background: rgba(212, 175, 55, 0.08) !important;
   border: 1px solid rgba(212, 175, 55, 0.3) !important;
-  color: #8c6b12 !important; /* Goldish bronze text */
+  color: #8c6b12 !important;
+  /* Goldish bronze text */
   text-shadow: none !important;
 }
 
 .aa-english-theme .aa-chip-accent {
   background: rgba(30, 58, 138, 0.08) !important;
   border: 1px solid rgba(30, 58, 138, 0.22) !important;
-  color: #1e3a8a !important; /* Deep navy text */
+  color: #1e3a8a !important;
+  /* Deep navy text */
 }
 
 
 
 
 /* Dark Mode Overrides (matches .dark body.aa-english-theme / .dark .aa-english-theme) */
-.dark .aa-english-theme, .dark.aa-english-theme {
-  --background: #050a15 !important; /* Very dark navy background */
-  --surface: #0a0f1d !important; /* Navy surface */
-  --card: #101726 !important; /* Lighter navy card content */
-  
-  --primary: #3b82f6 !important; /* Luminous sapphire blue */
-  --secondary: #ffd700 !important; /* Luxury gold accents */
-  
+.dark .aa-english-theme,
+.dark.aa-english-theme {
+  --background: #050a15 !important;
+  /* Very dark navy background */
+  --surface: #0a0f1d !important;
+  /* Navy surface */
+  --card: #101726 !important;
+  /* Lighter navy card content */
+
+  --primary: #3b82f6 !important;
+  /* Luminous sapphire blue */
+  --secondary: #ffd700 !important;
+  /* Luxury gold accents */
+
   --primary-glow: rgba(59, 130, 246, 0.3) !important;
   --primary-soft: rgba(59, 130, 246, 0.15) !important;
-  --btn-from: #1e40af !important; /* Deep blue button start */
-  --btn-to: #3b82f6 !important; /* Luminous blue button end */
-  --btn-text: #ffffff !important; /* White text on blue buttons */
+  --btn-from: #1e40af !important;
+  /* Deep blue button start */
+  --btn-to: #3b82f6 !important;
+  /* Luminous blue button end */
+  --btn-text: #ffffff !important;
+  /* White text on blue buttons */
   --btn-shadow: 0 10px 24px rgba(59, 130, 246, 0.25) !important;
   --btn-shadow-hover: 0 14px 30px rgba(59, 130, 246, 0.45) !important;
-  
+
   --foreground: #f1f5f9 !important;
   --card-foreground: #cbd5e1 !important;
   --ink: #f8fafc !important;
@@ -364,8 +404,10 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .dark.aa-english-theme button.modern-btn,
 .dark .aa-english-theme .modern-btn,
 .dark .aa-english-theme button.modern-btn {
-  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Dark mode luminous sapphire gradient */
-  border: 1px solid #ffd700 !important; /* Gold border accent */
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+  /* Dark mode luminous sapphire gradient */
+  border: 1px solid #ffd700 !important;
+  /* Gold border accent */
   color: #ffffff !important;
   box-shadow: 0 10px 24px rgba(59, 130, 246, 0.35) !important;
 }
@@ -391,86 +433,116 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   box-shadow: 0 14px 30px rgba(59, 130, 246, 0.55), 0 0 15px rgba(212, 175, 55, 0.35) !important;
 }
 
-.dark .aa-english-theme .about-quote, .dark.aa-english-theme .about-quote {
-  background: linear-gradient(135deg, #0f1e3d, #081026) !important; /* Deep navy-blue gradient */
-  border: 1.5px solid #d4af37 !important; /* Premium luxury gold border */
+.dark .aa-english-theme .about-quote,
+.dark.aa-english-theme .about-quote {
+  background: linear-gradient(135deg, #0f1e3d, #081026) !important;
+  /* Deep navy-blue gradient */
+  border: 1.5px solid #d4af37 !important;
+  /* Premium luxury gold border */
   color: #ffffff !important;
   box-shadow: 0 20px 50px rgba(13, 30, 61, 0.6), 0 0 20px rgba(212, 175, 55, 0.15) !important;
 }
-.dark .aa-english-theme .about-quote-icon, .dark.aa-english-theme .about-quote-icon,
-.dark .aa-english-theme .about-quote-author, .dark.aa-english-theme .about-quote-author {
+
+.dark .aa-english-theme .about-quote-icon,
+.dark.aa-english-theme .about-quote-icon,
+.dark .aa-english-theme .about-quote-author,
+.dark.aa-english-theme .about-quote-author {
   color: #ffffff !important;
 }
 
 /* Location section dark overrides: clean blue glows instead of yellow clouds */
-.dark .aa-english-theme .login-location, .dark.aa-english-theme .login-location {
+.dark .aa-english-theme .login-location,
+.dark.aa-english-theme .login-location {
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgba(30, 64, 175, 0.1), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%) !important;
 }
-.dark .aa-english-theme .loc-bg-blob--a, .dark.aa-english-theme .loc-bg-blob--a {
+
+.dark .aa-english-theme .loc-bg-blob--a,
+.dark.aa-english-theme .loc-bg-blob--a {
   background: #3b82f6 !important;
   opacity: 0.2 !important;
 }
-.dark .aa-english-theme .loc-bg-blob--b, .dark.aa-english-theme .loc-bg-blob--b {
+
+.dark .aa-english-theme .loc-bg-blob--b,
+.dark.aa-english-theme .loc-bg-blob--b {
   background: #1e40af !important;
   opacity: 0.15 !important;
 }
 
 /* Prevent blue-to-gold text and icon gradients (avoids muddy green transitions) */
-.dark .aa-english-theme .section-heading, .dark.aa-english-theme .section-heading,
-.dark .aa-english-theme h1, .dark.aa-english-theme h1,
-.dark .aa-english-theme h2, .dark.aa-english-theme h2 {
-  background: linear-gradient(135deg, #ffd700, #d4af37) !important; /* Pure gold text gradient */
+.dark .aa-english-theme .section-heading,
+.dark.aa-english-theme .section-heading,
+.dark .aa-english-theme h1,
+.dark.aa-english-theme h1,
+.dark .aa-english-theme h2,
+.dark.aa-english-theme h2 {
+  background: linear-gradient(135deg, #ffd700, #d4af37) !important;
+  /* Pure gold text gradient */
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
 }
 
 /* Feature & Location Icons: Deep blue gradient with gold border (always active, no muddy green) */
-.dark .aa-english-theme .feature-icon, .dark.aa-english-theme .feature-icon,
-.dark .aa-english-theme .location-info-icon, .dark.aa-english-theme .location-info-icon {
-  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Deep blue-to-blue gradient */
-  color: #ffd700 !important; /* Pure gold icon */
-  border: 1px solid #ffd700 !important; /* Gold border trim */
+.dark .aa-english-theme .feature-icon,
+.dark.aa-english-theme .feature-icon,
+.dark .aa-english-theme .location-info-icon,
+.dark.aa-english-theme .location-info-icon {
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+  /* Deep blue-to-blue gradient */
+  color: #ffd700 !important;
+  /* Pure gold icon */
+  border: 1px solid #ffd700 !important;
+  /* Gold border trim */
 }
 
 /* Maintain active style on hover */
-.dark .aa-english-theme .feature-card:hover .feature-icon, .dark.aa-english-theme .feature-card:hover .feature-icon,
-.dark .aa-english-theme .location-info-card:hover .location-info-icon, .dark.aa-english-theme .location-info-card:hover .location-info-icon {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Slightly brighter blue gradient */
+.dark .aa-english-theme .feature-card:hover .feature-icon,
+.dark.aa-english-theme .feature-card:hover .feature-icon,
+.dark .aa-english-theme .location-info-card:hover .location-info-icon,
+.dark.aa-english-theme .location-info-card:hover .location-info-icon {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  /* Slightly brighter blue gradient */
   color: #ffd700 !important;
   border-color: #ffd700 !important;
 }
 
 /* Dark Mode Step Numbers: Clean blue circles (no cyan-gold mix) */
-.dark .aa-english-theme .step-number, .dark.aa-english-theme .step-number {
+.dark .aa-english-theme .step-number,
+.dark.aa-english-theme .step-number {
   background: linear-gradient(135deg, rgba(30, 58, 138, 0.2), rgba(59, 130, 246, 0.15)) !important;
   border: 2px solid rgba(59, 130, 246, 0.3) !important;
   color: #ffffff !important;
   text-shadow: 0 0 10px rgba(59, 130, 246, 0.3) !important;
 }
-.dark .aa-english-theme .step-card:hover .step-number, .dark.aa-english-theme .step-card:hover .step-number {
+
+.dark .aa-english-theme .step-card:hover .step-number,
+.dark.aa-english-theme .step-card:hover .step-number {
   background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
   border-color: #ffd700 !important;
   color: #ffffff !important;
   text-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
 }
 
-.dark .aa-english-theme .location-directions-btn--ghost, .dark.aa-english-theme .location-directions-btn--ghost {
+.dark .aa-english-theme .location-directions-btn--ghost,
+.dark.aa-english-theme .location-directions-btn--ghost {
   background: transparent !important;
   border: 1px solid rgba(59, 130, 246, 0.4) !important;
   color: #ffd700 !important;
 }
-.dark .aa-english-theme .location-directions-btn--ghost:hover, .dark.aa-english-theme .location-directions-btn--ghost:hover {
+
+.dark .aa-english-theme .location-directions-btn--ghost:hover,
+.dark.aa-english-theme .location-directions-btn--ghost:hover {
   background: rgba(59, 130, 246, 0.1) !important;
   border-color: #ffd700 !important;
   color: #ffd700 !important;
 }
 
 /* Dark Mode Location Pointer: Styled deep blue gradient with gold border */
-.dark .aa-english-theme .map-pin__dot, .dark.aa-english-theme .map-pin__dot {
+.dark .aa-english-theme .map-pin__dot,
+.dark.aa-english-theme .map-pin__dot {
   background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
   border: 2px solid #ffd700 !important;
   color: #ffd700 !important;
@@ -488,6 +560,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #ffffff !important;
   opacity: 1 !important;
 }
+
 .dark.aa-english-theme .auth-modal-close:hover,
 .dark .aa-english-theme .auth-modal-close:hover {
   background: rgba(255, 255, 255, 0.18) !important;
@@ -502,8 +575,9 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #ffd700 !important;
   opacity: 1 !important;
 }
-.dark.aa-english-theme .input-wrapper input:focus + i,
-.dark .aa-english-theme .input-wrapper input:focus + i,
+
+.dark.aa-english-theme .input-wrapper input:focus+i,
+.dark .aa-english-theme .input-wrapper input:focus+i,
 .dark.aa-english-theme .register-input-wrapper:focus-within i,
 .dark .aa-english-theme .register-input-wrapper:focus-within i {
   color: #3b82f6 !important;
@@ -517,6 +591,7 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
   color: #ffd700 !important;
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35) !important;
 }
+
 .dark.aa-english-theme .auth-modal-icon i,
 .dark .aa-english-theme .auth-modal-icon i {
   color: #ffd700 !important;
@@ -529,7 +604,8 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .dark .aa-english-theme select,
 .dark.aa-english-theme textarea,
 .dark .aa-english-theme textarea {
-  background-color: #101726 !important; /* Lighter navy surface */
+  background-color: #101726 !important;
+  /* Lighter navy surface */
   color: #f1f5f9 !important;
   border: 1.5px solid rgba(59, 130, 246, 0.22) !important;
 }
@@ -585,7 +661,8 @@ body:not(.dark).aa-english-theme .landing-package-card:hover {
 .dark .aa-english-theme .aa-chip-accent {
   background: rgba(59, 130, 246, 0.15) !important;
   border: 1px solid rgba(59, 130, 246, 0.3) !important;
-  color: #3b82f6 !important; /* Luminous blue accent text */
+  color: #3b82f6 !important;
+  /* Luminous blue accent text */
 }
 
 
@@ -693,6 +770,7 @@ body.aa-english-theme,
     radial-gradient(circle at 10% 90%, rgba(30, 58, 138, 0.05) 0%, transparent 45%),
     radial-gradient(circle at 90% 10%, rgba(212, 175, 55, 0.05) 0%, transparent 45%) !important;
 }
+
 .dark.aa-english-theme .videos-page::before,
 .dark .aa-english-theme .videos-page::before {
   background:
@@ -721,8 +799,10 @@ body.aa-english-theme,
 .aa-english-theme .vr-header-icon,
 .aa-english-theme .vr-modal-icon-wrap,
 .aa-english-theme .vr-card-icon-wrap {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
-  border: 1px solid #d4af37 !important; /* Gold border trim for premium feel */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  /* Premium navy-to-blue gradient */
+  border: 1px solid #d4af37 !important;
+  /* Gold border trim for premium feel */
   box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25) !important;
 }
 
@@ -756,14 +836,15 @@ body.aa-english-theme,
 
 /* User avatar glow override */
 .aa-english-theme .mh__avatar {
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--mh-bg-solid),
     0 0 0 3px rgba(30, 58, 138, 0.25),
     0 6px 16px -4px rgba(30, 58, 138, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
 }
+
 .aa-english-theme .mh__user:hover .mh__avatar {
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--mh-bg-solid),
     0 0 0 3px rgba(30, 58, 138, 0.45),
     0 8px 20px -4px rgba(30, 58, 138, 0.6),
@@ -811,8 +892,10 @@ body.aa-english-theme,
 .dark.aa-english-theme .vr-modal-icon-wrap,
 .dark .aa-english-theme .vr-card-icon-wrap,
 .dark.aa-english-theme .vr-card-icon-wrap {
-  background: linear-gradient(135deg, #1e40af, #3b82f6) !important; /* Dark mode luminous sapphire gradient */
-  border: 1px solid #ffd700 !important; /* Premium gold border */
+  background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
+  /* Dark mode luminous sapphire gradient */
+  border: 1px solid #ffd700 !important;
+  /* Premium gold border */
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35) !important;
 }
 
@@ -866,15 +949,16 @@ body.aa-english-theme,
 
 .dark .aa-english-theme .mh__avatar,
 .dark.aa-english-theme .mh__avatar {
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--mh-bg-solid),
     0 0 0 3px rgba(59, 130, 246, 0.35),
     0 6px 16px -4px rgba(59, 130, 246, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
 }
+
 .dark .aa-english-theme .mh__user:hover .mh__avatar,
 .dark.aa-english-theme .mh__user:hover .mh__avatar {
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--mh-bg-solid),
     0 0 0 3px rgba(59, 130, 246, 0.55),
     0 8px 20px -4px rgba(59, 130, 246, 0.8),
@@ -900,8 +984,10 @@ body.aa-english-theme,
 .aa-english-theme .exam-add-page .btn-save,
 .aa-english-theme .vr-print-btn,
 .aa-english-theme .vr-detail-btn {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important; /* Premium navy-to-blue gradient */
-  border: 1px solid #d4af37 !important; /* Gold border accent for premium feel */
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  /* Premium navy-to-blue gradient */
+  border: 1px solid #d4af37 !important;
+  /* Gold border accent for premium feel */
   color: #ffffff !important;
   box-shadow: 0 10px 24px rgba(30, 58, 138, 0.25) !important;
   text-shadow: none !important;
@@ -925,7 +1011,8 @@ body.aa-english-theme,
 .aa-english-theme .exam-add-page .btn-save:hover,
 .aa-english-theme .vr-print-btn:hover,
 .aa-english-theme .vr-detail-btn:hover {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Brighter shift on hover */
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  /* Brighter shift on hover */
   border-color: #ffd700 !important;
   box-shadow: 0 14px 30px rgba(30, 58, 138, 0.45), 0 0 10px rgba(212, 175, 55, 0.2) !important;
 }
@@ -968,7 +1055,8 @@ body.aa-english-theme,
 .dark .aa-english-theme .vr-print-btn,
 .dark .aa-english-theme .vr-detail-btn {
   background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
-  border: 1px solid #ffd700 !important; /* Gold border accent */
+  border: 1px solid #ffd700 !important;
+  /* Gold border accent */
   color: #ffffff !important;
   box-shadow: 0 10px 24px rgba(59, 130, 246, 0.35) !important;
 }
@@ -1018,6 +1106,7 @@ body.aa-english-theme,
 .aa-english-theme .hw-card-progress-fill {
   background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
 }
+
 .dark.aa-english-theme .hw-card-progress-fill,
 .dark .aa-english-theme .hw-card-progress-fill {
   background: linear-gradient(90deg, #1e40af, #3b82f6) !important;
@@ -1028,6 +1117,7 @@ body.aa-english-theme,
   background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
   box-shadow: 0 2px 8px rgba(30, 58, 138, 0.4) !important;
 }
+
 .dark.aa-english-theme .mh__link.is-active::after,
 .dark .aa-english-theme .mh__link.is-active::after {
   background: linear-gradient(90deg, #1e40af, #3b82f6) !important;
@@ -1039,6 +1129,7 @@ body.aa-english-theme,
 .aa-english-theme .report-table thead tr {
   background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
 }
+
 .dark.aa-english-theme .vr-table thead tr,
 .dark .aa-english-theme .vr-table thead tr,
 .dark.aa-english-theme .report-table thead tr,
@@ -1046,3 +1137,41 @@ body.aa-english-theme,
   background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
 }
 
+/* Hero Headline Styling overrides for English theme (matches brand logo typography) */
+.aa-english-theme .aa-h1 {
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-weight: 800 !important;
+  text-transform: none !important;
+  line-height: 0.85 !important;
+}
+
+body:not(.dark).aa-english-theme .aa-h1 {
+  background: none !important;
+  -webkit-text-fill-color: #1e3a8a !important;
+  color: #1e3a8a !important;
+}
+
+.dark.aa-english-theme .aa-h1,
+.dark .aa-english-theme .aa-h1 {
+  background: none !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.aa-english-theme .aa-h1-grad {
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-weight: 300 !important;
+  font-size: 0.6em !important;
+  display: inline-block !important;
+  margin-left: 2.2em !important;
+  margin-top: -0.48em !important;
+  padding-bottom: 0.25em !important;
+  margin-bottom: -0.25em !important;
+  letter-spacing: 0.16em !important;
+  background: #c58722 !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  text-shadow: none !important;
+}
