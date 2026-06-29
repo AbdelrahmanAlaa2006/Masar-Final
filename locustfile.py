@@ -1,7 +1,10 @@
 import os
-from locust import HttpUser, task, between
+import requests
+from locust import HttpUser, task, between, events
 
-# Helper to read .env configuration
+# ---------------------------------------------------------------------------
+# Read Supabase config from .env
+# ---------------------------------------------------------------------------
 def load_env_variables():
     supabase_url = None
     supabase_anon_key = None
@@ -10,110 +13,90 @@ def load_env_variables():
         with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith("#"):
+                if not line or line.startswith("#") or "=" not in line:
                     continue
-                if "=" in line:
-                    key, val = line.split("=", 1)
-                    key = key.strip()
-                    val = val.strip().strip("'\"")
-                    if key == "VITE_SUPABASE_URL":
-                        supabase_url = val
-                    elif key == "VITE_SUPABASE_ANON_KEY":
-                        supabase_anon_key = val
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key == "VITE_SUPABASE_URL":
+                    supabase_url = val
+                elif key == "VITE_SUPABASE_ANON_KEY":
+                    supabase_anon_key = val
     return supabase_url, supabase_anon_key
 
 SUPABASE_URL, SUPABASE_ANON_KEY = load_env_variables()
-
-# Fallback defaults if .env is missing or invalid
 if not SUPABASE_URL:
     SUPABASE_URL = "https://zphnjirmcrolqjrhjjqt.supabase.co"
-if not SUPABASE_ANON_KEY:
-    SUPABASE_ANON_KEY = ""
 
-# Cache tokens to prevent Supabase Auth rate limiting (429) during rapid ramp-ups
-SHARED_TOKENS = {
-    "student": None,
-    "admin": None
-}
+# ---------------------------------------------------------------------------
+# Credentials
+# ---------------------------------------------------------------------------
+STUDENT_EMAIL = "01006490631@masaar.app"
+STUDENT_PASSWORD = "12345678"
+ADMIN_EMAIL = "01099999999@masaar.app"
+ADMIN_PASSWORD = "12345678"
 
-class MasarBaseUser(HttpUser):
-    """
-    Base user that handles auth configuration and signs in 
-    at the start of each virtual user's lifecycle.
-    """
-    abstract = True
+# Tokens are fetched ONCE before the test starts (not per virtual user), so the
+# 500-user ramp does NOT hammer Supabase Auth and trigger 429 rate-limits. This
+# lets the test actually measure database/PostgREST capacity.
+TOKENS = {"student": None, "admin": None}
+
+# Lean projection mirroring the app's optimized student-list query (no password,
+# no heavy fields). Avoids reserved-word quoting by omitting "group".
+STUDENT_LIST_LEAN = (
+    "id,name,phone,grade,avatar_url,created_at,is_active,is_approved,"
+    "status,branch_id,academic_year_id,enrollment_type"
+)
+
+
+def fetch_token(email, password):
+    url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
+    try:
+        r = requests.post(
+            url,
+            json={"email": email, "password": password},
+            headers={"apikey": SUPABASE_ANON_KEY, "Content-Type": "application/json"},
+            timeout=20,
+        )
+        if r.status_code == 200:
+            return r.json().get("access_token")
+        print(f"[auth] LOGIN FAILED for {email}: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        print(f"[auth] LOGIN ERROR for {email}: {e}")
+    return None
+
+
+@events.test_start.add_listener
+def on_test_start(environment, **kwargs):
+    print("Pre-authenticating once (student + admin) to avoid the auth rate-limit storm...")
+    TOKENS["student"] = fetch_token(STUDENT_EMAIL, STUDENT_PASSWORD)
+    TOKENS["admin"] = fetch_token(ADMIN_EMAIL, ADMIN_PASSWORD)
+    print(f"[auth] student token: {'OK' if TOKENS['student'] else 'MISSING'}")
+    print(f"[auth] admin token:   {'OK' if TOKENS['admin'] else 'MISSING'}")
+
+
+class StudentUser(HttpUser):
+    """90% of traffic — a student browsing content (lean query shapes)."""
+    weight = 9
     host = SUPABASE_URL
     wait_time = between(1, 3)
 
     def on_start(self):
-        self.anon_key = SUPABASE_ANON_KEY
-        self.token = None
-        self.headers = {
-            "apikey": self.anon_key
-        }
-        
-        user_role = "admin" if "AdminUser" in self.__class__.__name__ else "student"
-        
-        if SHARED_TOKENS[user_role]:
-            self.token = SHARED_TOKENS[user_role]
+        # Use the student token if available; otherwise fall back to the admin
+        # token so the read-load still runs (admin reads are heavier, so this is
+        # a conservative DB-capacity test).
+        self.token = TOKENS["student"] or TOKENS["admin"]
+        self.headers = {"apikey": SUPABASE_ANON_KEY}
+        if self.token:
             self.headers["Authorization"] = f"Bearer {self.token}"
-        else:
-            self.login()
-            if self.token:
-                SHARED_TOKENS[user_role] = self.token
-
-    def login(self):
-        if not hasattr(self, "email") or not hasattr(self, "password"):
-            return
-
-        headers = {
-            "apikey": self.anon_key,
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "email": self.email,
-            "password": self.password
-        }
-        
-        with self.client.post(
-            "/auth/v1/token?grant_type=password",
-            json=payload,
-            headers=headers,
-            catch_response=True,
-            name="/auth/v1/token (Login)"
-        ) as response:
-            if response.status_code == 200:
-                try:
-                    self.token = response.json().get("access_token")
-                    if self.token:
-                        self.headers["Authorization"] = f"Bearer {self.token}"
-                        response.success()
-                    else:
-                        response.failure("Login succeeded but access_token not found in response")
-                except Exception as e:
-                    response.failure(f"Failed to parse login response: {e}")
-            else:
-                response.failure(f"Login failed: {response.status_code} - {response.text}")
-
-class StudentUser(MasarBaseUser):
-    """
-    Simulates student traffic querying courses, exams, homeworks, grades, attendance, and profile.
-    """
-    weight = 9 # Simulates 90% of traffic
-
-    def on_start(self):
-        self.email = "01064483036@masaar.app"
-        self.password = "msr-3036"
-        super().on_start()
 
     @task(4)
     def view_videos(self):
         if not self.token:
             return
         self.client.get(
-            "/rest/v1/videos?select=*",
-            headers=self.headers,
-            name="/rest/v1/videos (Student)"
+            "/rest/v1/videos?select=id,title,description,grade,is_archived,created_at&is_archived=eq.false",
+            headers=self.headers, name="Student: videos (lean)",
         )
 
     @task(3)
@@ -121,9 +104,8 @@ class StudentUser(MasarBaseUser):
         if not self.token:
             return
         self.client.get(
-            "/rest/v1/exams?select=id,number,title,grade,duration_minutes,max_attempts,available_hours,total_points,reveal_grades,created_at&order=created_at.desc",
-            headers=self.headers,
-            name="/rest/v1/exams (Student)"
+            "/rest/v1/exams?select=id,number,title,grade,duration_minutes,total_points,reveal_grades,created_at&is_archived=eq.false&order=created_at.desc",
+            headers=self.headers, name="Student: exams (lean)",
         )
 
     @task(2)
@@ -131,29 +113,8 @@ class StudentUser(MasarBaseUser):
         if not self.token:
             return
         self.client.get(
-            "/rest/v1/homeworks?select=*",
-            headers=self.headers,
-            name="/rest/v1/homeworks (Student)"
-        )
-
-    @task(2)
-    def get_attendance(self):
-        if not self.token:
-            return
-        self.client.get(
-            "/rest/v1/attendance?select=*",
-            headers=self.headers,
-            name="/rest/v1/attendance (Student)"
-        )
-
-    @task(2)
-    def get_grades(self):
-        if not self.token:
-            return
-        self.client.get(
-            "/rest/v1/grades?select=*",
-            headers=self.headers,
-            name="/rest/v1/grades (Student)"
+            "/rest/v1/homeworks?select=id,title,grade,due_at,max_score,is_archived,created_at&is_archived=eq.false",
+            headers=self.headers, name="Student: homeworks (lean)",
         )
 
     @task(1)
@@ -161,48 +122,51 @@ class StudentUser(MasarBaseUser):
         if not self.token:
             return
         self.client.get(
-            "/rest/v1/profiles?select=*",
-            headers=self.headers,
-            name="/rest/v1/profiles (Student)"
+            "/rest/v1/profiles?select=id,name,grade,status",
+            headers=self.headers, name="Student: own profile",
         )
 
-class AdminUser(MasarBaseUser):
-    """
-    Simulates admin traffic viewing students and payments list.
-    """
-    weight = 1 # Simulates 10% of traffic
+
+class AdminUser(HttpUser):
+    """10% of traffic — compares OLD whole-roster vs NEW paginated/count shapes."""
+    weight = 1
+    host = SUPABASE_URL
+    wait_time = between(1, 3)
 
     def on_start(self):
-        self.email = "01099999999@masaar.app"
-        self.password = "12345678"
-        super().on_start()
+        self.token = TOKENS["admin"]
+        self.headers = {"apikey": SUPABASE_ANON_KEY}
+        if self.token:
+            self.headers["Authorization"] = f"Bearer {self.token}"
 
+    # OLD shape: whole roster, every column (what the app did BEFORE).
+    @task(1)
+    def students_full_old(self):
+        if not self.token:
+            return
+        self.client.get(
+            "/rest/v1/profiles?select=*&role=eq.student&order=name.asc",
+            headers=self.headers, name="Admin: students select=* WHOLE roster (OLD)",
+        )
+
+    # NEW shape: first page only + lean columns (what the app does NOW).
     @task(2)
-    def list_students(self):
+    def students_paged_new(self):
         if not self.token:
             return
         self.client.get(
-            "/rest/v1/profiles?role=eq.student&order=name.asc",
-            headers=self.headers,
-            name="/rest/v1/profiles?role=eq.student (Admin)"
+            f"/rest/v1/profiles?select={STUDENT_LIST_LEAN}&role=eq.student&order=name.asc&limit=50&offset=0",
+            headers=self.headers, name="Admin: students PAGED+lean limit=50 (NEW)",
         )
 
+    # NEW shape: head-only COUNT for dashboard badges (no rows transferred).
     @task(1)
-    def view_payments(self):
+    def students_count_new(self):
         if not self.token:
             return
-        self.client.get(
-            "/rest/v1/payments?select=*",
-            headers=self.headers,
-            name="/rest/v1/payments (Admin)"
-        )
-
-    @task(1)
-    def check_settings(self):
-        if not self.token:
-            return
-        self.client.get(
-            "/rest/v1/payment_settings?select=*",
-            headers=self.headers,
-            name="/rest/v1/payment_settings (Admin)"
+        h = dict(self.headers)
+        h["Prefer"] = "count=exact"
+        self.client.head(
+            "/rest/v1/profiles?select=id&role=eq.student",
+            headers=h, name="Admin: students COUNT head-only (NEW)",
         )

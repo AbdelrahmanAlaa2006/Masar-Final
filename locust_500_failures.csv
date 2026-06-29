@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,/auth/v1/token (Login),"CatchResponseError('Login failed: 429 - {""code"":429,""error_code"":""over_request_rate_limit"",""msg"":""Request rate limit reached""}')",408,2026-06-29T21:42:56Z,2026-06-29T21:43:22Z
+POST,/auth/v1/token (Login),"CatchResponseError('Login failed: 400 - {""code"":400,""error_code"":""invalid_credentials"",""msg"":""Invalid login credentials""}')",43,2026-06-29T21:42:55Z,2026-06-29T21:43:26Z

@@ -1,0 +1,7 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,Student: videos (lean),"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",9,2026-06-29T22:12:08Z,2026-06-29T22:13:14Z
+GET,Student: own profile,"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",5,2026-06-29T22:12:01Z,2026-06-29T22:12:48Z
+GET,Admin: students select=* WHOLE roster (OLD),"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",2,2026-06-29T22:13:06Z,2026-06-29T22:13:14Z
+GET,Student: homeworks (lean),"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",9,2026-06-29T22:12:09Z,2026-06-29T22:13:07Z
+GET,Admin: students PAGED+lean limit=50 (NEW),"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",2,2026-06-29T22:12:40Z,2026-06-29T22:12:45Z
+GET,Student: exams (lean),"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",10,2026-06-29T22:12:11Z,2026-06-29T22:13:15Z
