@@ -1,31 +1,14 @@
 import { supabase } from './supabase'
+import { getViewerContext } from './viewerContext'
 
 // List all videos (admins see all, students see only their grade via RLS) with
 // their parts embedded. Parts are sorted by part_index. We still select the
 // legacy `youtube_url` column so older rows keep working; new writes put the
 // id in `youtube_id`.
 export async function listVideos() {
-  const { data: { user } } = await supabase.auth.getUser()
-  let isAdmin = false
-  let isStudent = false
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile) {
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        isAdmin = true
-      } else if (profile.role === 'assistant') {
-        const { data: adminData } = await supabase
-          .from('tenant_admins')
-          .select('permissions')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('videos')) {
-          isAdmin = true
-        }
-      }
-      isStudent = profile.role === 'student'
-    }
-  }
+  // Shared, cached viewer resolution (one auth/role lookup across all lists).
+  const { userId, isStaffAdmin, isStudent, permissions } = await getViewerContext()
+  const isAdmin = isStaffAdmin || permissions.includes('videos')
 
   let query = supabase
     .from('videos')
@@ -49,9 +32,9 @@ export async function listVideos() {
   let rows = data || []
 
   // Package-level gating for student role
-  if (user && isStudent) {
+  if (userId && isStudent) {
     const { listStudentContentAccess } = await import('./packagesApi')
-    const access = await listStudentContentAccess(user.id)
+    const access = await listStudentContentAccess(userId)
     const allowedVideoIds = new Set(access.filter(a => a.content_type === 'video').map(a => a.content_id))
     rows = rows.filter(v => v.grade !== 'packages' || allowedVideoIds.has(v.id))
   }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { invalidateAll } from '../utils/cache'
+import { invalidateViewerContext } from '@backend/viewerContext'
 import { useTenant } from './TenantContext'
 import { supabase } from '@backend/supabase'
 
@@ -89,6 +90,9 @@ export function AuthProvider({ children }) {
   const login = useCallback((token, userData) => {
     sessionStorage.setItem('masar-token', token)
     sessionStorage.setItem('masar-user', JSON.stringify(userData))
+    // Drop any stale (logged-out) viewer context so content gating resolves
+    // for the new user immediately.
+    invalidateViewerContext()
     setUser(userData)
     setIsLoggedIn(true)
     // Run refresh in background to populate permissions, parent_phone, qr_token

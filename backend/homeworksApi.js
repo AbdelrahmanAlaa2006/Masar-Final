@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getViewerContext } from './viewerContext'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 // UI grade id  <->  DB grade enum  ('first-prep'/...)
@@ -36,27 +37,9 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 // hint anyway. If you want the key hidden, move it to a server-only view
 // or strip it on the client. (For now we expose it so admin UI can edit.)
 export async function listHomeworks() {
-  const { data: { user } } = await supabase.auth.getUser()
-  let isAdmin = false
-  let isStudent = false
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile) {
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        isAdmin = true
-      } else if (profile.role === 'assistant') {
-        const { data: adminData } = await supabase
-          .from('tenant_admins')
-          .select('permissions')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('homework')) {
-          isAdmin = true
-        }
-      }
-      isStudent = profile.role === 'student'
-    }
-  }
+  // Shared, cached viewer resolution (one auth/role lookup across all lists).
+  const { userId, isStaffAdmin, isStudent, permissions } = await getViewerContext()
+  const isAdmin = isStaffAdmin || permissions.includes('homework')
 
   let query = supabase
     .from('homeworks')
@@ -74,9 +57,9 @@ export async function listHomeworks() {
   let rows = data || []
 
   // Package-level gating for student role
-  if (user && isStudent) {
+  if (userId && isStudent) {
     const { listStudentContentAccess } = await import('./packagesApi')
-    const access = await listStudentContentAccess(user.id)
+    const access = await listStudentContentAccess(userId)
     const allowedHomeworkIds = new Set(access.filter(a => a.content_type === 'homework').map(a => a.content_id))
     rows = rows.filter(h => h.grade !== 'packages' || allowedHomeworkIds.has(h.id))
   }

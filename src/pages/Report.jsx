@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { listStudents } from '@backend/profilesApi'
-import { cached, LIST_TTL } from '../utils/cache'
+import { searchStudents } from '@backend/profilesApi'
 import './Report.css'
 
 import { GRADE_LABEL } from './ControlPanel/shared'
@@ -31,21 +30,23 @@ export default function Report() {
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [studentsError, setStudentsError] = useState('')
 
+  // Debounced server-side search — only matching students are fetched, never
+  // the whole roster. Empty input shows a small default suggestion list.
   useEffect(() => {
     if (isStudent) return           // students don't need the roster
     let cancelled = false
-    ;(async () => {
+    const timer = setTimeout(async () => {
       try {
         setStudentsLoading(true)
         setStudentsError('')
-        const rows = await cached('students', LIST_TTL, listStudents)
+        const rows = await searchStudents(studentInput, studentInput.trim() ? 12 : 8)
         if (cancelled) return
         setAllStudents(rows.map((r) => ({
           id:         r.id,
           name:       r.name || '—',
           phone:      r.phone || '',
           prep:       GRADE_LABEL[r.grade] || '—',
-          group:      '',           // no groups in the current schema
+          group:      r.group || '',
           avatar_url: r.avatar_url,
         })))
       } catch (e) {
@@ -53,9 +54,9 @@ export default function Report() {
       } finally {
         if (!cancelled) setStudentsLoading(false)
       }
-    })()
-    return () => { cancelled = true }
-  }, [isStudent])
+    }, 300)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [isStudent, studentInput])
 
   /* close on outside click */
   useEffect(() => {

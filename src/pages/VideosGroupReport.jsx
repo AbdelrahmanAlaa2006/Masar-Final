@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './VideosGroupReport.css'
-import { listStudents } from '@backend/profilesApi'
+import { listStudentsByGrade } from '@backend/profilesApi'
 import { listVideos } from '@backend/videosApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
@@ -35,12 +35,9 @@ export default function VideosGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const [s, v] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
-          cached('videos', LIST_TTL, listVideos),
-        ])
+        // Load only the videos list upfront. Students load lazily per grade.
+        const v = await cached('videos', LIST_TTL, listVideos)
         if (cancelled) return
-        setStudents(s)
         setVideos(v)
       } catch (e) {
         if (!cancelled) setLoadError(e.message || 'تعذر تحميل البيانات')
@@ -51,11 +48,27 @@ export default function VideosGroupReport() {
     return () => { cancelled = true }
   }, [])
 
-  // Grades that actually have students enrolled, in fixed order.
+  // Grade chips come from grades that have videos (you can only report on a
+  // grade that has content). Avoids scanning the whole student roster.
   const availableGrades = useMemo(() => {
-    const set = new Set(students.map(s => s.grade).filter(Boolean))
+    const set = new Set(videos.map(v => v.grade).filter(Boolean))
     return GRADE_ORDER.filter(g => set.has(g))
-  }, [students])
+  }, [videos])
+
+  // Load this grade's students only (lazy, scoped) when a grade is selected.
+  useEffect(() => {
+    if (!currentGrade) { setStudents([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await cached(`students:grade:${currentGrade}`, LIST_TTL, () => listStudentsByGrade(currentGrade))
+        if (!cancelled) setStudents(rows)
+      } catch (e) {
+        if (!cancelled) setLoadError(e.message || 'تعذر تحميل الطلاب')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentGrade])
 
   const videosForGrade = useMemo(
     () => videos.filter(v => v.grade === currentGrade),

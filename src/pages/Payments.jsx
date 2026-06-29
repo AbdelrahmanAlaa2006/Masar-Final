@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment } from '@backend/paymentsApi'
-import { listStudents } from '@backend/profilesApi'
+import { searchStudents } from '@backend/profilesApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
 import { invalidate as invalidateCache } from '../utils/cache'
@@ -790,19 +790,28 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     ]
   }, [])
 
-  // Fetch students for manual logging
-  const fetchStudents = async () => {
+  // Debounced server-side student search for the cash-payment picker — only
+  // matches are fetched (never the whole roster), and only while the modal is
+  // open. Empty query shows a small default list.
+  useEffect(() => {
+    if (!showCashModal) return
+    let cancelled = false
     setLoadingStudents(true)
-    try {
-      const data = await listStudents()
-      setStudentsList(data)
-    } catch (err) {
-      console.error('Failed to fetch students:', err)
-      notify('تعذر تحميل قائمة الطلاب', 'danger')
-    } finally {
-      setLoadingStudents(false)
-    }
-  }
+    const t = setTimeout(async () => {
+      try {
+        const rows = await searchStudents(studentSearchQuery, 20)
+        if (!cancelled) setStudentsList(rows)
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to search students:', err)
+          notify('تعذر تحميل قائمة الطلاب', 'danger')
+        }
+      } finally {
+        if (!cancelled) setLoadingStudents(false)
+      }
+    }, 300)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [showCashModal, studentSearchQuery])
 
   const handleOpenCashModal = () => {
     setCashStudentId('')
@@ -814,7 +823,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       setCashPackageName('اشتراك شهر أكتوبر')
     }
     setShowCashModal(true)
-    fetchStudents()
+    // The student list loads via the debounced search effect (keyed on the
+    // open modal + search query).
   }
 
   const handleSaveCash = async (e) => {
@@ -847,15 +857,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     }
   }
 
-  const filteredStudents = useMemo(() => {
-    if (!studentSearchQuery.trim()) return studentsList
-    const q = studentSearchQuery.toLowerCase().trim()
-    return studentsList.filter(s => {
-      const name = s.name?.toLowerCase() || ''
-      const phone = s.phone || ''
-      return name.includes(q) || phone.includes(q)
-    })
-  }, [studentsList, studentSearchQuery])
+  // Results are already server-filtered by the search effect above.
+  const filteredStudents = studentsList
 
   // Filter payments by date range first
   const paymentsFilteredByDate = useMemo(() => {

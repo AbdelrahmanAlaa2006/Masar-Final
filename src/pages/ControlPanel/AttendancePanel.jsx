@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { listStudents, getStudentIdentityByQr } from '@backend/profilesApi'
+import { listStudentsByGrade, getStudentIdentityByQr } from '@backend/profilesApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { listGroups, bulkTransferStudents } from '@backend/groupsApi'
@@ -153,14 +153,14 @@ export default function AttendancePanel({ onBack, flash }) {
     ;(async () => {
       try {
         const [allStudents, sessionsList] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
+          cached(`students:grade:${grade}`, LIST_TTL, () => listStudentsByGrade(grade)),
           listAttendanceSessions(grade, selectedBranchId || null)
         ])
         if (!active) return
 
-        // Filter students by grade, branch, academic year (include students with no year assigned)
-        const filtered = allStudents.filter(s => 
-          s.grade === grade &&
+        // Students are already scoped to this grade server-side; apply the
+        // remaining branch / academic-year / approval filters client-side.
+        const filtered = allStudents.filter(s =>
           s.is_approved &&
           (!selectedBranchId || s.branch_id === selectedBranchId) &&
           (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId || !s.academic_year_id)
@@ -523,11 +523,10 @@ export default function AttendancePanel({ onBack, flash }) {
       setSelectedStudentIds([])
       setTransferTargetGroupId('')
       
-      // Refresh student list cache
-      invalidateCache('students')
-      const allStudents = await listStudents()
-      const filtered = allStudents.filter(s => 
-        s.grade === grade &&
+      // Refresh student list cache (this grade only)
+      invalidateCache(`students:grade:${grade}`)
+      const allStudents = await listStudentsByGrade(grade)
+      const filtered = allStudents.filter(s =>
         s.is_approved &&
         (!selectedBranchId || s.branch_id === selectedBranchId) &&
         (!selectedAcademicYearId || s.academic_year_id === selectedAcademicYearId || !s.academic_year_id)

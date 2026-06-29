@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { listStudents } from '@backend/profilesApi'
+import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation } from '@backend/gradesApi'
 import { listGroups } from '@backend/groupsApi'
@@ -70,13 +70,14 @@ export default function GradesPanel({ onBack, flash }) {
     ;(async () => {
       try {
         const [allStudents, allHomeworks, allGroups] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
+          cached(`students:grade:${grade}`, LIST_TTL, () => listStudentsByGrade(grade)),
           cached('homeworks', LIST_TTL, listHomeworks),
           listGroups()
         ])
         if (!active) return
 
-        const filtered = allStudents.filter(s => s.grade === grade && s.is_approved)
+        // Already scoped to this grade server-side; keep the approval filter.
+        const filtered = allStudents.filter(s => s.is_approved)
         setStudents(filtered)
 
         const filteredGroups = allGroups.filter(g => g.grade === grade)

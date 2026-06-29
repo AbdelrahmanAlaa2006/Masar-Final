@@ -107,13 +107,13 @@ export default function ControlPanelIndex() {
     let cancelled = false
       ; (async () => {
         try {
-          const [s, v, e] = await Promise.all([
-            cached('students', LIST_TTL, listStudents),
+          // The full student roster is NOT loaded here — only AttemptsPanel
+          // needs it, and it's loaded lazily when that sub-tab opens (below).
+          const [v, e] = await Promise.all([
             cached('videos', LIST_TTL, listVideos),
             cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
           ])
           if (cancelled) return
-          setStudents(s)
           setVideos(v)
           setExams(e)
 
@@ -153,6 +153,23 @@ export default function ControlPanelIndex() {
       })()
     return () => { cancelled = true }
   }, [])
+
+  // Lazily load the student roster only when the attempts sub-tab (the one
+  // screen here that needs it) is open — not on every control-panel open.
+  useEffect(() => {
+    const needsRoster = (section === 'videos' || section === 'exams') && subtab === 'attempts'
+    if (!needsRoster || students.length > 0) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const s = await cached('students', LIST_TTL, listStudents)
+        if (!cancelled) setStudents(s)
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load students for attempts panel:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [section, subtab])
 
   // Refresh pending reset requests count when section changes back to home
   useEffect(() => {
@@ -547,7 +564,7 @@ export default function ControlPanelIndex() {
             {/* Suspense wrapper for lazy loading individual components */}
             <Suspense fallback={<PanelLoader />}>
               {section === 'homeworks' && <HomeworkRevealPanel onBack={goHome} flash={flash} />}
-              {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} students={students} />}
+              {section === 'resets' && <ResetRequestsPanel onBack={goHome} flash={flash} />}
               {section === 'violations' && <DevToolsViolationsPanel onBack={goHome} flash={flash} />}
               {section === 'accounts' && <AccountsPanel onBack={goHome} flash={flash} />}
               {section === 'groups' && <GroupsPanel onBack={goHome} flash={flash} />}

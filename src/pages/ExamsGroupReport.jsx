@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import './ExamsGroupReport.css'
-import { listStudents } from '@backend/profilesApi'
+import { listStudentsByGrade } from '@backend/profilesApi'
 import { listExams } from '@backend/examsApi'
 import { supabase } from '@backend/supabase'
 import { cached, LIST_TTL } from '../utils/cache'
@@ -38,12 +38,10 @@ export default function ExamsGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const [s, e] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
-          cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
-        ])
+        // Load only the content list upfront (small). Students are loaded
+        // lazily, one grade at a time, after a grade is chosen.
+        const e = await cached('exams-lean', LIST_TTL, () => listExams({ lean: true }))
         if (cancelled) return
-        setStudents(s)
         setExams(e.filter(exam => (exam.exam_type || 'exam') === reportType))
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
@@ -54,10 +52,27 @@ export default function ExamsGroupReport() {
     return () => { cancelled = true }
   }, [reportType])
 
+  // Grade chips come from the grades that actually have exams — you can only
+  // report on a grade that has content anyway. Avoids scanning all students.
   const availableGrades = useMemo(() => {
-    const set = new Set(students.map(s => s.grade).filter(Boolean))
+    const set = new Set(exams.map(e => e.grade).filter(Boolean))
     return GRADE_ORDER.filter(g => set.has(g))
-  }, [students])
+  }, [exams])
+
+  // Load this grade's students only (lazy, scoped) when a grade is selected.
+  useEffect(() => {
+    if (!currentGrade) { setStudents([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await cached(`students:grade:${currentGrade}`, LIST_TTL, () => listStudentsByGrade(currentGrade))
+        if (!cancelled) setStudents(rows)
+      } catch (err) {
+        if (!cancelled) setLoadError(err.message || 'تعذر تحميل الطلاب')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentGrade])
 
   const examsForGrade = useMemo(
     () => exams.filter(e => e.grade === currentGrade),
@@ -113,22 +128,24 @@ export default function ExamsGroupReport() {
       setAllStudentsData([])
       setDisplayedStudents([])
     }
-  }, [currentExam, currentGrade, currentGroup])
+    // `students` is included so the report runs once this grade's students
+    // finish loading lazily (they may arrive after the exam is selected).
+  }, [currentExam, currentGrade, currentGroup, students])
 
   // Handle auto-preselection from router state (e.g. clicked notification)
   const initialLoadRef = useRef(false)
   useEffect(() => {
-    if (loading || exams.length === 0 || students.length === 0 || initialLoadRef.current) return
+    if (loading || exams.length === 0 || initialLoadRef.current) return
     const targetExamId = location.state?.examId
     if (targetExamId) {
       const exam = exams.find(e => e.id === targetExamId)
       if (exam) {
         initialLoadRef.current = true
-        setCurrentGrade(exam.grade)
+        setCurrentGrade(exam.grade)   // triggers the lazy student load
         setCurrentExam(exam.id)
       }
     }
-  }, [loading, exams, students, location.state])
+  }, [loading, exams, location.state])
 
   const loadReport = async (examId) => {
     const exam = exams.find(ex => ex.id === examId)

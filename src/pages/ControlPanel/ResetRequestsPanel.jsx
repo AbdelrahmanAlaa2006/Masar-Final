@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@backend/supabase'
+import { listStudentsByPhones } from '@backend/profilesApi'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../../utils/cache'
 import { initials } from './shared'
 
-export default function ResetRequestsPanel({ onBack, flash, students }) {
+export default function ResetRequestsPanel({ onBack, flash }) {
   const [requests, setRequests] = useState([])
+  // Only the students referenced by pending requests are loaded (by phone),
+  // keyed by normalized phone — never the whole roster.
+  const [studentsByPhone, setStudentsByPhone] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -31,6 +35,18 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
         }
         const data = await cached('password_reset_requests', LIST_TTL, fetchRequests)
         if (!cancelled) setRequests(data || [])
+
+        // Resolve only the students referenced by these requests (by phone).
+        const phones = [...new Set((data || []).map((r) => r.phone).filter(Boolean))]
+        if (phones.length > 0) {
+          const matched = await listStudentsByPhones(phones)
+          if (!cancelled) {
+            const clean = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
+            const map = {}
+            for (const s of matched) map[clean(s.phone)] = s
+            setStudentsByPhone(map)
+          }
+        }
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
       } finally {
@@ -208,7 +224,7 @@ export default function ResetRequestsPanel({ onBack, flash, students }) {
             // Find student matching phone (ignoring format variances)
             const getCleanPhone = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
             const reqPhoneClean = getCleanPhone(req.phone)
-            const studentMatch = students.find((s) => getCleanPhone(s.phone) === reqPhoneClean)
+            const studentMatch = studentsByPhone[reqPhoneClean]
             const currentPassword = tempPasswords[req.id] || studentMatch?.password || 'غير مسجلة (تمت إضافته يدويًا)'
             const isManualNoPassword = !studentMatch?.password && !tempPasswords[req.id]
 

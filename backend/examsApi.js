@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getViewerContext } from './viewerContext'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 // UI grade id ↔ DB enum
@@ -29,27 +30,9 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 // `questions` payload — useful for ControlPanel where only metadata is
 // needed (cuts payload by 10–100x for big exams).
 export async function listExams({ lean = false } = {}) {
-  const { data: { user } } = await supabase.auth.getUser()
-  let isAdmin = false
-  let isStudent = false
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile) {
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        isAdmin = true
-      } else if (profile.role === 'assistant') {
-        const { data: adminData } = await supabase
-          .from('tenant_admins')
-          .select('permissions')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('exams')) {
-          isAdmin = true
-        }
-      }
-      isStudent = profile.role === 'student'
-    }
-  }
+  // Shared, cached viewer resolution (one auth/role lookup across all lists).
+  const { userId, isStaffAdmin, isStudent, permissions } = await getViewerContext()
+  const isAdmin = isStaffAdmin || permissions.includes('exams')
 
   const cols = lean
     ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, exam_type, created_at, questions_count'
@@ -68,9 +51,9 @@ export async function listExams({ lean = false } = {}) {
   let rows = data || []
 
   // Package-level gating for student role
-  if (user && isStudent) {
+  if (userId && isStudent) {
     const { listStudentContentAccess } = await import('./packagesApi')
-    const access = await listStudentContentAccess(user.id)
+    const access = await listStudentContentAccess(userId)
     const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
     rows = rows.filter(e => e.grade !== 'packages' || allowedExamIds.has(e.id))
   }
@@ -99,17 +82,14 @@ export async function getExam(id) {
     .single()
   if (error) throw error
 
-  // Check packages gating
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile && profile.role === 'student' && data.grade === 'packages') {
-      const { listStudentContentAccess } = await import('./packagesApi')
-      const access = await listStudentContentAccess(user.id)
-      const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
-      if (!allowedExamIds.has(id)) {
-        throw new Error('This exam is locked inside a package you have not purchased.')
-      }
+  // Check packages gating (shared, cached viewer resolution)
+  const { userId, isStudent } = await getViewerContext()
+  if (userId && isStudent && data.grade === 'packages') {
+    const { listStudentContentAccess } = await import('./packagesApi')
+    const access = await listStudentContentAccess(userId)
+    const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+    if (!allowedExamIds.has(id)) {
+      throw new Error('This exam is locked inside a package you have not purchased.')
     }
   }
 

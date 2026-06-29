@@ -5,7 +5,7 @@ import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { useAuth } from '../contexts/AuthContext'
 import { cached, LIST_TTL } from '../utils/cache'
-import { listStudents } from '@backend/profilesApi'
+import { getStudentCount } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
 import './HomeDashboard.css'
 
@@ -90,17 +90,18 @@ function useContentStats({ role, grade }) {
           wrap(cached('homeworks', LIST_TTL, listHomeworks), 'homeworks'),
           wrap(cached('videos',    LIST_TTL, listVideos),    'videos'),
           wrap(cached('exams-lean', LIST_TTL, () => listExams({ lean: true })), 'exams'),
-          // Students aren't allowed to read other profiles → skip that.
+          // We only need the count here — a head-only COUNT query, not the
+          // whole roster. Students aren't allowed to read other profiles → skip.
           (role === 'admin' || role === 'assistant')
-            ? wrap(cached('students', LIST_TTL, listStudents), 'students')
-            : Promise.resolve({ ok: true, v: [] }),
+            ? wrap(cached('students-count', LIST_TTL, getStudentCount), 'students')
+            : Promise.resolve({ ok: true, v: 0 }),
         ])
         if (cancelled) return
 
         let homeworks = H.ok ? H.v : []
         let videos    = V.ok ? V.v : []
         let exams     = E.ok ? E.v : []
-        const students  = S.ok ? S.v : []
+        const studentCount = S.ok ? S.v : 0
 
         if (role === 'student' && grade) {
           homeworks = homeworks.filter(h => h.grade === grade)
@@ -109,7 +110,7 @@ function useContentStats({ role, grade }) {
         }
 
         setStats({
-          students:  students.length,
+          students:  studentCount,
           homeworks: homeworks.length,
           videos:    videos.length,
           exams:     exams.length,

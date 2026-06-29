@@ -107,6 +107,68 @@ export async function getStudentStatusCounts({ grade = 'all' } = {}) {
   }
 }
 
+// All students of a single grade (the "class" unit). Far smaller than the
+// whole roster — used by grade-scoped screens (attendance, grades, reports)
+// so they never pull the entire tenant. Lean projection, RLS/tenant-scoped.
+export async function listStudentsByGrade(grade) {
+  if (!grade) return []
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(STUDENT_LIST_COLUMNS)
+    .eq('role', 'student')
+    .eq('grade', grade)
+    .order('name', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+// Targeted lookup: students matching a set of phone numbers. Used by the
+// password-reset panel to resolve each PENDING request's student (and current
+// credentials) without loading the whole roster — far less data, and far less
+// password exposure than fetching every student. RLS/tenant-scoped.
+export async function listStudentsByPhones(phones = []) {
+  const list = [...new Set((phones || []).filter(Boolean))]
+  if (list.length === 0) return []
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, phone, password')
+    .eq('role', 'student')
+    .in('phone', list)
+  if (error) throw error
+  return data || []
+}
+
+// Total approved/active student count for dashboards — a head-only COUNT query
+// (no rows transferred), instead of loading the whole roster just to read
+// `.length`. RLS/tenant-scoped.
+export async function getStudentCount() {
+  const { count, error } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('role', 'student')
+  if (error) throw error
+  return count || 0
+}
+
+// Server-side typeahead for the global student picker (admin report jump).
+// Returns at most `limit` matches instead of loading the whole roster.
+export async function searchStudents(term = '', limit = 12) {
+  let query = supabase
+    .from('profiles')
+    .select('id, name, phone, grade, "group", avatar_url')
+    .eq('role', 'student')
+    .order('name', { ascending: true })
+    .limit(limit)
+  const t = (term || '').trim()
+  if (t) {
+    const safe = t.replace(/[%,()]/g, ' ')
+    query = query.or(`name.ilike.%${safe}%,phone.ilike.%${safe}%`)
+  }
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
 /* Fetch one profile (used to look up the target student's grade when an
    admin views "<student>/report"). RLS returns the row for the viewer
    themselves, or any row when the viewer is an admin. */

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { listStudents } from '@backend/profilesApi'
+import { searchStudents } from '@backend/profilesApi'
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
@@ -48,14 +48,13 @@ export default function StudentAccessPanel({ onBack, flash }) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [s, v, e, h, pkgs] = await Promise.all([
-        listStudents(),
+      // Students are no longer bulk-loaded — they're searched on demand below.
+      const [v, e, h, pkgs] = await Promise.all([
         listVideos(),
         listExams({ lean: true }),
         listHomeworks(),
         listPackages(tenantId)
       ])
-      setStudents(s)
       setVideos(v)
       setExams(e)
       setHomeworks(h)
@@ -135,14 +134,27 @@ export default function StudentAccessPanel({ onBack, flash }) {
     }
   }
 
-  // Filter students based on search query
+  // Debounced server-side student search — only matches are fetched, never the
+  // whole roster. Empty query shows no results (the picker prompts to search).
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q) { setStudents([]); return }
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const rows = await searchStudents(q, 15)
+        if (!cancelled) setStudents(rows)
+      } catch (err) {
+        if (!cancelled) console.error('student search failed:', err)
+      }
+    }, 300)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [searchQuery])
+
+  // Results to render (already server-filtered).
   const filteredStudents = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim()
-    if (!q) return []
-    return students.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      (s.phone && s.phone.includes(q))
-    ).slice(0, 15) // Limit results for snappy UI
+    if (!searchQuery.trim()) return []
+    return students.slice(0, 15)
   }, [students, searchQuery])
 
   // Filter items in catalog for form selection

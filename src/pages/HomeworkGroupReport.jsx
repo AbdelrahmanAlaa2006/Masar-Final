@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import './HomeworkGroupReport.css'
-import { listStudents } from '@backend/profilesApi'
+import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { cached, LIST_TTL } from '../utils/cache'
 
@@ -29,12 +29,9 @@ export default function HomeworkGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const [s, h] = await Promise.all([
-          cached('students', LIST_TTL, listStudents),
-          cached('homeworks', LIST_TTL, listHomeworks),
-        ])
+        // Load only the homeworks list upfront. Students load lazily per grade.
+        const h = await cached('homeworks', LIST_TTL, listHomeworks)
         if (cancelled) return
-        setStudents(s)
         setHomeworks(h)
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
@@ -45,10 +42,27 @@ export default function HomeworkGroupReport() {
     return () => { cancelled = true }
   }, [])
 
+  // Grade chips come from grades that have homeworks (you can only report on a
+  // grade that has content). Avoids scanning the whole student roster.
   const availableGrades = useMemo(() => {
-    const set = new Set(students.map(s => s.grade).filter(Boolean))
+    const set = new Set(homeworks.map(h => h.grade).filter(Boolean))
     return GRADE_ORDER.filter(g => set.has(g))
-  }, [students])
+  }, [homeworks])
+
+  // Load this grade's students only (lazy, scoped) when a grade is selected.
+  useEffect(() => {
+    if (!currentGrade) { setStudents([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await cached(`students:grade:${currentGrade}`, LIST_TTL, () => listStudentsByGrade(currentGrade))
+        if (!cancelled) setStudents(rows)
+      } catch (err) {
+        if (!cancelled) setLoadError(err.message || 'تعذر تحميل الطلاب')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentGrade])
 
   const hwForGrade = useMemo(
     () => homeworks.filter(h => h.grade === currentGrade),
@@ -93,7 +107,9 @@ export default function HomeworkGroupReport() {
     setCurrentHomework(hwId)
   }
 
-  // Centralized effect to trigger report loading when selections change
+  // Centralized effect to trigger report loading when selections change.
+  // `students` is included so the report runs once this grade's students
+  // finish loading lazily (they may arrive after the homework is selected).
   useEffect(() => {
     if (currentHomework && currentGrade) {
       loadReport(currentHomework)
@@ -101,22 +117,22 @@ export default function HomeworkGroupReport() {
       setAllStudentsData([])
       setDisplayedStudents([])
     }
-  }, [currentHomework, currentGrade, currentGroup])
+  }, [currentHomework, currentGrade, currentGroup, students])
 
   // Handle auto-preselection from router state (e.g. clicked notification)
   const initialLoadRef = useRef(false)
   useEffect(() => {
-    if (loading || homeworks.length === 0 || students.length === 0 || initialLoadRef.current) return
+    if (loading || homeworks.length === 0 || initialLoadRef.current) return
     const targetHwId = location.state?.homeworkId
     if (targetHwId) {
       const hw = homeworks.find(h => h.id === targetHwId)
       if (hw) {
         initialLoadRef.current = true
-        setCurrentGrade(hw.grade)
+        setCurrentGrade(hw.grade)   // triggers the lazy student load
         setCurrentHomework(hw.id)
       }
     }
-  }, [loading, homeworks, students, location.state])
+  }, [loading, homeworks, location.state])
 
   const loadReport = async (hwId) => {
     const hw = homeworks.find(h => h.id === hwId)

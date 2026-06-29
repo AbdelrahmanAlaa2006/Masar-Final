@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { listExams, updateExamAvailability } from '@backend/examsApi'
 import { listVideos, updateVideoAvailability } from '@backend/videosApi'
-import { listStudents } from '@backend/profilesApi'
+import { listStudentsByGrade, searchStudents } from '@backend/profilesApi'
 import {
   listOverridesForTarget,
   upsertOverride,
@@ -27,7 +27,9 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
 
   const [exams, setExams] = useState([])
   const [videos, setVideos] = useState([])
-  const [students, setStudents] = useState([])
+  const [students, setStudents] = useState([])   // students of the selected grade (for group chips)
+  const [studentResults, setStudentResults] = useState([]) // cross-grade search results (picker)
+  const [selectedStudentObj, setSelectedStudentObj] = useState(null) // the picked student, kept independently
   const [overrides, setOverrides] = useState(new Map())
 
   const [loading, setLoading] = useState(true)
@@ -35,17 +37,17 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
   const [query, setQuery] = useState('')
   const [studentQuery, setStudentQuery] = useState('')
 
+  // Exams + videos once (content lists are small).
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         setLoading(true)
-        const [ex, vd, st] = await Promise.all([
+        const [ex, vd] = await Promise.all([
           cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
           cached('videos', LIST_TTL, listVideos),
-          cached('students', LIST_TTL, listStudents),
         ])
-        if (!cancelled) { setExams(ex); setVideos(vd); setStudents(st) }
+        if (!cancelled) { setExams(ex); setVideos(vd) }
       } catch (e) {
         if (!cancelled) setError(e.message || 'تعذّر تحميل البيانات')
       } finally {
@@ -54,6 +56,38 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
     })()
     return () => { cancelled = true }
   }, [])
+
+  // Students of the selected grade only — used to derive group chips for the
+  // 'group' audience (GroupPickerCards filters by grade internally).
+  useEffect(() => {
+    if (!grade) { setStudents([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const st = await cached(`students:grade:${grade}`, LIST_TTL, () => listStudentsByGrade(grade))
+        if (!cancelled) setStudents(st)
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'تعذّر تحميل الطلاب')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [grade])
+
+  // Debounced cross-grade search for the 'specific student' picker — only
+  // matches are fetched, never the whole roster.
+  useEffect(() => {
+    if (audience !== 'student') return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const rows = await searchStudents(studentQuery, 50)
+        if (!cancelled) setStudentResults(rows)
+      } catch (e) {
+        if (!cancelled) console.error('student search failed:', e)
+      }
+    }, 300)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [audience, studentQuery])
 
   const itemType = tab === 'exams' ? 'exam' : 'video'
 
@@ -87,7 +121,7 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
   const targetGrade =
     audience === 'grade'   ? grade
     : audience === 'group' ? grade
-    : audience === 'student' ? (students.find((s) => s.id === studentId)?.grade || null)
+    : audience === 'student' ? (selectedStudentObj?.grade || null)
     : null
 
   const baseRows = useMemo(() => {
@@ -103,15 +137,10 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
     )
   }, [baseRows, query])
 
-  const filteredStudents = useMemo(() => {
-    const q = studentQuery.trim().toLowerCase()
-    if (!q) return students
-    return students.filter((s) =>
-      [s.name, s.phone, GRADE_LABEL[s.grade]].filter(Boolean).join(' ').toLowerCase().includes(q)
-    )
-  }, [students, studentQuery])
+  // Already server-filtered by the search effect above.
+  const filteredStudents = studentResults
 
-  const selectedStudent = students.find((s) => s.id === studentId) || null
+  const selectedStudent = selectedStudentObj
 
   const audienceLabel = () => {
     if (audience === 'all') return 'كل الطلاب'
@@ -257,7 +286,7 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
               <span style={{ flex: 1, fontWeight: 600 }}>
                 {selectedStudent.name} — {GRADE_LABEL[selectedStudent.grade] || '—'}
               </span>
-              <button className="cp-search-clear" type="button" onClick={() => setStudentId('')}>
+              <button className="cp-search-clear" type="button" onClick={() => { setStudentId(''); setSelectedStudentObj(null) }}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -274,7 +303,7 @@ export default function AvailabilityPanel({ onBack, flash, restrictTo }) {
               </div>
               <ul className="cp-items" style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto' }}>
                 {filteredStudents.slice(0, 50).map((s) => (
-                  <li key={s.id} className="cp-item" style={{ cursor: 'pointer' }} onClick={() => setStudentId(s.id)}>
+                  <li key={s.id} className="cp-item" style={{ cursor: 'pointer' }} onClick={() => { setStudentId(s.id); setSelectedStudentObj(s) }}>
                     <div className="cp-item-icon"><i className="fas fa-user"></i></div>
                     <div className="cp-item-body">
                       <div className="cp-item-title"><span>{s.name}</span></div>
