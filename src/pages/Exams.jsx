@@ -755,6 +755,7 @@ export default function Exams() {
       )}
     </div>
   )
+}
 
   return (
     <div className="exams-container">
@@ -844,8 +845,7 @@ export default function Exams() {
         />
       )}
     </div>
-    )
-  }
+  )
 }
 
 /* ── Inline edit modal for an existing exam (basic metadata only).
