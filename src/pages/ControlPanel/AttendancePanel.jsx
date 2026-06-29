@@ -11,7 +11,8 @@ import {
 } from '@backend/attendanceApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+// html5-qrcode (~200 kB) is loaded on demand when the camera scanner opens,
+// so it stays out of the panel's initial bundle.
 import { cached, LIST_TTL } from '../../utils/cache'
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
@@ -572,6 +573,8 @@ export default function AttendancePanel({ onBack, flash }) {
       setScannerError('')
       const startScanner = async () => {
         try {
+          const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
+          if (!showScanner) return
           const html5Qrcode = new Html5Qrcode("qr-camera-feed")
           html5QrcodeRef.current = html5Qrcode
           await html5Qrcode.start(

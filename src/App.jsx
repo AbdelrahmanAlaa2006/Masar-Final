@@ -39,6 +39,7 @@ import SeasonalDecor from './seasonal/SeasonalDecor'
 import './seasonal/seasonal.css'
 import './App.css'
 import DevToolsBlocker from './components/DevToolsBlocker'
+import ErrorBoundary from './components/ErrorBoundary'
 import { detectDevTools } from './utils/devtools'
 
 // SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
@@ -578,6 +579,7 @@ function AppContent() {
       {showHeaderFooter && <Header />}
 
       <div className="page-container">
+        <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
@@ -620,6 +622,7 @@ function AppContent() {
             <Route path="/public-report" element={<PublicReport />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </div>
 
       {showHeaderFooter && <Footer />}

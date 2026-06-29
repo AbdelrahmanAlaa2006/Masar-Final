@@ -13,6 +13,100 @@ export async function listStudents() {
   return data || []
 }
 
+/* ---------------------------------------------------------------------------
+   Scalable, server-side paginated student listing.
+   Additive — `listStudents()` above is intentionally left untouched so every
+   existing consumer keeps working. New screens (and the migrated AccountsPanel)
+   use these to avoid pulling the whole tenant roster into the browser.
+   RLS still scopes every query to the caller's tenant.
+   --------------------------------------------------------------------------- */
+
+// Lean projection for list tables: same as listStudents minus the sensitive
+// `password` column (which the bulk list should never carry).
+const STUDENT_LIST_COLUMNS =
+  'id, name, phone, grade, "group", avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)'
+
+// Apply the same status/grade/search semantics the AccountsPanel used to do
+// client-side, but in the database so only one page of rows is returned.
+function applyStudentFilters(query, { statusTab, grade, search }) {
+  switch (statusTab) {
+    case 'pending':   query = query.eq('is_approved', false); break
+    case 'active':    query = query.eq('status', 'active'); break
+    case 'inactive':  query = query.eq('status', 'inactive').eq('is_approved', true); break
+    case 'suspended': query = query.eq('status', 'suspended'); break
+    // 'all' / undefined -> no status filter
+  }
+  if (grade && grade !== 'all') {
+    query = query.eq('grade', grade)
+  }
+  const q = (search || '').trim()
+  if (q) {
+    // Escape PostgREST reserved chars in the user search term.
+    const safe = q.replace(/[%,()]/g, ' ')
+    query = query.or(`name.ilike.%${safe}%,phone.ilike.%${safe}%,parent_phone.ilike.%${safe}%`)
+  }
+  return query
+}
+
+// Returns one page of students plus the exact total for that filter.
+export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = 'all', grade = 'all', search = '' } = {}) {
+  const from = page * pageSize
+  const to = from + pageSize - 1
+  let query = supabase
+    .from('profiles')
+    .select(STUDENT_LIST_COLUMNS, { count: 'exact' })
+    .eq('role', 'student')
+  query = applyStudentFilters(query, { statusTab, grade, search })
+  const { data, error, count } = await query
+    .order('name', { ascending: true })
+    .range(from, to)
+  if (error) throw error
+  return { rows: data || [], count: count || 0 }
+}
+
+// Per-tab counts for the AccountsPanel tab badges.
+// Primary path: a single RPC (get_student_status_counts) returns all five
+// counts in ONE round-trip. Until that migration is applied, it transparently
+// falls back to five head-only COUNT queries so nothing breaks.
+export async function getStudentStatusCounts({ grade = 'all' } = {}) {
+  const p_grade = grade && grade !== 'all' ? grade : null
+
+  // One-request path via RPC (respects RLS / tenant scope).
+  try {
+    const { data, error } = await supabase.rpc('get_student_status_counts', { p_grade })
+    if (!error && data) {
+      return {
+        pending:   data.pending   || 0,
+        active:    data.active    || 0,
+        inactive:  data.inactive  || 0,
+        suspended: data.suspended || 0,
+        total:     data.total     || 0,
+      }
+    }
+  } catch { /* RPC not deployed yet — use the fallback below */ }
+
+  // Fallback: five cheap head-only COUNT queries (no rows transferred).
+  const base = () => {
+    let q = supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student')
+    if (p_grade) q = q.eq('grade', p_grade)
+    return q
+  }
+  const [pending, active, inactive, suspended, total] = await Promise.all([
+    base().eq('is_approved', false),
+    base().eq('status', 'active'),
+    base().eq('status', 'inactive').eq('is_approved', true),
+    base().eq('status', 'suspended'),
+    base(),
+  ])
+  return {
+    pending:   pending.count   || 0,
+    active:    active.count    || 0,
+    inactive:  inactive.count  || 0,
+    suspended: suspended.count || 0,
+    total:     total.count     || 0,
+  }
+}
+
 /* Fetch one profile (used to look up the target student's grade when an
    admin views "<student>/report"). RLS returns the row for the viewer
    themselves, or any row when the viewer is an admin. */

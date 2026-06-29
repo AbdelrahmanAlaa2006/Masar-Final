@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@backend/supabase'
 import { applyTenantTheme } from '../utils/theme'
-import { cached } from '../utils/cache'
+import { cached, setCacheTenant } from '../utils/cache'
+import { applyBrandOverride, remapAvailableTenants, getTenantFolder } from '../tenants/brandOverrides'
 
 const TenantContext = createContext(null)
 
@@ -57,16 +58,7 @@ export function TenantProvider({ children }) {
           return data || []
         })
         if (allTenants) {
-          const mapped = allTenants.map(t => {
-            if (t.slug === 'sherif-english' || t.slug === 'waled-english') {
-              return { slug: 'waled-english', name: 'The Miracle in English' }
-            }
-            if (t.slug === 'cyber' || t.slug === 'power-platform' || t.slug === 'sherif-programming') {
-              return { slug: 'power-platform', name: 'منصة باور' }
-            }
-            return t
-          })
-          setAvailableTenants(mapped)
+          setAvailableTenants(remapAvailableTenants(allTenants))
         }
 
         // 3. Fetch tenant config from database (cached for 10 minutes)
@@ -119,40 +111,19 @@ export function TenantProvider({ children }) {
             }
           }
 
-          // Decorate english tenant dynamically to swap brand name & colors
-          if (resolvedData && (resolvedData.slug === 'sherif-english' || resolvedData.slug === 'waled-english' || resolvedData.config?.subject === 'english')) {
-            resolvedData.name = 'The Miracle in English'
-            resolvedData.slug = 'waled-english'
-            resolvedData.primary_color = '#d4af37'
-            resolvedData.secondary_color = '#cbd5e1'
-            resolvedData.logo_url = '/images/Logo The Miracle.png'
-          }
-
-          // Decorate power platform tenant dynamically
-          const isPower = resolvedData && (
-            resolvedData.slug === 'cyber' || 
-            resolvedData.slug === 'power-platform' || 
-            resolvedData.slug === 'sherif-programming' ||
-            resolvedData.config?.subject === 'cyber' || 
-            resolvedData.config?.subject === 'computer' || 
-            resolvedData.config?.subject === 'programming' ||
-            resolvedData.slug?.includes('cyber') ||
-            resolvedData.slug?.includes('prog') ||
-            resolvedData.slug?.includes('power')
-          )
-          
-          if (isPower) {
-            resolvedData.name = 'منصة باور'
-            resolvedData.slug = 'power-platform'
-            resolvedData.primary_color = '#d4af37'
-            resolvedData.secondary_color = '#cbd5e1'
-            resolvedData.logo_url = '/images/Power Logo.png'
-          }
+          // Apply centralized brand overrides (english / power / …).
+          // Same behavior as before — logic now lives in tenants/brandOverrides.js.
+          applyBrandOverride(resolvedData)
 
           return resolvedData
         })
 
         setTenant(tenantData)
+
+        // Namespace all subsequent caches (students, videos, exams, …) by this
+        // tenant so one tenant's cached lists never surface under another on a
+        // shared device or after a super-admin tenant switch.
+        setCacheTenant(tenantData?.id)
 
         // Dynamically resolve theme config and load tenant styling chunk
         const folder = getTenantFolder(tenantData)
@@ -375,21 +346,6 @@ export function TenantProvider({ children }) {
       )}
     </TenantContext.Provider>
   )
-}
-
-function getTenantFolder(tenant) {
-  const subject = tenant?.config?.subject || ''
-  const slug = tenant?.slug || ''
-  if (subject === 'chemistry' || slug === 'mona-chem') return 'chemistry'
-  if (subject === 'physics' || slug === 'sherif-physics') return 'physics'
-  if (subject === 'math' || subject === 'mathematics' || slug?.includes('math')) return 'math'
-  if (subject === 'biology' || slug?.includes('bio')) return 'biology'
-  if (subject === 'science' || slug?.includes('science')) return 'science'
-  if (subject === 'geology' || slug?.includes('geo')) return 'geology'
-  if (subject === 'english' || slug === 'sherif-english' || slug === 'waled-english' || slug?.includes('english') || slug?.includes('eng')) return 'english'
-  if (subject === 'humanities' || subject === 'geography' || subject === 'history' || slug?.includes('humanities') || slug?.includes('geo-hist')) return 'humanities'
-  if (subject === 'cyber' || subject === 'computer' || subject === 'programming' || slug?.includes('cyber') || slug?.includes('prog') || slug?.includes('baccalaureate') || slug?.includes('power')) return 'power-platform'
-  return 'default'
 }
 
 export function useTenant() {

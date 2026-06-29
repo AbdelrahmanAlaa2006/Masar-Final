@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { listStudents, updateStudentStatus, updateStudentProfile } from '@backend/profilesApi'
+import { listStudentsPaged, getStudentStatusCounts, updateStudentStatus, updateStudentProfile } from '@backend/profilesApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
 import { listGroups, assignStudentToGroup } from '@backend/groupsApi'
 import { initials, GRADE_LABEL } from './shared'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../../utils/cache'
+import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
@@ -41,6 +41,13 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedGrade, setSelectedGrade] = useState('all')
   const [statusTab, setStatusTab] = useState('pending')
 
+  // Server-side pagination state (replaces loading the whole tenant roster).
+  const PAGE_SIZE = 50
+  const [page, setPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [counts, setCounts] = useState({ pending: 0, active: 0, inactive: 0, suspended: 0, total: 0 })
+
   // Modals
   const [showQrModal, setShowQrModal] = useState(false)
   const [selectedQrStudent, setSelectedQrStudent] = useState(null)
@@ -49,38 +56,68 @@ export default function AccountsPanel({ onBack, flash }) {
   const [editStudent, setEditStudent] = useState(null)
   const [deletingStudent, setDeletingStudent] = useState(null)
 
-  const fetchStudentsAndMeta = async () => {
-    try {
-      setLoading(true)
-      const [studentsData, branchesData, yearsData, groupsData] = await Promise.all([
-        cached('students', LIST_TTL, listStudents),
-        listBranches(),
-        listAcademicYears(),
-        listGroups()
-      ])
-      setStudents(studentsData || [])
-      setBranches(branchesData || [])
-      setAcademicYears(yearsData || [])
-      setGroups(groupsData || [])
-    } catch (e) {
-      setError(e.message || 'تعذّر تحميل قائمة الطلاب أو الفروع')
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Branches / years / groups are small and stable — load once (cached).
   useEffect(() => {
-    fetchStudentsAndMeta()
+    ;(async () => {
+      try {
+        const [branchesData, yearsData, groupsData] = await Promise.all([
+          listBranches(),
+          listAcademicYears(),
+          listGroups()
+        ])
+        setBranches(branchesData || [])
+        setAcademicYears(yearsData || [])
+        setGroups(groupsData || [])
+      } catch (e) {
+        setError(e.message || 'تعذّر تحميل الفروع أو المجموعات')
+      }
+    })()
   }, [])
 
-  const refreshList = async () => {
-    invalidateCache('students')
+  // Load one page of students for the active tab/grade/search. Server-side
+  // filtering + .range() means we never pull the whole roster into the browser.
+  const loadPage = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
-      const data = await listStudents()
-      setStudents(data || [])
+      const { rows, count } = await listStudentsPaged({
+        page, pageSize: PAGE_SIZE, statusTab, grade: selectedGrade, search: debouncedQuery
+      })
+      setStudents(rows)
+      setTotalCount(count)
     } catch (e) {
-      flash(e.message || 'تعذّر تحديث البيانات', 'warning')
+      setError(e.message || 'تعذّر تحميل قائمة الطلاب')
+    } finally {
+      if (!silent) setLoading(false)
     }
+  }, [page, statusTab, selectedGrade, debouncedQuery])
+
+  // Tab badge counts come from cheap head-only COUNT queries (constant size).
+  const reloadCounts = useCallback(async () => {
+    try {
+      setCounts(await getStudentStatusCounts({ grade: selectedGrade }))
+    } catch { /* badges are non-critical */ }
+  }, [selectedGrade])
+
+  useEffect(() => { loadPage() }, [loadPage])
+  useEffect(() => { reloadCounts() }, [reloadCounts])
+
+  // Debounce the search box and reset to the first page on a new term.
+  useEffect(() => {
+    const id = setTimeout(() => { setDebouncedQuery(query); setPage(0) }, 350)
+    return () => clearTimeout(id)
+  }, [query])
+
+  // Reset to the first page whenever the tab or grade filter changes.
+  useEffect(() => { setPage(0) }, [statusTab, selectedGrade])
+
+  // After a mutation, refresh the current page rows + tab counts quietly.
+  const softRefresh = useCallback(() => {
+    reloadCounts()
+    loadPage({ silent: true })
+  }, [reloadCounts, loadPage])
+
+  const refreshList = async () => {
+    await Promise.all([loadPage({ silent: true }), reloadCounts()])
   }
 
   const handleUpdateStatus = async (student, is_approved, is_active) => {
@@ -108,6 +145,7 @@ export default function AccountsPanel({ onBack, flash }) {
       // Update local state
       setStudents(prev => prev.map(s => s.id === student.id ? { ...s, is_approved, is_active, status: is_approved && is_active ? 'active' : 'inactive' } : s))
       flash(`تم تحديث حالة الطالب: ${student.name}`, 'success')
+      softRefresh()
     } catch (e) {
       flash(e.message || 'تعذّر تحديث حالة الطالب', 'warning')
     } finally {
@@ -129,6 +167,7 @@ export default function AccountsPanel({ onBack, flash }) {
       setStudents(prev => prev.filter(s => s.id !== student.id))
       invalidateCache('students')
       flash(`تم حذف حساب الطالب "${student.name}" بنجاح.`, 'success')
+      softRefresh()
     } catch (e) {
       flash(e.message || 'تعذّر حذف حساب الطالب', 'warning')
     } finally {
@@ -167,6 +206,7 @@ export default function AccountsPanel({ onBack, flash }) {
       flash('تم تحديث بيانات الطالب وحفظ التغييرات بنجاح', 'success')
       setShowEditModal(false)
       setEditStudent(null)
+      softRefresh()
     } catch (err) {
       console.error(err)
       flash('حدث خطأ أثناء تعديل بيانات الطالب: ' + err.message, 'error')
@@ -226,42 +266,12 @@ export default function AccountsPanel({ onBack, flash }) {
     printWindow.document.close()
   }
 
-  const stats = useMemo(() => {
-    return {
-      pending: students.filter(s => s.is_approved === false).length,
-      active: students.filter(s => s.status === 'active').length,
-      inactive: students.filter(s => s.status === 'inactive' && s.is_approved === true).length,
-      suspended: students.filter(s => s.status === 'suspended').length,
-      total: students.length
-    }
-  }, [students])
+  // Tab badge counts now come from the server (see reloadCounts).
+  const stats = counts
 
-  const filteredStudents = useMemo(() => {
-    let result = students
-
-    if (statusTab === 'pending') {
-      result = result.filter(s => s.is_approved === false)
-    } else if (statusTab === 'active') {
-      result = result.filter(s => s.status === 'active')
-    } else if (statusTab === 'inactive') {
-      result = result.filter(s => s.status === 'inactive' && s.is_approved === true)
-    } else if (statusTab === 'suspended') {
-      result = result.filter(s => s.status === 'suspended')
-    }
-
-    if (selectedGrade !== 'all') {
-      result = result.filter(s => s.grade === selectedGrade)
-    }
-
-    const q = query.trim().toLowerCase()
-    if (q) {
-      result = result.filter(s => 
-        [s.name, s.phone, s.parent_phone].filter(Boolean).join(' ').toLowerCase().includes(q)
-      )
-    }
-
-    return result
-  }, [students, statusTab, selectedGrade, query])
+  // The server already returns exactly the rows for the active tab/grade/search,
+  // so the rendered list is simply the current page.
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   return (
     <section className="cp-panel" style={{ direction: 'rtl' }}>
@@ -327,7 +337,7 @@ export default function AccountsPanel({ onBack, flash }) {
           <i className="fas fa-spinner fa-spin"></i>
           <p>جاري تحميل قائمة الطلاب...</p>
         </div>
-      ) : filteredStudents.length === 0 ? (
+      ) : students.length === 0 ? (
         <div className="cp-empty">
           <i className="fas fa-user-slash"></i>
           <p>لا يوجد نتائج مطابقة</p>
@@ -346,7 +356,7 @@ export default function AccountsPanel({ onBack, flash }) {
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((student) => {
+              {students.map((student) => {
                 const isBusy = busyId === student.id
                 const branchName = branches.find(b => b.id === student.branch_id)?.name || 'الفرع الرئيسي'
                 const academicYearName = academicYears.find(y => y.id === student.academic_year_id)?.name || ''
@@ -470,6 +480,31 @@ export default function AccountsPanel({ onBack, flash }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination controls — only shown when results span more than one page */}
+      {!loading && totalCount > PAGE_SIZE && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 18, flexWrap: 'wrap' }}>
+          <button
+            className="cp-btn cp-btn-info"
+            disabled={page <= 0}
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            style={{ opacity: page <= 0 ? 0.5 : 1 }}
+          >
+            <i className="fas fa-chevron-right"></i> السابق
+          </button>
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>
+            صفحة {page + 1} من {totalPages} · {totalCount} طالب
+          </span>
+          <button
+            className="cp-btn cp-btn-info"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            style={{ opacity: page >= totalPages - 1 ? 0.5 : 1 }}
+          >
+            التالي <i className="fas fa-chevron-left"></i>
+          </button>
         </div>
       )}
 
