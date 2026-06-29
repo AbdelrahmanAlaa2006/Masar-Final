@@ -24,6 +24,9 @@ export default function ExamAdd() {
     }
     return 'first'
   })
+  const [examType, setExamType] = useState(() => {
+    return localStorage.getItem('selectedExamType') || 'exam'
+  })
   const [duration, setDuration] = useState('')
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [examDurationHours, setExamDurationHours] = useState(72)
@@ -298,6 +301,7 @@ export default function ExamAdd() {
         questions: payload.cleanQuestions,
         total_points: payload.total_points,
         created_by: createdBy,
+        exam_type: examType,
       })
       invalidateCache('exams')
       setShowSuccess(true)
@@ -359,6 +363,18 @@ export default function ExamAdd() {
               return <option key={g.id} value={uiKey}>{g.name}</option>
             })}
             <option value="packages">باقات مدفوعة 📦</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="examType">🏷️ نوع التقييم:</label>
+          <select
+            id="examType"
+            value={examType}
+            onChange={(e) => setExamType(e.target.value)}
+          >
+            <option value="exam">امتحان 📝</option>
+            <option value="quiz">تسميع 📖</option>
           </select>
         </div>
 

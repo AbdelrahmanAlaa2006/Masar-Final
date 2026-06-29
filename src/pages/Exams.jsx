@@ -81,6 +81,7 @@ export default function Exams() {
 
   const [showModal, setShowModal] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [currentType, setCurrentType] = useState(null)
   const [showLockModal, setShowLockModal] = useState(false)
   const [allowedContentIds, setAllowedContentIds] = useState(new Set())
   const [rows, setRows] = useState([])
@@ -192,6 +193,10 @@ export default function Exams() {
       filteredRows = rows.filter(r => !r.is_archived)
     }
 
+    if (currentType) {
+      filteredRows = filteredRows.filter(r => (r.exam_type || 'exam') === currentType)
+    }
+
     for (const r of filteredRows) {
       const ui = dbToUiGrade(r.grade) || r.grade
       if (out[ui]) {
@@ -199,7 +204,7 @@ export default function Exams() {
       }
     }
     return out
-  }, [rows, levelsMeta, userRole, showArchived])
+  }, [rows, levelsMeta, userRole, showArchived, currentType])
 
   // Group active/accessible exams by Playlist
   const playlistGroups = useMemo(() => {
@@ -298,6 +303,7 @@ export default function Exams() {
 
   const addExam = (level) => {
     localStorage.setItem('selectedGrade', level)
+    localStorage.setItem('selectedExamType', currentType || 'exam')
     navigate('/exam-add')
   }
 
@@ -473,31 +479,164 @@ export default function Exams() {
     )
   }
 
-  const renderExamSection = (level) => (
-    <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
-      <div className="premium-page-header">
-        <div className="premium-header-content">
-          <span className="premium-pre-title">التقييمات والاختبارات</span>
-          <h1 className="premium-title-main">
-            {getLevelTitle(level)}
-          </h1>
-          <p className="premium-subtitle-desc">
-            اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية
-          </p>
-        </div>
-        <div className="premium-header-actions">
-          {(userRole === 'admin' || userRole === 'assistant') && (
-            <button className="premium-back-btn" onClick={() => setCurrentLevel(null)}>
-              <i className="fas fa-arrow-right"></i> العودة للمستويات
+  const renderExamSection = (level) => {
+    if (!currentType) {
+      return (
+        <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
+          <div className="premium-page-header">
+            <div className="premium-header-content">
+              <span className="premium-pre-title">التقييمات والاختبارات</span>
+              <h1 className="premium-title-main">
+                {getLevelTitle(level)}
+              </h1>
+              <p className="premium-subtitle-desc">
+                اختر نوع التقييم للمتابعة وأداء الاختبارات والواجبات الدورية
+              </p>
+            </div>
+            <div className="premium-header-actions">
+              <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); }}>
+                <i className="fas fa-arrow-right"></i> العودة للمستويات
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px',
+            marginTop: '30px',
+            animation: 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both'
+          }}>
+            <button
+              onClick={() => {
+                setCurrentType('quiz')
+                localStorage.setItem('selectedExamType', 'quiz')
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '2px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '24px',
+                padding: '40px 30px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-6px)'
+                e.currentTarget.style.borderColor = '#3182ce'
+                e.currentTarget.style.background = 'rgba(49, 130, 206, 0.02)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'
+              }}
+            >
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #3182ce 0%, #319795 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem',
+                color: '#fff',
+                boxShadow: '0 10px 20px rgba(49, 130, 206, 0.2)'
+              }}>
+                📖
+              </div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-color, #fff)', margin: 0 }}>📖 التسميعات</h3>
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary, #a0aec0)', lineHeight: '1.6', margin: 0 }}>
+                اختبارات المتابعة والكلمات الدورية لتقييم الحفظ الأسبوعي
+              </p>
             </button>
-          )}
-          {(userRole === 'admin' || userRole === 'assistant') && (
-            <button className="premium-action-btn btn-primary" onClick={() => addExam(level)}>
-              <i className="fas fa-plus"></i> إضافة امتحان جديد
+
+            <button
+              onClick={() => {
+                setCurrentType('exam')
+                localStorage.setItem('selectedExamType', 'exam')
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '2px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '24px',
+                padding: '40px 30px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-6px)'
+                e.currentTarget.style.borderColor = '#805ad5'
+                e.currentTarget.style.background = 'rgba(128, 90, 213, 0.02)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'
+              }}
+            >
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #805ad5 0%, #b7791f 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem',
+                color: '#fff',
+                boxShadow: '0 10px 20px rgba(128, 90, 213, 0.2)'
+              }}>
+                📝
+              </div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-color, #fff)', margin: 0 }}>📝 الامتحانات الشاملة</h3>
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary, #a0aec0)', lineHeight: '1.6', margin: 0 }}>
+                الامتحانات الشاملة والشهرية لتقييم المستوى الدراسي العام
+              </p>
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      )
+    }
+
+    return (
+      <div key={level} className={`exam-section ${currentLevel === level ? 'active' : ''}`}>
+        <div className="premium-page-header">
+          <div className="premium-header-content">
+            <span className="premium-pre-title">{currentType === 'quiz' ? 'التسميعات والمتابعة الأسبوعية' : 'التقييمات والاختبارات الشاملة'}</span>
+            <h1 className="premium-title-main">
+              {getLevelTitle(level)} - {currentType === 'quiz' ? 'التسميعات' : 'الامتحانات'}
+            </h1>
+            <p className="premium-subtitle-desc">
+              {currentType === 'quiz' ? 'راجع وأدِّ تسميعات الحفظ ومفردات الكلمات المخصصة لمرحلتك' : 'اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية'}
+            </p>
+          </div>
+          <div className="premium-header-actions">
+            <button className="premium-back-btn" onClick={() => setCurrentType(null)}>
+              <i className="fas fa-undo"></i> تغيير النوع
+            </button>
+            {(userRole === 'admin' || userRole === 'assistant') && (
+              <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); }}>
+                <i className="fas fa-arrow-right"></i> العودة للمستويات
+              </button>
+            )}
+            {(userRole === 'admin' || userRole === 'assistant') && (
+              <button className="premium-action-btn btn-primary" onClick={() => addExam(level)}>
+                <i className="fas fa-plus"></i> {currentType === 'quiz' ? 'إضافة تسميع جديد' : 'إضافة امتحان جديد'}
+              </button>
+            )}
+          </div>
+        </div>
 
       {(userRole === 'admin' || userRole === 'assistant') && (
         <div style={{
@@ -705,7 +844,8 @@ export default function Exams() {
         />
       )}
     </div>
-  )
+    )
+  }
 }
 
 /* ── Inline edit modal for an existing exam (basic metadata only).
@@ -716,6 +856,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const [title, setTitle] = useState(exam.title || '')
   const [number, setNumber] = useState(exam.number || '')
   const [grade, setGrade] = useState(exam.grade || 'first-prep')
+  const [examType, setExamType] = useState(exam.exam_type || 'exam')
   const [duration, setDur] = useState(exam.duration_minutes || 30)
   const [maxAtt, setMaxAtt] = useState(exam.max_attempts || 1)
   const [hours, setHours] = useState(exam.available_hours || 72)
@@ -930,6 +1071,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
       available_hours: parseInt(hours, 10),
       total_points: totalPoints,
       reveal_grades: reveal,
+      exam_type: examType,
       questions: cleanQuestions
     }
   }
@@ -1203,12 +1345,15 @@ function EditExamModal({ exam, onCancel, onSave }) {
               </select>
             </div>
             <div className="edit-field">
-              <label>الدرجة الكلية (تُحسب تلقائياً)</label>
-              <input type="number" className="edit-input" value={totalPoints} disabled style={{ opacity: 0.7, background: 'rgba(255,255,255,0.05)' }} />
+              <label>نوع التقييم</label>
+              <select className="edit-select" value={examType} onChange={(e) => setExamType(e.target.value)}>
+                <option value="exam">امتحان 📝</option>
+                <option value="quiz">تسميع 📖</option>
+              </select>
             </div>
           </div>
 
-          <div className="edit-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="edit-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
             <div className="edit-field">
               <label>المدة (بالدقائق)</label>
               <input type="number" min="1" className="edit-input" value={duration} onChange={(e) => setDur(parseInt(e.target.value, 10) || 1)} required />
@@ -1220,6 +1365,10 @@ function EditExamModal({ exam, onCancel, onSave }) {
             <div className="edit-field">
               <label>مدة توفر الامتحان (ساعة)</label>
               <input type="number" min="1" className="edit-input" value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} required />
+            </div>
+            <div className="edit-field">
+              <label>الدرجة الكلية (تُحسب تلقائياً)</label>
+              <input type="number" className="edit-input" value={totalPoints} disabled style={{ opacity: 0.7, background: 'rgba(255,255,255,0.05)' }} />
             </div>
           </div>
 

@@ -124,10 +124,17 @@ export default function Report() {
       id: student.id || '',
       group: student.group || '',
       prep: student.prep || '',
-    }).toString()
-    if (type === 'videos') navigate(`/videos-report?${params}`)
-    else if (type === 'exams') navigate(`/exams-report?${params}`)
-    else if (type === 'homework') navigate(`/homework-report?${params}`)
+    })
+    if (type === 'videos') navigate(`/videos-report?${params.toString()}`)
+    else if (type === 'exams') {
+      params.set('type', 'exam')
+      navigate(`/exams-report?${params.toString()}`)
+    }
+    else if (type === 'quizzes') {
+      params.set('type', 'quiz')
+      navigate(`/exams-report?${params.toString()}`)
+    }
+    else if (type === 'homework') navigate(`/homework-report?${params.toString()}`)
   }
 
   /* Student viewing their own report: go in with no URL params.
@@ -135,7 +142,8 @@ export default function Report() {
      and Supabase RLS scopes the data to auth.uid() automatically. */
   const goToMyReport = (type) => {
     if (type === 'videos') navigate('/videos-report')
-    else if (type === 'exams') navigate('/exams-report')
+    else if (type === 'exams') navigate('/exams-report?type=exam')
+    else if (type === 'quizzes') navigate('/exams-report?type=quiz')
     else if (type === 'homework') navigate('/homework-report')
   }
 
@@ -211,6 +219,19 @@ export default function Report() {
               </div>
             </button>
 
+            <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('quizzes')}>
+              <div className="cp-section-icon">
+                <i className="fas fa-book-open"></i>
+              </div>
+              <div className="cp-section-body">
+                <h3>تقرير التسميعات</h3>
+                <p>نتائجك في تسميعات الحفظ وتقييم المتابعة الأسبوعي</p>
+              </div>
+              <div className="cp-section-chevron-circle">
+                <i className="fas fa-chevron-left"></i>
+              </div>
+            </button>
+
             <button className="cp-section-card cp-accent-teal" onClick={() => goToMyReport('homework')}>
               <div className="cp-section-icon">
                 <i className="fas fa-book-open"></i>
@@ -264,7 +285,8 @@ export default function Report() {
 
   const goToGroupReport = (type) => {
     if (type === 'videos') navigate('/videos-group-report')
-    else if (type === 'exams') navigate('/exams-group-report')
+    else if (type === 'exams') navigate('/exams-group-report?type=exam')
+    else if (type === 'quizzes') navigate('/exams-group-report?type=quiz')
     else if (type === 'homework') navigate('/homework-group-report')
   }
 
@@ -425,6 +447,19 @@ export default function Report() {
             </div>
           </button>
 
+          <button className="cp-section-card cp-accent-blue" onClick={() => goTo('quizzes')}>
+            <div className="cp-section-icon">
+              <i className="fas fa-book-reader"></i>
+            </div>
+            <div className="cp-section-body">
+              <h3>تقرير التسميعات</h3>
+              <p>مراجعة نتائج التسميعات الأسبوعية ومستوى حفظ الطالب</p>
+            </div>
+            <div className="cp-section-chevron-circle">
+              <i className="fas fa-chevron-left"></i>
+            </div>
+          </button>
+
           <button className="cp-section-card cp-accent-teal" onClick={() => goTo('homework')}>
             <div className="cp-section-icon">
               <i className="fas fa-book-open"></i>
@@ -471,6 +506,19 @@ export default function Report() {
             </div>
           </button>
 
+          <button className="cp-section-card cp-accent-blue" onClick={() => goToGroupReport('quizzes')}>
+            <div className="cp-section-icon">
+              <i className="fas fa-chart-line"></i>
+            </div>
+            <div className="cp-section-body">
+              <h3>تقرير جماعي للتسميعات</h3>
+              <p>نتائج وتحليل أداء جميع الطلاب في التسميعات الأسبوعية</p>
+            </div>
+            <div className="cp-section-chevron-circle">
+              <i className="fas fa-chevron-left"></i>
+            </div>
+          </button>
+
           <button className="cp-section-card cp-accent-green" onClick={() => goToGroupReport('homework')}>
             <div className="cp-section-icon">
               <i className="fas fa-chart-bar"></i>
@@ -503,7 +551,7 @@ export default function Report() {
               <div className="rp-modal-title">
                 <h3 style={{ color: 'var(--cp-text-main)' }}>اختر الطالب</h3>
                 <p style={{ color: 'var(--cp-text-muted)' }}>
-                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : pickerType === 'exams' ? 'تقرير الامتحانات' : 'تقرير الواجبات'} يرجى اختيار طالب من القائمة
+                  لعرض {pickerType === 'videos' ? 'تقرير الفيديوهات' : pickerType === 'exams' ? 'تقرير الامتحانات' : pickerType === 'quizzes' ? 'تقرير التسميعات' : 'تقرير الواجبات'} يرجى اختيار طالب من القائمة
                 </p>
               </div>
               <button

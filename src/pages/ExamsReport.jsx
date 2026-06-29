@@ -57,6 +57,11 @@ export default function ExamsReport() {
     return ''
   })
   const [currentFilter, setCurrentFilter] = useState('all')
+  const reportType = searchParams.get('type') || 'exam'
+  const isQuiz = reportType === 'quiz'
+  const pageTitle = isQuiz ? 'تقرير التسميعات' : 'تقرير الامتحانات'
+  const pageDesc = isQuiz ? 'سجل التسميعات والنتائج التفصيلية للطلاب' : 'سجل الامتحانات والنتائج التفصيلية للطلاب'
+  const statLabel = isQuiz ? 'إجمالي التسميعات' : 'إجمالي الامتحانات'
   // Students never see the detailed table view — force cards.
   const initialViewMode = (() => {
     try {
@@ -106,11 +111,13 @@ export default function ExamsReport() {
           if (p?.phone) setStudentId(p.phone)
         }
 
-        // All exams the viewer can see, then filter to the target's grade.
+        // All exams the viewer can see, then filter to the target's grade and type.
         const allExamsRaw = await cached('exams', LIST_TTL, listExams)
-        const allExams = targetGrade
-          ? allExamsRaw.filter((e) => e.grade === targetGrade)
-          : allExamsRaw
+        const allExams = allExamsRaw.filter((e) => {
+          const matchesGrade = targetGrade ? e.grade === targetGrade : true
+          const matchesType = (e.exam_type || 'exam') === reportType
+          return matchesGrade && matchesType
+        })
         // The target student's attempts (admin can read any student via RLS).
         // Per-student key — cached internally so admins can flip back to the same
         // student without re-pulling the whole attempt history.
@@ -298,11 +305,11 @@ export default function ExamsReport() {
         {/* Page Header */}
         <div className="cp-page-header">
           <div className="cp-page-header-text">
-            <h1>تقرير الامتحانات</h1>
-            <p>سجل الامتحانات والنتائج التفصيلية للطلاب</p>
+            <h1>{pageTitle}</h1>
+            <p>{pageDesc}</p>
           </div>
           <div className="cp-page-icon">
-            <i className="fas fa-file-alt"></i>
+            <i className={`fas ${isQuiz ? 'fa-book-open' : 'fa-file-alt'}`}></i>
           </div>
         </div>
         <div className="cp-header-divider"></div>
@@ -334,7 +341,7 @@ export default function ExamsReport() {
                   <span className="cp-id-pill"><i className="fas fa-id-badge"></i> {studentId}</span>
                 )}
                 <span><i className="fas fa-chart-line"></i> المتوسط: {revealed.length > 0 ? `${avgScore}%` : '—'}</span>
-                <span><i className="fas fa-tasks"></i> الإكمال: {completed} من {total} امتحان</span>
+                <span><i className="fas fa-tasks"></i> {isQuiz ? 'الإكمال' : 'الإكمال'}: {completed} من {total} {isQuiz ? 'تسميع' : 'امتحان'}</span>
               </div>
             </div>
           </div>
@@ -350,7 +357,7 @@ export default function ExamsReport() {
             <i className="fas fa-list-ol" style={{ color: 'var(--cp-primary)' }}></i>
             <div>
               <div className="cp-stat-val">{total}</div>
-              <div className="cp-stat-lbl">إجمالي الامتحانات</div>
+              <div className="cp-stat-lbl">{statLabel}</div>
             </div>
           </div>
           <div className="cp-stat cp-stat-good">

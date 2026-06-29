@@ -52,8 +52,8 @@ export async function listExams({ lean = false } = {}) {
   }
 
   const cols = lean
-    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, created_at, questions_count'
-    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, created_at'
+    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, exam_type, created_at, questions_count'
+    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, exam_type, created_at'
 
   let query = supabase
     .from('exams')
@@ -127,6 +127,7 @@ export async function createExam(input) {
     questions: input.questions || [],
     total_points: parseInt(input.total_points) || 0,
     created_by: input.created_by || null,
+    exam_type: input.exam_type || 'exam',
   }
   const { data, error } = await supabase
     .from('exams')
@@ -152,6 +153,7 @@ export async function updateExam(id, input) {
   if (input.total_points     !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
   if (input.reveal_grades    !== undefined) patch.reveal_grades = !!input.reveal_grades
   if (input.questions        !== undefined) patch.questions = input.questions || []
+  if (input.exam_type        !== undefined) patch.exam_type = input.exam_type
 
   const { data, error } = await supabase
     .from('exams').update(patch).eq('id', id).select().single()

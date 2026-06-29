@@ -22,6 +22,14 @@ export default function ExamsGroupReport() {
   const [currentExam, setCurrentExam]   = useState('') // exam id
   const [currentFilter, setCurrentFilter] = useState('all')
 
+  const params = new URLSearchParams(location.search)
+  const reportType = params.get('type') || 'exam'
+  const isQuiz = reportType === 'quiz'
+  const pageTitle = isQuiz ? 'التقرير الجماعي للتسميعات' : 'التقرير الجماعي للامتحانات'
+  const pageDesc = isQuiz ? 'تحليل نتائج الطلاب وأداء كل صف دراسي في التسميعات الأسبوعية' : 'تحليل نتائج الطلاب المسجلين وأداء كل صف دراسي'
+  const selectLabel = isQuiz ? 'اختر التسميع' : 'اختر الامتحان'
+  const selectPlaceholder = isQuiz ? '-- اختر التسميع --' : '-- اختر الامتحان --'
+
   const [allStudentsData, setAllStudentsData] = useState([])
   const [displayedStudents, setDisplayedStudents] = useState([])
   const [reportLoading, setReportLoading] = useState(false)
@@ -36,7 +44,7 @@ export default function ExamsGroupReport() {
         ])
         if (cancelled) return
         setStudents(s)
-        setExams(e)
+        setExams(e.filter(exam => (exam.exam_type || 'exam') === reportType))
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
       } finally {
@@ -44,7 +52,7 @@ export default function ExamsGroupReport() {
       }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [reportType])
 
   const availableGrades = useMemo(() => {
     const set = new Set(students.map(s => s.grade).filter(Boolean))
@@ -254,11 +262,11 @@ export default function ExamsGroupReport() {
         {/* Header */}
         <div className="cp-page-header">
           <div className="cp-page-header-text">
-            <h1>التقرير الجماعي للامتحانات</h1>
-            <p>تحليل نتائج الطلاب المسجلين وأداء كل صف دراسي</p>
+            <h1>{pageTitle}</h1>
+            <p>{pageDesc}</p>
           </div>
           <div className="cp-page-icon">
-            <i className="fas fa-chart-pie"></i>
+            <i className={`fas ${isQuiz ? 'fa-chart-line' : 'fa-chart-pie'}`}></i>
           </div>
         </div>
         <div className="cp-header-divider"></div>
@@ -302,7 +310,7 @@ export default function ExamsGroupReport() {
             }}>
               {currentExam ? <i className="fas fa-check"></i> : 2}
             </div>
-            <span style={{ color: currentGrade ? 'var(--cp-text-main)' : 'var(--cp-text-muted)', fontWeight: 600 }}>الامتحان</span>
+            <span style={{ color: currentGrade ? 'var(--cp-text-main)' : 'var(--cp-text-muted)', fontWeight: 600 }}>{isQuiz ? 'التسميع' : 'الامتحان'}</span>
           </div>
         </div>
 
@@ -373,10 +381,10 @@ export default function ExamsGroupReport() {
         {currentGrade && (
           <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fas fa-file-alt" style={{ color: '#8b5cf6' }}></i> اختر الامتحان
+              <i className={`fas ${isQuiz ? 'fa-book-open' : 'fa-file-alt'}`} style={{ color: '#8b5cf6' }}></i> {selectLabel}
             </h2>
             {examsForGrade.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا توجد امتحانات منشورة لهذا الصف.</p>
+              <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا توجد {isQuiz ? 'تسميعات' : 'امتحانات'} منشورة لهذا الصف.</p>
             ) : (
               <div style={{ position: 'relative', maxWidth: '400px' }}>
                 <i className="fas fa-clipboard-list" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', zIndex: 1 }}></i>
@@ -398,7 +406,7 @@ export default function ExamsGroupReport() {
                     outline: 'none'
                   }}
                 >
-                  <option value="">-- اختر الامتحان --</option>
+                  <option value="">{selectPlaceholder}</option>
                   {examsForGrade.map((exam) => (
                     <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
                       {exam.number ? `${exam.number} — ` : ''}{exam.title}
