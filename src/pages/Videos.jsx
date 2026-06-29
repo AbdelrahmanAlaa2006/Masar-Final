@@ -12,7 +12,7 @@ import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard, { confirmExit } from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import VideoComments from '../components/VideoComments'
-import { listVideos, deleteVideo, updateVideo } from '@backend/videosApi'
+import { listVideos, deleteVideo, updateVideo, setVideoArchived } from '@backend/videosApi'
 import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
@@ -57,7 +57,15 @@ export default function Videos() {
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('videos')) }, [])
 
-  const { user: currentUser, role: userRole } = useAuth()
+  const { user: rawUser, role: rawRole } = useAuth()
+  const currentUser = useMemo(() => {
+    if (!rawUser) return null
+    if (rawUser.role === 'super_admin') {
+      return { ...rawUser, role: 'admin' }
+    }
+    return rawUser
+  }, [rawUser])
+  const userRole = rawRole === 'super_admin' ? 'admin' : rawRole
 
   const levelsMeta = useMemo(() => {
     const meta = {}
@@ -109,6 +117,7 @@ export default function Videos() {
       quizzes: row.quizzes || [],
       pdf_url: row.pdf_url || null,
       pdf_key: row.pdf_key || null,
+      isArchived: !!row.is_archived,
     }
   }
 
@@ -130,6 +139,7 @@ export default function Videos() {
   })
 
   const [allVideos, setAllVideos] = useState([])
+  const [showArchived, setShowArchived] = useState(false)
   const [playlists, setPlaylists] = useState([])
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
@@ -262,7 +272,14 @@ export default function Videos() {
 
   // Group active/accessible videos by Playlist
   const playlistGroups = useMemo(() => {
-    const gradeVideos = videosByLevel[currentGrade] || []
+    let gradeVideos = videosByLevel[currentGrade] || []
+    
+    if (userRole === 'admin' || userRole === 'assistant') {
+      gradeVideos = gradeVideos.filter(v => v.isArchived === showArchived)
+    } else {
+      gradeVideos = gradeVideos.filter(v => !v.isArchived)
+    }
+
     if (gradeVideos.length === 0) return []
 
     const grouped = []
@@ -310,7 +327,7 @@ export default function Videos() {
     }
 
     return grouped
-  }, [playlists, videosByLevel, currentGrade, userRole])
+  }, [playlists, videosByLevel, currentGrade, userRole, showArchived])
 
   const togglePlaylistExpanded = (playlistId) => {
     setExpandedPlaylists(prev => ({
@@ -592,6 +609,18 @@ export default function Videos() {
     }
   }
 
+  const handleToggleArchive = async (video, e) => {
+    e?.stopPropagation()
+    try {
+      await setVideoArchived(video.id, !video.isArchived)
+      invalidateCache('videos')
+      await refreshVideos()
+      notify(video.isArchived ? 'تم إلغاء أرشفة الفيديو بنجاح' : 'تم أرشفة الفيديو بنجاح')
+    } catch (err) {
+      showAlertModal('خطأ', err.message || 'حدث خطأ أثناء تغيير حالة الأرشيف')
+    }
+  }
+
   const performDeleteVideo = async () => {
     const target = confirmDelete
     if (!target) return
@@ -803,6 +832,52 @@ export default function Videos() {
             </div>
           </div>
 
+          {(userRole === 'admin' || userRole === 'assistant') && (
+            <div style={{
+              display: 'flex',
+              gap: 12,
+              marginBottom: 20,
+              background: 'rgba(255,255,255,0.02)',
+              padding: '6px 8px',
+              borderRadius: 12,
+              width: 'fit-content',
+              border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowArchived(false)}
+                style={{
+                  background: !showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+                  color: !showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🎬 الفيديوهات النشطة
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowArchived(true)}
+                style={{
+                  background: showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+                  color: showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                📦 الأرشيف
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem' }}></i>
@@ -893,6 +968,9 @@ export default function Videos() {
                                 <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
                                 {(userRole === 'admin' || userRole === 'assistant') && (
                                   <>
+                                    <button className="vc-delete-btn" onClick={(e) => handleToggleArchive(video, e)} style={{ marginInlineEnd: 6, background: 'rgba(255,255,255,0.08)' }}>
+                                      {video.isArchived ? '📦 إلغاء الأرشيف' : '📦 أرشفة'}
+                                    </button>
                                     <button className="vc-delete-btn" onClick={(e) => handleEditVideo(video, e)} style={{ marginInlineEnd: 6 }}>
                                       ✏️ تعديل
                                     </button>

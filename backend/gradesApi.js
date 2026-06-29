@@ -104,12 +104,81 @@ export async function saveGradesBatch(records) {
 export async function getStudentGradesSummary(studentId) {
   if (!studentId) return null
   return cached(`grades-summary:${studentId}`, LIST_TTL, async () => {
-    const { data, error } = await supabase
-      .from('grades')
-      .select('type, score, max_score')
-      .eq('student_id', studentId)
+    // 1. Fetch student profile details (grade and group) to query overrides
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('grade, "group"')
+      .eq('id', studentId)
+      .single()
 
-    if (error) throw error
+    const grade = profile?.grade || null
+    const group = profile?.group || null
+
+    // Compose OR clause for overrides lookup
+    const clauses = [
+      `and(scope.eq.student,target_id.eq.${studentId})`,
+    ]
+    if (grade) {
+      clauses.push(`and(scope.eq.prep,target_id.eq.${grade})`)
+      if (group) {
+        const groupTarget = `${grade}:${group}`
+        clauses.push(`and(scope.eq.group,target_id.eq.${groupTarget})`)
+      }
+    }
+
+    // 2. Fetch manual grades, online exam attempts, and overrides in parallel
+    const [gradesRes, attemptsRes, overridesRes] = await Promise.all([
+      supabase
+        .from('grades')
+        .select('type, score, max_score')
+        .eq('student_id', studentId),
+      supabase
+        .from('exam_attempts')
+        .select('exam_id, score, max_score, exams ( reveal_grades )')
+        .eq('student_id', studentId)
+        .not('submitted_at', 'is', null),
+      grade
+        ? supabase
+            .from('access_overrides')
+            .select('scope, item_id, allowed')
+            .eq('item_type', 'exam_reveal')
+            .or(clauses.join(','))
+        : Promise.resolve({ data: [] })
+    ])
+
+    if (gradesRes.error) throw gradesRes.error
+    if (attemptsRes.error) throw attemptsRes.error
+    if (overridesRes.error) throw overridesRes.error
+
+    const grades = gradesRes.data || []
+    const attempts = attemptsRes.data || []
+    const overrides = overridesRes.data || []
+
+    // 3. Resolve reveal overrides
+    const SCOPE_RANK = { prep: 1, group: 2, student: 3 }
+    const revealMap = new Map()
+    for (const r of overrides) {
+      const cur = revealMap.get(r.item_id)
+      if (!cur || (SCOPE_RANK[r.scope] || 0) > (SCOPE_RANK[cur.scope] || 0)) {
+        revealMap.set(r.item_id, r)
+      }
+    }
+
+    // 4. Resolve best attempt score per online exam
+    const bestAttempts = new Map()
+    for (const a of attempts) {
+      const exam = a.exams
+      const isRevealed = exam?.reveal_grades === true || revealMap.get(a.exam_id)?.allowed === true
+      if (!isRevealed) continue
+
+      const scoreVal = parseFloat(a.score || 0)
+      const maxVal = parseFloat(a.max_score || 0)
+      
+      const prev = bestAttempts.get(a.exam_id)
+      if (!prev || scoreVal > prev.score) {
+        bestAttempts.set(a.exam_id, { score: scoreVal, max_score: maxVal })
+      }
+    }
 
     let totalHomeworkScore = 0
     let totalHomeworkMax = 0
@@ -122,7 +191,15 @@ export async function getStudentGradesSummary(studentId) {
     let participationCount = 0
     let behaviorNotesCount = 0
 
-    data.forEach(r => {
+    // Add online exams (best attempt per exam)
+    for (const best of bestAttempts.values()) {
+      totalExamScore += best.score
+      totalExamMax += best.max_score
+      examCount++
+    }
+
+    // Add manual grades
+    grades.forEach(r => {
       const scoreVal = parseFloat(r.score)
       const maxVal = parseFloat(r.max_score)
 

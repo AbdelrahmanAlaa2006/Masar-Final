@@ -5,10 +5,32 @@ import { supabase } from './supabase'
 // legacy `youtube_url` column so older rows keep working; new writes put the
 // id in `youtube_id`.
 export async function listVideos() {
-  const { data, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  let isStudent = false
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile) {
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        isAdmin = true
+      } else if (profile.role === 'assistant') {
+        const { data: adminData } = await supabase
+          .from('tenant_admins')
+          .select('permissions')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('videos')) {
+          isAdmin = true
+        }
+      }
+      isStudent = profile.role === 'student'
+    }
+  }
+
+  let query = supabase
     .from('videos')
     .select(`
-      id, title, description, grade,
+      id, title, description, grade, is_archived,
       active_hours, expiry_at, quizzes, created_at,
       pdf_url, pdf_key,
       video_parts (
@@ -17,20 +39,21 @@ export async function listVideos() {
         view_limit, bunny_video_id, bunny_library_id
       )
     `)
-    .order('created_at', { ascending: false })
+
+  if (!isAdmin) {
+    query = query.eq('is_archived', false)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
   let rows = data || []
 
   // Package-level gating for student role
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile && profile.role === 'student') {
-      const { listStudentContentAccess } = await import('./packagesApi')
-      const access = await listStudentContentAccess(user.id)
-      const allowedVideoIds = new Set(access.filter(a => a.content_type === 'video').map(a => a.content_id))
-      rows = rows.filter(v => v.grade !== 'packages' || allowedVideoIds.has(v.id))
-    }
+  if (user && isStudent) {
+    const { listStudentContentAccess } = await import('./packagesApi')
+    const access = await listStudentContentAccess(user.id)
+    const allowedVideoIds = new Set(access.filter(a => a.content_type === 'video').map(a => a.content_id))
+    rows = rows.filter(v => v.grade !== 'packages' || allowedVideoIds.has(v.id))
   }
 
   for (const v of rows) {
@@ -293,6 +316,17 @@ export async function updateVideoAvailability(videoId, hours) {
     .update({ active_hours: h, expiry_at })
     .eq('id', videoId)
     .select('id, active_hours, expiry_at, created_at')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function setVideoArchived(id, archived) {
+  const { data, error } = await supabase
+    .from('videos')
+    .update({ is_archived: !!archived })
+    .eq('id', id)
+    .select()
     .single()
   if (error) throw error
   return data

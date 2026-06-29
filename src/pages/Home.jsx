@@ -350,27 +350,38 @@ export default function Home() {
           {/* Cards Section */}
           <div className="container">
             <div id="cards" className="cards-grid">
-              {[
-                { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
-                { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
-                { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
-                { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' },
-                { key: 'payments', route: '/packages', icon: <PackagesIcon />, label: 'باقاتي الدراسية', descAdmin: 'تفعيل باقات الطلاب ومتابعة اشتراكاتهم', descStudent: 'فيديوهات، واجبات، وامتحانات باقاتك المشتركة' }
-              ].filter(c => {
-                if (!isFeatureEnabled(c.key)) return false
-                if (role === 'assistant') {
-                  if (c.key === 'reports') return hasPermission('reports')
-                  return hasPermission(c.key)
-                }
-                return true
-              }).map((card) => (
-                <div key={card.key} className="card" onClick={() => goAndTrack(card.key, card.route)}>
-                  <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
-                  <h2>{card.label}</h2>
-                  <div className="card-title-accent" />
-                  <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
-                </div>
-              ))}
+              {(() => {
+                const visibleCards = [
+                  { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
+                  { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
+                  { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
+                  { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' },
+                  { key: 'payments', route: '/packages', icon: <PackagesIcon />, label: 'باقاتي الدراسية', descAdmin: 'تفعيل باقات الطلاب ومتابعة اشتراكاتهم', descStudent: 'فيديوهات، واجبات، وامتحانات باقاتك المشتركة' }
+                ].filter(c => {
+                  if (!isFeatureEnabled(c.key)) return false
+                  if (role === 'assistant') {
+                    if (c.key === 'reports') return hasPermission('reports')
+                    return hasPermission(c.key)
+                  }
+                  return true
+                });
+
+                return visibleCards.map((card) => {
+                  const isCentered = card.key === 'payments' && visibleCards.length === 5;
+                  return (
+                    <div
+                      key={card.key}
+                      className={`card ${isCentered ? 'card-payments-centered' : ''}`}
+                      onClick={() => goAndTrack(card.key, card.route)}
+                    >
+                      <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
+                      <h2>{card.label}</h2>
+                      <div className="card-title-accent" />
+                      <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </>

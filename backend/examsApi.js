@@ -29,26 +29,50 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 // `questions` payload — useful for ControlPanel where only metadata is
 // needed (cuts payload by 10–100x for big exams).
 export async function listExams({ lean = false } = {}) {
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  let isStudent = false
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile) {
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        isAdmin = true
+      } else if (profile.role === 'assistant') {
+        const { data: adminData } = await supabase
+          .from('tenant_admins')
+          .select('permissions')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('exams')) {
+          isAdmin = true
+        }
+      }
+      isStudent = profile.role === 'student'
+    }
+  }
+
   const cols = lean
-    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, created_at, questions_count'
-    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, created_at'
-  const { data, error } = await supabase
+    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, created_at, questions_count'
+    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, created_at'
+
+  let query = supabase
     .from('exams')
     .select(cols)
-    .order('created_at', { ascending: false })
+
+  if (!isAdmin) {
+    query = query.eq('is_archived', false)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
   let rows = data || []
 
   // Package-level gating for student role
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile && profile.role === 'student') {
-      const { listStudentContentAccess } = await import('./packagesApi')
-      const access = await listStudentContentAccess(user.id)
-      const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
-      rows = rows.filter(e => e.grade !== 'packages' || allowedExamIds.has(e.id))
-    }
+  if (user && isStudent) {
+    const { listStudentContentAccess } = await import('./packagesApi')
+    const access = await listStudentContentAccess(user.id)
+    const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+    rows = rows.filter(e => e.grade !== 'packages' || allowedExamIds.has(e.id))
   }
 
   return rows
@@ -63,6 +87,7 @@ export async function setExamRevealGrades(examId, reveal) {
     .select('id, reveal_grades')
     .single()
   if (error) throw error
+  invalidatePrefix('grades-summary:')
   return data
 }
 
@@ -231,6 +256,7 @@ export async function submitAttempt(attemptId, { responses }) {
   invalidatePrefix('student-exam-attempts-batch:')
   invalidatePrefix('student-exams-')
   invalidatePrefix('upcoming-exam-')
+  invalidatePrefix('grades-summary:')
   // RPC returns a single row {score, max_score}
   const row = Array.isArray(data) ? data[0] : data
   return row || { score: 0, max_score: 0 }
@@ -248,4 +274,15 @@ export async function listAttemptsForStudent(studentId) {
     if (error) throw error
     return data || []
   })
+}
+
+export async function setExamArchived(id, archived) {
+  const { data, error } = await supabase
+    .from('exams')
+    .update({ is_archived: !!archived })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

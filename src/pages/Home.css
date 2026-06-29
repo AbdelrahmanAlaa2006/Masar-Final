@@ -1328,3 +1328,10 @@ body.dark .home-search-item:hover {
     transform: translateY(0);
   }
 }
+
+/* Center the payments card under Homeworks and Reports when there are 5 cards in total */
+@media (min-width: 769px) {
+  .card-payments-centered {
+    grid-column: 2 / span 2;
+  }
+}

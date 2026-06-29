@@ -4,7 +4,7 @@ import { useTenant } from '../contexts/TenantContext'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
-import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch } from '@backend/examsApi'
+import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch, setExamArchived } from '@backend/examsApi'
 import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
@@ -38,7 +38,15 @@ export default function Exams() {
   const navigate = useNavigate()
   // Record this visit for the home "Continue" widget.
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('exams')) }, [])
-  const { user, role: userRole } = useAuth()
+  const { user: rawUser, role: rawRole } = useAuth()
+  const user = useMemo(() => {
+    if (!rawUser) return null
+    if (rawUser.role === 'super_admin') {
+      return { ...rawUser, role: 'admin' }
+    }
+    return rawUser
+  }, [rawUser])
+  const userRole = rawRole === 'super_admin' ? 'admin' : rawRole
   const { isGradeEnabled, gradesList } = useTenant()
   const userId = user?.id || null
 
@@ -72,6 +80,7 @@ export default function Exams() {
   })
 
   const [showModal, setShowModal] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [showLockModal, setShowLockModal] = useState(false)
   const [allowedContentIds, setAllowedContentIds] = useState(new Set())
   const [rows, setRows] = useState([])
@@ -175,14 +184,22 @@ export default function Exams() {
     for (const key of Object.keys(levelsMeta)) {
       out[key] = []
     }
-    for (const r of rows) {
+
+    let filteredRows = rows
+    if (userRole === 'admin' || userRole === 'assistant') {
+      filteredRows = rows.filter(r => !!r.is_archived === showArchived)
+    } else {
+      filteredRows = rows.filter(r => !r.is_archived)
+    }
+
+    for (const r of filteredRows) {
       const ui = dbToUiGrade(r.grade) || r.grade
       if (out[ui]) {
         out[ui].push(r)
       }
     }
     return out
-  }, [rows, levelsMeta])
+  }, [rows, levelsMeta, userRole, showArchived])
 
   // Group active/accessible exams by Playlist
   const playlistGroups = useMemo(() => {
@@ -316,6 +333,18 @@ export default function Exams() {
     }
   }
 
+  const handleToggleArchive = async (exam) => {
+    try {
+      await setExamArchived(exam.id, !exam.is_archived)
+      invalidateCache('exams')
+      invalidateCache('exams-lean')
+      notify(exam.is_archived ? 'تم إلغاء أرشفة الامتحان بنجاح' : 'تم أرشفة الامتحان بنجاح')
+      await refresh()
+    } catch (err) {
+      notify(err.message || 'حدث خطأ أثناء تغيير حالة الأرشيف', { type: 'error' })
+    }
+  }
+
   const getLevelTitle = (lvl) => {
     if (lvl === 'packages') return 'الباقات المدفوعة 📦'
     return levelsMeta[lvl]?.ar ? `امتحانات ${levelsMeta[lvl].ar}` : 'امتحانات'
@@ -379,6 +408,9 @@ export default function Exams() {
           <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
           {(userRole === 'admin' || userRole === 'assistant') && (
             <>
+              <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); handleToggleArchive(exam) }} style={{ marginInlineEnd: 6, background: 'rgba(255,255,255,0.08)' }}>
+                {exam.is_archived ? '📦 إلغاء الأرشيف' : '📦 أرشفة'}
+              </button>
               <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); requestEdit(exam) }} style={{ marginInlineEnd: 6 }}>
                 ✏️ تعديل
               </button>
@@ -466,6 +498,52 @@ export default function Exams() {
           )}
         </div>
       </div>
+
+      {(userRole === 'admin' || userRole === 'assistant') && (
+        <div style={{
+          display: 'flex',
+          gap: 12,
+          marginBottom: 20,
+          background: 'rgba(255,255,255,0.02)',
+          padding: '6px 8px',
+          borderRadius: 12,
+          width: 'fit-content',
+          border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))'
+        }}>
+          <button
+            type="button"
+            onClick={() => setShowArchived(false)}
+            style={{
+              background: !showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+              color: !showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+              border: 'none',
+              padding: '8px 18px',
+              borderRadius: 8,
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            📝 الامتحانات النشطة
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowArchived(true)}
+            style={{
+              background: showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+              color: showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+              border: 'none',
+              padding: '8px 18px',
+              borderRadius: 8,
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            📦 الأرشيف
+          </button>
+        </div>
+      )}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <i className="fas fa-spinner fa-spin"></i> جاري التحميل...

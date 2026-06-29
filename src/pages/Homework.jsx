@@ -15,6 +15,7 @@ import {
   gradeSubmission,
   uiToDbGrade,
   dbToUiGrade,
+  setHomeworkArchived,
 } from '@backend/homeworksApi'
 import { uploadHomeworkPdf, deleteR2Object } from '@backend/r2'
 import { listStudentContentAccess } from '@backend/packagesApi'
@@ -93,13 +94,22 @@ function rowToCard(row) {
     max_score: row.max_score ?? 0,
     answer_key: Array.isArray(row.answer_key) ? row.answer_key : [],
     reveal_grades: !!row.reveal_grades,
+    is_archived: !!row.is_archived,
   }
 }
 
 export default function Homework() {
   useEffect(() => { import('../utils/trackVisit').then(m => m.trackVisit('homeworks')) }, [])
 
-  const { user, role: userRole } = useAuth()
+  const { user: rawUser, role: rawRole } = useAuth()
+  const user = useMemo(() => {
+    if (!rawUser) return null
+    if (rawUser.role === 'super_admin') {
+      return { ...rawUser, role: 'admin' }
+    }
+    return rawUser
+  }, [rawUser])
+  const userRole = rawRole === 'super_admin' ? 'admin' : rawRole
   const { isGradeEnabled, gradesList } = useTenant()
   const userId = user?.id || null
 
@@ -138,6 +148,7 @@ export default function Homework() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [search, setSearch] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
@@ -222,7 +233,15 @@ export default function Homework() {
       grouped[key] = []
     }
     if (!Array.isArray(rows)) return grouped
-    for (const r of rows) {
+
+    let filteredRows = rows
+    if (userRole === 'admin' || userRole === 'assistant') {
+      filteredRows = rows.filter(r => !!r.is_archived === showArchived)
+    } else {
+      filteredRows = rows.filter(r => !r.is_archived)
+    }
+
+    for (const r of filteredRows) {
       if (!r) continue
       const ui = dbToUiGrade(r.grade)
       const key = ui || r.grade
@@ -235,7 +254,7 @@ export default function Homework() {
       }
     }
     return grouped
-  }, [rows, levelsMeta])
+  }, [rows, levelsMeta, userRole, showArchived])
 
   const flash = (msg, kind = 'success') => {
     setToast({ msg, kind })
@@ -443,6 +462,16 @@ export default function Homework() {
     }
   }
 
+  const handleToggleArchive = async (hw) => {
+    try {
+      await setHomeworkArchived(hw.id, !hw.is_archived)
+      flash(hw.is_archived ? 'تم إلغاء أرشفة الواجب بنجاح' : 'تم أرشفة الواجب بنجاح')
+      await refresh({ force: true })
+    } catch (err) {
+      flash(err.message || 'حدث خطأ أثناء تغيير حالة الأرشيف', 'warning')
+    }
+  }
+
   return (
     <main className="hw-page" dir="rtl">
       <div className="hw-container">
@@ -531,6 +560,52 @@ export default function Homework() {
               </div>
             </div>
 
+            {(userRole === 'admin' || userRole === 'assistant') && (
+              <div style={{
+                display: 'flex',
+                gap: 12,
+                marginBottom: 20,
+                background: 'rgba(255,255,255,0.02)',
+                padding: '6px 8px',
+                borderRadius: 12,
+                width: 'fit-content',
+                border: '1.5px solid var(--border-color, rgba(255,255,255,0.06))'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(false)}
+                  style={{
+                    background: !showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+                    color: !showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+                    border: 'none',
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📝 الواجبات النشطة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(true)}
+                  style={{
+                    background: showArchived ? 'var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%))' : 'transparent',
+                    color: showArchived ? '#fff' : 'var(--text-secondary, #a0aec0)',
+                    border: 'none',
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  📦 الأرشيف
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="hw-empty"><i className="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
             ) : loadError ? (
@@ -602,6 +677,7 @@ export default function Homework() {
                               onGrade={() => setGradeModal({ homework: hw })}
                               onEdit={() => openEditModal(hw)}
                               onDelete={() => requestDelete(hw)}
+                              onToggleArchive={() => handleToggleArchive(hw)}
                             />
                           ))}
                         </div>
@@ -797,7 +873,7 @@ export default function Homework() {
 
 /* ─────────────────────── sub-components ─────────────────────── */
 
-function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, onGrade, onEdit, onDelete }) {
+function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, onGrade, onEdit, onDelete, onToggleArchive }) {
   if (!hw) return null
   const now = Date.now()
   const due = hw.due_at ? new Date(hw.due_at).getTime() : null
@@ -885,6 +961,9 @@ function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, o
             <>
               <button className="hw-btn hw-btn-primary" onClick={onGrade}>
                 <i className="fas fa-list-check"></i> التسليمات
+              </button>
+              <button className="hw-btn hw-btn-ghost hw-btn-icon" onClick={onToggleArchive} title={hw.is_archived ? "إلغاء الأرشفة" : "أرشفة"}>
+                <i className={`fas ${hw.is_archived ? 'fa-box-open' : 'fa-box'}`}></i>
               </button>
               <button className="hw-btn hw-btn-ghost hw-btn-icon" onClick={onEdit} title="تعديل">
                 <i className="fas fa-pen"></i>

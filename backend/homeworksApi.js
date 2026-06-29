@@ -36,26 +36,49 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 // hint anyway. If you want the key hidden, move it to a server-only view
 // or strip it on the client. (For now we expose it so admin UI can edit.)
 export async function listHomeworks() {
-  const { data, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  let isStudent = false
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (profile) {
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        isAdmin = true
+      } else if (profile.role === 'assistant') {
+        const { data: adminData } = await supabase
+          .from('tenant_admins')
+          .select('permissions')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (adminData && Array.isArray(adminData.permissions) && adminData.permissions.includes('homework')) {
+          isAdmin = true
+        }
+      }
+      isStudent = profile.role === 'student'
+    }
+  }
+
+  let query = supabase
     .from('homeworks')
     .select(
       'id, title, description, subject, teacher, week, grade, ' +
-      'cover_url, pdf_url, pdf_key, due_at, max_score, answer_key, reveal_grades, created_at'
+      'cover_url, pdf_url, pdf_key, due_at, max_score, answer_key, reveal_grades, is_archived, created_at'
     )
-    .order('created_at', { ascending: false })
+
+  if (!isAdmin) {
+    query = query.eq('is_archived', false)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
   let rows = data || []
 
   // Package-level gating for student role
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile && profile.role === 'student') {
-      const { listStudentContentAccess } = await import('./packagesApi')
-      const access = await listStudentContentAccess(user.id)
-      const allowedHomeworkIds = new Set(access.filter(a => a.content_type === 'homework').map(a => a.content_id))
-      rows = rows.filter(h => h.grade !== 'packages' || allowedHomeworkIds.has(h.id))
-    }
+  if (user && isStudent) {
+    const { listStudentContentAccess } = await import('./packagesApi')
+    const access = await listStudentContentAccess(user.id)
+    const allowedHomeworkIds = new Set(access.filter(a => a.content_type === 'homework').map(a => a.content_id))
+    rows = rows.filter(h => h.grade !== 'packages' || allowedHomeworkIds.has(h.id))
   }
 
   return rows
@@ -283,4 +306,15 @@ export async function deleteSubmission(submissionId) {
       await deleteR2Object({ key: row.submission_key, url: row.submission_url }).catch(() => {})
     } catch { /* ignore */ }
   }
+}
+
+export async function setHomeworkArchived(id, archived) {
+  const { data, error } = await supabase
+    .from('homeworks')
+    .update({ is_archived: !!archived })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

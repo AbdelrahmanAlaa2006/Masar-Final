@@ -152,15 +152,33 @@ export default function ExamsReport() {
           const qs = Array.isArray(ex.questions) ? ex.questions : []
           const resp = Array.isArray(best?.responses) ? best.responses : []
           const questions = qs.map((q, qi) => {
-            const r = resp[qi] || {}
+            const r = resp.find(res => Number(res?.questionId) === qi) || {}
+            
+            let correctVal = -1
+            if (Array.isArray(q.answers) && q.answers.length > 0) {
+              correctVal = Number(q.answers[0])
+            } else if (typeof q.correct === 'number') {
+              correctVal = q.correct
+            } else if (typeof q.correct_index === 'number') {
+              correctVal = q.correct_index
+            } else if (typeof q.answer === 'number') {
+              correctVal = q.answer
+            }
+
+            let studentAnswerVal = -1
+            if (Array.isArray(r.selected) && r.selected.length > 0) {
+              studentAnswerVal = Number(r.selected[0])
+            } else if (typeof r.answer === 'number') {
+              studentAnswerVal = r.answer
+            } else if (typeof r.selected === 'number') {
+              studentAnswerVal = r.selected
+            }
+
             return {
               text: q.text || q.question || q.title || `سؤال ${qi + 1}`,
               options: q.options || q.choices || [],
-              correct: typeof q.correct === 'number' ? q.correct
-                : typeof q.correct_index === 'number' ? q.correct_index
-                : typeof q.answer === 'number' ? q.answer : -1,
-              studentAnswer: typeof r.answer === 'number' ? r.answer
-                : typeof r.selected === 'number' ? r.selected : -1,
+              correct: correctVal,
+              studentAnswer: studentAnswerVal,
             }
           })
           return {
