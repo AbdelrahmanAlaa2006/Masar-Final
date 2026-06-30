@@ -413,7 +413,7 @@ body.dark .hw-page .prep-cta {
 /* ── Lecture cards grid ──────────────────────────────── */
 .hw-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
   gap: 24px;
 }
 

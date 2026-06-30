@@ -377,7 +377,7 @@ body.dark .vid-prep-head h1 {
 /* ───── Videos list view ───── */
 .videos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
   gap: 28px;
   max-width: 1400px;
   margin: 0 auto;

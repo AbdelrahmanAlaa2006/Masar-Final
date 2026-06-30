@@ -391,8 +391,8 @@ export default function ExamsReport() {
         </div>
 
         {/* Controls */}
-        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="cp-filter-group" style={{ display: 'flex', gap: 8 }}>
+        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div className="cp-filter-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
               { key: 'all', label: 'الكل', icon: 'fa-th-list' },
               { key: 'passed', label: 'ناجح', icon: 'fa-check' },

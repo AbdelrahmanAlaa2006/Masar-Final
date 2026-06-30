@@ -343,7 +343,7 @@ export default function ControlPanelIndex() {
                     icon="fa-calendar-check"
                     accent="teal"
                     title="تحضير الطلاب والغياب"
-                    desc="تسجيل الحضور اليدوي، وبطاقات الهوية والـ QR الذكية"
+                    desc="تسجيل الحضور اليدوي، وبطاقات الباركود الذكية"
                     onClick={() => enterSection('attendance')}
                   />
                 )}

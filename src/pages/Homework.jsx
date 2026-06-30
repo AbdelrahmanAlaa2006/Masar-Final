@@ -496,7 +496,7 @@ export default function Homework() {
                       animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
                       animationDelay: `${index * 0.06}s`
                     }}
-                    onClick={() => setGrade(key)}
+                    onClick={() => { setGrade(key); window.scrollTo(0, 0) }}
                   >
                     <div className="prep-cover">
                       <div className="prep-cover-deco" />
@@ -529,12 +529,14 @@ export default function Homework() {
                   <span className="premium-title-accent">({filtered.length} واجب)</span>
                 </h1>
                 <p className="premium-subtitle-desc">
-                  أرسل إجاباتك وتابع تقييم المعلم لمهامك الدراسية بشكل مستمر
+                  {(userRole === 'admin' || userRole === 'assistant')
+                    ? 'إدارة الواجبات والمهام الدراسية لهذه المرحلة'
+                    : 'أرسل إجاباتك وتابع تقييم المعلم لمهامك الدراسية بشكل مستمر'}
                 </p>
               </div>
               <div className="premium-header-actions">
                 {(userRole === 'admin' || userRole === 'assistant') && (
-                  <button className="premium-back-btn" onClick={() => { setGrade(null); setSearch('') }}>
+                  <button className="premium-back-btn" onClick={() => { setGrade(null); setSearch(''); window.scrollTo(0, 0) }}>
                     <i className="fas fa-arrow-right"></i> العودة للمراحل
                   </button>
                 )}

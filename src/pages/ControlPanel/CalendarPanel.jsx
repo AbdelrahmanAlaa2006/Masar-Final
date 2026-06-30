@@ -12,7 +12,7 @@ const EVENT_TYPE_INFO = {
   exam: { label: 'امتحان مجدول', icon: 'fa-file-signature', color: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
   payment: { label: 'تذكير بالدفع', icon: 'fa-credit-card', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
   announcement: { label: 'تنبيه عام', icon: 'fa-bullhorn', color: '#eab308', bg: 'rgba(234, 179, 8, 0.1)' },
-  custom: { label: 'فعالية أخرى', icon: 'fa-calendar-days', color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' },
+  custom: { label: 'فعالية أخرى', icon: 'fa-calendar-days', color: 'var(--cp-text-muted)', bg: 'rgba(100, 116, 139, 0.1)' },
 }
 
 export default function CalendarPanel({ onBack, flash }) {
@@ -226,10 +226,10 @@ export default function CalendarPanel({ onBack, flash }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc' }}>
+          <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: 'var(--cp-text-main)' }}>
             جدول المحتوى والفعاليات المجدولة 📅
           </h2>
-          <p style={{ margin: '6px 0 0', color: '#94a3b8', fontSize: '0.95rem' }}>
+          <p style={{ margin: '6px 0 0', color: 'var(--cp-text-muted)', fontSize: '0.95rem' }}>
             تنظيم مواعيد الفيديوهات، الامتحانات، الواجبات والأنشطة الأكاديمية على مدار الشهر
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function CalendarPanel({ onBack, flash }) {
 
       {/* Grade filter */}
       <div style={{
-        background: '#1e293b',
+        background: 'var(--cp-card-bg)',
         borderRadius: 16,
         padding: '16px 24px',
         display: 'flex',
@@ -259,14 +259,14 @@ export default function CalendarPanel({ onBack, flash }) {
         gap: 16
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>تصفية المرحلة:</span>
+          <span style={{ color: 'var(--cp-text-muted)', fontSize: '0.9rem' }}>تصفية المرحلة:</span>
           <select
             value={gradeFilter}
             onChange={(e) => setGradeFilter(e.target.value)}
             style={{
-              background: '#0f172a',
-              color: '#f8fafc',
-              border: '1px solid #475569',
+              background: 'var(--cp-bg)',
+              color: 'var(--cp-text-main)',
+              border: '1px solid var(--cp-card-border)',
               borderRadius: 12,
               padding: '8px 16px',
               fontFamily: 'Tajawal',
@@ -284,7 +284,7 @@ export default function CalendarPanel({ onBack, flash }) {
           <button onClick={handlePrevMonth} className="cp-btn cp-btn-secondary" style={{ borderRadius: 10, padding: '6px 12px' }}>
             <i className="fas fa-chevron-right"></i> الشهر السابق
           </button>
-          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#f8fafc', minWidth: 150, textAlign: 'center' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--cp-text-main)', minWidth: 150, textAlign: 'center' }}>
             {formattedMonthYear}
           </span>
           <button onClick={handleNextMonth} className="cp-btn cp-btn-secondary" style={{ borderRadius: 10, padding: '6px 12px' }}>
@@ -297,11 +297,11 @@ export default function CalendarPanel({ onBack, flash }) {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '100px 0', gap: 12 }}>
           <i className="fas fa-spinner fa-spin" style={{ fontSize: '2.5rem', color: '#10b981' }}></i>
-          <span style={{ color: '#94a3b8' }}>جاري تحميل التقويم...</span>
+          <span style={{ color: 'var(--cp-text-muted)' }}>جاري تحميل التقويم...</span>
         </div>
       ) : (
         <div style={{
-          background: '#1e293b',
+          background: 'var(--cp-card-bg)',
           border: '1px solid #334155',
           borderRadius: 20,
           overflow: 'hidden'
@@ -310,11 +310,11 @@ export default function CalendarPanel({ onBack, flash }) {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            background: '#0f172a',
+            background: 'var(--cp-bg)',
             borderBottom: '1px solid #334155',
             textAlign: 'center',
             fontWeight: 'bold',
-            color: '#94a3b8',
+            color: 'var(--cp-text-muted)',
             fontSize: '0.85rem'
           }}>
             {['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((day) => (
@@ -327,7 +327,7 @@ export default function CalendarPanel({ onBack, flash }) {
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
             gridAutoRows: 'minmax(120px, auto)',
-            background: '#0f172a',
+            background: 'var(--cp-bg)',
             gap: '1px'
           }}>
             {calendarDays.map(({ date, isCurrentMonth }, idx) => {
@@ -350,7 +350,7 @@ export default function CalendarPanel({ onBack, flash }) {
                   key={idx}
                   onClick={() => date && openAddModal(date)}
                   style={{
-                    background: isCurrentMonth ? '#1e293b' : '#0f172a',
+                    background: isCurrentMonth ? 'var(--cp-card-bg)' : 'var(--cp-bg)',
                     padding: 8,
                     display: 'flex',
                     flexDirection: 'column',
@@ -360,14 +360,14 @@ export default function CalendarPanel({ onBack, flash }) {
                     transition: 'background 0.2s',
                     border: isToday ? '2px solid #10b981' : 'none'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#334155' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = isCurrentMonth ? '#1e293b' : '#0f172a' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--cp-card-hover-bg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isCurrentMonth ? 'var(--cp-card-bg)' : 'var(--cp-bg)' }}
                 >
                   {/* Day number */}
                   <span style={{
                     fontSize: '0.9rem',
                     fontWeight: isToday ? 'bold' : 'normal',
-                    color: isToday ? '#10b981' : '#cbd5e1',
+                    color: isToday ? '#10b981' : 'var(--cp-text-main)',
                     marginBottom: 6,
                     display: 'inline-block'
                   }}>
@@ -381,7 +381,7 @@ export default function CalendarPanel({ onBack, flash }) {
                       const info = EVENT_TYPE_INFO[ev.event_type] || EVENT_TYPE_INFO.custom || {
                         label: 'فعالية',
                         icon: 'fa-calendar',
-                        color: '#64748b',
+                        color: 'var(--cp-text-muted)',
                         bg: 'rgba(100, 116, 139, 0.1)'
                       }
                       return (
@@ -397,7 +397,7 @@ export default function CalendarPanel({ onBack, flash }) {
                             padding: '4px 6px',
                             borderRadius: 4,
                             fontSize: '0.75rem',
-                            color: '#cbd5e1',
+                            color: 'var(--cp-text-main)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 4,
@@ -438,7 +438,7 @@ export default function CalendarPanel({ onBack, flash }) {
           backdropFilter: 'blur(4px)'
         }}>
           <form onSubmit={handleSaveEvent} style={{
-            background: '#1e293b',
+            background: 'var(--cp-card-bg)',
             border: '1px solid #334155',
             borderRadius: 20,
             maxWidth: 500,
@@ -453,15 +453,15 @@ export default function CalendarPanel({ onBack, flash }) {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: '#0f172a'
+              background: 'var(--cp-bg)'
             }}>
-              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.15rem', fontWeight: 'bold' }}>
+              <h3 style={{ margin: 0, color: 'var(--cp-text-main)', fontSize: '1.15rem', fontWeight: 'bold' }}>
                 {editingEvent ? 'تعديل الفعالية المجدولة 📅' : 'إضافة فعالية جديدة للتقويم 📅'}
               </h3>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}
+                style={{ background: 'none', border: 'none', color: 'var(--cp-text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
               >
                 <i className="fas fa-times"></i>
               </button>
@@ -471,7 +471,7 @@ export default function CalendarPanel({ onBack, flash }) {
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Event Title */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>عنوان الفعالية: *</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>عنوان الفعالية: *</label>
                 <input
                   type="text"
                   required
@@ -480,9 +480,9 @@ export default function CalendarPanel({ onBack, flash }) {
                   placeholder="مثال: اختبار الشهر الأول، موعد المحاضرة..."
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -492,15 +492,15 @@ export default function CalendarPanel({ onBack, flash }) {
 
               {/* Event Type */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>نوع الفعالية:</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>نوع الفعالية:</label>
                 <select
                   value={formType}
                   onChange={(e) => setFormType(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -514,7 +514,7 @@ export default function CalendarPanel({ onBack, flash }) {
 
               {/* Starts At */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>وقت وموعد الفعالية: *</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>وقت وموعد الفعالية: *</label>
                 <input
                   type="datetime-local"
                   required
@@ -522,9 +522,9 @@ export default function CalendarPanel({ onBack, flash }) {
                   onChange={(e) => setFormStartsAt(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -534,15 +534,15 @@ export default function CalendarPanel({ onBack, flash }) {
 
               {/* Grade */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>المرحلة الدراسية المستهدفة:</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>المرحلة الدراسية المستهدفة:</label>
                 <select
                   value={formGrade}
                   onChange={(e) => setFormGrade(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -556,15 +556,15 @@ export default function CalendarPanel({ onBack, flash }) {
 
               {/* Target Group */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>مجموعة مخصصة (اختياري):</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>مجموعة مخصصة (اختياري):</label>
                 <select
                   value={formGroupId}
                   onChange={(e) => setFormGroupId(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -579,15 +579,15 @@ export default function CalendarPanel({ onBack, flash }) {
 
               {/* Bound Package */}
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: 6 }}>ربط بباقة محددة (اختياري):</label>
+                <label style={{ display: 'block', color: 'var(--cp-text-main)', fontSize: '0.85rem', marginBottom: 6 }}>ربط بباقة محددة (اختياري):</label>
                 <select
                   value={formPackageId}
                   onChange={(e) => setFormPackageId(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    border: '1px solid #475569',
+                    background: 'var(--cp-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
                     borderRadius: 10,
                     padding: '8px 12px',
                     fontFamily: 'Tajawal'
@@ -605,7 +605,7 @@ export default function CalendarPanel({ onBack, flash }) {
             <div style={{
               padding: '16px 24px',
               borderTop: '1px solid #334155',
-              background: '#0f172a',
+              background: 'var(--cp-bg)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -629,9 +629,18 @@ export default function CalendarPanel({ onBack, flash }) {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="hw-btn hw-btn-ghost"
                   disabled={saving}
-                  style={{ borderRadius: 10 }}
+                  style={{
+                    borderRadius: 10,
+                    padding: '0.55rem 1.4rem',
+                    background: 'var(--cp-card-bg)',
+                    color: 'var(--cp-text-main)',
+                    border: '1px solid var(--cp-card-border)',
+                    fontFamily: 'Tajawal, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
                 >
                   إلغاء
                 </button>

@@ -844,6 +844,13 @@ body.dark .cp-page::before {
 .cp-btn-danger { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
 .cp-btn-danger:hover { background: #ef4444; color: #0b1220; }
 
+/* Primary action button — was missing, so buttons using it fell back to the
+   bare base style (appeared dark/black). Uses the tenant's --primary brand
+   color with white text, so it looks correct in both light and dark modes. */
+.cp-btn-primary { background: var(--primary, #7c3aed); color: #fff; }
+.cp-btn-primary:hover { filter: brightness(1.08); }
+.cp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .cp-btn-ghost {
   background: var(--cp-card-bg);
   color: var(--cp-text-main);
@@ -2521,6 +2528,22 @@ input[type="date"].cp-input {
 @media (max-width: 600px) {
   .cp-sa-stats-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Shared mobile responsiveness for admin panels.
+   These classes are used across many panels, so one rule fixes them all:
+   - cp-stats-row is a hard 4-column grid → collapse to 2 columns on phones.
+   - cp-filter-group / cp-panel-header flex rows → allow wrapping instead of
+     overflowing. (flex-wrap applies even when display:flex is set inline,
+     because the inline style doesn't set flex-wrap.) */
+@media (max-width: 640px) {
+  .cp-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cp-filter-group,
+  .cp-panel-header {
+    flex-wrap: wrap;
   }
 }
 

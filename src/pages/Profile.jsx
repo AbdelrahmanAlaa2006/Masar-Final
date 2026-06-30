@@ -102,15 +102,6 @@ export default function Profile() {
     setTimeout(() => setSuccessMsg(''), 2200)
   }
 
-  const handleCopyQrToken = () => {
-    if (!user) return
-    const data = `${user.id},${user.tenant_id},${user.qr_token || ''}`
-    navigator.clipboard.writeText(data)
-    setSuccessMsg('تم نسخ رمز الهوية بنجاح لمحاكاة مسح الكاشير')
-    setTimeout(() => setSuccessMsg(''), 2500)
-  }
-
-
   // Upload avatar
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
@@ -205,9 +196,7 @@ export default function Profile() {
 
   if (!user) return null
 
-  // Generate QR content securely: studentId,tenantId,qrToken
-  const qrData = `${user.id},${user.tenant_id},${user.qr_token || ''}`
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
+  // Barcode for the student's digital card (QR removed).
   const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(user.barcode_token || '')}&scale=3&rotate=N&includetext=true`
 
   return (
@@ -467,7 +456,7 @@ export default function Profile() {
                 onClick={() => setShowDigitalCard(true)}
                 className="profile-digital-card-btn"
               >
-                <i className="fas fa-qrcode" />
+                <i className="fas fa-barcode" />
                 عرض بطاقة الطالب الرقمية
               </button>
             </div>
@@ -627,24 +616,8 @@ export default function Profile() {
               <span>{gradeLabel}</span>
             </span>
 
-            {/* Codes Container */}
+            {/* Codes Container (QR removed — barcode only) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', marginBottom: '24px' }}>
-              {/* QR Code */}
-              <div style={{
-                background: '#fff',
-                padding: '12px',
-                borderRadius: '16px',
-                display: 'inline-block',
-                boxShadow: '0 6px 18px rgba(0, 0, 0, 0.3)',
-                border: '3px solid rgba(99, 102, 241, 0.2)'
-              }}>
-                <img
-                  src={qrUrl}
-                  alt="QR Code"
-                  style={{ display: 'block', width: '160px', height: '160px' }}
-                />
-              </div>
-
               {/* Barcode */}
               {user.barcode_token && (
                 <div style={{
@@ -678,52 +651,6 @@ export default function Profile() {
               gap: '10px',
               alignItems: 'center'
             }}>
-              <div style={{ width: '100%' }}>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>رمز الـ QR (للمحاكاة والتجربة):</span>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                  <span
-                    style={{
-                      fontSize: '0.74rem',
-                      color: '#cbd5e1',
-                      fontFamily: 'monospace',
-                      background: 'rgba(0,0,0,0.2)',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      textAlign: 'left'
-                    }}
-                    title={qrData}
-                  >
-                    {qrData}
-                  </span>
-                  <button
-                    onClick={handleCopyQrToken}
-                    style={{
-                      background: '#10b981',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#059669'}
-                    onMouseOut={(e) => e.currentTarget.style.background = '#10b981'}
-                  >
-                    <i className="fas fa-copy" />
-                    نسخ
-                  </button>
-                </div>
-              </div>
-
               {user.barcode_token && (
                 <div style={{ width: '100%' }}>
                   <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>رمز الباركود:</span>

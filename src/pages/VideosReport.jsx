@@ -363,8 +363,8 @@ export default function VideosReport() {
         </div>
 
         {/* Controls */}
-        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="cp-filter-group" style={{ display: 'flex', gap: 8 }}>
+        <div className="cp-bulk-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div className="cp-filter-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
               { key: 'all', label: 'الكل', icon: 'fa-th-list' },
               { key: 'completed', label: 'مكتمل', icon: 'fa-check' },

@@ -700,19 +700,9 @@ export default function AttendancePanel({ onBack, flash }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>تسجيل حضور الطلاب والغياب</h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '4px 0 0' }}>قم بتحضير الطلاب يدوياً أو باستخدام الباركود والـ QR</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '4px 0 0' }}>قم بتحضير الطلاب يدوياً أو باستخدام الباركود</p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          {activeSubTab === 'record' && (
-            <button 
-              onClick={() => setShowScanner(true)}
-              className="cp-btn cp-btn-info"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
-            >
-              <i className="fas fa-qrcode" />
-              تسجيل حضور بالـ QR
-            </button>
-          )}
           <button onClick={onBack} className="cp-btn cp-btn-secondary">
             رجوع للوحة التحكم
           </button>

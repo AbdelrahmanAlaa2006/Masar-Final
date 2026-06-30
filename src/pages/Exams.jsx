@@ -367,7 +367,7 @@ export default function Exams() {
           animation: 'fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
           animationDelay: `${index * 0.06}s`
         }}
-        onClick={() => setCurrentLevel(level)}
+        onClick={() => { setCurrentLevel(level); window.scrollTo(0, 0) }}
       >
         <div className="prep-cover">
           <div className="prep-cover-deco" />
@@ -490,13 +490,19 @@ export default function Exams() {
                 {getLevelTitle(level)}
               </h1>
               <p className="premium-subtitle-desc">
-                اختر نوع التقييم للمتابعة وأداء الاختبارات والواجبات الدورية
+                {(userRole === 'admin' || userRole === 'assistant')
+                  ? 'اختر نوع التقييم لإدارة الاختبارات والتسميعات الدورية'
+                  : 'اختر نوع التقييم للمتابعة وأداء الاختبارات والواجبات الدورية'}
               </p>
             </div>
             <div className="premium-header-actions">
-              <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); }}>
-                <i className="fas fa-arrow-right"></i> العودة للمستويات
-              </button>
+              {/* Level navigation is for staff only — a student has just their
+                  own grade, so "back to levels" must not appear for them. */}
+              {(userRole === 'admin' || userRole === 'assistant') && (
+                <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); window.scrollTo(0, 0); }}>
+                  <i className="fas fa-arrow-right"></i> العودة للمستويات
+                </button>
+              )}
             </div>
           </div>
 
@@ -511,6 +517,7 @@ export default function Exams() {
               onClick={() => {
                 setCurrentType('quiz')
                 localStorage.setItem('selectedExamType', 'quiz')
+                window.scrollTo(0, 0)
               }}
               style={{
                 background: 'rgba(255, 255, 255, 0.02)',
@@ -560,6 +567,7 @@ export default function Exams() {
               onClick={() => {
                 setCurrentType('exam')
                 localStorage.setItem('selectedExamType', 'exam')
+                window.scrollTo(0, 0)
               }}
               style={{
                 background: 'rgba(255, 255, 255, 0.02)',
@@ -618,7 +626,9 @@ export default function Exams() {
               {getLevelTitle(level)} - {currentType === 'quiz' ? 'التسميعات' : 'الامتحانات'}
             </h1>
             <p className="premium-subtitle-desc">
-              {currentType === 'quiz' ? 'راجع وأدِّ تسميعات الحفظ ومفردات الكلمات المخصصة لمرحلتك' : 'اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية'}
+              {(userRole === 'admin' || userRole === 'assistant')
+                ? (currentType === 'quiz' ? 'إدارة تسميعات الحفظ ومفردات الكلمات لهذه المرحلة' : 'إدارة الاختبارات الدورية لهذه المرحلة الدراسية')
+                : (currentType === 'quiz' ? 'راجع وأدِّ تسميعات الحفظ ومفردات الكلمات المخصصة لمرحلتك' : 'اختبر معلوماتك وقيم مستواك الدراسي من خلال امتحانات دورية مصممة بعناية')}
             </p>
           </div>
           <div className="premium-header-actions">
@@ -626,7 +636,7 @@ export default function Exams() {
               <i className="fas fa-undo"></i> تغيير النوع
             </button>
             {(userRole === 'admin' || userRole === 'assistant') && (
-              <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); }}>
+              <button className="premium-back-btn" onClick={() => { setCurrentLevel(null); setCurrentType(null); window.scrollTo(0, 0); }}>
                 <i className="fas fa-arrow-right"></i> العودة للمستويات
               </button>
             )}

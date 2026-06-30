@@ -438,10 +438,10 @@ export default function Videos() {
   }
 
   // ── Navigation ───────────────────────────────────────────────
-  const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos') }
+  const selectGrade = (gradeId) => { setCurrentGrade(gradeId); setView('videos'); window.scrollTo(0, 0) }
   const goBackToGrades = () => {
     if (userRole !== 'admin' && userRole !== 'assistant') return // students don't go back to grade picker
-    setCurrentGrade(''); setCurrentVideo(null); setSelectedPart(null); setView('grades')
+    setCurrentGrade(''); setCurrentVideo(null); setSelectedPart(null); setView('grades'); window.scrollTo(0, 0)
   }
   const goBackToVideos = () => {
     // Confirm before leaving an actively-playing part so a mistouch
@@ -815,7 +815,9 @@ export default function Videos() {
                 </span>
               </h1>
               <p className="premium-subtitle-desc">
-                شاهد المحاضرات والدروس المصورة المتاحة لمرحلتك الدراسية
+                {(userRole === 'admin' || userRole === 'assistant')
+                  ? 'إدارة المحاضرات والدروس المصورة لهذه المرحلة الدراسية'
+                  : 'شاهد المحاضرات والدروس المصورة المتاحة لمرحلتك الدراسية'}
               </p>
             </div>
             <div className="premium-header-actions">

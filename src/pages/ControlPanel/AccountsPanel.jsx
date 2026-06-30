@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { listStudentsPaged, getStudentStatusCounts, updateStudentStatus, updateStudentProfile } from '@backend/profilesApi'
+import { listStudentsPaged, getStudentStatusCounts, listStudentsByGrade, updateStudentStatus, updateStudentProfile } from '@backend/profilesApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
@@ -215,55 +215,91 @@ export default function AccountsPanel({ onBack, flash }) {
     }
   }
 
+  // Resolve a student's current group name (so a printed barcode always shows
+  // the latest group — if an admin moves the student, the next print updates).
+  const getGroupName = (student) => {
+    if (student.group) return student.group
+    const gid = student.student_groups?.[0]?.group_id
+    if (gid) return groups.find(g => g.id === gid)?.name || ''
+    return ''
+  }
+
+  // One barcode card (no QR) — shows name, level (Arabic), group + the barcode.
+  const barcodeCardHtml = (student) => {
+    const token = student.barcode_token || ''
+    if (!token) return ''
+    const barcodeApiUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(token)}&scale=3&rotate=N&includetext=true`
+    const level = GRADE_LABEL[student.grade] || student.grade || ''
+    const group = getGroupName(student)
+    return `
+      <div class="card">
+        <div class="logo">منصة مسار التعليمية</div>
+        <h2>${student.name || ''}</h2>
+        <p><strong>المرحلة:</strong> ${level}</p>
+        ${group ? `<p><strong>المجموعة:</strong> ${group}</p>` : ''}
+        <div class="barcode-wrap"><img src="${barcodeApiUrl}" class="barcode-image" alt="Barcode" /></div>
+      </div>`
+  }
+
+  // Open a print window laying cards out in a grid (1 card = single print,
+  // many cards = bulk print). The delayed print() lets the external barcode
+  // images finish loading first.
+  const printCardsPage = (title, cardsHtml) => {
+    const w = window.open('', '_blank')
+    if (!w) { flash('متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.', 'warning'); return }
+    w.document.write(`
+      <html><head><title>${title}</title><style>
+        body { font-family: 'Tajawal', sans-serif; direction: rtl; background: #fff; color: #000; margin: 0; padding: 16px; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .card { border: 2px solid #ccc; border-radius: 16px; padding: 18px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); break-inside: avoid; page-break-inside: avoid; }
+        .card h2 { margin: 0 0 6px; font-size: 1.2rem; color: #1e293b; }
+        .card p { margin: 4px 0; color: #475569; font-size: 0.9rem; }
+        .logo { font-weight: 800; font-size: 1rem; color: #6366f1; margin-bottom: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
+        .barcode-wrap { margin-top: 12px; }
+        .barcode-image { width: 100%; max-width: 260px; height: auto; }
+      </style></head>
+      <body onload="setTimeout(function(){ window.print(); }, 700);">
+        <div class="grid">${cardsHtml}</div>
+      </body></html>`)
+    w.document.close()
+  }
+
+  // Single-student barcode print (from the card modal).
   const handlePrint = () => {
     if (!selectedQrStudent) return
-    const printWindow = window.open('', '_blank')
-    const origin = window.location.origin
-    const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`
-    const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`
-    const barcodeToken = selectedQrStudent.barcode_token || ''
-    const barcodeApiUrl = barcodeToken 
-      ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true` 
-      : ''
-    
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>بطاقة هوية الطالب - ${selectedQrStudent.name}</title>
-          <style>
-            body { font-family: 'Tajawal', sans-serif; text-align: center; padding: 30px; direction: rtl; background: #fff; color: #000; }
-            .card { border: 2px solid #ccc; border-radius: 16px; padding: 24px; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
-            h2 { margin: 0 0 8px; font-size: 1.5rem; color: #1e293b; }
-            p { margin: 6px 0; color: #475569; font-size: 1rem; }
-            .codes-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; margin: 24px 0; }
-            .qr-image { width: 200px; height: 200px; }
-            .barcode-image { width: 100%; max-width: 300px; height: auto; }
-            .logo { font-weight: 800; font-size: 1.3rem; color: #6366f1; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; }
-          </style>
-        </head>
-        <body onload="window.print(); window.close();">
-          <div class="card">
-            <div class="logo">منصة مسار التعليمية</div>
-            <h2>بطاقة هوية الطالب الكودية</h2>
-            <p><strong>الاسم:</strong> ${selectedQrStudent.name}</p>
-            <p><strong>المرحلة:</strong> ${GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade}</p>
-            <div class="codes-grid">
-              <div>
-                <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; color: #64748b;">كود QR للتقرير الرقمي</p>
-                <img src="${qrCodeApiUrl}" class="qr-image" alt="QR Code" />
-              </div>
-              ${barcodeApiUrl ? `
-              <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                <p style="font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; color: #64748b;">رمز الباركود للتحضير السريع</p>
-                <img src="${barcodeApiUrl}" class="barcode-image" alt="Barcode" />
-              </div>
-              ` : ''}
-            </div>
-          </div>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
+    const card = barcodeCardHtml(selectedQrStudent)
+    if (!card) { flash('لا يوجد كود باركود لهذا الطالب', 'warning'); return }
+    printCardsPage(`باركود - ${selectedQrStudent.name}`, card)
+  }
+
+  // Bulk print: all barcodes for the selected level at once (or every level if
+  // "all" is selected). Keeps the single-print path above for new students.
+  const [bulkPrinting, setBulkPrinting] = useState(false)
+  const handlePrintAllBarcodes = async () => {
+    if (bulkPrinting) return
+    setBulkPrinting(true)
+    try {
+      let all = []
+      if (selectedGrade !== 'all') {
+        all = await listStudentsByGrade(selectedGrade)
+      } else {
+        const gradeIds = (gradesList || []).map(g => g.id)
+        const results = await Promise.all(gradeIds.map(g => listStudentsByGrade(g)))
+        all = results.flat()
+      }
+      const printable = all.filter(s => s.barcode_token)
+      if (printable.length === 0) {
+        flash('لا يوجد طلاب بأكواد باركود للطباعة في هذه المرحلة', 'warning')
+        return
+      }
+      const cards = printable.map(barcodeCardHtml).join('')
+      const gradeLabel = selectedGrade !== 'all' ? (GRADE_LABEL[selectedGrade] || selectedGrade) : 'كل المراحل'
+      printCardsPage(`باركودات ${gradeLabel} (${printable.length})`, cards)
+    } catch (e) {
+      flash('تعذر تحضير الباركودات للطباعة: ' + (e.message || ''), 'warning')
+    } finally {
+      setBulkPrinting(false)
+    }
   }
 
   // Tab badge counts now come from the server (see reloadCounts).
@@ -328,6 +364,18 @@ export default function AccountsPanel({ onBack, flash }) {
 
         <button className="cp-icon-btn" onClick={refreshList} title="تحديث القائمة" style={{ height: 42, width: 42 }}>
           <i className="fas fa-rotate"></i>
+        </button>
+
+        {/* Bulk print all barcodes for the selected level (or every level). */}
+        <button
+          className="cp-btn cp-btn-info"
+          onClick={handlePrintAllBarcodes}
+          disabled={bulkPrinting}
+          title={selectedGrade !== 'all' ? 'طباعة باركودات هذه المرحلة' : 'طباعة باركودات كل المراحل'}
+          style={{ height: 42, opacity: bulkPrinting ? 0.6 : 1 }}
+        >
+          <i className={`fas ${bulkPrinting ? 'fa-spinner fa-spin' : 'fa-barcode'}`}></i>
+          {bulkPrinting ? ' جارٍ التحضير...' : ' طباعة كل الباركودات'}
         </button>
       </div>
 
@@ -643,42 +691,40 @@ export default function AccountsPanel({ onBack, flash }) {
         document.body
       )}
 
-      {/* QR Lightbox */}
+      {/* Barcode card lightbox (QR removed — barcode only) */}
       {showQrModal && selectedQrStudent && (() => {
-        const origin = window.location.origin;
-        const qrUrl = `${origin}/public-report?id=${selectedQrStudent.id}&token=${selectedQrStudent.qr_token || ''}`;
-        const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrUrl)}`;
         const barcodeToken = selectedQrStudent.barcode_token || '';
-        const barcodeApiUrl = barcodeToken 
-          ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true` 
+        const barcodeApiUrl = barcodeToken
+          ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true`
           : '';
         const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || 'غير محدد';
-        
+        const groupText = getGroupName(selectedQrStudent);
+
         return createPortal(
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
             <div style={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 24, padding: 32, maxWidth: 480, width: '100%', color: '#fff', textAlign: 'center', position: 'relative', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
               <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }} title="إغلاق">
                 <i className="fas fa-times"></i>
               </button>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 16 }}>بطاقة أكواد الطالب للتحضير والتقارير</h3>
-              
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 16 }}>بطاقة باركود الطالب للتحضير والتقارير</h3>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', marginBottom: 24 }}>
-                {/* QR Code */}
-                <div style={{ background: '#fff', padding: 12, borderRadius: 16, display: 'inline-block' }}>
-                  <img src={qrCodeApiUrl} alt="QR Code" style={{ width: 160, height: 160, display: 'block' }} />
-                </div>
-                
-                {/* Barcode */}
-                {barcodeToken && (
-                  <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 16, display: 'inline-block', width: '100%', maxWidth: '280px' }}>
-                    <img src={barcodeApiUrl} alt="Barcode" style={{ width: '100%', height: 'auto', maxHeight: '70px', display: 'block' }} />
+                {/* Barcode only */}
+                {barcodeToken ? (
+                  <div style={{ background: '#fff', padding: '16px 20px', borderRadius: 16, display: 'inline-block', width: '100%', maxWidth: '300px' }}>
+                    <img src={barcodeApiUrl} alt="Barcode" style={{ width: '100%', height: 'auto', maxHeight: '90px', display: 'block' }} />
                   </div>
+                ) : (
+                  <div style={{ color: '#94a3b8' }}>لا يوجد كود باركود لهذا الطالب</div>
                 )}
               </div>
 
               <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: 16, padding: 16, marginBottom: 24, textAlign: 'right' }}>
                 <div style={{ marginBottom: 6 }}><span style={{ color: '#94a3b8' }}>اسم الطالب: </span><span style={{ fontWeight: 600 }}>{selectedQrStudent.name}</span></div>
                 <div style={{ marginBottom: 6 }}><span style={{ color: '#94a3b8' }}>المرحلة الدراسية: </span><span>{gradeText}</span></div>
+                {groupText && (
+                  <div style={{ marginBottom: 6 }}><span style={{ color: '#94a3b8' }}>المجموعة: </span><span style={{ fontWeight: 600 }}>{groupText}</span></div>
+                )}
                 {barcodeToken && (
                   <div><span style={{ color: '#94a3b8' }}>كود الباركود: </span><span style={{ fontFamily: 'monospace', color: '#8c72db', fontWeight: 'bold' }}>{barcodeToken}</span></div>
                 )}
