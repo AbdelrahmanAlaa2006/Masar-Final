@@ -161,113 +161,121 @@ export async function updateGatewayConfig(tenantId, newGatewaySettings) {
   return data
 }
 
-// Single-message sender bridge (called during queue processing loop)
+/* ---------------------------------------------------------------------------
+   Gateways (simplified — Evolution/Docker, Telegram, UltraMsg and generic
+   webhooks were removed):
+
+   1. 'whatsapp_manual' — free, zero setup, zero ban risk. Messages are sent
+      through wa.me click-to-chat links: the admin clicks a button, WhatsApp
+      opens with the parent's number + message prefilled, they press send.
+      Because a human sends from the teacher's own official WhatsApp app,
+      there is no automation on the account and nothing to ban.
+
+   2. 'whatsapp_cloud' — the OFFICIAL Meta WhatsApp Business Cloud API.
+      No server needed: a direct HTTPS call with two settings (Phone Number ID
+      + Access Token). Business-initiated messages require an approved message
+      template, so a template name can be configured; the notification text is
+      injected as the template's {{1}} variable. Without a template, plain text
+      is sent (only delivered inside the 24h customer-service window).
+
+   Each tenant stores its own gateway settings in tenants.config.gateway,
+   so teachers are fully isolated from each other.
+   --------------------------------------------------------------------------- */
+
+// Normalize a local phone to international digits (default Egypt +20).
+// '010 0037 9547' -> '201000379547'
+export function normalizePhoneIntl(phone, countryCode = '20') {
+  let p = String(phone || '').replace(/[^0-9]/g, '')
+  if (!p) return ''
+  if (p.startsWith('00')) p = p.slice(2)
+  if (p.startsWith(countryCode) && p.length >= 11) return p
+  if (p.startsWith('0')) p = p.slice(1)
+  return countryCode + p
+}
+
+// Build a wa.me click-to-chat link with the message prefilled.
+export function buildWaMeLink(phone, message, countryCode = '20') {
+  const to = normalizePhoneIntl(phone, countryCode)
+  return `https://wa.me/${to}?text=${encodeURIComponent(message || '')}`
+}
+
+// Mark a notification as sent after the admin sent it manually via wa.me.
+export async function markNotificationManuallySent(id) {
+  const { data: row } = await supabase
+    .from('unified_notifications')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle()
+
+  const updatedStatus = { ...(row?.status || {}) }
+  updatedStatus.whatsapp = 'sent'
+  updatedStatus.whatsapp_sent_at = new Date().toISOString()
+  updatedStatus.whatsapp_error = null
+  updatedStatus.whatsapp_via = 'manual'
+
+  const { data, error } = await supabase
+    .from('unified_notifications')
+    .update({ status: updatedStatus })
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data
+}
+
+// Single-message sender bridge (called during automatic queue processing)
 export async function sendGatewayMessage(gatewayConfig, notification) {
   if (!gatewayConfig) {
     throw new Error('لم يتم تهيئة إعدادات بوابة الإرسال')
   }
 
-  const { type, url, token, telegram_bot_token, telegram_chat_id } = gatewayConfig
+  const { type } = gatewayConfig
   const messageText = notification.message
-  const parentPhone = notification.phone
+  const to = normalizePhoneIntl(notification.phone, gatewayConfig.country_code || '20')
 
-  if (type === 'whatsapp_evolution') {
-    if (!url || !token) throw new Error('بيانات Evolution API غير مكتملة (العنوان أو المفتاح مفقود)')
-    const instanceUrl = url.endsWith('/') ? url : `${url}/`
-    
-    const response = await fetch(instanceUrl, {
+  if (type === 'whatsapp_manual') {
+    // Manual mode has no automatic sender — the UI opens wa.me links instead.
+    throw new Error('وضع الإرسال اليدوي مفعّل: استخدم زر الواتساب الأخضر بجوار كل رسالة')
+  }
+
+  if (type === 'whatsapp_cloud') {
+    const { phone_number_id, token, template_name, template_lang } = gatewayConfig
+    if (!phone_number_id || !token) {
+      throw new Error('بيانات واتساب الرسمي غير مكتملة (Phone Number ID أو Access Token مفقود)')
+    }
+
+    // With an approved template: inject the text as the {{1}} body variable
+    // (required for business-initiated messages). Otherwise send plain text
+    // (works only inside the 24h customer-service window).
+    const body = template_name
+      ? {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'template',
+          template: {
+            name: template_name,
+            language: { code: template_lang || 'ar' },
+            components: [{ type: 'body', parameters: [{ type: 'text', text: messageText }] }],
+          },
+        }
+      : { messaging_product: 'whatsapp', to, type: 'text', text: { body: messageText } }
+
+    const response = await fetch(`https://graph.facebook.com/v21.0/${phone_number_id}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': token
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        number: parentPhone,
-        text: messageText,
-        options: {
-          delay: 1200,
-          presence: 'composing'
-        }
-      })
-    })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      throw new Error(`Evolution API Error (${response.status}): ${errText || 'فشل الاتصال بالخادم'}`)
-    }
-    return true
-  } 
-  
-  else if (type === 'telegram') {
-    if (!telegram_bot_token || !telegram_chat_id) {
-      throw new Error('بيانات بوت التليجرام غير مكتملة (البوت أو معرّف المحادثة مفقود)')
-    }
-    
-    const tgUrl = `https://api.telegram.org/bot${telegram_bot_token}/sendMessage`
-    const textWithPhone = `*إشعار لولي الأمر (${parentPhone}):*\n\n${messageText}`
-    
-    const response = await fetch(tgUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: telegram_chat_id,
-        text: textWithPhone,
-        parse_mode: 'Markdown'
-      })
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
       const errJson = await response.json().catch(() => ({}))
-      throw new Error(`Telegram API Error: ${errJson.description || 'فشل الإرسال عبر تليجرام'}`)
-    }
-    return true
-  } 
-  
-  else if (type === 'generic_webhook') {
-    if (!url) throw new Error('عنوان Webhook غير متوفر')
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : undefined
-      },
-      body: JSON.stringify({
-        phone: parentPhone,
-        message: messageText,
-        type: notification.type
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`Webhook Error (${response.status})`)
-    }
-    return true
-  }
-  
-  else if (type === 'ultramsg') {
-    if (!url || !token) throw new Error('بيانات UltraMsg غير مكتملة (رابط الخدمة أو الـ Token مفقود)')
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        token: token,
-        to: parentPhone,
-        body: messageText
-      })
-    })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      throw new Error(`UltraMsg Error (${response.status}): ${errText || 'فشل الإرسال عبر UltraMsg'}`)
+      throw new Error(`WhatsApp API (${response.status}): ${errJson?.error?.message || 'فشل الإرسال'}`)
     }
     return true
   }
 
-  throw new Error(`بوابة الإرسال غير معروفة: ${type}`)
+  throw new Error('بوابة غير مدعومة — افتح إعدادات البوابة واختر وضع الإرسال ثم احفظ')
 }
 
 // Queue processor loop (processes pending notifications with rate limiting client-side)

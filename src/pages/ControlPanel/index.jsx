@@ -421,7 +421,7 @@ export default function ControlPanelIndex() {
                     icon="fa-comments-dollar"
                     accent="teal"
                     title="إشعارات أولياء الأمور"
-                    desc="متابعة طابور الإرسال المجدول للآباء وضبط Evolution API"
+                    desc="متابعة رسائل أولياء الأمور وإرسالها عبر الواتساب"
                     onClick={() => enterSection('whatsapp')}
                   />
                 )}

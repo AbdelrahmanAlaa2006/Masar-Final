@@ -30,3 +30,9 @@ dist-ssr
 
 # Sensitive data
 scripts/*.csv
+
+# WhatsApp sender agent — never commit credentials or the WhatsApp session
+whatsapp-sender/.env
+whatsapp-sender/auth_state/
+whatsapp-sender/sent_today.json
+whatsapp-sender/node_modules

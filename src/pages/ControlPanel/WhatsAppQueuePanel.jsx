@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  listNotificationQueue, 
-  getNotificationQueueSummary, 
-  retryNotification, 
-  retryAllFailed, 
+import {
+  listNotificationQueue,
+  getNotificationQueueSummary,
+  retryNotification,
+  retryAllFailed,
   updateGatewayConfig,
   processNotificationQueue,
-  sendGatewayMessage
+  sendGatewayMessage,
+  buildWaMeLink,
+  markNotificationManuallySent
 } from '@backend/parentNotificationsApi'
 import { useTenant } from '../../contexts/TenantContext'
 
@@ -23,26 +25,33 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   const [processing, setProcessing] = useState(false)
   const [processingProgress, setProcessingProgress] = useState('')
 
-  // Settings states
-  const [gatewayType, setGatewayType] = useState('whatsapp_evolution')
-  const [gatewayUrl, setGatewayUrl] = useState('')
-  const [gatewayToken, setGatewayToken] = useState('')
-  const [telegramBotToken, setTelegramBotToken] = useState('')
-  const [telegramChatId, setTelegramChatId] = useState('')
-  
+  // Settings states — only two modes now:
+  //   whatsapp_manual: free wa.me click-to-send (zero setup, zero ban risk)
+  //   whatsapp_cloud:  official Meta WhatsApp Business Cloud API
+  const [gatewayType, setGatewayType] = useState('whatsapp_manual')
+  const [countryCode, setCountryCode] = useState('20')
+  const [phoneNumberId, setPhoneNumberId] = useState('')
+  const [cloudToken, setCloudToken] = useState('')
+  const [templateName, setTemplateName] = useState('')
+  const [templateLang, setTemplateLang] = useState('ar')
+
   // Test message states
   const [testPhone, setTestPhone] = useState('')
   const [testingMsg, setTestingMsg] = useState(false)
 
-  // Initialize configuration from tenant config on mount
+  // Initialize configuration from tenant config on mount.
+  // Legacy gateway types (evolution/telegram/ultramsg/webhook) fall back to
+  // the manual mode — those integrations were removed.
   useEffect(() => {
     if (tenant?.config?.gateway) {
       const g = tenant.config.gateway
-      setGatewayType(g.type || 'whatsapp_evolution')
-      setGatewayUrl(g.url || '')
-      setGatewayToken(g.token || '')
-      setTelegramBotToken(g.telegram_bot_token || '')
-      setTelegramChatId(g.telegram_chat_id || '')
+      const t = ['whatsapp_cloud', 'whatsapp_agent'].includes(g.type) ? g.type : 'whatsapp_manual'
+      setGatewayType(t)
+      setCountryCode(g.country_code || '20')
+      setPhoneNumberId(g.phone_number_id || '')
+      setCloudToken(g.token || '')
+      setTemplateName(g.template_name || '')
+      setTemplateLang(g.template_lang || 'ar')
     }
   }, [tenant])
 
@@ -75,10 +84,11 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     try {
       await updateGatewayConfig(tenantId, {
         type: gatewayType,
-        url: gatewayUrl,
-        token: gatewayToken,
-        telegram_bot_token: telegramBotToken,
-        telegram_chat_id: telegramChatId
+        country_code: countryCode.trim() || '20',
+        phone_number_id: phoneNumberId.trim(),
+        token: cloudToken.trim(),
+        template_name: templateName.trim(),
+        template_lang: templateLang.trim() || 'ar'
       })
       flash('تم حفظ إعدادات بوابة الإرسال بنجاح وتحديث النظام.', 'success')
     } catch (err) {
@@ -93,24 +103,25 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
       flash('يرجى كتابة رقم الهاتف التجريبي أولاً', 'warning')
       return
     }
+    const testMessage = 'رسالة تجريبية من المنصة لتأكيد إعدادات الاتصال بنجاح. ✅'
+
+    // Manual/agent modes: just open WhatsApp with the message prefilled.
+    if (gatewayType !== 'whatsapp_cloud') {
+      window.open(buildWaMeLink(testPhone.trim(), testMessage, countryCode), '_blank')
+      return
+    }
 
     setTestingMsg(true)
     try {
       const config = {
         type: gatewayType,
-        url: gatewayUrl,
-        token: gatewayToken,
-        telegram_bot_token: telegramBotToken,
-        telegram_chat_id: telegramChatId
+        country_code: countryCode,
+        phone_number_id: phoneNumberId,
+        token: cloudToken,
+        template_name: templateName,
+        template_lang: templateLang
       }
-      
-      const testNotif = {
-        phone: testPhone.trim(),
-        message: 'رسالة تجريبية من منصة مسار التعليمية لتأكيد إعدادات الاتصال بنجاح. ✅',
-        type: 'attendance_absent'
-      }
-
-      await sendGatewayMessage(config, testNotif)
+      await sendGatewayMessage(config, { phone: testPhone.trim(), message: testMessage, type: 'attendance_absent' })
       flash('تم إرسال الرسالة التجريبية بنجاح! يرجى التحقق من الهاتف.', 'success')
       setTestPhone('')
     } catch (err) {
@@ -119,6 +130,34 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     } finally {
       setTestingMsg(false)
     }
+  }
+
+  // Manual wa.me send for a single queue row: opens WhatsApp with the
+  // parent's number + message prefilled, then marks the row as sent.
+  const handleManualSendRow = async (item) => {
+    if (!item.phone || item.phone === '—') {
+      flash('رقم هاتف ولي الأمر غير متوفر لهذه الرسالة', 'warning')
+      return
+    }
+    window.open(buildWaMeLink(item.phone, item.message, countryCode), '_blank')
+    try {
+      await markNotificationManuallySent(item.id)
+      setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, status: 'sent' } : n))
+      setSummary(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), sent: prev.sent + 1 }))
+    } catch (err) {
+      console.error(err)
+      flash('فُتح الواتساب لكن تعذر تحديث حالة الرسالة', 'warning')
+    }
+  }
+
+  // Manual sequential send: opens the next pending message in the current page.
+  const handleManualSendNext = () => {
+    const next = notifications.find(n => n.status === 'pending' && n.phone && n.phone !== '—')
+    if (!next) {
+      flash('لا توجد رسائل معلقة في هذه الصفحة — انتقل للصفحة التالية إن وجدت', 'info')
+      return
+    }
+    handleManualSendRow(next)
   }
 
   // Trigger processing queue in real-time
@@ -251,16 +290,31 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>سجل رسائل أولياء الأمور</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {summary.pending > 0 && (
-                <button 
-                  onClick={handleProcessQueue} 
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {summary.pending > 0 && gatewayType === 'whatsapp_manual' && (
+                <button
+                  onClick={handleManualSendNext}
+                  className="cp-btn cp-btn-success"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+                >
+                  <i className="fab fa-whatsapp" />
+                  <span>إرسال التالي يدوياً ({summary.pending})</span>
+                </button>
+              )}
+              {summary.pending > 0 && gatewayType === 'whatsapp_agent' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(37, 211, 102, 0.1)', color: '#25d366', borderRadius: 8, padding: '6px 12px', fontSize: '0.82rem', fontWeight: 'bold' }}>
+                  <i className="fas fa-robot" /> المرسل التلقائي على جهازك سيرسلها
+                </span>
+              )}
+              {summary.pending > 0 && gatewayType === 'whatsapp_cloud' && (
+                <button
+                  onClick={handleProcessQueue}
                   disabled={processing}
                   className="cp-btn cp-btn-success"
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
                 >
                   {processing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-circle-play" />}
-                  <span>{processing ? 'جاري الإرسال...' : 'تشغيل طابور الإرسال معلق'}</span>
+                  <span>{processing ? 'جاري الإرسال...' : 'إرسال المعلق تلقائياً'}</span>
                 </button>
               )}
               {summary.failed > 0 && (
@@ -346,11 +400,20 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                             )}
                           </td>
                           <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                            {item.status === 'failed' && (
-                              <button 
+                            {(item.status === 'pending' || item.status === 'failed') && (
+                              <button
+                                onClick={() => handleManualSendRow(item)}
+                                style={{ background: 'rgba(37, 211, 102, 0.12)', border: 'none', color: '#25d366', cursor: 'pointer', fontSize: '1rem', borderRadius: 8, padding: '6px 10px' }}
+                                title="فتح واتساب وإرسال الرسالة يدوياً"
+                              >
+                                <i className="fab fa-whatsapp" />
+                              </button>
+                            )}
+                            {item.status === 'failed' && gatewayType === 'whatsapp_cloud' && (
+                              <button
                                 onClick={() => handleRetryRow(item.id)}
                                 style={{ background: 'transparent', border: 'none', color: '#8c72db', cursor: 'pointer', fontSize: '1rem' }}
-                                title="إعادة الإرسال"
+                                title="إعادة جدولة الإرسال التلقائي"
                               >
                                 <i className="fas fa-arrow-rotate-left" />
                               </button>
@@ -383,35 +446,55 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 16px', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '12px' }}>بوابة إرسال الرسائل</h3>
             <form onSubmit={handleSaveSettings}>
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>نوع البوابة</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>وضع الإرسال</label>
                 <select value={gatewayType} onChange={(e) => setGatewayType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-                  <option value="whatsapp_evolution">WhatsApp (Evolution API)</option>
-                  <option value="ultramsg">WhatsApp (UltraMsg API)</option>
-                  <option value="telegram">Telegram Bot</option>
-                  <option value="generic_webhook">Generic Webhook (SMS/Custom)</option>
+                  <option value="whatsapp_manual">واتساب يدوي — مجاني بدون أي إعداد</option>
+                  <option value="whatsapp_agent">المرسل التلقائي من جهازك — مجاني وأوتوماتيكي</option>
+                  <option value="whatsapp_cloud">واتساب الرسمي (Cloud API) — إرسال تلقائي</option>
                 </select>
               </div>
 
-              {gatewayType !== 'telegram' ? (
-                <>
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>رابط خادم البوابة (URL)</label>
-                    <input type="text" value={gatewayUrl} onChange={(e) => setGatewayUrl(e.target.value)} placeholder="مثال: http://localhost:8080/message/sendText" className="cp-input" style={{ width: '100%' }} />
-                  </div>
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>مفتاح التحقق (API Token)</label>
-                    <input type="password" value={gatewayToken} onChange={(e) => setGatewayToken(e.target.value)} placeholder="مفتاح المبرمجين Bearer/apikey" className="cp-input" style={{ width: '100%' }} />
-                  </div>
-                </>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>كود الدولة (مصر = 20)</label>
+                <input type="text" value={countryCode} onChange={(e) => setCountryCode(e.target.value)} placeholder="20" className="cp-input" style={{ width: '100%' }} />
+              </div>
+
+              {gatewayType === 'whatsapp_manual' ? (
+                <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.8rem', lineHeight: 1.7, color: 'var(--cp-text-main)' }}>
+                  <i className="fab fa-whatsapp" style={{ color: '#25d366' }} /> <b>بدون إعداد إطلاقاً.</b> اضغط زر الواتساب الأخضر بجوار أي رسالة: يفتح واتساب برقم ولي الأمر والرسالة جاهزة — اضغط إرسال فقط. الإرسال يتم من واتساب المعلم نفسه بشكل يدوي، لذلك <b>لا يوجد أي خطر حظر</b> ومجاني تماماً.
+                </div>
+              ) : gatewayType === 'whatsapp_agent' ? (
+                <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.8rem', lineHeight: 1.8, color: 'var(--cp-text-main)' }}>
+                  <i className="fas fa-robot" style={{ color: '#25d366' }} /> <b>إرسال تلقائي مجاني من جهاز الكمبيوتر.</b>
+                  <ol style={{ margin: '8px 0 0', paddingRight: 18 }}>
+                    <li>شغّل برنامج <b>المرسل التلقائي</b> على الكمبيوتر (دبل كليك على <code>start-sender.bat</code> في مجلد whatsapp-sender).</li>
+                    <li>صوّر الـ QR بواتساب المعلم — <b>مرة واحدة فقط</b>.</li>
+                    <li>اترك النافذة مفتوحة: كل الرسائل المعلقة هنا تُرسل تلقائياً بفواصل زمنية عشوائية وحد يومي للحماية من الحظر.</li>
+                  </ol>
+                  <div style={{ marginTop: 8, color: 'var(--cp-text-muted)' }}>الأزرار الخضراء بجوار الرسائل تظل تعمل كإرسال يدوي احتياطي إذا كان البرنامج مغلقاً.</div>
+                </div>
               ) : (
                 <>
                   <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>مفتاح البوت (Bot Token)</label>
-                    <input type="password" value={telegramBotToken} onChange={(e) => setTelegramBotToken(e.target.value)} placeholder="مثال: 123456:ABC-def..." className="cp-input" style={{ width: '100%' }} />
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>Phone Number ID</label>
+                    <input type="text" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="من صفحة WhatsApp في Meta for Developers" className="cp-input" style={{ width: '100%' }} />
                   </div>
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>معرّف المجموعة أو المحادثة (Chat ID)</label>
-                    <input type="text" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)} placeholder="مثال: -1001234567890" className="cp-input" style={{ width: '100%' }} />
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>Access Token (دائم)</label>
+                    <input type="password" value={cloudToken} onChange={(e) => setCloudToken(e.target.value)} placeholder="System User Token" className="cp-input" style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: 10, marginBottom: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>اسم القالب المعتمد (Template)</label>
+                      <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="مثال: parent_notification" className="cp-input" style={{ width: '100%' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>اللغة</label>
+                      <input type="text" value={templateLang} onChange={(e) => setTemplateLang(e.target.value)} placeholder="ar" className="cp-input" style={{ width: '100%' }} />
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(59, 130, 246, 0.07)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.78rem', lineHeight: 1.7, color: 'var(--cp-text-main)' }}>
+                    أنشئ تطبيقاً مجانياً من <b>developers.facebook.com</b> ← أضف منتج WhatsApp ← انسخ Phone Number ID والـ Token. لإرسال رسائل لأولياء أمور لم يراسلوك خلال 24 ساعة يجب اعتماد <b>قالب رسالة</b> بمتغيّر واحد {'{{1}}'} ثم كتابة اسمه هنا.
                   </div>
                 </>
               )}
@@ -423,7 +506,11 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
           {/* Test message panel */}
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '20px', padding: '24px', boxShadow: 'var(--cp-card-shadow)', animationDelay: '180ms' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 12px' }}>تجربة بوابة الإرسال</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: '1.4' }}>أرسل إشعاراً تجريبياً سريعاً للتأكد من ربط Evolution API أو التليجرام بشكل صحيح.</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: '1.4' }}>
+              {gatewayType === 'whatsapp_cloud'
+                ? 'أرسل إشعاراً تجريبياً سريعاً للتأكد من ربط واتساب الرسمي بشكل صحيح.'
+                : 'اكتب رقمك وسيُفتح واتساب برسالة تجريبية جاهزة للإرسال.'}
+            </p>
             
             <div style={{ marginBottom: '12px' }}>
               <input 
