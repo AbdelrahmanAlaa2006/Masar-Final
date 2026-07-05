@@ -1,0 +1,33 @@
+# Render blueprint — deploy the WhatsApp gateway with one click.
+# In Render: New + → Blueprint → pick this repo. It reads this file, then only
+# asks you to paste the 3 Supabase values (marked sync:false = secret prompt).
+services:
+  - type: web
+    name: masaar-whatsapp-gateway
+    runtime: node
+    rootDir: whatsapp-gateway
+    # NOTE: use a paid plan (starter). The FREE plan sleeps after ~15 min of
+    # inactivity, which drops the WhatsApp sessions and forces teachers to
+    # re-scan the QR. Starter (~$7/mo) stays always-on.
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    # Persistent disk so WhatsApp links survive restarts (no re-scanning).
+    disk:
+      name: wa-sessions
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SESSIONS_DIR
+        value: /data
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: COUNTRY_CODE
+        value: "20"
+      - key: DAILY_LIMIT
+        value: "300"

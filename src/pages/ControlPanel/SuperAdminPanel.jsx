@@ -25,6 +25,11 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [newDomain, setNewDomain] = useState('')
   const [newPrimaryColor, setNewPrimaryColor] = useState('#7c3aed')
   const [newSecondaryColor, setNewSecondaryColor] = useState('#06b6d4')
+  // First-admin account for the new platform (created server-side so the super
+  // admin's own session is never disturbed).
+  const [newAdminName, setNewAdminName] = useState('')
+  const [newAdminPhone, setNewAdminPhone] = useState('')
+  const [newAdminPassword, setNewAdminPassword] = useState('')
   const [creating, setCreating] = useState(false)
 
   // Manage Tenant & User states
@@ -224,9 +229,17 @@ export default function SuperAdminPanel({ onBack, flash }) {
       return
     }
 
+    // First-admin account is required so the new platform is usable immediately.
+    if (!newAdminName.trim() || !newAdminPhone.trim() || newAdminPassword.length < 6) {
+      flash('يرجى إدخال اسم ورقم هاتف المدير وكلمة مرور (6 أحرف على الأقل)', 'warning')
+      return
+    }
+
     setCreating(true)
+    let createdTenantId = null
     try {
-      const { error } = await supabase
+      // 1) Create the tenant row (and capture its id for the admin step).
+      const { data: tenantRow, error } = await supabase
         .from('tenants')
         .insert({
           name: newName.trim(),
@@ -246,24 +259,43 @@ export default function SuperAdminPanel({ onBack, flash }) {
             }
           }
         })
+        .select('id')
+        .single()
 
       if (error) throw error
+      createdTenantId = tenantRow.id
 
-      flash(`تم إنشاء منصة (${newName.trim()}) بنجاح!`, 'success')
-      
+      // 2) Create the first admin + seed default branch/year (server-side).
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('create-tenant-admin', {
+        body: {
+          tenant_id: createdTenantId,
+          admin_name: newAdminName.trim(),
+          admin_phone: newAdminPhone.trim(),
+          admin_password: newAdminPassword,
+        },
+      })
+      if (fnError || fnData?.error) {
+        throw new Error(fnData?.error || fnError.message || 'فشل إنشاء حساب المدير')
+      }
+
+      flash(`تم إنشاء منصة (${newName.trim()}) وحساب المدير بنجاح!`, 'success')
+
       // Reset form
-      setNewName('')
-      setNewSlug('')
-      setNewDomain('')
-      setNewPrimaryColor('#7c3aed')
-      setNewSecondaryColor('#06b6d4')
+      setNewName(''); setNewSlug(''); setNewDomain('')
+      setNewPrimaryColor('#7c3aed'); setNewSecondaryColor('#06b6d4')
+      setNewAdminName(''); setNewAdminPhone(''); setNewAdminPassword('')
       setShowCreateModal(false)
 
-      // Refresh data
       fetchStats()
     } catch (err) {
       console.error(err)
-      flash('فشل إنشاء المنصة: ' + err.message, 'error')
+      // If the tenant was created but the admin failed, tell the super admin so
+      // they can retry the admin step rather than end up with an empty platform.
+      if (createdTenantId) {
+        flash('أُنشئت المنصة لكن تعذّر إنشاء حساب المدير: ' + err.message + ' — يمكنك حذف المنصة والمحاولة مجدداً.', 'error')
+      } else {
+        flash('فشل إنشاء المنصة: ' + err.message, 'error')
+      }
     } finally {
       setCreating(false)
     }
@@ -1024,6 +1056,36 @@ export default function SuperAdminPanel({ onBack, flash }) {
                       style={{ width: '40px', height: '40px', padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                     />
                     <code className="cp-sa-color-badge">{newSecondaryColor}</code>
+                  </div>
+                </div>
+              </div>
+
+              {/* First admin account — makes the new platform usable immediately */}
+              <div style={{ borderTop: '1px dashed var(--cp-divider)', paddingTop: 18, marginBottom: 8 }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="fas fa-user-shield" style={{ color: 'var(--primary)' }} /> حساب مدير المنصة الأول
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', margin: '0 0 14px', lineHeight: 1.6 }}>
+                  سيُنشأ هذا الحساب تلقائياً ليدير المنصة الجديدة (يُنشأ أيضاً فرع رئيسي وعام دراسي فعّال). يسجّل الدخول برقم الهاتف وكلمة المرور.
+                </p>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المدير *</label>
+                  <input type="text" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="مثال: الأستاذ أحمد محمد" className="cp-input"
+                    style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '6px' }}>رقم هاتف المدير *</label>
+                    <input type="text" value={newAdminPhone} onChange={(e) => setNewAdminPhone(e.target.value)}
+                      placeholder="مثال: 01012345678" className="cp-input"
+                      style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '6px' }}>كلمة المرور *</label>
+                    <input type="text" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)}
+                      placeholder="6 أحرف على الأقل" className="cp-input"
+                      style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }} />
                   </div>
                 </div>
               </div>

@@ -82,7 +82,7 @@ export default function Help() {
           <h3>لم تجد ما تبحث عنه؟</h3>
           <p>تواصل معنا مباشرة وسنقوم بمساعدتك في أقرب وقت ممكن.</p>
           <div className="pp-contact-row">
-            <a href="mailto:support@masar.edu"><i className="fas fa-envelope"></i> support@masar.edu</a>
+            <a href="mailto:support@gitfekra.com"><i className="fas fa-envelope"></i> support@gitfekra.com</a>
             <a href="tel:+201000000000" dir="ltr"><i className="fas fa-phone"></i> +20 100 000 0000</a>
             <a href="https://wa.me/201000000000" target="_blank" rel="noreferrer"><i className="fab fa-whatsapp"></i> واتساب</a>
           </div>

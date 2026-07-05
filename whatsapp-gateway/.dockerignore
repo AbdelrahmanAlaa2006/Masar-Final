@@ -1,0 +1,6 @@
+node_modules
+sessions
+.env
+debug*.js
+debug_auth
+sent_today.json

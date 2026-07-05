@@ -31,7 +31,7 @@ export default function Footer() {
 
   const year = new Date().getFullYear()
 
-  const brandName = tenant?.name || 'منصة مسار'
+  const brandName = tenant?.name || 'GitFekra'
   const brandTag = tenant?.config?.branding?.tagline || 'طريقك إلى التفوق الدراسي'
   const brandDesc = tenant?.config?.branding?.description || 'منصة تعليمية متكاملة تقدم محاضرات وامتحانات وفيديوهات تفاعلية للمرحلة الإعدادية، مع متابعة دقيقة لأداء كل طالب.'
 
@@ -46,7 +46,7 @@ export default function Footer() {
   const contact = tenant?.config?.contact || {
     address: 'القاهرة، مصر',
     phone: '+20 100 000 0000',
-    email: 'support@masar.edu'
+    email: 'support@gitfekra.com'
   }
 
   const tickerItems = TICKER_ITEMS.map(item => {

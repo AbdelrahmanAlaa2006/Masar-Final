@@ -99,7 +99,7 @@ export default function Privacy() {
           <h3>أسئلة حول الخصوصية؟</h3>
           <p>تواصل مع مسؤول حماية البيانات في فريقنا.</p>
           <div className="pp-contact-row">
-            <a href="mailto:privacy@masar.edu"><i className="fas fa-envelope"></i> privacy@masar.edu</a>
+            <a href="mailto:privacy@gitfekra.com"><i className="fas fa-envelope"></i> privacy@gitfekra.com</a>
           </div>
         </div>
       </div>

@@ -30,6 +30,8 @@ const StudentChat = lazy(() => import('./pages/StudentChat'))
 const PublicReport = lazy(() => import('./pages/PublicReport'))
 const Shop = lazy(() => import('./pages/Shop'))
 const Packages = lazy(() => import('./pages/Packages'))
+// GitFekra company website — shown on the default tenant only.
+const GitFekraLanding = lazy(() => import('./pages/company/GitFekraLanding'))
 
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
@@ -349,7 +351,7 @@ function AppContent() {
   const isExamTaking = location.pathname === '/exam-taking'
   const isPublicReportPage = location.pathname === '/public-report'
   const { user, isLoggedIn, loading, logout } = useAuth()
-  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig, isCompanySite } = useTenant()
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
@@ -566,7 +568,9 @@ function AppContent() {
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
   const isRegisterPage = location.pathname === '/register'
-  const showHeaderFooter = !isLoginPage && !isRegisterPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage
+  // The GitFekra company site has its own header/footer, so suppress the
+  // educational chrome when the default tenant is being viewed.
+  const showHeaderFooter = !isLoginPage && !isRegisterPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage && !isCompanySite
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
@@ -582,10 +586,10 @@ function AppContent() {
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+            <Route path="/" element={isCompanySite ? <GitFekraLanding /> : <ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
             <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
             <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
-            <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+            <Route path="/home" element={isCompanySite ? <Navigate to="/" replace /> : <ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
             {/* Old /lectures URLs redirect to the new /homework page so
                 shared links / browser bookmarks keep working. */}

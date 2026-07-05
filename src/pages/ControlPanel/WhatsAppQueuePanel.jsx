@@ -10,6 +10,7 @@ import {
   buildWaMeLink,
   markNotificationManuallySent
 } from '@backend/parentNotificationsApi'
+import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp } from '@backend/whatsappGatewayApi'
 import { useTenant } from '../../contexts/TenantContext'
 
 export default function WhatsAppQueuePanel({ onBack, flash }) {
@@ -39,13 +40,65 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   const [testPhone, setTestPhone] = useState('')
   const [testingMsg, setTestingMsg] = useState(false)
 
+  // In-app WhatsApp linking (self-hosted gateway) — the non-technical path.
+  const gatewayAvailable = isGatewayConfigured()
+  const [waStatus, setWaStatus] = useState('disconnected') // disconnected|connecting|qr|connected
+  const [waQr, setWaQr] = useState(null)
+  const [waSentToday, setWaSentToday] = useState(0)
+  const [waBusy, setWaBusy] = useState(false)
+
+  // Poll the gateway for this tenant's WhatsApp link status while the panel is open.
+  useEffect(() => {
+    if (!gatewayAvailable) return
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const s = await getWhatsAppStatus()
+        if (cancelled) return
+        setWaStatus(s.status)
+        setWaQr(s.qr || null)
+        setWaSentToday(s.sent_today || 0)
+      } catch { /* gateway offline — the card shows a hint */ }
+    }
+    tick()
+    const id = setInterval(tick, 5000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [gatewayAvailable])
+
+  const handleConnectWa = async () => {
+    setWaBusy(true)
+    try {
+      const s = await connectWhatsApp()
+      setWaStatus(s.status)
+      setWaQr(s.qr || null)
+    } catch (err) {
+      flash('تعذّر بدء الربط: ' + err.message, 'error')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
+  const handleDisconnectWa = async () => {
+    setWaBusy(true)
+    try {
+      await disconnectWhatsApp()
+      setWaStatus('disconnected')
+      setWaQr(null)
+      flash('تم فصل الواتساب. يمكنك ربط رقم آخر في أي وقت.', 'info')
+    } catch (err) {
+      flash('تعذّر فصل الواتساب: ' + err.message, 'error')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+
   // Initialize configuration from tenant config on mount.
   // Legacy gateway types (evolution/telegram/ultramsg/webhook) fall back to
   // the manual mode — those integrations were removed.
   useEffect(() => {
     if (tenant?.config?.gateway) {
       const g = tenant.config.gateway
-      const t = ['whatsapp_cloud', 'whatsapp_agent'].includes(g.type) ? g.type : 'whatsapp_manual'
+      const t = g.type === 'whatsapp_cloud' ? 'whatsapp_cloud' : 'whatsapp_manual'
       setGatewayType(t)
       setCountryCode(g.country_code || '20')
       setPhoneNumberId(g.phone_number_id || '')
@@ -301,9 +354,9 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                   <span>إرسال التالي يدوياً ({summary.pending})</span>
                 </button>
               )}
-              {summary.pending > 0 && gatewayType === 'whatsapp_agent' && (
+              {summary.pending > 0 && gatewayAvailable && waStatus === 'connected' && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(37, 211, 102, 0.1)', color: '#25d366', borderRadius: 8, padding: '6px 12px', fontSize: '0.82rem', fontWeight: 'bold' }}>
-                  <i className="fas fa-robot" /> المرسل التلقائي على جهازك سيرسلها
+                  <i className="fab fa-whatsapp" /> سيتم إرسالها تلقائياً الآن
                 </span>
               )}
               {summary.pending > 0 && gatewayType === 'whatsapp_cloud' && (
@@ -441,6 +494,47 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
         {/* Right Side: Config settings */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+          {/* In-app WhatsApp linking — the recommended non-technical automatic mode.
+              Only shown when the developer has configured a gateway URL. */}
+          {gatewayAvailable && (
+            <div style={{ background: 'var(--cp-card-bg)', border: '2px solid rgba(37, 211, 102, 0.35)', borderRadius: '20px', padding: '24px', boxShadow: 'var(--cp-card-shadow)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fab fa-whatsapp" style={{ color: '#25d366' }} /> الإرسال التلقائي المجاني
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                اربط رقم واتساب المدرّس مرة واحدة، وسيتم إرسال كل رسائل أولياء الأمور تلقائياً — بدون أي برامج أو إعدادات.
+              </p>
+
+              {waStatus === 'connected' ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: 12, padding: '12px 14px', fontWeight: 'bold', marginBottom: 12 }}>
+                    <i className="fas fa-circle-check" /> الواتساب متصل ويعمل تلقائياً
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', marginBottom: 14 }}>تم الإرسال اليوم: {waSentToday} رسالة</div>
+                  <button onClick={handleDisconnectWa} disabled={waBusy} className="cp-btn cp-btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: 10 }}>
+                    {waBusy ? <i className="fas fa-spinner fa-spin" /> : 'فصل الواتساب'}
+                  </button>
+                </div>
+              ) : waStatus === 'qr' && waQr ? (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-main)', margin: '0 0 12px', lineHeight: 1.7 }}>
+                    من هاتف المدرّس: واتساب ← الإعدادات ← <b>الأجهزة المرتبطة</b> ← ربط جهاز، ثم صوّر الرمز:
+                  </p>
+                  <div style={{ background: '#fff', display: 'inline-block', padding: 12, borderRadius: 16 }}>
+                    <img src={waQr} alt="WhatsApp QR" style={{ width: 200, height: 200, display: 'block' }} />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--cp-text-muted)', margin: '12px 0 0' }}>ينتظر المسح... (يتحدّث تلقائياً)</p>
+                </div>
+              ) : (
+                <button onClick={handleConnectWa} disabled={waBusy} className="cp-btn cp-btn-success" style={{ width: '100%', justifyContent: 'center', padding: 12, fontWeight: 'bold' }}>
+                  {waBusy || waStatus === 'connecting'
+                    ? <><i className="fas fa-spinner fa-spin" /> جارٍ التحضير...</>
+                    : <><i className="fab fa-whatsapp" /> ربط الواتساب الآن</>}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Settings Panel */}
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '20px', padding: '24px', boxShadow: 'var(--cp-card-shadow)', animationDelay: '100ms' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 16px', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '12px' }}>بوابة إرسال الرسائل</h3>
@@ -448,10 +542,14 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>وضع الإرسال</label>
                 <select value={gatewayType} onChange={(e) => setGatewayType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-                  <option value="whatsapp_manual">واتساب يدوي — مجاني بدون أي إعداد</option>
-                  <option value="whatsapp_agent">المرسل التلقائي من جهازك — مجاني وأوتوماتيكي</option>
-                  <option value="whatsapp_cloud">واتساب الرسمي (Cloud API) — إرسال تلقائي</option>
+                  <option value="whatsapp_manual">واتساب يدوي — إرسال بضغطة زر</option>
+                  <option value="whatsapp_cloud">واتساب الرسمي (Cloud API)</option>
                 </select>
+                {gatewayAvailable && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--cp-text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
+                    💡 للإرسال التلقائي المجاني، استخدم كارت <b>«الإرسال التلقائي المجاني»</b> بالأعلى (اربط الواتساب بمسح QR مرة واحدة).
+                  </p>
+                )}
               </div>
 
               <div style={{ marginBottom: '14px' }}>
@@ -462,16 +560,6 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
               {gatewayType === 'whatsapp_manual' ? (
                 <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.8rem', lineHeight: 1.7, color: 'var(--cp-text-main)' }}>
                   <i className="fab fa-whatsapp" style={{ color: '#25d366' }} /> <b>بدون إعداد إطلاقاً.</b> اضغط زر الواتساب الأخضر بجوار أي رسالة: يفتح واتساب برقم ولي الأمر والرسالة جاهزة — اضغط إرسال فقط. الإرسال يتم من واتساب المعلم نفسه بشكل يدوي، لذلك <b>لا يوجد أي خطر حظر</b> ومجاني تماماً.
-                </div>
-              ) : gatewayType === 'whatsapp_agent' ? (
-                <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.8rem', lineHeight: 1.8, color: 'var(--cp-text-main)' }}>
-                  <i className="fas fa-robot" style={{ color: '#25d366' }} /> <b>إرسال تلقائي مجاني من جهاز الكمبيوتر.</b>
-                  <ol style={{ margin: '8px 0 0', paddingRight: 18 }}>
-                    <li>شغّل برنامج <b>المرسل التلقائي</b> على الكمبيوتر (دبل كليك على <code>start-sender.bat</code> في مجلد whatsapp-sender).</li>
-                    <li>صوّر الـ QR بواتساب المعلم — <b>مرة واحدة فقط</b>.</li>
-                    <li>اترك النافذة مفتوحة: كل الرسائل المعلقة هنا تُرسل تلقائياً بفواصل زمنية عشوائية وحد يومي للحماية من الحظر.</li>
-                  </ol>
-                  <div style={{ marginTop: 8, color: 'var(--cp-text-muted)' }}>الأزرار الخضراء بجوار الرسائل تظل تعمل كإرسال يدوي احتياطي إذا كان البرنامج مغلقاً.</div>
                 </div>
               ) : (
                 <>

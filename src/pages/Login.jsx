@@ -45,14 +45,14 @@ const translations = {
     nav_about: 'عن المعلم',
     nav_signin: 'تسجيل الدخول',
     nav_signup: 'إنشاء حساب',
-    hero_badge: 'منصة مسار التعليمية',
+    hero_badge: 'جِت فِكرة',
     hero_title_a: 'اللغة العربية',
     hero_title_b: 'لغة الضاد بطعم جديد',
     hero_sub: 'منصة تعليمية متخصّصة في اللغة العربية — سجّل حسابك، يتم اعتماده، وابدأ رحلتك مع شرح يخلّيك تفهم وتحب اللغة.',
     cta_primary: 'أنشئ حسابك الآن',
     cta_secondary: 'لديك حساب؟ ادخل',
-    brand_short: 'منصة مسار التعليمية',
-    brand_long: 'منصة مسار التعليمية',
+    brand_short: 'جِت فِكرة',
+    brand_long: 'جِت فِكرة',
   },
   en: {
     login: 'Login', phone: 'Phone Number', name: 'Full Name', password: 'Password',
@@ -66,11 +66,11 @@ const translations = {
     'student-name': 'Full Student Name', 'select-grade': 'Select Academic Grade',
     'parent-phone': "Parent's Phone Number (WhatsApp)",
     nav_about: 'About', nav_signin: 'Sign in', nav_signup: 'Sign up',
-    hero_badge: "Masar Educational Platform",
+    hero_badge: "GitFekra",
     hero_title_a: 'Arabic language', hero_title_b: 'made enjoyable',
     hero_sub: "A learning platform dedicated to Arabic. Create your account, get approved, and start learning with a teacher who makes the language click.",
     cta_primary: 'Create account', cta_secondary: 'Have an account? Sign in',
-    brand_short: 'Masar Educational Platform', brand_long: "Masar Educational Platform",
+    brand_short: 'GitFekra', brand_long: "GitFekra",
   },
 }
 
@@ -1001,7 +1001,7 @@ export default function Login() {
             <img src={brandLogo} alt="Logo" className="footer-logo" />
             <span className="footer-brand-name">
               {isDefaultTenant
-                ? (lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform')
+                ? (lang === 'ar' ? 'جِت فِكرة' : 'GitFekra')
                 : tenantName}
             </span>
           </div>
@@ -1038,8 +1038,8 @@ export default function Login() {
 
           <p className="footer-copy">
             {lang === 'ar'
-              ? `© 2026 ${isDefaultTenant ? 'منصة مسار التعليمية' : tenantName}. جميع الحقوق محفوظة`
-              : `© 2026 ${isDefaultTenant ? 'Masar Educational Platform' : tenantName}. All rights reserved`}
+              ? `© 2026 ${isDefaultTenant ? 'جِت فِكرة' : tenantName}. جميع الحقوق محفوظة`
+              : `© 2026 ${isDefaultTenant ? 'GitFekra' : tenantName}. All rights reserved`}
           </p>
         </div>
       </footer>

@@ -36,3 +36,8 @@ whatsapp-sender/.env
 whatsapp-sender/auth_state/
 whatsapp-sender/sent_today.json
 whatsapp-sender/node_modules
+
+# WhatsApp gateway — never commit the service-role key or WhatsApp sessions
+whatsapp-gateway/.env
+whatsapp-gateway/sessions/
+whatsapp-gateway/node_modules

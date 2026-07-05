@@ -21,30 +21,36 @@ export function TenantProvider({ children }) {
         // 1. Resolve slug/domain candidate first
         let candidate = 'default'
 
-        // For development on localhost: check query param first, then sessionStorage
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+        // A "preview host" has no per-tenant custom domains yet — localhost and
+        // the default deploy domain (e.g. *.vercel.app). On these we resolve the
+        // tenant from ?tenant=slug and remember it, so you can share preview
+        // links for any tenant BEFORE buying real domains, e.g.
+        //   https://your-app.vercel.app/?tenant=power-platform
+        const isPreviewHost = isLocalhost || hostname.endsWith('.vercel.app')
+
+        if (isLocalhost) {
           try {
             localStorage.removeItem('masar-cache:tenant-config:power-platform')
             localStorage.removeItem('masar-cache:tenant-config:cyber')
             localStorage.removeItem('masar-cache:tenant-config:sherif-programming')
           } catch {}
-          const queryTenant = urlParams.get('tenant')
-          if (queryTenant) {
-            candidate = queryTenant
-            sessionStorage.setItem('masar-tenant-slug', queryTenant)
-          } else {
-            const storedTenant = sessionStorage.getItem('masar-tenant-slug')
-            if (storedTenant) {
-              candidate = storedTenant
-            }
-          }
+        }
+
+        const queryTenant = urlParams.get('tenant')
+        if (queryTenant) {
+          // Explicit override — works everywhere (shareable preview links).
+          candidate = queryTenant
+          sessionStorage.setItem('masar-tenant-slug', queryTenant)
+        } else if (isPreviewHost) {
+          // Keep the last previewed tenant across reloads in this browser tab.
+          candidate = sessionStorage.getItem('masar-tenant-slug') || 'default'
         } else {
-          // In production: check if it's a subdomain (e.g. ahmed.masaar.app)
+          // Real production domain: subdomain (ahmed.masaar.app) or custom domain.
           const parts = hostname.split('.')
           if (parts.length > 2 && parts[0] !== 'www') {
             candidate = parts[0]
           } else {
-            // Otherwise, it's a custom domain (e.g. ahmedmath.com)
             candidate = hostname
           }
         }
@@ -70,7 +76,6 @@ export function TenantProvider({ children }) {
           querySlug = 'sherif-programming'
         }
 
-        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
 
         const tenantData = await cached(`tenant-config:${candidate}`, cacheTtl, async () => {
@@ -100,7 +105,7 @@ export function TenantProvider({ children }) {
               resolvedData = {
                 id: 'd3b07384-d113-4ec2-a5d6-d005b6be4979',
                 slug: 'default',
-                name: 'منصة مسار التعليمية',
+                name: 'GitFekra',
                 primary_color: '#7c3aed',
                 secondary_color: '#06b6d4',
                 logo_url: null,
@@ -263,6 +268,9 @@ export function TenantProvider({ children }) {
     isFeatureEnabled,
     isGradeEnabled,
     gradesList,
+    // The default tenant is the GitFekra company website (not an educational
+    // platform). Every other tenant renders the educational app as before.
+    isCompanySite: (tenant?.slug || 'default') === 'default',
     loading
   }), [tenant, themeConfig, isFeatureEnabled, isGradeEnabled, gradesList, loading])
 

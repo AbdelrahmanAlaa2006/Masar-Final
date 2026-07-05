@@ -1,0 +1,7 @@
+# Never commit secrets or the WhatsApp sessions
+.env
+sessions/
+node_modules/
+sent_today.json
+debug*.js
+debug_auth/

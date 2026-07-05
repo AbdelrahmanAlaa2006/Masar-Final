@@ -141,7 +141,7 @@ export default function Register() {
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const brandShort = isDefaultTenant 
-    ? (lang === 'ar' ? 'منصة مسار التعليمية' : 'Masar Educational Platform') 
+    ? (lang === 'ar' ? 'جِت فِكرة' : 'GitFekra') 
     : getLocalized(themeConfig.branding?.brand_short || tenant?.config?.branding?.brand_short, tenantName, tenantName)
 
   // Fetch branches for registration

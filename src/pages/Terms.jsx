@@ -83,7 +83,7 @@ export default function Terms() {
           <h3>لديك سؤال حول الشروط؟</h3>
           <p>راسلنا وسنوضّح لك أي بند تحتاج فهمه.</p>
           <div className="pp-contact-row">
-            <a href="mailto:legal@masar.edu"><i className="fas fa-envelope"></i> legal@masar.edu</a>
+            <a href="mailto:legal@gitfekra.com"><i className="fas fa-envelope"></i> legal@gitfekra.com</a>
           </div>
         </div>
       </div>
