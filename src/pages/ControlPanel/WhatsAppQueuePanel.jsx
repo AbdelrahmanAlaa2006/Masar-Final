@@ -180,7 +180,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
       const progressCallback = (id, status, errorMsg) => {
         processed++
         setProcessingProgress(`جاري إرسال الرسالة ${processed} من ${totalToProcess}...`)
-        
+
         // Dynamic update table row
         setNotifications(prev => prev.map(item => {
           if (item.id === id) {
@@ -197,7 +197,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
       const count = await processNotificationQueue(tenant, progressCallback)
       flash(`اكتملت المعالجة: تم إرسال ${count} رسالة بنجاح.`, 'success')
-      
+
       // Reload totals
       const sum = await getNotificationQueueSummary()
       setSummary(sum)
@@ -238,7 +238,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
   return (
     <div className="cp-panel-container">
-      
+
       {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
@@ -285,7 +285,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
       {/* Grid: queue list + config settings */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
-        
+
         {/* Left Side: Queue list */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -318,7 +318,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 </button>
               )}
               {summary.failed > 0 && (
-                <button 
+                <button
                   onClick={handleRetryAllFailed}
                   className="cp-btn cp-btn-secondary"
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
@@ -440,7 +440,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
         {/* Right Side: Config settings */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Settings Panel */}
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '20px', padding: '24px', boxShadow: 'var(--cp-card-shadow)', animationDelay: '100ms' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0 0 16px', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '12px' }}>بوابة إرسال الرسائل</h3>
@@ -511,18 +511,18 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 ? 'أرسل إشعاراً تجريبياً سريعاً للتأكد من ربط واتساب الرسمي بشكل صحيح.'
                 : 'اكتب رقمك وسيُفتح واتساب برسالة تجريبية جاهزة للإرسال.'}
             </p>
-            
+
             <div style={{ marginBottom: '12px' }}>
-              <input 
-                type="text" 
-                value={testPhone} 
+              <input
+                type="text"
+                value={testPhone}
                 onChange={(e) => setTestPhone(e.target.value)}
-                placeholder="رقم الهاتف (الواتساب أو معرّف)" 
-                className="cp-input" 
+                placeholder="رقم الهاتف (الواتساب أو معرّف)"
+                className="cp-input"
                 style={{ width: '100%' }}
               />
             </div>
-            <button 
+            <button
               onClick={handleSendTestMessage}
               disabled={testingMsg}
               className="cp-btn cp-btn-info"

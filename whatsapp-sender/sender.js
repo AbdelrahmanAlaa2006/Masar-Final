@@ -58,7 +58,7 @@ function readCounter() {
   try {
     const c = JSON.parse(fs.readFileSync(COUNTER_FILE, 'utf8'))
     if (c.date === new Date().toDateString()) return c
-  } catch {}
+  } catch { }
   return { date: new Date().toDateString(), count: 0 }
 }
 function bumpCounter() {
@@ -180,7 +180,7 @@ async function sendWhatsApp(phone, text) {
     await sock.sendPresenceUpdate('composing', jid)
     await sleep(1200 + Math.random() * 1800)
     await sock.sendPresenceUpdate('paused', jid)
-  } catch {}
+  } catch { }
   await sock.sendMessage(jid, { text })
 }
 
