@@ -10,7 +10,7 @@ import {
   buildWaMeLink,
   markNotificationManuallySent
 } from '@backend/parentNotificationsApi'
-import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp } from '@backend/whatsappGatewayApi'
+import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp, pairWhatsApp } from '@backend/whatsappGatewayApi'
 import { useTenant } from '../../contexts/TenantContext'
 
 export default function WhatsAppQueuePanel({ onBack, flash }) {
@@ -42,10 +42,15 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
   // In-app WhatsApp linking (self-hosted gateway) — the non-technical path.
   const gatewayAvailable = isGatewayConfigured()
-  const [waStatus, setWaStatus] = useState('disconnected') // disconnected|connecting|qr|connected
+  const [waStatus, setWaStatus] = useState('disconnected') // disconnected|connecting|qr|pairing|connected
   const [waQr, setWaQr] = useState(null)
   const [waSentToday, setWaSentToday] = useState(0)
   const [waBusy, setWaBusy] = useState(false)
+  // Link-by-phone-number (pairing code) — more reliable on weak connections.
+  const [showPair, setShowPair] = useState(false)
+  const [pairPhone, setPairPhone] = useState('')
+  const [pairCode, setPairCode] = useState(null)
+  const [pairBusy, setPairBusy] = useState(false)
 
   // Poll the gateway for this tenant's WhatsApp link status while the panel is open.
   useEffect(() => {
@@ -57,6 +62,8 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
         if (cancelled) return
         setWaStatus(s.status)
         setWaQr(s.qr || null)
+        if (s.pairing_code) setPairCode(s.pairing_code)
+        if (s.status === 'connected') { setPairCode(null); setShowPair(false) }
         setWaSentToday(s.sent_today || 0)
       } catch { /* gateway offline — the card shows a hint */ }
     }
@@ -75,6 +82,21 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
       flash('تعذّر بدء الربط: ' + err.message, 'error')
     } finally {
       setWaBusy(false)
+    }
+  }
+
+  const handlePairCode = async () => {
+    if (!pairPhone.trim()) { flash('اكتب رقم واتساب المدرّس أولاً', 'warning'); return }
+    setPairBusy(true)
+    setPairCode(null)
+    try {
+      const r = await pairWhatsApp(pairPhone.trim())
+      if (r.connected) { flash('الواتساب متصل بالفعل ✅', 'success'); return }
+      setPairCode(r.code)
+    } catch (err) {
+      flash('تعذّر توليد كود الربط: ' + err.message, 'error')
+    } finally {
+      setPairBusy(false)
     }
   }
 
@@ -527,10 +549,41 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 </div>
               ) : (
                 <button onClick={handleConnectWa} disabled={waBusy} className="cp-btn cp-btn-success" style={{ width: '100%', justifyContent: 'center', padding: 12, fontWeight: 'bold' }}>
-                  {waBusy || waStatus === 'connecting'
+                  {waBusy
                     ? <><i className="fas fa-spinner fa-spin" /> جارٍ التحضير...</>
-                    : <><i className="fab fa-whatsapp" /> ربط الواتساب الآن</>}
+                    : waStatus === 'connecting'
+                      ? <><i className="fas fa-rotate" /> إعادة المحاولة وإظهار الكود</>
+                      : <><i className="fab fa-whatsapp" /> ربط الواتساب الآن</>}
                 </button>
+              )}
+
+              {/* Alternative: link by phone number (pairing code) — more reliable on weak internet */}
+              {waStatus !== 'connected' && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--cp-divider)', paddingTop: 14 }}>
+                  {!showPair ? (
+                    <button onClick={() => setShowPair(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, padding: 0 }}>
+                      تعذّر مسح الكود؟ اربط برقم الهاتف بدلاً منه ↓
+                    </button>
+                  ) : (
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, display: 'block', marginBottom: 6 }}>رقم واتساب المدرّس</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input value={pairPhone} onChange={(e) => setPairPhone(e.target.value)} placeholder="مثال: 01012345678" className="cp-input" style={{ flex: 1, direction: 'ltr' }} />
+                        <button onClick={handlePairCode} disabled={pairBusy} className="cp-btn cp-btn-info" style={{ whiteSpace: 'nowrap' }}>
+                          {pairBusy ? <i className="fas fa-spinner fa-spin" /> : 'احصل على الكود'}
+                        </button>
+                      </div>
+                      {pairCode && (
+                        <div style={{ marginTop: 12, textAlign: 'center', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 12, padding: 14 }}>
+                          <div style={{ fontSize: '1.7rem', fontWeight: 900, letterSpacing: 5, fontFamily: 'monospace', color: 'var(--cp-text-main)' }}>{pairCode}</div>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', margin: '10px 0 0', lineHeight: 1.8 }}>
+                            من هاتف المدرّس: واتساب ← الإعدادات ← <b>الأجهزة المرتبطة</b> ← ربط جهاز ← <b>الربط برقم الهاتف بدلاً من ذلك</b> ← اكتب هذا الكود.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

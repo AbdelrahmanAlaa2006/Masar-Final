@@ -87,7 +87,9 @@ async function resolveTenant(token) {
 }
 
 // ── WhatsApp session lifecycle (one per tenant) ──────────────────────────────
-async function startSession(tenantId) {
+// pairPhone (international digits, e.g. 201064483036) → request a pairing CODE
+// instead of a QR (more reliable on weak connections).
+async function startSession(tenantId, pairPhone = null) {
   const existing = sessions.get(tenantId)
   if (existing?.sock && existing.status !== 'disconnected') return existing
 
@@ -100,9 +102,25 @@ async function startSession(tenantId) {
     syncFullHistory: false,
   })
 
-  const entry = { sock, status: 'connecting', qrDataUrl: null, busy: false, sentToday: existing?.sentToday }
+  const entry = { sock, status: 'connecting', qrDataUrl: null, pairingCode: null, pairingError: null, busy: false, sentToday: existing?.sentToday }
   sessions.set(tenantId, entry)
   sock.ev.on('creds.update', saveCreds)
+
+  // Pairing-code flow: after the socket starts connecting, ask WhatsApp for an
+  // 8-char code the user types under "Link with phone number".
+  if (pairPhone && !sock.authState.creds.registered) {
+    entry.status = 'pairing'
+    setTimeout(async () => {
+      try {
+        const code = await sock.requestPairingCode(pairPhone)
+        entry.pairingCode = code
+        console.log(`🔗 tenant ${tenantId} pairing code: ${code}`)
+      } catch (e) {
+        entry.pairingError = e.message
+        console.error(`pairing code error (${tenantId}):`, e.message)
+      }
+    }, 3000)
+  }
 
   sock.ev.on('connection.update', async (u) => {
     const { connection, lastDisconnect, qr } = u
@@ -113,6 +131,7 @@ async function startSession(tenantId) {
     if (connection === 'open') {
       entry.status = 'connected'
       entry.qrDataUrl = null
+      entry.pairingCode = null
       console.log(`✅ tenant ${tenantId} WhatsApp connected`)
     }
     if (connection === 'close') {
@@ -219,16 +238,52 @@ app.get('/api/status', auth, (req, res) => {
   res.json({
     status: s?.status || 'disconnected',
     qr: s?.status === 'qr' ? s.qrDataUrl : null,
+    pairing_code: s?.pairingCode || null,
     sent_today: s?.sentToday?.count || 0,
     daily_limit: DAILY_LIMIT,
   })
 })
 
+// Link with a phone number (pairing code) instead of scanning a QR — more
+// reliable on weak connections.
+app.post('/api/pair-code', auth, async (req, res) => {
+  const tenantId = req.ctx.tenantId
+  const phone = normalizePhoneIntl(String(req.body?.phone || ''))
+  if (!phone || phone.length < 10) return res.status(400).json({ error: 'رقم هاتف غير صالح' })
+
+  const existing = sessions.get(tenantId)
+  if (existing && existing.status !== 'connected') {
+    try { existing.sock?.end?.(new Error('reconnect')) } catch {}
+    sessions.delete(tenantId)
+    try { fs.rmSync(path.join(SESSIONS_DIR, tenantId), { recursive: true, force: true }) } catch {}
+  }
+  await startSession(tenantId, phone)
+
+  // Wait for the code to be generated (poll up to ~9s).
+  for (let i = 0; i < 12; i++) {
+    await sleep(750)
+    const cur = sessions.get(tenantId)
+    if (cur?.pairingCode) return res.json({ code: cur.pairingCode })
+    if (cur?.pairingError) return res.status(400).json({ error: cur.pairingError })
+    if (cur?.status === 'connected') return res.json({ code: null, connected: true })
+  }
+  res.status(504).json({ error: 'تعذّر توليد الكود — تحقق من اتصال الخادم بالإنترنت وحاول مجدداً' })
+})
+
 app.post('/api/connect', auth, async (req, res) => {
-  const s = await startSession(req.ctx.tenantId)
+  const tenantId = req.ctx.tenantId
+  // If a previous attempt is stuck (anything other than fully connected),
+  // tear it down and its saved creds so we can generate a fresh QR.
+  const existing = sessions.get(tenantId)
+  if (existing && existing.status !== 'connected') {
+    try { existing.sock?.end?.(new Error('reconnect')) } catch {}
+    sessions.delete(tenantId)
+    try { fs.rmSync(path.join(SESSIONS_DIR, tenantId), { recursive: true, force: true }) } catch {}
+  }
+  await startSession(tenantId)
   // Give Baileys a moment to emit the first QR.
-  await sleep(1500)
-  const cur = sessions.get(req.ctx.tenantId)
+  await sleep(2200)
+  const cur = sessions.get(tenantId)
   res.json({ status: cur?.status || 'connecting', qr: cur?.status === 'qr' ? cur.qrDataUrl : null })
 })
 

@@ -36,3 +36,5 @@ async function authedFetch(path, options = {}) {
 export const getWhatsAppStatus = () => authedFetch('/api/status')
 export const connectWhatsApp = () => authedFetch('/api/connect', { method: 'POST' })
 export const disconnectWhatsApp = () => authedFetch('/api/disconnect', { method: 'POST' })
+// Link by phone number (pairing code) instead of QR — more reliable on weak links.
+export const pairWhatsApp = (phone) => authedFetch('/api/pair-code', { method: 'POST', body: JSON.stringify({ phone }) })
