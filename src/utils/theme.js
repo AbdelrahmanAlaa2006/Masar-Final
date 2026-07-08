@@ -86,6 +86,44 @@ export function applyTenantTheme(tenant, themeConfig) {
     root.style.setProperty('--dynamic-tab-active-bg', `linear-gradient(135deg, ${primary}26, rgba(255, 255, 255, 0.05))`)
   }
 
+  // DB-driven theme token overrides (tenants.config.theme). The computed
+  // values above only tint a fixed slate base with the primary color, which is
+  // why every tenant's dark mode converges to near-navy. Tokens set here win
+  // over the computed defaults, letting a tenant truly restyle backgrounds and
+  // surfaces from the database with zero code changes. All optional — tenants
+  // without config.theme keep the exact behavior above.
+  const tokens = tenant.config?.theme || {}
+  const TOKEN_MAP = {
+    // light mode page background (already existed as config.bg_color)
+    bg_light: ['--bg-color'],
+    // dark mode page background (body.dark) + sections derived from it
+    bg_dark: ['--bg-dark', '--dynamic-background', '--dynamic-section-bg-1'],
+    // dark mode card/surface color
+    card_dark: ['--dynamic-surface', '--dynamic-card', '--dynamic-card-bg'],
+    // dark mode footer background
+    footer_dark: ['--dynamic-footer-bg'],
+    // accent border color for cards/dividers
+    border_accent: ['--dynamic-border', '--dynamic-card-border'],
+    // main text color on dark surfaces
+    text_dark: ['--dynamic-card-text'],
+  }
+  for (const [token, vars] of Object.entries(TOKEN_MAP)) {
+    const value = typeof tokens[token] === 'string' ? tokens[token].trim() : ''
+    if (!value) continue
+    const isPlainColor = value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl') || value.startsWith('oklch')
+    vars.forEach(v => {
+      // --bg-dark backs a `background:` rule so gradients are fine there; the
+      // --dynamic-* vars are consumed as plain colors and must stay colors.
+      if (v === '--bg-dark' || isPlainColor) root.style.setProperty(v, value)
+    })
+  }
+  if (typeof tokens.bg_dark === 'string' && tokens.bg_dark.trim().startsWith('#')) {
+    root.style.setProperty('--dynamic-section-bg-2', darkenColor(tokens.bg_dark.trim(), 3))
+    if (!tokens.footer_dark) {
+      root.style.setProperty('--dynamic-footer-bg', darkenColor(tokens.bg_dark.trim(), 6))
+    }
+  }
+
   // Update browser window tab title
   document.title = tenant.name
 

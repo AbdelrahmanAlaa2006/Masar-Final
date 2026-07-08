@@ -26,7 +26,9 @@ body {
 }
 
 body.dark {
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+  /* --bg-dark is set per-tenant from tenants.config.theme (utils/theme.js);
+     the gradient below is only the default when the tenant defines none. */
+  background: var(--bg-dark, linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%));
   color: #f7fafc;
 }
 

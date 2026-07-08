@@ -9,7 +9,16 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const selectedGroup = groups?.find(g => g.id === selectedGroupId)
   const isDifferentGroup = selectedGroupId && selectedGroup && student && (student.group_name !== selectedGroup.name)
   const isDifferentGrade = currentGrade && student && (student.grade !== currentGrade)
-  const hasWarning = isDifferentGroup || isDifferentGrade
+  // ONLINE students are not part of the center system — no barcode attendance for them
+  const isOnlineStudent = student?.enrollment_type === 'ONLINE'
+  const hasWarning = isDifferentGroup || isDifferentGrade || isOnlineStudent
+
+  // Attendance figures — newer RPC returns counts; older one only a percentage
+  const hasAttendanceCounts = typeof student.total_sessions === 'number'
+  const hasAttendanceData = hasAttendanceCounts
+    ? student.total_sessions > 0
+    : student.attendance_percentage !== null && student.attendance_percentage !== undefined
+  const attendancePct = hasAttendanceData ? Number(student.attendance_percentage) : null
 
   // Listen to 'n' / 'N' key to close the modal
   React.useEffect(() => {
@@ -169,6 +178,26 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
         </div>
 
         {/* Warnings Alerts */}
+        {isOnlineStudent && (
+          <div style={{
+            background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: isDark ? '#fca5a5' : '#b91c1c',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <i className="fas fa-wifi" style={{ fontSize: '1.2rem' }} />
+            <div>
+              <strong>طالب أونلاين:</strong> هذا الطالب مشترك أونلاين فقط ولا يتم تسجيل حضور السنتر له عبر الباركود.
+            </div>
+          </div>
+        )}
         {isDifferentGrade ? (
           <div style={{
             background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
@@ -305,23 +334,38 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             </div>
           </div>
 
-          {/* Attendance Stats */}
-          <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '12px', borderRadius: '12px', gridColumn: 'span 2' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>نسبة حضور السنتر</span>
-              <span style={{ fontWeight: 'bold', color: student.attendance_percentage >= 75 ? '#10b981' : '#ef4444' }}>
-                {student.attendance_percentage}%
-              </span>
+          {/* Attendance Stats (center/hybrid students only) */}
+          {!isOnlineStudent && (
+            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', padding: '12px', borderRadius: '12px', gridColumn: 'span 2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>حضور السنتر</span>
+                {hasAttendanceData ? (
+                  <span style={{ fontWeight: 'bold', color: attendancePct >= 75 ? '#10b981' : '#ef4444' }}>
+                    {hasAttendanceCounts
+                      ? `حضر ${student.attended_sessions} من ${student.total_sessions} حصة (${attendancePct}%)`
+                      : `${attendancePct}%`}
+                  </span>
+                ) : (
+                  <span style={{ fontWeight: 'bold', color: '#64748b' }}>لم يتم تسجيل أي حصص بعد</span>
+                )}
+              </div>
+              <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${hasAttendanceData ? attendancePct : 0}%`,
+                  height: '100%',
+                  background: attendancePct >= 75 ? '#10b981' : '#ef4444',
+                  borderRadius: '3px'
+                }} />
+              </div>
+              {hasAttendanceCounts && student.total_sessions > 0 && (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '0.78rem', flexWrap: 'wrap' }}>
+                  <span style={{ color: '#10b981' }}>حضور: {student.present_count}</span>
+                  <span style={{ color: '#f59e0b' }}>تأخير: {student.late_count}</span>
+                  <span style={{ color: '#ef4444' }}>غياب: {student.absent_count}</span>
+                </div>
+              )}
             </div>
-            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${student.attendance_percentage}%`,
-                height: '100%',
-                background: student.attendance_percentage >= 75 ? '#10b981' : '#ef4444',
-                borderRadius: '3px'
-              }} />
-            </div>
-          </div>
+          )}
 
           {/* Financial Ledger Balance */}
           <div style={{
@@ -377,35 +421,41 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
         )}
 
         {/* Action Button: Register attendance */}
-        {onMarkAttendance && (
-          <button
-            onClick={() => {
-              if (isDifferentGrade) return
-              onMarkAttendance(student)
-              onClose()
-            }}
-            disabled={isDifferentGrade}
-            className={`cp-btn ${isDifferentGrade ? 'cp-btn-secondary' : 'cp-btn-success'}`}
-            style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              fontSize: '1.05rem',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              cursor: isDifferentGrade ? 'not-allowed' : 'pointer',
-              border: 'none',
-              marginTop: '10px',
-              opacity: isDifferentGrade ? 0.5 : 1
-            }}
-          >
-            <i className={isDifferentGrade ? "fas fa-ban" : "fas fa-calendar-check"} />
-            <span>{isDifferentGrade ? "غير مسموح بالتحضير (صف دراسي مختلف)" : "تسجيل حضور الطالب الآن"}</span>
-          </button>
-        )}
+        {onMarkAttendance && (() => {
+          const isBlocked = isDifferentGrade || isOnlineStudent
+          const blockedLabel = isOnlineStudent
+            ? 'غير مسموح بالتحضير (طالب أونلاين)'
+            : 'غير مسموح بالتحضير (صف دراسي مختلف)'
+          return (
+            <button
+              onClick={() => {
+                if (isBlocked) return
+                onMarkAttendance(student)
+                onClose()
+              }}
+              disabled={isBlocked}
+              className={`cp-btn ${isBlocked ? 'cp-btn-secondary' : 'cp-btn-success'}`}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '12px',
+                fontSize: '1.05rem',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: isBlocked ? 'not-allowed' : 'pointer',
+                border: 'none',
+                marginTop: '10px',
+                opacity: isBlocked ? 0.5 : 1
+              }}
+            >
+              <i className={isBlocked ? "fas fa-ban" : "fas fa-calendar-check"} />
+              <span>{isBlocked ? blockedLabel : "تسجيل حضور الطالب الآن"}</span>
+            </button>
+          )
+        })()}
 
       </div>
     </div>

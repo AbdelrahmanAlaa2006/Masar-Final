@@ -152,6 +152,39 @@ export function TenantProvider({ children }) {
           }
         }
 
+        // Identity fields configured in the DB (tenants.config) must win over
+        // the shared code theme chunk. Pages read `themeConfig.X || tenant.config.X`,
+        // so without this merge a button-created tenant is stuck with the theme
+        // folder's baked-in identity (e.g. the default folder's Arabic teacher,
+        // or the chemistry folder's owner when subject=chemistry is reused).
+        // Tenants without DB overrides keep the code config exactly as before.
+        if (themeConfigObj && tenantData?.slug !== 'default') {
+          const dbConfig = tenantData?.config || {}
+          const merged = { ...themeConfigObj }
+          for (const key of ['branding', 'socials', 'contact']) {
+            if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
+              merged[key] = { ...(themeConfigObj[key] || {}), ...dbConfig[key] }
+            }
+          }
+          // teacher/location are a person's identity — mixing DB fields over
+          // another teacher's code config (photo, bio, map) would show a
+          // chimera. When the DB defines them, they replace the code version.
+          for (const key of ['teacher', 'location']) {
+            if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
+              merged[key] = { ...dbConfig[key] }
+            }
+          }
+          // A dynamic tenant on the shared default folder must never present
+          // the default theme's teacher/center identity as its own.
+          const isDynamicTenant = folder === 'default'
+          if (isDynamicTenant) {
+            if (!dbConfig.teacher || Object.keys(dbConfig.teacher).length === 0) merged.teacher = {}
+            if (!dbConfig.location || Object.keys(dbConfig.location).length === 0) merged.location = {}
+            merged.branding = { ...(merged.branding || {}), brand_short: dbConfig.branding?.brand_short || tenantData.name }
+          }
+          themeConfigObj = merged
+        }
+
         if (themeConfigObj) {
           setThemeConfig(themeConfigObj)
           applyTenantTheme(tenantData, themeConfigObj)

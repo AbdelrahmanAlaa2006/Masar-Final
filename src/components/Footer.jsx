@@ -23,8 +23,30 @@ const TICKER_ITEMS = [
   { icon: 'fa-rocket',         text: 'انطلق نحو النجاح' },
 ]
 
+/* Developer (GitFekra) support contact — shown to admins/assistants only.
+   Students get the tenant's own teacher/platform contact instead. */
+const DEVELOPER_CONTACT = {
+  name: 'GitFekra — الدعم الفني للمنصة',
+  email: 'hello@gitfekra.com',
+  site: 'https://gitfekra.com'
+}
+
 export default function Footer() {
   const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, gradesList, themeConfig } = useTenant()
+
+  // Resolve the viewer's role so contact info targets the right audience:
+  // students/visitors → the teacher/platform channels, staff → the developer.
+  const [viewerRole, setViewerRole] = React.useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('masar-user'))?.role || null } catch { return null }
+  })
+  React.useEffect(() => {
+    const sync = () => {
+      try { setViewerRole(JSON.parse(sessionStorage.getItem('masar-user'))?.role || null) } catch { setViewerRole(null) }
+    }
+    window.addEventListener('masar-user-updated', sync)
+    return () => window.removeEventListener('masar-user-updated', sync)
+  }, [])
+  const isStaff = viewerRole === 'admin' || viewerRole === 'assistant' || viewerRole === 'super_admin'
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const hasCustomLogo = !!(themeConfig.logoUrl || dbLogo)
@@ -35,19 +57,13 @@ export default function Footer() {
   const brandTag = tenant?.config?.branding?.tagline || 'طريقك إلى التفوق الدراسي'
   const brandDesc = tenant?.config?.branding?.description || 'منصة تعليمية متكاملة تقدم محاضرات وامتحانات وفيديوهات تفاعلية للمرحلة الإعدادية، مع متابعة دقيقة لأداء كل طالب.'
 
-  const socials = tenant?.config?.socials || {
-    facebook: '#',
-    youtube: '#',
-    instagram: '#',
-    telegram: '#',
-    whatsapp: '#'
-  }
-
-  const contact = tenant?.config?.contact || {
-    address: 'القاهرة، مصر',
-    phone: '+20 100 000 0000',
-    email: 'support@gitfekra.com'
-  }
+  // Tenant (teacher/platform) channels — students see these. No '#' dead links
+  // and no developer fallback: icons/rows render only when actually configured.
+  const rawSocials = tenant?.config?.socials || {}
+  const socials = Object.fromEntries(
+    Object.entries(rawSocials).filter(([, v]) => v && v !== '#')
+  )
+  const contact = tenant?.config?.contact || {}
 
   const tickerItems = TICKER_ITEMS.map(item => {
     if (item.text === 'منصة مسار التعليمية') {
@@ -128,13 +144,17 @@ export default function Footer() {
               </div>
             </div>
             <p className="sf-brand-desc">{brandDesc}</p>
-            <div className="sf-social">
-              {socials.facebook && <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="sf-social-btn"><i className="fab fa-facebook-f"></i></a>}
-              {socials.youtube && <a href={socials.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube"  className="sf-social-btn"><i className="fab fa-youtube"></i></a>}
-              {socials.instagram && <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="sf-social-btn"><i className="fab fa-instagram"></i></a>}
-              {socials.telegram && <a href={socials.telegram} target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="sf-social-btn"><i className="fab fa-telegram-plane"></i></a>}
-              {socials.whatsapp && <a href={socials.whatsapp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="sf-social-btn"><i className="fab fa-whatsapp"></i></a>}
-            </div>
+            {/* Teacher/platform socials are for students — staff get the
+                developer support column instead. */}
+            {!isStaff && (
+              <div className="sf-social">
+                {socials.facebook && <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="sf-social-btn"><i className="fab fa-facebook-f"></i></a>}
+                {socials.youtube && <a href={socials.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube"  className="sf-social-btn"><i className="fab fa-youtube"></i></a>}
+                {socials.instagram && <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="sf-social-btn"><i className="fab fa-instagram"></i></a>}
+                {socials.telegram && <a href={socials.telegram} target="_blank" rel="noopener noreferrer" aria-label="Telegram" className="sf-social-btn"><i className="fab fa-telegram-plane"></i></a>}
+                {socials.whatsapp && <a href={socials.whatsapp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="sf-social-btn"><i className="fab fa-whatsapp"></i></a>}
+              </div>
+            )}
           </div>
 
           {/* Quick links */}
@@ -193,39 +213,82 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Contact */}
-          <div className="sf-col">
-            <h4 className="sf-col-title"><i className="fas fa-headset"></i> تواصل معنا</h4>
-            <ul className="sf-contact">
-              {contact.address && (
+          {/* Contact — staff see the developer's support channels, students see
+              the teacher/platform channels responsible for helping them. */}
+          {isStaff ? (
+            <div className="sf-col">
+              <h4 className="sf-col-title"><i className="fas fa-headset"></i> الدعم الفني (المطور)</h4>
+              <ul className="sf-contact">
                 <li>
-                  <span className="sf-ci"><i className="fas fa-location-dot"></i></span>
+                  <span className="sf-ci"><i className="fas fa-code"></i></span>
                   <div>
-                    <span className="sf-ck">العنوان</span>
-                    <span className="sf-cv">{contact.address}</span>
+                    <span className="sf-ck">المطور</span>
+                    <span className="sf-cv">{DEVELOPER_CONTACT.name}</span>
                   </div>
                 </li>
-              )}
-              {contact.phone && (
-                <li>
-                  <span className="sf-ci"><i className="fas fa-phone"></i></span>
-                  <div>
-                    <span className="sf-ck">الهاتف</span>
-                    <span className="sf-cv" dir="ltr">{contact.phone}</span>
-                  </div>
-                </li>
-              )}
-              {contact.email && (
                 <li>
                   <span className="sf-ci"><i className="fas fa-envelope"></i></span>
                   <div>
                     <span className="sf-ck">البريد الإلكتروني</span>
-                    <span className="sf-cv" dir="ltr">{contact.email}</span>
+                    <span className="sf-cv" dir="ltr">
+                      <a href={`mailto:${DEVELOPER_CONTACT.email}`} style={{ color: 'inherit' }}>{DEVELOPER_CONTACT.email}</a>
+                    </span>
                   </div>
                 </li>
-              )}
-            </ul>
-          </div>
+                <li>
+                  <span className="sf-ci"><i className="fas fa-globe"></i></span>
+                  <div>
+                    <span className="sf-ck">الموقع</span>
+                    <span className="sf-cv" dir="ltr">
+                      <a href={DEVELOPER_CONTACT.site} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>gitfekra.com</a>
+                    </span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          ) : (
+            <div className="sf-col">
+              <h4 className="sf-col-title"><i className="fas fa-headset"></i> تواصل معنا</h4>
+              <ul className="sf-contact">
+                {contact.address && (
+                  <li>
+                    <span className="sf-ci"><i className="fas fa-location-dot"></i></span>
+                    <div>
+                      <span className="sf-ck">العنوان</span>
+                      <span className="sf-cv">{contact.address}</span>
+                    </div>
+                  </li>
+                )}
+                {contact.phone && (
+                  <li>
+                    <span className="sf-ci"><i className="fas fa-phone"></i></span>
+                    <div>
+                      <span className="sf-ck">الهاتف</span>
+                      <span className="sf-cv" dir="ltr">{contact.phone}</span>
+                    </div>
+                  </li>
+                )}
+                {contact.email && (
+                  <li>
+                    <span className="sf-ci"><i className="fas fa-envelope"></i></span>
+                    <div>
+                      <span className="sf-ck">البريد الإلكتروني</span>
+                      <span className="sf-cv" dir="ltr">{contact.email}</span>
+                    </div>
+                  </li>
+                )}
+                {!contact.address && !contact.phone && !contact.email && (
+                  <li>
+                    <span className="sf-ci"><i className="fas fa-comments"></i></span>
+                    <div>
+                      <span className="sf-ck">الدعم</span>
+                      <span className="sf-cv">تواصل مع معلمك أو الإدارة عبر «الدردشة» داخل المنصة</span>
+                    </div>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Bottom bar */}

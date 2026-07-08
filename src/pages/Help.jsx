@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './PolicyPage.css'
 
 const FAQS = [
@@ -40,6 +41,17 @@ const FAQS = [
 export default function Help() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(0)
+  const { tenant } = useTenant()
+
+  // Real contact channels only — configured per tenant, nothing hardcoded
+  const contact = tenant?.config?.contact || {}
+  const socials = tenant?.config?.socials || {}
+  const contactEmail = contact.email || null
+  const contactPhone = contact.phone || null
+  const whatsappLink = socials.whatsapp && socials.whatsapp !== '#'
+    ? socials.whatsapp
+    : (contactPhone ? `https://wa.me/${contactPhone.replace(/[^0-9]/g, '')}` : null)
+  const hasContactChannels = !!(contactEmail || contactPhone || whatsappLink)
 
   return (
     <main className="pp-page" dir="rtl">
@@ -81,11 +93,17 @@ export default function Help() {
         <div className="pp-contact-card">
           <h3>لم تجد ما تبحث عنه؟</h3>
           <p>تواصل معنا مباشرة وسنقوم بمساعدتك في أقرب وقت ممكن.</p>
-          <div className="pp-contact-row">
-            <a href="mailto:support@gitfekra.com"><i className="fas fa-envelope"></i> support@gitfekra.com</a>
-            <a href="tel:+201000000000" dir="ltr"><i className="fas fa-phone"></i> +20 100 000 0000</a>
-            <a href="https://wa.me/201000000000" target="_blank" rel="noreferrer"><i className="fab fa-whatsapp"></i> واتساب</a>
-          </div>
+          {hasContactChannels ? (
+            <div className="pp-contact-row">
+              {contactEmail && <a href={`mailto:${contactEmail}`}><i className="fas fa-envelope"></i> {contactEmail}</a>}
+              {contactPhone && <a href={`tel:${contactPhone.replace(/\s/g, '')}`} dir="ltr"><i className="fas fa-phone"></i> {contactPhone}</a>}
+              {whatsappLink && <a href={whatsappLink} target="_blank" rel="noreferrer"><i className="fab fa-whatsapp"></i> واتساب</a>}
+            </div>
+          ) : (
+            <div className="pp-contact-row">
+              <span><i className="fas fa-comments"></i> تواصل مع معلمك أو الإدارة عبر «الدردشة» داخل المنصة.</span>
+            </div>
+          )}
         </div>
       </div>
     </main>

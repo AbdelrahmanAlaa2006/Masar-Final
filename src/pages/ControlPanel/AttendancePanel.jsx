@@ -441,8 +441,16 @@ export default function AttendancePanel({ onBack, flash }) {
       playSuccessBeep()
 
       const isDifferentGrade = studentData.grade !== grade
+      const isOnlineStudent = studentData.enrollment_type === 'ONLINE'
 
       if (autoCheckIn && selectedSessionId && selectedSessionId !== 'new') {
+        if (isOnlineStudent) {
+          playWarningBeep()
+          flash(`لا يمكن تحضير ${studentData.name} — الطالب مشترك أونلاين فقط وليس ضمن نظام حضور السنتر`, 'error')
+          // Open details modal to show error
+          setScannedStudent(studentData)
+          return
+        }
         if (isDifferentGrade) {
           playWarningBeep()
           flash(`لا يمكن تحضير ${studentData.name} تلقائياً لأنه ينتمي لصف دراسي مختلف`, 'error')

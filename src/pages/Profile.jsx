@@ -46,13 +46,16 @@ export default function Profile() {
     }
   }, [navigate])
 
+  // Online-only students have no center features (attendance, barcode, center grades)
+  const isOnlineStudent = user?.enrollment_type === 'ONLINE'
+
   // Load student stats dynamically (lazy loaded APIs)
   useEffect(() => {
     if (user && user.role === 'student') {
       const loadStats = async () => {
         setLoadingStats(true)
         try {
-          if (isFeatureEnabled('attendance')) {
+          if (isFeatureEnabled('attendance') && user.enrollment_type !== 'ONLINE') {
             const { getStudentAttendanceSummary } = await import('@backend/attendanceApi')
             const att = await getStudentAttendanceSummary(user.id)
             setAttendanceSummary(att)
@@ -81,19 +84,26 @@ export default function Profile() {
 
   const gradeLabel = GRADE_LABEL[user?.grade] || '—'
 
+  // Real join date only — never a fabricated fallback
   const joinDate = (() => {
-    if (!user?.created_at) return '12 مايو 2024'
+    if (!user?.created_at) return null
     try {
       const d = new Date(user.created_at)
+      if (isNaN(d.getTime())) return null
       const months = [
         'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
         'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
       ]
       return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
     } catch {
-      return '12 مايو 2024'
+      return null
     }
   })()
+
+  // Real account status — the chip used to claim "نشط" unconditionally
+  const STATUS_CHIP_LABEL = { active: 'نشط', inactive: 'غير نشط', suspended: 'موقوف', graduated: 'خريج', archived: 'مؤرشف' }
+  const isAccountActive = user?.is_active !== false && (!user?.status || user.status === 'active')
+  const statusChipLabel = isAccountActive ? 'نشط' : (STATUS_CHIP_LABEL[user?.status] || 'غير نشط')
 
   const handleCopyId = () => {
     if (!user?.id) return
@@ -285,16 +295,20 @@ export default function Profile() {
                 </span>
               )}
 
-              <span className="profile-chip profile-chip--active">
-                <span className="profile-status-dot" />
-                <span>نشط</span>
+              <span className="profile-chip profile-chip--active" style={isAccountActive ? undefined : { background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }}>
+                <span className="profile-status-dot" style={isAccountActive ? undefined : { background: '#ef4444' }} />
+                <span>{statusChipLabel}</span>
               </span>
             </div>
 
             {/* Meta Strip */}
             <div className="profile-meta-strip">
-              <span><i className="fas fa-calendar" /> عضو منذ {joinDate}</span>
-              <span className="profile-meta-sep">·</span>
+              {joinDate && (
+                <>
+                  <span><i className="fas fa-calendar" /> عضو منذ {joinDate}</span>
+                  <span className="profile-meta-sep">·</span>
+                </>
+              )}
               <span><i className="fas fa-globe" /> العربية</span>
             </div>
           </div>
@@ -315,7 +329,7 @@ export default function Profile() {
         )}
 
         {/* Student warning indicators if attendance is low */}
-        {isFeatureEnabled('attendance') && user.role === 'student' && attendanceSummary && attendanceSummary.attendancePercentage < 75 && (
+        {isFeatureEnabled('attendance') && user.role === 'student' && !isOnlineStudent && attendanceSummary && attendanceSummary.totalSessions > 0 && attendanceSummary.attendancePercentage < 75 && (
           <div className="profile-warning-alert" style={{
             background: 'rgba(239, 68, 68, 0.1)',
             border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -330,7 +344,7 @@ export default function Profile() {
             animation: 'profileFadeUp 0.5s ease'
           }}>
             <i className="fas fa-triangle-exclamation" style={{ fontSize: '1.2rem' }}></i>
-            <span><strong>تنبيه الحضور:</strong> نسبة حضورك منخفضة حالياً ({attendanceSummary.attendancePercentage}%). يرجى الالتزام بحضور الحصص القادمة لتفادي تجميد حسابك الدراسي.</span>
+            <span><strong>تنبيه الحضور:</strong> نسبة حضورك منخفضة حالياً — حضرت {attendanceSummary.attended} من {attendanceSummary.totalSessions} حصة ({attendanceSummary.attendancePercentage}%). يرجى الالتزام بحضور الحصص القادمة لتفادي تجميد حسابك الدراسي.</span>
           </div>
         )}
 
@@ -440,7 +454,7 @@ export default function Profile() {
           </div>
 
           {/* Digital Student Card (Only for Student) */}
-          {isFeatureEnabled('qr_attendance') && user.role === 'student' && (
+          {isFeatureEnabled('qr_attendance') && user.role === 'student' && !isOnlineStudent && (
             <div className="profile-form-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', animationDelay: '200ms' }}>
               <h2 className="profile-card-title" style={{ width: '100%' }}>
                 <span className="profile-card-accent-bar" />
@@ -463,7 +477,7 @@ export default function Profile() {
           )}
 
           {/* Student Performance and Attendance Summaries (Only for Student) */}
-          {user.role === 'student' && (isFeatureEnabled('attendance') || isFeatureEnabled('grades')) && (
+          {user.role === 'student' && ((isFeatureEnabled('attendance') && !isOnlineStudent) || isFeatureEnabled('grades')) && (
             <div className="profile-info-card" style={{ animationDelay: '240ms' }}>
               <h2 className="profile-card-title">
                 <span className="profile-card-accent-bar" />
@@ -478,23 +492,37 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="profile-stats-grid" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Attendance Percentage Indicator */}
-                  {isFeatureEnabled('attendance') && attendanceSummary && (
+                  {/* Attendance Indicator (center/hybrid students only) */}
+                  {isFeatureEnabled('attendance') && !isOnlineStudent && attendanceSummary && (
                     <div className="stat-progress-item">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
-                        <span>نسبة الحضور</span>
-                        <span style={{ color: attendanceSummary.attendancePercentage >= 75 ? '#10b981' : '#ef4444' }}>
-                          {attendanceSummary.attendancePercentage}% ({attendanceSummary.absent} غياب)
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>الحضور بالسنتر</span>
+                        {attendanceSummary.totalSessions > 0 ? (
+                          <span style={{ color: attendanceSummary.attendancePercentage >= 75 ? '#10b981' : '#ef4444' }}>
+                            حضر {attendanceSummary.attended} من {attendanceSummary.totalSessions} حصة ({attendanceSummary.attendancePercentage}%)
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--profile-row-label)', fontWeight: 'normal' }}>
+                            لم يتم تسجيل أي حصص بعد
+                          </span>
+                        )}
                       </div>
                       <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%',
-                          width: `${attendanceSummary.attendancePercentage}%`,
+                          width: `${attendanceSummary.totalSessions > 0 ? attendanceSummary.attendancePercentage : 0}%`,
                           background: attendanceSummary.attendancePercentage >= 75 ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #ef4444, #f87171)',
                           borderRadius: '999px'
                         }}></div>
                       </div>
+                      {attendanceSummary.totalSessions > 0 && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--profile-row-label)', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#10b981' }}>✓ حضور: {attendanceSummary.present}</span>
+                          <span style={{ color: '#f59e0b' }}>⏱ تأخير: {attendanceSummary.late}</span>
+                          <span style={{ color: '#ef4444' }}>✗ غياب: {attendanceSummary.absent}</span>
+                          {attendanceSummary.excused > 0 && <span>غياب بعذر: {attendanceSummary.excused}</span>}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -503,14 +531,22 @@ export default function Profile() {
                     <>
                       {/* Homework Average */}
                       <div className="stat-progress-item">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
-                          <span>متوسط تقييم الواجبات</span>
-                          <span>{gradesSummary.homeworkAverage}% ({gradesSummary.homeworkCount} واجبات)</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>تقييم الواجبات</span>
+                          {gradesSummary.homeworkCount > 0 ? (
+                            <span>
+                              {gradesSummary.homeworkScore} من {gradesSummary.homeworkMax} درجة في {gradesSummary.homeworkCount} واجب ({gradesSummary.homeworkAverage}%)
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--profile-row-label)', fontWeight: 'normal' }}>
+                              لا توجد واجبات مُقيَّمة بعد
+                            </span>
+                          )}
                         </div>
                         <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%',
-                            width: `${gradesSummary.homeworkAverage}%`,
+                            width: `${gradesSummary.homeworkAverage || 0}%`,
                             background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
                             borderRadius: '999px'
                           }}></div>
@@ -519,14 +555,22 @@ export default function Profile() {
 
                       {/* Exams Average */}
                       <div className="stat-progress-item">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px' }}>
-                          <span>متوسط درجات الامتحانات</span>
-                          <span>{gradesSummary.examAverage}% ({gradesSummary.examCount} امتحانات)</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>درجات الامتحانات</span>
+                          {gradesSummary.examCount > 0 ? (
+                            <span>
+                              {gradesSummary.examScore} من {gradesSummary.examMax} درجة في {gradesSummary.examCount} امتحان ({gradesSummary.examAverage}%)
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--profile-row-label)', fontWeight: 'normal' }}>
+                              لا توجد امتحانات مُقيَّمة بعد
+                            </span>
+                          )}
                         </div>
                         <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%',
-                            width: `${gradesSummary.examAverage}%`,
+                            width: `${gradesSummary.examAverage || 0}%`,
                             background: 'linear-gradient(90deg, #06b6d4, #0891b2)',
                             borderRadius: '999px'
                           }}></div>

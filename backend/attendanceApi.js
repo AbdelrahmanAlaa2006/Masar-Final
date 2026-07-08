@@ -191,18 +191,22 @@ export async function getStudentAttendanceSummary(studentId) {
       else if (r.status === 'excused') excused++
     })
 
-    const totalMarked = present + absent + late
-    const attendancePercentage = totalMarked > 0 
-      ? Math.round(((present + late) / totalMarked) * 100) 
-      : 100
+    const totalSessions = present + absent + late
+    const attended = present + late
+    // No sessions marked yet → percentage is unknown, not 100%.
+    const attendancePercentage = totalSessions > 0
+      ? Math.round((attended / totalSessions) * 100)
+      : null
 
     return {
       present,
       absent,
       late,
       excused,
+      attended,
+      totalSessions,
       attendancePercentage,
-      totalMarked: totalMarked + excused
+      totalMarked: totalSessions + excused
     }
   })
 }

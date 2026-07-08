@@ -218,19 +218,24 @@ export async function getStudentGradesSummary(studentId) {
       }
     })
 
-    const homeworkAverage = totalHomeworkMax > 0 
-      ? Math.round((totalHomeworkScore / totalHomeworkMax) * 100) 
-      : 100
+    // No graded items yet → average is unknown, not 100%.
+    const homeworkAverage = totalHomeworkMax > 0
+      ? Math.round((totalHomeworkScore / totalHomeworkMax) * 100)
+      : null
 
-    const examAverage = totalExamMax > 0 
-      ? Math.round((totalExamScore / totalExamMax) * 100) 
-      : 100
+    const examAverage = totalExamMax > 0
+      ? Math.round((totalExamScore / totalExamMax) * 100)
+      : null
 
     return {
       homeworkCount,
       homeworkAverage,
+      homeworkScore: totalHomeworkScore,
+      homeworkMax: totalHomeworkMax,
       examCount,
       examAverage,
+      examScore: totalExamScore,
+      examMax: totalExamMax,
       participationCount,
       behaviorNotesCount
     }

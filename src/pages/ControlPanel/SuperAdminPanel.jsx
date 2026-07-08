@@ -4,6 +4,90 @@ import { supabase } from '@backend/supabase'
 import { invalidateAll } from '../../utils/cache'
 import SeasonalThemePanel from './SeasonalThemePanel'
 import DevToolsViolationsPanel from './DevToolsViolationsPanel'
+import { GRADE_LABEL } from './shared'
+
+/* Subject → theme mapping. getTenantFolder() in src/tenants/brandOverrides.js
+   resolves the theme chunk from config.subject, so picking a subject here is
+   what gives a button-created tenant a real theme without any code change. */
+const SUBJECT_OPTIONS = [
+  { value: 'arabic', label: 'لغة عربية / عام (الثيم الافتراضي)' },
+  { value: 'chemistry', label: 'كيمياء' },
+  { value: 'physics', label: 'فيزياء' },
+  { value: 'math', label: 'رياضيات' },
+  { value: 'biology', label: 'أحياء' },
+  { value: 'science', label: 'علوم' },
+  { value: 'geology', label: 'جيولوجيا' },
+  { value: 'english', label: 'لغة إنجليزية' },
+  { value: 'humanities', label: 'مواد أدبية (جغرافيا / تاريخ)' },
+  { value: 'programming', label: 'برمجة وحاسب آلي' },
+]
+
+/* Feature keys actually consumed by isFeatureEnabled() across the app. */
+const FEATURE_DEFS = [
+  { key: 'videos', label: 'الفيديوهات' },
+  { key: 'exams', label: 'الامتحانات' },
+  { key: 'homework', label: 'الواجبات' },
+  { key: 'payments', label: 'المدفوعات والباقات' },
+  { key: 'reports', label: 'التقارير' },
+  { key: 'chat', label: 'الدردشة' },
+  { key: 'notifications', label: 'الإشعارات' },
+  { key: 'attendance', label: 'الحضور والغياب (سنتر)' },
+  { key: 'grades', label: 'الدرجات والتقييمات (سنتر)' },
+  { key: 'qr_attendance', label: 'بطاقة الباركود الرقمية' },
+]
+
+/* Default stage/grade tree in the exact schema TenantContext.gradesList
+   consumes (config.stages). Matches the legacy behavior: prep + secondary
+   enabled, primary + baccalaureate off until the tenant enables them. */
+const buildStagesTemplate = () => ([
+  { id: 'primary', name: 'المرحلة الابتدائية', enabled: false, grades: ['primary-1', 'primary-2', 'primary-3', 'primary-4', 'primary-5', 'primary-6'].map(id => ({ id, name: GRADE_LABEL[id], enabled: true })) },
+  { id: 'preparatory', name: 'المرحلة الإعدادية', enabled: true, grades: ['first-prep', 'second-prep', 'third-prep'].map(id => ({ id, name: GRADE_LABEL[id], enabled: true })) },
+  { id: 'secondary', name: 'المرحلة الثانوية', enabled: true, grades: ['first-sec', 'second-sec', 'third-sec'].map(id => ({ id, name: GRADE_LABEL[id], enabled: true })) },
+  { id: 'baccalaureate', name: 'مرحلة البكالوريا', enabled: false, grades: ['bac-1', 'bac-2', 'bac-3'].map(id => ({ id, name: GRADE_LABEL[id], enabled: true })) },
+])
+
+/* Login landing sections a tenant can show/hide (config.login_sections). */
+const LOGIN_SECTION_DEFS = [
+  { key: 'teacher', label: 'بطاقة المعلم في الواجهة' },
+  { key: 'about', label: 'قسم «عن المعلم»' },
+  { key: 'packages', label: 'قسم الباقات' },
+  { key: 'features', label: 'قسم المميزات' },
+  { key: 'steps', label: 'قسم «كيف تبدأ»' },
+  { key: 'location', label: 'قسم الموقع والعنوان' },
+]
+
+/* Detailed teacher fields (config.teacher) shown on the login/landing page.
+   Plain strings are fine — getLocalized() accepts both strings and {ar,en}. */
+const TEACHER_EXTRA_DEFS = [
+  { key: 'bio', label: 'نبذة عن المعلم', textarea: true },
+  { key: 'quote', label: 'اقتباس / رسالة المعلم', textarea: true },
+  { key: 'experience', label: 'سنوات الخبرة (مثال: +10)' },
+  { key: 'students_count', label: 'عدد الطلاب (مثال: +3,500)' },
+  { key: 'satisfaction', label: 'نسبة الرضا (مثال: 98%)' },
+  { key: 'target_stage', label: 'المراحل المستهدفة (مثال: الإعدادية والثانوية)' },
+  { key: 'learning_system', label: 'نظام التعلم (مثال: أونلاين تفاعلي)' },
+  { key: 'image_base', label: 'رابط صورة المعلم', ltr: true },
+  { key: 'image_hover', label: 'رابط صورة المعلم (عند التمرير)', ltr: true },
+]
+
+/* Location/center fields (config.location) for the login page location section. */
+const LOCATION_DEFS = [
+  { key: 'title', label: 'اسم المقر / السنتر' },
+  { key: 'description', label: 'وصف المقر', textarea: true },
+  { key: 'address', label: 'العنوان التفصيلي' },
+  { key: 'phone', label: 'هاتف المقر', ltr: true },
+  { key: 'map_iframe_url', label: 'رابط خريطة Google (embed)', ltr: true },
+  { key: 'hours_days', label: 'أيام العمل (مثال: السبت – الخميس)' },
+  { key: 'hours_time', label: 'ساعات العمل (مثال: ٩ صباحًا – ٩ مساءً)' },
+]
+
+/* Theme tokens (config.theme) applied as CSS variables in utils/theme.js. */
+const THEME_TOKEN_DEFS = [
+  { key: 'bg_light', label: 'خلفية الوضع الفاتح', type: 'color', fallback: '#f0f2f8' },
+  { key: 'bg_dark', label: 'خلفية الوضع الداكن (لون أو gradient)', type: 'text', fallback: '' },
+  { key: 'card_dark', label: 'لون الكروت (داكن)', type: 'color', fallback: '#0d1527' },
+  { key: 'text_dark', label: 'لون النص (داكن)', type: 'color', fallback: '#f8fafc' },
+]
 
 export default function SuperAdminPanel({ onBack, flash }) {
   const [tenants, setTenants] = useState([])
@@ -25,6 +109,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [newDomain, setNewDomain] = useState('')
   const [newPrimaryColor, setNewPrimaryColor] = useState('#7c3aed')
   const [newSecondaryColor, setNewSecondaryColor] = useState('#06b6d4')
+  const [newSubject, setNewSubject] = useState('arabic')
   // First-admin account for the new platform (created server-side so the super
   // admin's own session is never disturbed).
   const [newAdminName, setNewAdminName] = useState('')
@@ -38,6 +123,23 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editDomain, setEditDomain] = useState('')
   const [editPrimaryColor, setEditPrimaryColor] = useState('')
   const [editSecondaryColor, setEditSecondaryColor] = useState('')
+  // Customization (persisted into tenants.config JSONB)
+  const [editSubject, setEditSubject] = useState('arabic')
+  const [editTeacherName, setEditTeacherName] = useState('')
+  const [editTeacherRole, setEditTeacherRole] = useState('')
+  const [editContactPhone, setEditContactPhone] = useState('')
+  const [editContactEmail, setEditContactEmail] = useState('')
+  const [editContactAddress, setEditContactAddress] = useState('')
+  const [editSocials, setEditSocials] = useState({ facebook: '', youtube: '', instagram: '', telegram: '', whatsapp: '' })
+  const [editHeroTitle, setEditHeroTitle] = useState('')
+  const [editHeroSub, setEditHeroSub] = useState('')
+  const [editFeatures, setEditFeatures] = useState({})
+  const [editLogoUrl, setEditLogoUrl] = useState('')
+  const [editTeacherExtra, setEditTeacherExtra] = useState({})
+  const [editLocation, setEditLocation] = useState({})
+  const [editTheme, setEditTheme] = useState({ bg_light: '', bg_dark: '', card_dark: '', text_dark: '' })
+  const [editLoginSections, setEditLoginSections] = useState({})
+  const [editStages, setEditStages] = useState([])
   const [savingTenant, setSavingTenant] = useState(false)
   const [userRoleUpdating, setUserRoleUpdating] = useState(null)
   const [searchUserQuery, setSearchUserQuery] = useState('')
@@ -248,9 +350,17 @@ export default function SuperAdminPanel({ onBack, flash }) {
           primary_color: newPrimaryColor,
           secondary_color: newSecondaryColor,
           config: {
+            // subject drives which theme chunk (src/tenants/<folder>) loads
+            subject: newSubject,
             branding: {
-              hero_title: `طور مهاراتك مع منصة ${newName.trim()}`,
-              hero_subtitle: 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.'
+              brand_short: newName.trim(),
+              hero_title_a: newName.trim(),
+              hero_sub: 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.'
+            },
+            // The first admin is usually the teacher — a real editable default
+            // instead of showing another platform's teacher identity.
+            teacher: {
+              name: newAdminName.trim()
             },
             features: {
               chat: true,
@@ -281,7 +391,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
       flash(`تم إنشاء منصة (${newName.trim()}) وحساب المدير بنجاح!`, 'success')
 
       // Reset form
-      setNewName(''); setNewSlug(''); setNewDomain('')
+      setNewName(''); setNewSlug(''); setNewDomain(''); setNewSubject('arabic')
       setNewPrimaryColor('#7c3aed'); setNewSecondaryColor('#06b6d4')
       setNewAdminName(''); setNewAdminPhone(''); setNewAdminPassword('')
       setShowCreateModal(false)
@@ -309,6 +419,52 @@ export default function SuperAdminPanel({ onBack, flash }) {
     setEditPrimaryColor(tenant.primary_color || '#7c3aed')
     setEditSecondaryColor(tenant.secondary_color || '#06b6d4')
     setSearchUserQuery('')
+
+    // Hydrate customization fields from the tenant's config JSONB
+    const cfg = tenant.config || {}
+    const asText = (v) => (typeof v === 'object' && v !== null) ? (v.ar || v.en || '') : (v || '')
+    setEditSubject(cfg.subject || 'arabic')
+    setEditTeacherName(asText(cfg.teacher?.name))
+    setEditTeacherRole(asText(cfg.teacher?.role))
+    setEditContactPhone(cfg.contact?.phone || '')
+    setEditContactEmail(cfg.contact?.email || '')
+    setEditContactAddress(cfg.contact?.address || '')
+    setEditSocials({
+      facebook: cfg.socials?.facebook && cfg.socials.facebook !== '#' ? cfg.socials.facebook : '',
+      youtube: cfg.socials?.youtube && cfg.socials.youtube !== '#' ? cfg.socials.youtube : '',
+      instagram: cfg.socials?.instagram && cfg.socials.instagram !== '#' ? cfg.socials.instagram : '',
+      telegram: cfg.socials?.telegram && cfg.socials.telegram !== '#' ? cfg.socials.telegram : '',
+      whatsapp: cfg.socials?.whatsapp && cfg.socials.whatsapp !== '#' ? cfg.socials.whatsapp : ''
+    })
+    setEditHeroTitle(asText(cfg.branding?.hero_title_a) || asText(cfg.branding?.hero_title))
+    setEditHeroSub(asText(cfg.branding?.hero_sub) || asText(cfg.branding?.hero_subtitle))
+    // Feature toggles: missing key = enabled (same default as isFeatureEnabled)
+    const feats = {}
+    FEATURE_DEFS.forEach(f => { feats[f.key] = cfg.features?.[f.key] !== false })
+    setEditFeatures(feats)
+
+    setEditLogoUrl(tenant.logo_url || '')
+    const teacherExtra = {}
+    TEACHER_EXTRA_DEFS.forEach(f => { teacherExtra[f.key] = asText(cfg.teacher?.[f.key]) })
+    setEditTeacherExtra(teacherExtra)
+    const locationData = {}
+    LOCATION_DEFS.forEach(f => { locationData[f.key] = asText(cfg.location?.[f.key]) })
+    setEditLocation(locationData)
+    setEditTheme({
+      bg_light: cfg.theme?.bg_light || cfg.bg_color || '',
+      bg_dark: cfg.theme?.bg_dark || '',
+      card_dark: cfg.theme?.card_dark || '',
+      text_dark: cfg.theme?.text_dark || ''
+    })
+    const sections = {}
+    LOGIN_SECTION_DEFS.forEach(s => { sections[s.key] = cfg.login_sections?.[s.key] !== false })
+    setEditLoginSections(sections)
+    // Stages: use the tenant's configured tree, otherwise the standard template
+    setEditStages(
+      Array.isArray(cfg.stages) && cfg.stages.length > 0
+        ? cfg.stages.map(st => ({ ...st, grades: (st.grades || []).map(g => ({ ...g })) }))
+        : buildStagesTemplate()
+    )
   }
 
   // Save Tenant settings update
@@ -321,20 +477,51 @@ export default function SuperAdminPanel({ onBack, flash }) {
 
     setSavingTenant(true)
     try {
+      // Merge customization into the existing config JSONB without clobbering
+      // keys we don't manage here (stages, grades, etc.).
+      const prevConfig = selectedTenantForManage.config || {}
+      const cleaned = (obj) => {
+        const out = {}
+        Object.entries(obj).forEach(([k, v]) => {
+          const val = typeof v === 'string' ? v.trim() : v
+          if (val) out[k] = val
+        })
+        return out
+      }
+
+      const mergedConfig = {
+        ...prevConfig,
+        subject: editSubject,
+        teacher: cleaned({ ...(prevConfig.teacher || {}), name: editTeacherName, role: editTeacherRole, ...editTeacherExtra }),
+        location: cleaned({ ...(prevConfig.location || {}), ...editLocation }),
+        contact: cleaned({ ...(prevConfig.contact || {}), phone: editContactPhone, email: editContactEmail, address: editContactAddress }),
+        socials: cleaned({ ...(prevConfig.socials || {}), ...editSocials }),
+        branding: cleaned({ ...(prevConfig.branding || {}), hero_title_a: editHeroTitle, hero_sub: editHeroSub }),
+        features: { ...(prevConfig.features || {}), ...editFeatures },
+        theme: cleaned({ ...(prevConfig.theme || {}), ...editTheme }),
+        login_sections: { ...(prevConfig.login_sections || {}), ...editLoginSections },
+        stages: editStages
+      }
+
       const { error } = await supabase
         .from('tenants')
         .update({
           name: editName.trim(),
           domain: editDomain.trim() || null,
+          logo_url: editLogoUrl.trim() || null,
           primary_color: editPrimaryColor,
-          secondary_color: editSecondaryColor
+          secondary_color: editSecondaryColor,
+          config: mergedConfig
         })
         .eq('id', selectedTenantForManage.id)
 
       if (error) throw error
 
-      flash('تم تحديث إعدادات المنصة بنجاح!', 'success')
-      
+      // Drop cached tenant configs so the changes show without waiting for TTL
+      invalidateAll()
+
+      flash('تم تحديث إعدادات المنصة والتخصيص بنجاح!', 'success')
+
       setSelectedTenantForManage(null)
       fetchStats()
     } catch (err) {
@@ -1033,6 +1220,23 @@ export default function SuperAdminPanel({ onBack, flash }) {
                 />
               </div>
 
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '6px' }}>المادة الدراسية (تحدد ثيم المنصة) *</label>
+                <select
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  className="cp-input"
+                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}
+                >
+                  {SUBJECT_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: '0.75rem', color: 'var(--cp-text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  اختيار المادة يفعّل الثيم المناسب (ألوان وخلفيات وأيقونات) تلقائياً، ويمكن تخصيص باقي الهوية لاحقاً من «إدارة المنصة».
+                </p>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 'bold', marginBottom: '6px' }}>اللون الأساسي</label>
@@ -1163,6 +1367,239 @@ export default function SuperAdminPanel({ onBack, flash }) {
                     style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }}
                   />
                 </div>
+              </div>
+
+              {/* Theme & identity customization (persisted in config JSONB) */}
+              <h4 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '4px 0 14px', color: 'var(--primary, #7c3aed)' }}>تخصيص الهوية والمحتوى</h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>المادة الدراسية (الثيم)</label>
+                  <select value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="cp-input"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}>
+                    {SUBJECT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المعلم</label>
+                  <input type="text" value={editTeacherName} onChange={(e) => setEditTeacherName(e.target.value)}
+                    placeholder="مثال: الأستاذ أحمد محمد" className="cp-input"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>وصف المعلم / التخصص</label>
+                  <input type="text" value={editTeacherRole} onChange={(e) => setEditTeacherRole(e.target.value)}
+                    placeholder="مثال: مدرّس الفيزياء للثانوية العامة" className="cp-input"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero)</label>
+                  <input type="text" value={editHeroTitle} onChange={(e) => setEditHeroTitle(e.target.value)}
+                    placeholder="مثال: الفيزياء بطعم جديد" className="cp-input"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>الوصف التعريفي للمنصة</label>
+                <textarea value={editHeroSub} onChange={(e) => setEditHeroSub(e.target.value)} rows={2}
+                  placeholder="وصف قصير يظهر في الصفحة الرئيسية أسفل العنوان" className="cp-input"
+                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+              </div>
+
+              {/* Detailed teacher profile (login landing page) */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-chalkboard-user" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                بيانات المعلم التفصيلية (صفحة الهبوط)
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {TEACHER_EXTRA_DEFS.map(f => (
+                  <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
+                    {f.textarea ? (
+                      <textarea value={editTeacherExtra[f.key] || ''} rows={2}
+                        onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+                    ) : (
+                      <input type="text" value={editTeacherExtra[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
+                        onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Center / location details (login landing page) */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-location-dot" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                بيانات المقر والموقع (قسم الموقع في صفحة الهبوط)
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {LOCATION_DEFS.map(f => (
+                  <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
+                    {f.textarea ? (
+                      <textarea value={editLocation[f.key] || ''} rows={2}
+                        onChange={(e) => setEditLocation(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+                    ) : (
+                      <input type="text" value={editLocation[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
+                        onChange={(e) => setEditLocation(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Student-facing contact channels (footer + help page) */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-headset" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                قنوات تواصل الطلاب (تظهر في الفوتر وصفحة المساعدة)
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <input type="text" value={editContactPhone} onChange={(e) => setEditContactPhone(e.target.value)}
+                  placeholder="رقم الهاتف" className="cp-input" dir="ltr"
+                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                <input type="text" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)}
+                  placeholder="البريد الإلكتروني" className="cp-input" dir="ltr"
+                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                <input type="text" value={editContactAddress} onChange={(e) => setEditContactAddress(e.target.value)}
+                  placeholder="العنوان" className="cp-input"
+                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+              </div>
+
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-share-nodes" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                روابط السوشيال ميديا (تظهر للطلاب فقط)
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {[
+                  { key: 'facebook', icon: 'fab fa-facebook-f', label: 'Facebook' },
+                  { key: 'youtube', icon: 'fab fa-youtube', label: 'YouTube' },
+                  { key: 'instagram', icon: 'fab fa-instagram', label: 'Instagram' },
+                  { key: 'telegram', icon: 'fab fa-telegram-plane', label: 'Telegram' },
+                  { key: 'whatsapp', icon: 'fab fa-whatsapp', label: 'WhatsApp' },
+                ].map(s => (
+                  <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className={s.icon} style={{ width: 18, textAlign: 'center', color: 'var(--cp-text-muted)' }} />
+                    <input type="text" value={editSocials[s.key]} dir="ltr"
+                      onChange={(e) => setEditSocials(prev => ({ ...prev, [s.key]: e.target.value }))}
+                      placeholder={`رابط ${s.label}`} className="cp-input"
+                      style={{ flex: 1, padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Logo + advanced theme tokens */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-palette" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                الشعار والمظهر المتقدم (خلفيات وكروت)
+              </h5>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>رابط الشعار (Logo URL)</label>
+                <input type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)} dir="ltr"
+                  placeholder="https://example.com/logo.png" className="cp-input"
+                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {THEME_TOKEN_DEFS.map(tk => (
+                  <div key={tk.key}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{tk.label}</label>
+                    {tk.type === 'color' ? (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input type="color" value={editTheme[tk.key] || tk.fallback}
+                          onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                          style={{ width: '36px', height: '36px', padding: 0, border: 'none', borderRadius: '6px', cursor: 'pointer' }} />
+                        <input type="text" value={editTheme[tk.key]} dir="ltr" placeholder={tk.fallback}
+                          onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                          className="cp-input"
+                          style={{ flex: 1, padding: '8px 10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                      </div>
+                    ) : (
+                      <input type="text" value={editTheme[tk.key]} dir="ltr"
+                        placeholder="#0f0f23 أو linear-gradient(135deg, #0f0f23, #1a1a2e)"
+                        onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '-10px 0 20px', lineHeight: 1.5 }}>
+                اترك أي حقل فارغاً لاستخدام الافتراضي المحسوب من اللون الأساسي.
+              </p>
+
+              {/* Stages & grades */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-layer-group" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                المراحل والصفوف الدراسية المتاحة
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                {editStages.map((stage, si) => (
+                  <div key={stage.id} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '12px', opacity: stage.enabled === false ? 0.55 : 1 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', marginBottom: '10px' }}>
+                      <input type="checkbox" checked={stage.enabled !== false}
+                        onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si ? { ...s, enabled: e.target.checked } : s))}
+                        style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16 }} />
+                      <span>{stage.name}</span>
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {(stage.grades || []).map((g, gi) => (
+                        <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input type="checkbox" checked={g.enabled !== false} disabled={stage.enabled === false}
+                            onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
+                              ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, enabled: e.target.checked } : gr) }
+                              : s))}
+                            style={{ accentColor: '#10b981', width: 14, height: 14 }} />
+                          <input type="text" value={g.name} disabled={stage.enabled === false}
+                            onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
+                              ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, name: e.target.value } : gr) }
+                              : s))}
+                            className="cp-input"
+                            style={{ flex: 1, padding: '6px 8px', fontSize: '0.78rem', border: '1px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Login landing sections */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-eye" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                أقسام صفحة الهبوط (تسجيل الدخول)
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                {LOGIN_SECTION_DEFS.map(s => (
+                  <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editLoginSections[s.key] ? 'rgba(99, 102, 241, 0.05)' : 'transparent' }}>
+                    <input type="checkbox" checked={!!editLoginSections[s.key]}
+                      onChange={(e) => setEditLoginSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                      style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16, cursor: 'pointer' }} />
+                    <span>{s.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Feature toggles */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-toggle-on" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                ميزات المنصة المفعّلة
+              </h5>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
+                {FEATURE_DEFS.map(f => (
+                  <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editFeatures[f.key] ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
+                    <input type="checkbox" checked={!!editFeatures[f.key]}
+                      onChange={(e) => setEditFeatures(prev => ({ ...prev, [f.key]: e.target.checked }))}
+                      style={{ accentColor: '#10b981', width: 16, height: 16, cursor: 'pointer' }} />
+                    <span>{f.label}</span>
+                  </label>
+                ))}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>

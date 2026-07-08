@@ -95,7 +95,11 @@ export default function DevToolsBlocker() {
   }
 
   const handleSupport = () => {
-    window.open('https://wa.me/201000000000', '_blank')
+    // Route to the in-app help page (real, tenant-configured contact channels)
+    if (!checkIsDevToolsOpen()) {
+      sessionStorage.removeItem('masar-devtools-blocked')
+    }
+    window.location.href = '/help'
   }
 
   return (

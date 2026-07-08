@@ -181,10 +181,16 @@ export default function Login() {
     'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.',
     'Drop by our center in Damanhour — easy to find and easy to reach.'
   )
-  const locationAddress = getLocalized(themeConfig.location?.address || tenant?.config?.location?.address, 'دمنهور، البحيرة', 'Damanhour, Beheira')
-  const locationCountry = getLocalized(themeConfig.location?.country || tenant?.config?.location?.country, 'جمهورية مصر العربية', 'Arab Republic of Egypt')
-  const locationMapUrl = themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000"
-  const locationPhone = themeConfig.location?.phone || tenant?.config?.location?.phone || '+20 XXX XXX XXXX'
+  // No fabricated fallbacks — an unconfigured field simply doesn't render.
+  const locationAddress = getLocalized(themeConfig.location?.address || tenant?.config?.location?.address, '', '') || null
+  const locationCountry = getLocalized(themeConfig.location?.country || tenant?.config?.location?.country, '', '') || null
+  const locationMapUrl = themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url || null
+  const locationPhone = themeConfig.location?.phone || tenant?.config?.location?.phone || null
+
+  // Per-tenant landing sections (tenants.config.login_sections). Missing key =
+  // visible, so existing tenants render exactly as before.
+  const loginSections = tenant?.config?.login_sections || {}
+  const showSection = (key) => loginSections[key] !== false
   const locationHoursDays = getLocalized(themeConfig.location?.hours_days || tenant?.config?.location?.hours_days, 'السبت – الخميس', 'Sat – Thu')
   const locationHoursTime = getLocalized(themeConfig.location?.hours_time || tenant?.config?.location?.hours_time, '٩ صباحًا – ٩ مساءً', '9 AM – 9 PM')
   const locationDirectionsLink = themeConfig.location?.directions_link || tenant?.config?.location?.directions_link || "https://maps.app.goo.gl/W93aUn2jgM7cb2tT7"
@@ -582,6 +588,7 @@ export default function Login() {
           </div>
 
           {/* Teacher portrait (hover/active swap) */}
+          {showSection('teacher') && (
           <div className="aa-portrait-wrap">
             <div
               className="aa-portrait"
@@ -620,10 +627,12 @@ export default function Login() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </section>
 
       {/* ─────────── ABOUT TEACHER ─────────── */}
+      {showSection('about') && (
       <section id="about" className="login-about">
         <div className="section-inner about-grid">
           <div className="about-text">
@@ -680,9 +689,10 @@ export default function Login() {
           </aside>
         </div>
       </section>
+      )}
 
       {/* ─────────── PACKAGES SHOWCASE SECTION ─────────── */}
-      {activePackages.length > 0 && (
+      {showSection('packages') && activePackages.length > 0 && (
         <section id="packages" className="login-packages-showcase">
           <div className="section-inner">
             <h2 className="section-heading">
@@ -747,6 +757,7 @@ export default function Login() {
       )}
 
       {/* ─────────── MARKETING SECTIONS ─────────── */}
+      {showSection('features') && (
       <section id="features" className="login-features">
         <div className="section-inner">
           <h2 className="section-heading">{lang === 'ar' ? `لماذا ${brandShort}؟` : `Why ${brandShort}?`}</h2>
@@ -762,7 +773,9 @@ export default function Login() {
           </div>
         </div>
       </section>
+      )}
 
+      {showSection('steps') && (
       <section className="login-steps">
         <div className="section-inner">
           <h2 className="section-heading">{lang === 'ar' ? 'كيف تبدأ؟' : 'How to Get Started?'}</h2>
@@ -778,7 +791,9 @@ export default function Login() {
           </div>
         </div>
       </section>
+      )}
 
+      {showSection('location') && (
       <section className="login-location" id="location">
         <div className="loc-bg-grid" aria-hidden="true"></div>
         <div className="loc-bg-blob loc-bg-blob--a" aria-hidden="true"></div>
@@ -854,16 +869,18 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="location-info-card">
-                      <div className="location-info-icon">
-                        <i className="fas fa-phone-alt"></i>
+                    {(bPhone || locationPhone) && (
+                      <div className="location-info-card">
+                        <div className="location-info-icon">
+                          <i className="fas fa-phone-alt"></i>
+                        </div>
+                        <div className="loc-card-body">
+                          <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
+                          <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{bPhone || locationPhone}</h4>
+                          <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
+                        </div>
                       </div>
-                      <div className="loc-card-body">
-                        <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                        <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{bPhone || locationPhone}</h4>
-                        <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
-                      </div>
-                    </div>
+                    )}
 
                     <div className="location-info-card">
                       <div className="location-info-icon">
@@ -944,16 +961,18 @@ export default function Login() {
                   </div>
                 </div>
 
-                <div className="location-info-card">
-                  <div className="location-info-icon">
-                    <i className="fas fa-phone-alt"></i>
+                {locationPhone && (
+                  <div className="location-info-card">
+                    <div className="location-info-icon">
+                      <i className="fas fa-phone-alt"></i>
+                    </div>
+                    <div className="loc-card-body">
+                      <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
+                      <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{locationPhone}</h4>
+                      <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
+                    </div>
                   </div>
-                  <div className="loc-card-body">
-                    <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                    <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{locationPhone}</h4>
-                    <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
-                  </div>
-                </div>
+                )}
 
                 <div className="location-info-card">
                   <div className="location-info-icon">
@@ -993,6 +1012,7 @@ export default function Login() {
           )}
         </div>
       </section>
+      )}
 
       {/* ─────────── FOOTER ─────────── */}
       <footer className="login-footer">
