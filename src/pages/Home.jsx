@@ -4,6 +4,7 @@ import HomeDashboard from '../components/HomeDashboard'
 import { useSeasonalTheme } from '../seasonal/useSeasonalTheme'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
+import { DEFAULT_ANNOUNCEMENTS } from '../utils/announcements'
 // getTenantThemeConfig is now dynamically resolved inside TenantContext
 import './Home.css'
 // PNG home cards replaced with theme-aware inline SVG icons. The
@@ -202,14 +203,11 @@ export default function Home() {
   }[seasonalTheme.id] || null
 
 
-  const marqueeItems = [
-    { icon: '🚀', text: 'قريبًا: دورات مكثفة للمرحلة الإعدادية' },
-    { icon: '📅', text: 'امتحانات شهرية جديدة كل أسبوع' },
-    { icon: '🎁', text: 'خصومات خاصة لأوائل المشتركين' },
-    { icon: '🎥', text: 'فيديوهات حصرية قادمة هذا الشهر' },
-    { icon: '💬', text: 'انضم لمجتمع الطلاب على الواتساب' },
-    { icon: '🏆', text: 'مسابقة شهرية بجوائز قيمة' },
-  ]
+  // Per-tenant announcements strip: config.announcements overrides the
+  // defaults; an explicit empty array hides the strip entirely.
+  const marqueeItems = Array.isArray(tenant?.config?.announcements)
+    ? tenant.config.announcements.filter(a => a && a.text)
+    : DEFAULT_ANNOUNCEMENTS
 
   return (
     <main className="home">
@@ -279,29 +277,33 @@ export default function Home() {
 
       <div className="home-divider" />
 
-      {/* Upcoming news marquee */}
-      <div className="home-marquee" aria-label="أحدث الإعلانات" dir="ltr">
-        <div className="home-marquee-track">
-          <div className="home-marquee-set">
-            {marqueeItems.map((item, i) => (
-              <span className="home-marquee-item" key={i}>
-                <span className="home-marquee-icon">{item.icon}</span>
-                <span className="home-marquee-text">{item.text}</span>
-              </span>
-            ))}
+      {/* Upcoming news marquee (per-tenant; hidden when the tenant cleared it) */}
+      {marqueeItems.length > 0 && (
+        <>
+          <div className="home-marquee" aria-label="أحدث الإعلانات" dir="ltr">
+            <div className="home-marquee-track">
+              <div className="home-marquee-set">
+                {marqueeItems.map((item, i) => (
+                  <span className="home-marquee-item" key={i}>
+                    <span className="home-marquee-icon">{item.icon}</span>
+                    <span className="home-marquee-text">{item.text}</span>
+                  </span>
+                ))}
+              </div>
+              <div className="home-marquee-set" aria-hidden="true">
+                {marqueeItems.map((item, i) => (
+                  <span className="home-marquee-item" key={i}>
+                    <span className="home-marquee-icon">{item.icon}</span>
+                    <span className="home-marquee-text">{item.text}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="home-marquee-set" aria-hidden="true">
-            {marqueeItems.map((item, i) => (
-              <span className="home-marquee-item" key={i}>
-                <span className="home-marquee-icon">{item.icon}</span>
-                <span className="home-marquee-text">{item.text}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <div className="home-divider" />
+          <div className="home-divider" />
+        </>
+      )}
 
       {/* Hero Section */}
       <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>

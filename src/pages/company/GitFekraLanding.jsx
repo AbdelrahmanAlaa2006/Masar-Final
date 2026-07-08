@@ -1,90 +1,88 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import './GitFekraLanding.css'
-import { RELEASED_PRODUCTS, UPCOMING_PRODUCTS, TECHNOLOGIES } from './products'
+import { PLATFORMS, SERVICES, PROCESS } from './products'
 
-/* GitFekra — company landing page (shown on the default tenant / gitfekra.com).
-   Self-contained: its own header/footer, no dependency on the educational
-   layout. Configuration-driven products so new SaaS products are just data. */
+/* GitFekra — company site (shown on the default tenant / gitfekra.com).
+   Editorial, print-inspired design: light paper background, ink typography,
+   hairline rules, numbered sections. Self-contained (own header/footer). */
 
 const COPY = {
   ar: {
     dir: 'rtl',
-    nav: { about: 'من نحن', vision: 'الرؤية', products: 'المنتجات', tech: 'التقنيات', contact: 'تواصل' },
-    hero_badge: 'شركة برمجيات مصرية',
-    hero_title_a: 'من فِكرة',
-    hero_title_b: 'إلى منتج يعمل.',
-    hero_sub: 'GitFekra تبني منتجات SaaS حديثة وسريعة وقابلة للتوسّع. نبدأ من فكرة، ونحوّلها إلى برنامج يعتمد عليه الناس كل يوم.',
-    cta_primary: 'استكشف منتجاتنا',
-    cta_secondary: 'تواصل معنا',
-    about_kicker: 'من نحن',
-    about_title: 'شركة برمجيات، وليست منصة واحدة',
-    about_body: 'GitFekra علامة برمجية مستقلة تُصمّم وتُطوّر منتجات SaaS متكاملة. المنصة التعليمية هي أول منتجاتنا — والبداية فقط لمجموعة من الحلول التي نبنيها بمعايير أداء وجودة عالية.',
-    vision_kicker: 'الرؤية',
-    vision_title: 'نبني برمجيات تدوم وتتوسّع',
-    vision_body: 'هدفنا بناء منظومة من منتجات SaaS تخدم المطوّرين والشركات والأفراد — بنية تحتية واحدة قوية، وتجربة استخدام راقية، وقابلية توسّع لآلاف المستخدمين.',
-    vision_points: [
-      { t: 'متعدد المستأجرين', d: 'بنية واحدة تخدم عملاء مستقلين تماماً بعزل كامل.' },
-      { t: 'أداء أولاً', d: 'سرعة تحميل، استعلامات محسّنة، وتخزين مؤقت ذكي.' },
-      { t: 'جاهز للإنتاج', d: 'أمان، صلاحيات، ونسخ احتياطي منذ اليوم الأول.' },
+    nav: { services: 'ماذا نبني', work: 'أعمالنا', process: 'كيف نعمل', about: 'من نحن', contact: 'تواصل' },
+    hero_kicker: 'GitFekra — شركة برمجيات متخصصة في المنصات التعليمية',
+    hero_title: 'نبني لكل مدرّس منصته التعليمية الخاصة.',
+    hero_sub: 'من الفكرة إلى الإطلاق: منصة كاملة باسمك وهويتك — فيديوهات محمية، امتحانات إلكترونية، حضور، مدفوعات، ومتابعة أولياء الأمور. أنت تدرّس، ونحن نتولى الباقي.',
+    cta_primary: 'اطلب منصتك',
+    cta_secondary: 'شاهد أعمالنا',
+    stats: [
+      { v: '٢', l: 'منصتان تعملان الآن' },
+      { v: 'آلاف', l: 'الطلاب يستخدمونها يومياً' },
+      { v: '٢', l: 'منصتان قيد الإطلاق' },
     ],
-    products_kicker: 'المنتجات',
-    products_title: 'منتج واحد اليوم، والمزيد قادم',
-    released: 'منتجات متاحة',
-    building: 'قيد التطوير',
-    live_badge: 'متاح الآن',
-    building_badge: 'قيد البناء',
-    tech_kicker: 'التقنيات',
-    tech_title: 'أدوات حديثة نثق بها',
-    tech_future: 'قادم',
-    why_kicker: 'لماذا GitFekra',
-    why_title: 'الفلسفة',
-    why_body: 'نؤمن أن البرمجيات الجيدة تُبنى بعناية: كود نظيف، بنية قابلة للتوسّع، وتجربة تحترم المستخدم. نفضّل البساطة على التعقيد، والجودة على السرعة العمياء.',
+    services_kicker: 'ماذا نبني لك',
+    services_title: 'كل ما يحتاجه مدرّس ليعمل أونلاين وفي السنتر',
+    badge_live: 'يعمل الآن',
+    badge_soon: 'قيد الإطلاق',
+    work_kicker: 'أعمالنا',
+    work_title: 'منصات بنيناها لمدرّسين حقيقيين',
+    work_note: 'كل منصة مستقلة بهوية صاحبها — الاسم، الألوان، والمحتوى ملك المعلم بالكامل.',
+    process_kicker: 'كيف نعمل',
+    process_title: 'أربع خطوات من أول مكالمة إلى أول حصة',
+    about_kicker: 'من نحن',
+    about_title: 'شركة متخصصة، بمعايير عالية',
+    about_body_1: 'GitFekra شركة برمجيات مصرية متخصصة في بناء المنصات التعليمية. بدأنا من قلب المجال: مدرّسون وسناتر يحتاجون أدوات حقيقية تُدار بسهولة وتصمد وقت الضغط — ليالي الامتحانات، ومواسم الحجز، ومئات الطلاب في نفس اللحظة.',
+    about_body_2: 'لا نبيع قوالب جاهزة. كل منصة نسلّمها تمر بنفس المعايير: أداء سريع، حماية لبيانات الطلاب، وتجربة استخدام يفهمها الطالب وولي الأمر من أول مرة.',
+    principles: [
+      { t: 'هويتك أولاً', d: 'المنصة تحمل اسمك وعلامتك — نحن في الخلفية.' },
+      { t: 'بيانات طلابك في أمان', d: 'صلاحيات دقيقة، نسخ احتياطي، وحماية للمحتوى من التسريب.' },
+      { t: 'دعم من بشر', d: 'فريق يرد عليك، لا نظام تذاكر بلا روح.' },
+    ],
     contact_kicker: 'تواصل',
-    contact_title: 'لديك فكرة أو استفسار؟',
-    contact_body: 'نسعد بالتواصل مع المدرّسين والشركات والمطوّرين.',
-    contact_cta: 'راسلنا',
-    footer_tag: 'من فِكرة إلى منتج.',
-    footer_made: 'صُنع في مصر 🇪🇬',
+    contact_title: 'جاهز تبدأ منصتك؟',
+    contact_body: 'احكِ لنا عن مادتك وطريقة شغلك، ونعود إليك بتصوّر كامل خلال أيام.',
+    contact_cta: 'راسلنا على البريد',
+    footer_tag: 'برمجيات تعليمية تُبنى بعناية.',
+    footer_made: 'صُنع في مصر',
     rights: 'جميع الحقوق محفوظة',
   },
   en: {
     dir: 'ltr',
-    nav: { about: 'About', vision: 'Vision', products: 'Products', tech: 'Tech', contact: 'Contact' },
-    hero_badge: 'An Egyptian software company',
-    hero_title_a: 'From an idea',
-    hero_title_b: 'to a product that ships.',
-    hero_sub: 'GitFekra builds modern, fast, scalable SaaS products. We start with an idea and turn it into software people rely on every day.',
-    cta_primary: 'Explore products',
-    cta_secondary: 'Get in touch',
-    about_kicker: 'About',
-    about_title: 'A software company, not a single app',
-    about_body: 'GitFekra is an independent software brand that designs and builds complete SaaS products. The education platform is our first product — and only the beginning of a growing suite built to a high performance and quality bar.',
-    vision_kicker: 'Vision',
-    vision_title: 'Software built to last and scale',
-    vision_body: 'We are building a family of SaaS products for developers, businesses, and individuals — one strong infrastructure, a refined experience, and scale for thousands of users.',
-    vision_points: [
-      { t: 'Multi-tenant', d: 'One architecture serving fully-isolated, independent customers.' },
-      { t: 'Performance first', d: 'Fast loads, optimized queries, and smart caching.' },
-      { t: 'Production-ready', d: 'Security, roles, and backups from day one.' },
+    nav: { services: 'What we build', work: 'Work', process: 'Process', about: 'About', contact: 'Contact' },
+    hero_kicker: 'GitFekra — an education software company',
+    hero_title: 'We build every teacher their own education platform.',
+    hero_sub: 'From idea to launch: a complete platform under your name and brand — protected videos, online exams, attendance, payments, and parent follow-up. You teach; we handle the rest.',
+    cta_primary: 'Start your platform',
+    cta_secondary: 'See our work',
+    stats: [
+      { v: '2', l: 'platforms live today' },
+      { v: 'Thousands', l: 'of students using them daily' },
+      { v: '2', l: 'platforms launching soon' },
     ],
-    products_kicker: 'Products',
-    products_title: 'One product today, more on the way',
-    released: 'Released',
-    building: 'Currently building',
-    live_badge: 'Live',
-    building_badge: 'Building',
-    tech_kicker: 'Technology',
-    tech_title: 'Modern tools we trust',
-    tech_future: 'soon',
-    why_kicker: 'Why GitFekra',
-    why_title: 'Philosophy',
-    why_body: 'Good software is built with care: clean code, scalable architecture, and an experience that respects the user. We favor simplicity over complexity, and quality over blind speed.',
+    services_kicker: 'What we build',
+    services_title: 'Everything a teacher needs, online and in-center',
+    badge_live: 'Live',
+    badge_soon: 'Launching soon',
+    work_kicker: 'Our work',
+    work_title: 'Platforms we built for real teachers',
+    work_note: 'Every platform stands on its own, under its owner’s identity — the name, colors, and content belong entirely to the teacher.',
+    process_kicker: 'Process',
+    process_title: 'Four steps from first call to first lesson',
+    about_kicker: 'About',
+    about_title: 'A specialized company with a high bar',
+    about_body_1: 'GitFekra is an Egyptian software company specialized in education platforms. We started inside the field itself: teachers and centers who need real tools that are easy to run and hold up under pressure — exam nights, booking seasons, hundreds of students at once.',
+    about_body_2: 'We don’t sell templates. Every platform we deliver passes the same bar: fast performance, protected student data, and an experience that students and parents understand on first use.',
+    principles: [
+      { t: 'Your identity first', d: 'The platform carries your name and brand — we stay in the background.' },
+      { t: 'Student data kept safe', d: 'Fine-grained permissions, backups, and leak-protected content.' },
+      { t: 'Support from humans', d: 'A team that answers you, not a soulless ticket queue.' },
+    ],
     contact_kicker: 'Contact',
-    contact_title: 'Have an idea or a question?',
-    contact_body: 'We love hearing from teachers, businesses, and developers.',
+    contact_title: 'Ready to start your platform?',
+    contact_body: 'Tell us about your subject and how you work, and we’ll come back with a full plan within days.',
     contact_cta: 'Email us',
-    footer_tag: 'From idea to product.',
-    footer_made: 'Made in Egypt 🇪🇬',
+    footer_tag: 'Education software, built with care.',
+    footer_made: 'Made in Egypt',
     rights: 'All rights reserved',
   },
 }
@@ -92,182 +90,212 @@ const COPY = {
 const CONTACT_EMAIL = 'hello@gitfekra.com'
 
 // Reveal-on-scroll: adds .in when an element enters the viewport.
-function useReveal() {
+function useReveal(lang) {
   useEffect(() => {
     const els = document.querySelectorAll('.gf-reveal')
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } })
-    }, { threshold: 0.14 })
+    }, { threshold: 0.12 })
     els.forEach((el) => io.observe(el))
     return () => io.disconnect()
-  }, [])
+  }, [lang])
 }
 
-function Logo() {
+function Wordmark() {
   return (
-    <span className="gf-logo">
-      <span className="gf-logo-mark">&lt;/&gt;</span>
-      <span className="gf-logo-text">Git<span className="gf-logo-accent">Fekra</span></span>
+    <span className="gf-wordmark" dir="ltr">
+      Git<em>Fekra</em>
     </span>
   )
 }
 
 export default function GitFekraLanding() {
   const [lang, setLang] = useState('ar')
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gf-theme')
+      if (saved) return saved === 'dark'
+      return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches || false
+    } catch { return false }
+  })
   const t = COPY[lang]
-  useReveal()
+  useReveal(lang)
 
   useEffect(() => {
-    document.title = lang === 'ar' ? 'GitFekra — جِت فِكرة' : 'GitFekra — Software Company'
+    document.title = lang === 'ar' ? 'GitFekra — جِت فِكرة | منصات تعليمية للمدرّسين' : 'GitFekra — Education platforms for teachers'
     document.documentElement.setAttribute('dir', t.dir)
     document.body.classList.add('gf-body')
-    return () => { document.body.classList.remove('gf-body'); document.documentElement.setAttribute('dir', 'rtl') }
+    return () => { document.body.classList.remove('gf-body', 'gf-body-dark'); document.documentElement.setAttribute('dir', 'rtl') }
   }, [lang, t.dir])
 
-  const ProductCard = ({ p, building }) => (
-    <div className={`gf-product gf-reveal ${building ? 'building' : ''}`} style={{ '--accent': p.accent }}>
-      <div className="gf-product-top">
-        <span className="gf-product-icon"><i className={`fas ${p.icon}`} /></span>
-        <span className={`gf-status ${building ? 'is-building' : 'is-live'}`}>
-          <span className="gf-dot" />{building ? t.building_badge : t.live_badge}
-        </span>
-      </div>
-      <h3>{p.name[lang]}</h3>
-      <p>{p.tagline[lang]}</p>
-      <div className="gf-tags">{p.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
-    </div>
-  )
+  useEffect(() => {
+    document.body.classList.toggle('gf-body-dark', dark)
+    try { localStorage.setItem('gf-theme', dark ? 'dark' : 'light') } catch { }
+  }, [dark])
 
   return (
-    <div className="gf-root" dir={t.dir}>
-      {/* Ambient background */}
-      <div className="gf-bg" aria-hidden="true"><div className="gf-grid" /><div className="gf-glow gf-glow-1" /><div className="gf-glow gf-glow-2" /></div>
-
-      {/* Nav */}
+    <div className={`gf-root ${dark ? 'gf-dark' : ''}`} dir={t.dir}>
+      {/* Top bar */}
       <header className="gf-nav">
-        <a href="#top" className="gf-nav-brand"><Logo /></a>
+        <a href="#top" className="gf-nav-brand"><Wordmark /><span className="gf-nav-ar">جِت فِكرة</span></a>
         <nav className="gf-nav-links">
+          <a href="#services">{t.nav.services}</a>
+          <a href="#work">{t.nav.work}</a>
+          <a href="#process">{t.nav.process}</a>
           <a href="#about">{t.nav.about}</a>
-          <a href="#vision">{t.nav.vision}</a>
-          <a href="#products">{t.nav.products}</a>
-          <a href="#tech">{t.nav.tech}</a>
-          <a href="#contact">{t.nav.contact}</a>
         </nav>
         <div className="gf-nav-actions">
+          <button className="gf-lang" onClick={() => setDark(!dark)} aria-label={dark ? 'Light mode' : 'Dark mode'}>
+            <i className={`fas ${dark ? 'fa-sun' : 'fa-moon'}`} />
+          </button>
           <button className="gf-lang" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{lang === 'ar' ? 'EN' : 'ع'}</button>
-          <a href="#contact" className="gf-btn gf-btn-sm">{t.cta_secondary}</a>
+          <a href="#contact" className="gf-btn gf-btn-ink gf-btn-sm">{t.nav.contact}</a>
         </div>
       </header>
 
       {/* Hero */}
       <section className="gf-hero" id="top">
-        <span className="gf-badge gf-reveal"><span className="gf-dot" /> {t.hero_badge}</span>
-        <h1 className="gf-hero-title gf-reveal">
-          {t.hero_title_a}<br /><span className="gf-gradient">{t.hero_title_b}</span>
-        </h1>
+        <p className="gf-kicker gf-reveal">{t.hero_kicker}</p>
+        <h1 className="gf-hero-title gf-reveal">{t.hero_title}</h1>
         <p className="gf-hero-sub gf-reveal">{t.hero_sub}</p>
         <div className="gf-hero-cta gf-reveal">
-          <a href="#products" className="gf-btn gf-btn-primary">{t.cta_primary}</a>
-          <a href="#contact" className="gf-btn gf-btn-ghost">{t.cta_secondary}</a>
+          <a href="#contact" className="gf-btn gf-btn-ink">{t.cta_primary}</a>
+          <a href="#work" className="gf-btn gf-btn-line">{t.cta_secondary}</a>
         </div>
-        <div className="gf-hero-brand gf-reveal" aria-hidden="true">
-          <span className="gf-hero-ar">جِت فِكرة</span>
+        <dl className="gf-stats gf-reveal">
+          {t.stats.map((s, i) => (
+            <div className="gf-stat" key={i}>
+              <dt>{s.v}</dt>
+              <dd>{s.l}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Services — numbered editorial rows */}
+      <section className="gf-section" id="services">
+        <header className="gf-section-head gf-reveal">
+          <span className="gf-kicker">{t.services_kicker}</span>
+          <h2>{t.services_title}</h2>
+        </header>
+        <ol className="gf-services">
+          {SERVICES.map((s, i) => (
+            <li className="gf-service gf-reveal" key={s.id} style={{ transitionDelay: `${(i % 3) * 60}ms` }}>
+              <span className="gf-service-n">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{s.title[lang]}</h3>
+                <p>{s.body[lang]}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Work — client platforms */}
+      <section className="gf-section gf-section-tinted" id="work">
+        <header className="gf-section-head gf-reveal">
+          <span className="gf-kicker">{t.work_kicker}</span>
+          <h2>{t.work_title}</h2>
+          <p className="gf-section-note">{t.work_note}</p>
+        </header>
+        <div className="gf-work-grid">
+          {PLATFORMS.map((p, i) => {
+            const inner = (
+              <>
+                <span className="gf-work-swatch" style={{ background: p.accent }} aria-hidden="true" />
+                <div className="gf-work-body">
+                  <div className="gf-work-toprow">
+                    <h3>{p.name[lang]}</h3>
+                    <span className={`gf-work-status ${p.status === 'live' ? 'is-live' : 'is-soon'}`}>
+                      {p.status === 'live' ? t.badge_live : t.badge_soon}
+                    </span>
+                  </div>
+                  <p className="gf-work-owner">{p.owner[lang]}</p>
+                  <p className="gf-work-subject">{p.subject[lang]}</p>
+                  <p className="gf-work-blurb">{p.blurb[lang]}</p>
+                </div>
+              </>
+            )
+            return p.url ? (
+              <a className="gf-work-card gf-reveal" key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" style={{ transitionDelay: `${(i % 2) * 70}ms` }}>
+                {inner}
+              </a>
+            ) : (
+              <article className="gf-work-card gf-reveal" key={p.id} style={{ transitionDelay: `${(i % 2) * 70}ms` }}>
+                {inner}
+              </article>
+            )
+          })}
         </div>
+      </section>
+
+      {/* Process */}
+      <section className="gf-section" id="process">
+        <header className="gf-section-head gf-reveal">
+          <span className="gf-kicker">{t.process_kicker}</span>
+          <h2>{t.process_title}</h2>
+        </header>
+        <ol className="gf-process">
+          {PROCESS.map((step, i) => (
+            <li className="gf-step gf-reveal" key={step.n} style={{ transitionDelay: `${i * 70}ms` }}>
+              <span className="gf-step-n">{step.n}</span>
+              <h3>{step.title[lang]}</h3>
+              <p>{step.body[lang]}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* About */}
-      <section className="gf-section" id="about">
-        <div className="gf-reveal">
-          <span className="gf-kicker">{t.about_kicker}</span>
-          <h2>{t.about_title}</h2>
-          <p className="gf-lead">{t.about_body}</p>
-        </div>
-      </section>
-
-      {/* Vision */}
-      <section className="gf-section" id="vision">
-        <div className="gf-reveal">
-          <span className="gf-kicker">{t.vision_kicker}</span>
-          <h2>{t.vision_title}</h2>
-          <p className="gf-lead">{t.vision_body}</p>
-        </div>
-        <div className="gf-cards-3">
-          {t.vision_points.map((v, i) => (
-            <div className="gf-card gf-reveal" key={i} style={{ transitionDelay: `${i * 80}ms` }}>
-              <h4>{v.t}</h4><p>{v.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Products */}
-      <section className="gf-section" id="products">
-        <div className="gf-reveal">
-          <span className="gf-kicker">{t.products_kicker}</span>
-          <h2>{t.products_title}</h2>
-        </div>
-        <h3 className="gf-group-label gf-reveal">{t.released}</h3>
-        <div className="gf-products">{RELEASED_PRODUCTS.map((p) => <ProductCard key={p.id} p={p} />)}</div>
-        <h3 className="gf-group-label gf-reveal">{t.building}</h3>
-        <div className="gf-products">{UPCOMING_PRODUCTS.map((p) => <ProductCard key={p.id} p={p} building />)}</div>
-      </section>
-
-      {/* Technologies */}
-      <section className="gf-section" id="tech">
-        <div className="gf-reveal">
-          <span className="gf-kicker">{t.tech_kicker}</span>
-          <h2>{t.tech_title}</h2>
-        </div>
-        <div className="gf-tech">
-          {TECHNOLOGIES.map((tech, i) => (
-            <div className={`gf-tech-chip gf-reveal ${tech.future ? 'future' : ''}`} key={tech.name} style={{ transitionDelay: `${i * 40}ms` }}>
-              <i className={`${tech.brand ? 'fab' : 'fas'} ${tech.icon}`} />
-              <span>{tech.name}</span>
-              {tech.future && <em>{t.tech_future}</em>}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Why */}
-      <section className="gf-section gf-why" id="why">
-        <div className="gf-reveal">
-          <span className="gf-kicker">{t.why_kicker}</span>
-          <h2>{t.why_title}</h2>
-          <p className="gf-lead gf-lead-lg">{t.why_body}</p>
+      <section className="gf-section gf-section-tinted" id="about">
+        <div className="gf-about">
+          <header className="gf-section-head gf-reveal">
+            <span className="gf-kicker">{t.about_kicker}</span>
+            <h2>{t.about_title}</h2>
+          </header>
+          <div className="gf-about-cols gf-reveal">
+            <p>{t.about_body_1}</p>
+            <p>{t.about_body_2}</p>
+          </div>
+          <ul className="gf-principles">
+            {t.principles.map((p, i) => (
+              <li className="gf-reveal" key={i} style={{ transitionDelay: `${i * 70}ms` }}>
+                <h4>{p.t}</h4>
+                <p>{p.d}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       {/* Contact */}
       <section className="gf-section gf-contact" id="contact">
-        <div className="gf-contact-card gf-reveal">
+        <div className="gf-contact-inner gf-reveal">
           <span className="gf-kicker">{t.contact_kicker}</span>
           <h2>{t.contact_title}</h2>
-          <p className="gf-lead">{t.contact_body}</p>
-          <a href={`mailto:${CONTACT_EMAIL}`} className="gf-btn gf-btn-primary">
-            <i className="fas fa-paper-plane" /> {t.contact_cta}
-          </a>
-          <div className="gf-contact-email">{CONTACT_EMAIL}</div>
+          <p>{t.contact_body}</p>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="gf-btn gf-btn-paper">{t.contact_cta}</a>
+          <div className="gf-contact-email" dir="ltr">{CONTACT_EMAIL}</div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="gf-footer">
         <div className="gf-footer-main">
-          <div>
-            <Logo />
-            <p className="gf-footer-tag">{t.footer_tag}</p>
+          <div className="gf-footer-brand">
+            <Wordmark />
+            <p>{t.footer_tag}</p>
           </div>
-          <div className="gf-footer-links">
-            <a href="#about">{t.nav.about}</a>
-            <a href="#products">{t.nav.products}</a>
-            <a href="#tech">{t.nav.tech}</a>
+          <nav className="gf-footer-links">
+            <a href="#services">{t.nav.services}</a>
+            <a href="#work">{t.nav.work}</a>
+            <a href="#process">{t.nav.process}</a>
             <a href="#contact">{t.nav.contact}</a>
-          </div>
+          </nav>
         </div>
         <div className="gf-footer-bottom">
           <span>© {new Date().getFullYear()} GitFekra. {t.rights}.</span>
-          <span className="gf-footer-made">{t.footer_made}</span>
+          <span>{t.footer_made}</span>
         </div>
       </footer>
     </div>

@@ -601,14 +601,14 @@ body:not(.dark) .sf-devs-amp { color: rgba(79, 172, 254, 0.85); }
 /* ── light mode overrides ── */
 body:not(.dark) .site-footer { color: #1e293b; }
 body:not(.dark) .sf-marquee {
-  background: rgba(248, 250, 252, 0.95);
+  background: rgba(250, 248, 243, 0.95);
   border-block-color: rgba(15, 23, 42, 0.08);
 }
 body:not(.dark) .sf-marquee-item { color: #475569; }
 body:not(.dark) .sf-marquee-dot { color: rgba(15, 23, 42, 0.35); }
 body:not(.dark) .sf-main {
   background:
-    radial-gradient(ellipse at top, #ffffff 0%, #f8fafc 60%, #eef2f7 100%);
+    radial-gradient(ellipse at top, #fdfbf6 0%, #f5f3ee 60%, #ece8df 100%);
 }
 body:not(.dark) .sf-blob { opacity: 0.18; }
 body:not(.dark) .sf-col-title {

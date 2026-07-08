@@ -2,7 +2,7 @@
   min-height: 100vh;
   position: relative;
   font-family: 'Tajawal', sans-serif;
-  background: var(--bg-main, #f8fafc);
+  background: var(--bg-main, var(--bg-color, #f5f3ee));
   color: var(--text-color, #0f172a);
 }
 
@@ -325,7 +325,7 @@
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: 16px;
   padding: 20px;
-  background: var(--bg-main, #f8fafc);
+  background: var(--bg-main, var(--bg-color, #f5f3ee));
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -529,7 +529,7 @@
 }
 
 .checkout-instructions-panel {
-  background: var(--bg-main, #f8fafc);
+  background: var(--bg-main, var(--bg-color, #f5f3ee));
   border: 1px dashed var(--border-light, #e2e8f0);
   border-radius: 16px;
   padding: 16px;
@@ -667,7 +667,7 @@
   padding: 24px;
   text-align: center;
   cursor: pointer;
-  background: var(--bg-main, #f8fafc);
+  background: var(--bg-main, var(--bg-color, #f5f3ee));
   transition: all 0.2s;
 }
 

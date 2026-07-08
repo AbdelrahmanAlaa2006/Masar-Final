@@ -33,7 +33,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: #f8fafc;
+  background: var(--bg-color, #f5f3ee);
   z-index: -2;
   transition: background 0.5s ease;
 }
@@ -1108,7 +1108,7 @@ body.dark .home-greeting-sub {
   gap: 8px;
   padding: 8px 16px;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--card-bg, #fdfbf6);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
@@ -1224,7 +1224,7 @@ body.dark .home-search-box {
   right: 0;
   max-height: 360px;
   overflow-y: auto;
-  background: #fff;
+  background: var(--card-bg, #fdfbf6);
   border: 1px solid rgba(102, 126, 234, 0.2);
   border-radius: 16px;
   box-shadow: 0 20px 48px rgba(30, 41, 59, 0.18);

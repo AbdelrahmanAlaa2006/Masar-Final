@@ -33,9 +33,28 @@ export function applyTenantTheme(tenant, themeConfig) {
   const fontLink = document.getElementById('tenant-font-link')
   if (fontLink) fontLink.remove()
 
-  // Set background color variable
-  const bgColor = tenant.config?.bg_color || '#f0f2f8'
+  // Set background color variable (warm paper default — the old #f0f2f8 was
+  // a cold bright white that strained the eyes; config.theme.bg_light or the
+  // legacy config.bg_color still override per tenant)
+  const bgColor = tenant.config?.theme?.bg_light || tenant.config?.bg_color || '#f5f3ee'
   root.style.setProperty('--bg-color', bgColor)
+  // Several page stylesheets (Home, Videos, Exams, Header…) redefine
+  // --bg-secondary at :root with cold near-whites and paint the body with it.
+  // Pinning it inline here wins over all of those in light mode; dark mode is
+  // unaffected because their body.dark blocks redefine it closer to the body.
+  root.style.setProperty('--bg-secondary', bgColor)
+
+  // Warm the light-mode surfaces to match the paper background: cards, the
+  // control-panel cards, and the sticky header. Same inline-pin trick — the
+  // page stylesheets declare these at :root with pure white, and their dark
+  // values live under body.dark (which wins over root-inline), so dark mode
+  // is untouched. Tenants can override via config.theme.card_light.
+  const cardLight = tenant.config?.theme?.card_light || '#fdfbf6'
+  root.style.setProperty('--card-bg', cardLight)
+  root.style.setProperty('--cp-card-bg', cardLight)
+  root.style.setProperty('--mh-bg', 'rgba(252, 250, 245, 0.8)')
+  root.style.setProperty('--mh-bg-solid', '#faf8f2')
+  root.style.setProperty('--mh-border', 'rgba(64, 55, 42, 0.09)')
 
   // Add dynamic opacity-scaled variables for shadows, glows, and hover effects
   root.style.setProperty('--primary-soft', primary + '1a') // 10% opacity
@@ -95,9 +114,11 @@ export function applyTenantTheme(tenant, themeConfig) {
   const tokens = tenant.config?.theme || {}
   const TOKEN_MAP = {
     // light mode page background (already existed as config.bg_color)
-    bg_light: ['--bg-color'],
+    bg_light: ['--bg-color', '--bg-secondary'],
     // dark mode page background (body.dark) + sections derived from it
     bg_dark: ['--bg-dark', '--dynamic-background', '--dynamic-section-bg-1'],
+    // light mode card/surface color
+    card_light: ['--card-bg', '--cp-card-bg'],
     // dark mode card/surface color
     card_dark: ['--dynamic-surface', '--dynamic-card', '--dynamic-card-bg'],
     // dark mode footer background

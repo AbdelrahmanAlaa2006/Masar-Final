@@ -5,6 +5,8 @@ import { invalidateAll } from '../../utils/cache'
 import SeasonalThemePanel from './SeasonalThemePanel'
 import DevToolsViolationsPanel from './DevToolsViolationsPanel'
 import { GRADE_LABEL } from './shared'
+import { uploadAvatarImage } from '@backend/r2'
+import { DEFAULT_ANNOUNCEMENTS } from '../../utils/announcements'
 
 /* Subject → theme mapping. getTenantFolder() in src/tenants/brandOverrides.js
    resolves the theme chunk from config.subject, so picking a subject here is
@@ -66,24 +68,34 @@ const TEACHER_EXTRA_DEFS = [
   { key: 'satisfaction', label: 'نسبة الرضا (مثال: 98%)' },
   { key: 'target_stage', label: 'المراحل المستهدفة (مثال: الإعدادية والثانوية)' },
   { key: 'learning_system', label: 'نظام التعلم (مثال: أونلاين تفاعلي)' },
-  { key: 'image_base', label: 'رابط صورة المعلم', ltr: true },
-  { key: 'image_hover', label: 'رابط صورة المعلم (عند التمرير)', ltr: true },
+  { key: 'image_base', label: 'صورة المعلم', ltr: true, upload: true },
+  { key: 'image_hover', label: 'صورة المعلم (عند التمرير)', ltr: true, upload: true },
 ]
 
-/* Location/center fields (config.location) for the login page location section. */
+/* Section-level location fields (config.location) — the heading of the
+   location section on the login page plus shared links. */
 const LOCATION_DEFS = [
-  { key: 'title', label: 'اسم المقر / السنتر' },
-  { key: 'description', label: 'وصف المقر', textarea: true },
+  { key: 'title', label: 'عنوان قسم الموقع' },
+  { key: 'description', label: 'وصف قسم الموقع', textarea: true },
+  { key: 'whatsapp_link', label: 'رابط واتساب (زر «راسلنا واتساب»)', ltr: true },
+]
+
+/* Per-branch fields (config.location.branches[]) — a tenant can have any
+   number of locations; every field optional, empty fields don't render. */
+const BRANCH_DEFS = [
+  { key: 'name', label: 'اسم المقر / الفرع' },
   { key: 'address', label: 'العنوان التفصيلي' },
   { key: 'phone', label: 'هاتف المقر', ltr: true },
   { key: 'map_iframe_url', label: 'رابط خريطة Google (embed)', ltr: true },
+  { key: 'directions_link', label: 'رابط الاتجاهات (Google Maps)', ltr: true },
   { key: 'hours_days', label: 'أيام العمل (مثال: السبت – الخميس)' },
   { key: 'hours_time', label: 'ساعات العمل (مثال: ٩ صباحًا – ٩ مساءً)' },
 ]
 
 /* Theme tokens (config.theme) applied as CSS variables in utils/theme.js. */
 const THEME_TOKEN_DEFS = [
-  { key: 'bg_light', label: 'خلفية الوضع الفاتح', type: 'color', fallback: '#f0f2f8' },
+  { key: 'bg_light', label: 'خلفية الوضع الفاتح', type: 'color', fallback: '#f5f3ee' },
+  { key: 'card_light', label: 'لون الكروت (فاتح)', type: 'color', fallback: '#fdfbf6' },
   { key: 'bg_dark', label: 'خلفية الوضع الداكن (لون أو gradient)', type: 'text', fallback: '' },
   { key: 'card_dark', label: 'لون الكروت (داكن)', type: 'color', fallback: '#0d1527' },
   { key: 'text_dark', label: 'لون النص (داكن)', type: 'color', fallback: '#f8fafc' },
@@ -137,9 +149,30 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editLogoUrl, setEditLogoUrl] = useState('')
   const [editTeacherExtra, setEditTeacherExtra] = useState({})
   const [editLocation, setEditLocation] = useState({})
-  const [editTheme, setEditTheme] = useState({ bg_light: '', bg_dark: '', card_dark: '', text_dark: '' })
+  const [editLocBranches, setEditLocBranches] = useState([])
+  const [editTheme, setEditTheme] = useState({ bg_light: '', card_light: '', bg_dark: '', card_dark: '', text_dark: '' })
   const [editLoginSections, setEditLoginSections] = useState({})
   const [editStages, setEditStages] = useState([])
+  const [editAnnouncements, setEditAnnouncements] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(null)
+
+  // Upload an image from the device to R2 and apply its public URL to a field
+  const handleImageUpload = async (e, fieldKey, apply) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingImage(fieldKey)
+    try {
+      const { publicUrl } = await uploadAvatarImage(file)
+      apply(publicUrl)
+      flash('تم رفع الصورة بنجاح — احفظ التعديلات لتثبيتها', 'success')
+    } catch (err) {
+      console.error(err)
+      flash('فشل رفع الصورة: ' + (err.message || 'خطأ غير معروف'), 'error')
+    } finally {
+      setUploadingImage(null)
+    }
+  }
   const [savingTenant, setSavingTenant] = useState(false)
   const [userRoleUpdating, setUserRoleUpdating] = useState(null)
   const [searchUserQuery, setSearchUserQuery] = useState('')
@@ -450,8 +483,25 @@ export default function SuperAdminPanel({ onBack, flash }) {
     const locationData = {}
     LOCATION_DEFS.forEach(f => { locationData[f.key] = asText(cfg.location?.[f.key]) })
     setEditLocation(locationData)
+    // Branches: existing list, or a single entry migrated from the legacy
+    // top-level location fields so nothing already configured is lost.
+    if (Array.isArray(cfg.location?.branches) && cfg.location.branches.length > 0) {
+      setEditLocBranches(cfg.location.branches.map(b => {
+        const entry = {}
+        BRANCH_DEFS.forEach(f => { entry[f.key] = asText(b?.[f.key]) })
+        return entry
+      }))
+    } else if (cfg.location && (cfg.location.address || cfg.location.map_iframe_url || cfg.location.phone)) {
+      const legacy = {}
+      BRANCH_DEFS.forEach(f => { legacy[f.key] = asText(cfg.location[f.key]) })
+      if (!legacy.name) legacy.name = asText(cfg.location.title)
+      setEditLocBranches([legacy])
+    } else {
+      setEditLocBranches([])
+    }
     setEditTheme({
       bg_light: cfg.theme?.bg_light || cfg.bg_color || '',
+      card_light: cfg.theme?.card_light || '',
       bg_dark: cfg.theme?.bg_dark || '',
       card_dark: cfg.theme?.card_dark || '',
       text_dark: cfg.theme?.text_dark || ''
@@ -459,6 +509,12 @@ export default function SuperAdminPanel({ onBack, flash }) {
     const sections = {}
     LOGIN_SECTION_DEFS.forEach(s => { sections[s.key] = cfg.login_sections?.[s.key] !== false })
     setEditLoginSections(sections)
+    // Announcements strip: tenant list, or the shared defaults on first edit
+    setEditAnnouncements(
+      Array.isArray(cfg.announcements)
+        ? cfg.announcements.map(a => ({ icon: a?.icon || '', text: a?.text || '' }))
+        : DEFAULT_ANNOUNCEMENTS.map(a => ({ ...a }))
+    )
     // Stages: use the tenant's configured tree, otherwise the standard template
     setEditStages(
       Array.isArray(cfg.stages) && cfg.stages.length > 0
@@ -493,14 +549,29 @@ export default function SuperAdminPanel({ onBack, flash }) {
         ...prevConfig,
         subject: editSubject,
         teacher: cleaned({ ...(prevConfig.teacher || {}), name: editTeacherName, role: editTeacherRole, ...editTeacherExtra }),
-        location: cleaned({ ...(prevConfig.location || {}), ...editLocation }),
+        location: (() => {
+          const top = cleaned({ ...(prevConfig.location || {}), ...editLocation })
+          // These per-branch fields now live in branches[]; leaving stale
+          // copies at top level would resurrect a deleted location through
+          // the legacy single-location fallback on the login page.
+          for (const k of ['address', 'phone', 'map_iframe_url', 'directions_link', 'hours_days', 'hours_time']) delete top[k]
+          return {
+            ...top,
+            // Every field optional; all-empty branches are dropped entirely
+            branches: editLocBranches.map(b => cleaned(b)).filter(b => Object.keys(b).length > 0)
+          }
+        })(),
         contact: cleaned({ ...(prevConfig.contact || {}), phone: editContactPhone, email: editContactEmail, address: editContactAddress }),
         socials: cleaned({ ...(prevConfig.socials || {}), ...editSocials }),
         branding: cleaned({ ...(prevConfig.branding || {}), hero_title_a: editHeroTitle, hero_sub: editHeroSub }),
         features: { ...(prevConfig.features || {}), ...editFeatures },
         theme: cleaned({ ...(prevConfig.theme || {}), ...editTheme }),
         login_sections: { ...(prevConfig.login_sections || {}), ...editLoginSections },
-        stages: editStages
+        stages: editStages,
+        // Empty array is meaningful — it hides the home marquee entirely
+        announcements: editAnnouncements
+          .map(a => ({ icon: (a.icon || '').trim(), text: (a.text || '').trim() }))
+          .filter(a => a.text)
       }
 
       const { error } = await supabase
@@ -1423,6 +1494,20 @@ export default function SuperAdminPanel({ onBack, flash }) {
                         onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
                         className="cp-input"
                         style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+                    ) : f.upload ? (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {editTeacherExtra[f.key] && <img src={editTeacherExtra[f.key]} alt="" style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--cp-divider)' }} />}
+                        <input type="text" value={editTeacherExtra[f.key] || ''} dir="ltr"
+                          onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                          placeholder="ارفع صورة أو الصق رابطاً" className="cp-input"
+                          style={{ flex: 1, padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        <label className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
+                          <i className={`fas ${uploadingImage === f.key ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                          <span>رفع</span>
+                          <input type="file" accept="image/*" hidden disabled={uploadingImage === f.key}
+                            onChange={(e) => handleImageUpload(e, f.key, (url) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: url })))} />
+                        </label>
+                      </div>
                     ) : (
                       <input type="text" value={editTeacherExtra[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
                         onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -1438,7 +1523,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
                 <i className="fas fa-location-dot" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
                 بيانات المقر والموقع (قسم الموقع في صفحة الهبوط)
               </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                 {LOCATION_DEFS.map(f => (
                   <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
@@ -1456,6 +1541,45 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   </div>
                 ))}
               </div>
+
+              {/* Multiple branches/locations — all fields optional; an empty
+                  field simply doesn't render, an empty branch is removed. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '8px' }}>
+                {editLocBranches.map((branch, bi) => (
+                  <div key={bi} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>
+                        <i className="fas fa-building" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                        المقر {bi + 1}{branch.name ? ` — ${branch.name}` : ''}
+                      </span>
+                      <button type="button"
+                        onClick={() => setEditLocBranches(prev => prev.filter((_, i) => i !== bi))}
+                        style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', padding: '5px 12px', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <i className="fas fa-trash-can" /> حذف المقر
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                      {BRANCH_DEFS.map(f => (
+                        <div key={f.key}>
+                          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 'bold', marginBottom: '4px', color: 'var(--cp-text-muted)' }}>{f.label}</label>
+                          <input type="text" value={branch[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
+                            onChange={(e) => setEditLocBranches(prev => prev.map((b, i) => i === bi ? { ...b, [f.key]: e.target.value } : b))}
+                            className="cp-input"
+                            style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button"
+                onClick={() => setEditLocBranches(prev => [...prev, {}])}
+                style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '10px', borderRadius: '10px', fontSize: '0.84rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <i className="fas fa-plus" /> إضافة مقر / فرع جديد
+              </button>
+              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '-12px 0 20px', lineHeight: 1.5 }}>
+                جميع الحقول اختيارية — الحقل الفارغ لا يظهر للطالب، وإذا لم يوجد أي مقر يختفي قسم الموقع بالكامل من صفحة الهبوط.
+              </p>
 
               {/* Student-facing contact channels (footer + help page) */}
               <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
@@ -1496,16 +1620,59 @@ export default function SuperAdminPanel({ onBack, flash }) {
                 ))}
               </div>
 
+              {/* Home page announcements strip */}
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+                <i className="fas fa-bullhorn" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                شريط إعلانات الصفحة الرئيسية
+              </h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                {editAnnouncements.map((a, ai) => (
+                  <div key={ai} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input type="text" value={a.icon} maxLength={4}
+                      onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, icon: e.target.value } : x))}
+                      placeholder="🎁" className="cp-input"
+                      style={{ width: '58px', textAlign: 'center', padding: '9px 6px', fontSize: '0.9rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                    <input type="text" value={a.text}
+                      onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, text: e.target.value } : x))}
+                      placeholder="نص الإعلان" className="cp-input"
+                      style={{ flex: 1, padding: '9px 12px', fontSize: '0.84rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                    <button type="button"
+                      onClick={() => setEditAnnouncements(prev => prev.filter((_, i) => i !== ai))}
+                      style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', width: 36, height: 36, borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
+                      title="حذف الإعلان">
+                      <i className="fas fa-trash-can" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button"
+                onClick={() => setEditAnnouncements(prev => [...prev, { icon: '', text: '' }])}
+                style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '9px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <i className="fas fa-plus" /> إضافة إعلان
+              </button>
+              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+                احذف جميع الإعلانات لإخفاء الشريط بالكامل من الصفحة الرئيسية.
+              </p>
+
               {/* Logo + advanced theme tokens */}
               <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
                 <i className="fas fa-palette" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
                 الشعار والمظهر المتقدم (خلفيات وكروت)
               </h5>
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>رابط الشعار (Logo URL)</label>
-                <input type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)} dir="ltr"
-                  placeholder="https://example.com/logo.png" className="cp-input"
-                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>شعار المنصة (Logo)</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {editLogoUrl && <img src={editLogoUrl} alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--cp-divider)', background: '#fff' }} />}
+                  <input type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)} dir="ltr"
+                    placeholder="ارفع صورة من جهازك أو الصق رابطاً" className="cp-input"
+                    style={{ flex: 1, padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                  <label className="cp-btn cp-btn-secondary" style={{ padding: '9px 14px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className={`fas ${uploadingImage === 'logo' ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                    <span>رفع من الجهاز</span>
+                    <input type="file" accept="image/*" hidden disabled={uploadingImage === 'logo'}
+                      onChange={(e) => handleImageUpload(e, 'logo', (url) => setEditLogoUrl(url))} />
+                  </label>
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
                 {THEME_TOKEN_DEFS.map(tk => (

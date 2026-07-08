@@ -1,6 +1,8 @@
 :root {
   color: #1a202c;
-  --bg-color: #f0f2f8;
+  /* Warm paper tone — easier on the eyes than the old cold bright #f0f2f8.
+     Tenants can still override via config.theme.bg_light. */
+  --bg-color: #f5f3ee;
   background-color: var(--bg-color);
   --primary: #7c3aed;
   --secondary: #06b6d4;
