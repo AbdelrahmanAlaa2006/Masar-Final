@@ -185,12 +185,17 @@ export async function updateGatewayConfig(tenantId, newGatewaySettings) {
 // Normalize a local phone to international digits (default Egypt +20).
 // '010 0037 9547' -> '201000379547'
 export function normalizePhoneIntl(phone, countryCode = '20') {
+  // Country calling codes are 1–3 digits. Anything else (empty, or a full
+  // phone number pasted into the field by mistake) silently produced garbage
+  // recipients like 2010644830361030018386 — fall back to Egypt instead.
+  let cc = String(countryCode || '').replace(/[^0-9]/g, '')
+  if (cc.length < 1 || cc.length > 3) cc = '20'
   let p = String(phone || '').replace(/[^0-9]/g, '')
   if (!p) return ''
   if (p.startsWith('00')) p = p.slice(2)
-  if (p.startsWith(countryCode) && p.length >= 11) return p
+  if (p.startsWith(cc) && p.length >= 11) return p
   if (p.startsWith('0')) p = p.slice(1)
-  return countryCode + p
+  return cc + p
 }
 
 // Build a wa.me click-to-chat link with the message prefilled.
@@ -271,6 +276,68 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
     if (!response.ok) {
       const errJson = await response.json().catch(() => ({}))
       throw new Error(`WhatsApp API (${response.status}): ${errJson?.error?.message || 'فشل الإرسال'}`)
+    }
+    return true
+  }
+
+  if (type === 'wapilot') {
+    const { wapilot_api_url, wapilot_instance_id, wapilot_token } = gatewayConfig
+    if (!wapilot_token || !wapilot_instance_id) {
+      throw new Error('بيانات WAPilot غير مكتملة (Instance ID أو API Token مفقود)')
+    }
+
+    // WAPilot v2 API (from their dashboard docs):
+    //   POST https://api.wapilot.net/api/v2/{INSTANCE_ID}/send-message
+    //   headers: token, Idempotency-Key, Content-Type
+    //   body: { chat_id: '2010xxxxxxxx', text: '...' }
+    let url = (wapilot_api_url || 'https://api.wapilot.net/api/v2/{instance_id}/send-message')
+      .replace('{instance_id}', wapilot_instance_id)
+      .replace('INSTANCE_ID', wapilot_instance_id)
+
+    // In local development, route through the Vite dev proxy to bypass CORS
+    // (see vite.config.js → server.proxy['/wapilot-proxy']).
+    if (import.meta.env.DEV) {
+      url = url
+        .replace('https://api.wapilot.net', '/wapilot-proxy')
+        .replace('https://app.wapilot.net', '/wapilot-proxy')
+    }
+
+    let response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': wapilot_token,
+          // Unique per attempt so retries are not swallowed as duplicates
+          'Idempotency-Key': `masar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        },
+        body: JSON.stringify({ chat_id: to, text: messageText }),
+      })
+    } catch (netErr) {
+      // A TypeError on a reachable host almost always means the browser
+      // blocked the call (CORS). Surface that clearly so it's diagnosable.
+      throw new Error('تعذّر الوصول لخادم WAPilot من المتصفح (غالباً حماية CORS). أرسل نص الخطأ من الـ Console وسنحوّل الإرسال عبر وسيط.')
+    }
+
+    const raw = await response.text()
+    // Surface the raw provider response during development — "accepted" and
+    // "delivered" are different things with these gateways.
+    if (import.meta.env.DEV) {
+      console.log('[WAPilot] response', response.status, raw)
+    }
+    if (!response.ok) {
+      throw new Error(`WAPilot (${response.status}): ${raw.slice(0, 180) || 'فشل الإرسال'}`)
+    }
+    // Some providers return 200 with { status: 'error' } — check loosely
+    try {
+      const j = JSON.parse(raw)
+      if (j && (j.status === 'error' || j.success === false || j.error)) {
+        throw new Error(`WAPilot: ${JSON.stringify(j).slice(0, 180)}`)
+      }
+    } catch (e) {
+      if (e.message && e.message.startsWith('WAPilot:')) throw e
+      // non-JSON 200 response — treat as success
     }
     return true
   }

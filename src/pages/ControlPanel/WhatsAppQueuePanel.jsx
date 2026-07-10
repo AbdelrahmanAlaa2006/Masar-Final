@@ -30,6 +30,9 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   //   whatsapp_manual: free wa.me click-to-send (zero setup, zero ban risk)
   //   whatsapp_cloud:  official Meta WhatsApp Business Cloud API
   const [gatewayType, setGatewayType] = useState('whatsapp_manual')
+  const [wapilotUrl, setWapilotUrl] = useState('')
+  const [wapilotInstance, setWapilotInstance] = useState('')
+  const [wapilotToken, setWapilotToken] = useState('')
   const [countryCode, setCountryCode] = useState('20')
   const [phoneNumberId, setPhoneNumberId] = useState('')
   const [cloudToken, setCloudToken] = useState('')
@@ -120,8 +123,11 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   useEffect(() => {
     if (tenant?.config?.gateway) {
       const g = tenant.config.gateway
-      const t = g.type === 'whatsapp_cloud' ? 'whatsapp_cloud' : 'whatsapp_manual'
+      const t = g.type === 'whatsapp_cloud' ? 'whatsapp_cloud' : (g.type === 'wapilot' ? 'wapilot' : 'whatsapp_manual')
       setGatewayType(t)
+      setWapilotUrl(g.wapilot_api_url || '')
+      setWapilotInstance(g.wapilot_instance_id || '')
+      setWapilotToken(g.wapilot_token || '')
       setCountryCode(g.country_code || '20')
       setPhoneNumberId(g.phone_number_id || '')
       setCloudToken(g.token || '')
@@ -163,7 +169,10 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
         phone_number_id: phoneNumberId.trim(),
         token: cloudToken.trim(),
         template_name: templateName.trim(),
-        template_lang: templateLang.trim() || 'ar'
+        template_lang: templateLang.trim() || 'ar',
+        wapilot_api_url: wapilotUrl.trim(),
+        wapilot_instance_id: wapilotInstance.trim(),
+        wapilot_token: wapilotToken.trim()
       })
       flash('تم حفظ إعدادات بوابة الإرسال بنجاح وتحديث النظام.', 'success')
     } catch (err) {
@@ -181,7 +190,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     const testMessage = 'رسالة تجريبية من المنصة لتأكيد إعدادات الاتصال بنجاح. ✅'
 
     // Manual/agent modes: just open WhatsApp with the message prefilled.
-    if (gatewayType !== 'whatsapp_cloud') {
+    if (gatewayType !== 'whatsapp_cloud' && gatewayType !== 'wapilot') {
       window.open(buildWaMeLink(testPhone.trim(), testMessage, countryCode), '_blank')
       return
     }
@@ -194,7 +203,10 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
         phone_number_id: phoneNumberId,
         token: cloudToken,
         template_name: templateName,
-        template_lang: templateLang
+        template_lang: templateLang,
+        wapilot_api_url: wapilotUrl,
+        wapilot_instance_id: wapilotInstance,
+        wapilot_token: wapilotToken
       }
       await sendGatewayMessage(config, { phone: testPhone.trim(), message: testMessage, type: 'attendance_absent' })
       flash('تم إرسال الرسالة التجريبية بنجاح! يرجى التحقق من الهاتف.', 'success')
@@ -381,7 +393,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                   <i className="fab fa-whatsapp" /> سيتم إرسالها تلقائياً الآن
                 </span>
               )}
-              {summary.pending > 0 && gatewayType === 'whatsapp_cloud' && (
+              {summary.pending > 0 && (gatewayType === 'whatsapp_cloud' || gatewayType === 'wapilot') && (
                 <button
                   onClick={handleProcessQueue}
                   disabled={processing}
@@ -484,7 +496,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                                 <i className="fab fa-whatsapp" />
                               </button>
                             )}
-                            {item.status === 'failed' && gatewayType === 'whatsapp_cloud' && (
+                            {item.status === 'failed' && (gatewayType === 'whatsapp_cloud' || gatewayType === 'wapilot') && (
                               <button
                                 onClick={() => handleRetryRow(item.id)}
                                 style={{ background: 'transparent', border: 'none', color: '#8c72db', cursor: 'pointer', fontSize: '1rem' }}
@@ -597,6 +609,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 <select value={gatewayType} onChange={(e) => setGatewayType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
                   <option value="whatsapp_manual">واتساب يدوي — إرسال بضغطة زر</option>
                   <option value="whatsapp_cloud">واتساب الرسمي (Cloud API)</option>
+                  <option value="wapilot">WAPilot — إرسال تلقائي (wapilot.net)</option>
                 </select>
                 {gatewayAvailable && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--cp-text-muted)', margin: '8px 0 0', lineHeight: 1.6 }}>
@@ -610,11 +623,34 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                 <input type="text" value={countryCode} onChange={(e) => setCountryCode(e.target.value)} placeholder="20" className="cp-input" style={{ width: '100%' }} />
               </div>
 
-              {gatewayType === 'whatsapp_manual' ? (
+              {gatewayType === 'wapilot' && (
+                <>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>Instance ID</label>
+                    <input type="text" value={wapilotInstance} onChange={(e) => setWapilotInstance(e.target.value)} dir="ltr" placeholder="من لوحة تحكم WAPilot" className="cp-input" style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>API Token</label>
+                    <input type="password" value={wapilotToken} onChange={(e) => setWapilotToken(e.target.value)} dir="ltr" placeholder="Access Token من صفحة الـ API" className="cp-input" style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>رابط الإرسال (Send Endpoint) — من توثيق WAPilot</label>
+                    <input type="text" value={wapilotUrl} onChange={(e) => setWapilotUrl(e.target.value)} dir="ltr" placeholder="اتركه فارغاً لتجربة الرابط الافتراضي" className="cp-input" style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ background: 'rgba(245, 158, 11, 0.07)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.78rem', lineHeight: 1.7, color: 'var(--cp-text-main)' }}>
+                    من لوحة WAPilot: تأكد أن حالة الـ Instance «متصل» (تم مسح QR)، ثم انسخ Instance ID والـ Token هنا واحفظ. جرّب رسالة من كارت التجربة — إن فشلت، افتح توثيق API عندهم وانسخ رابط send-message في الحقل الثالث.
+                    <br /><b>لإلغاء التفعيل لاحقاً:</b> ارجع لوضع «واتساب يدوي» واحفظ.
+                  </div>
+                </>
+              )}
+
+              {gatewayType === 'whatsapp_manual' && (
                 <div style={{ background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: '20px', fontSize: '0.8rem', lineHeight: 1.7, color: 'var(--cp-text-main)' }}>
                   <i className="fab fa-whatsapp" style={{ color: '#25d366' }} /> <b>بدون إعداد إطلاقاً.</b> اضغط زر الواتساب الأخضر بجوار أي رسالة: يفتح واتساب برقم ولي الأمر والرسالة جاهزة — اضغط إرسال فقط. الإرسال يتم من واتساب المعلم نفسه بشكل يدوي، لذلك <b>لا يوجد أي خطر حظر</b> ومجاني تماماً.
                 </div>
-              ) : (
+              )}
+
+              {gatewayType === 'whatsapp_cloud' && (
                 <>
                   <div style={{ marginBottom: '14px' }}>
                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>Phone Number ID</label>
@@ -648,8 +684,8 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
           <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '20px', padding: '24px', boxShadow: 'var(--cp-card-shadow)', animationDelay: '180ms' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 12px' }}>تجربة بوابة الإرسال</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: '1.4' }}>
-              {gatewayType === 'whatsapp_cloud'
-                ? 'أرسل إشعاراً تجريبياً سريعاً للتأكد من ربط واتساب الرسمي بشكل صحيح.'
+              {gatewayType === 'whatsapp_cloud' || gatewayType === 'wapilot'
+                ? 'أرسل إشعاراً تجريبياً سريعاً للتأكد من ربط البوابة بشكل صحيح.'
                 : 'اكتب رقمك وسيُفتح واتساب برسالة تجريبية جاهزة للإرسال.'}
             </p>
 
