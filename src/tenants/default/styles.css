@@ -1,7 +1,7 @@
 .aa-page.aa-default-theme {
-  --background: oklch(0.99 0.005 230);
-  --surface: oklch(0.97 0.012 230);
-  --card: oklch(1 0 0);
+  --background: var(--bg-color, #f5f3ee);
+  --surface: #efece4;
+  --card: var(--card-bg, #fdfbf6);
 }
 
 .dark .aa-page.aa-default-theme {

@@ -1,7 +1,7 @@
 .aa-page.aa-chem-theme {
-  --background: oklch(0.99 0.005 190);
-  --surface: oklch(0.96 0.01 190);
-  --card: oklch(1 0 0);
+  --background: var(--bg-color, #f5f3ee);
+  --surface: #efece4;
+  --card: var(--card-bg, #fdfbf6);
 }
 
 .dark .aa-page.aa-chem-theme {

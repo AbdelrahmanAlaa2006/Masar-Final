@@ -5,18 +5,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
 
 :root {
-  --background: oklch(0.99 0.005 230);
-  --foreground: oklch(0.18 0.04 240);
-  --ink: oklch(0.14 0.04 240);
-  --surface: oklch(0.97 0.012 230);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.04 240);
-  --primary-foreground: oklch(0.99 0.005 230);
-  --muted: oklch(0.96 0.012 230);
-  --muted-foreground: oklch(0.5 0.025 240);
+  /* Warm paper palette — unified with the app-wide light mode */
+  --background: oklch(0.965 0.008 85);
+  --foreground: oklch(0.22 0.02 60);
+  --ink: oklch(0.17 0.02 60);
+  --surface: oklch(0.945 0.010 85);
+  --card: oklch(0.986 0.005 90);
+  --card-foreground: oklch(0.22 0.02 60);
+  --primary-foreground: oklch(0.985 0.005 90);
+  --muted: oklch(0.945 0.010 85);
+  --muted-foreground: oklch(0.50 0.02 70);
   --accent: var(--secondary);
-  --accent-foreground: oklch(0.15 0.04 240);
-  --border: oklch(0.92 0.015 230);
+  --accent-foreground: oklch(0.18 0.02 60);
+  --border: oklch(0.90 0.014 85);
   --ring: var(--primary);
 }
 
@@ -321,6 +322,13 @@ body:not(.dark) .aa-btn-outline {
 .aa-hero-glow {
   background: radial-gradient(60% 50% at 50% 25%, var(--primary-glow, var(--primary-glow)), transparent 70%);
 }
+/* Light mode: glows must whisper, not shout — soft tint instead of a
+   saturated blob, so no theme color reads as a "spot" on warm paper. */
+body:not(.dark) .aa-hero-glow {
+  background: radial-gradient(60% 50% at 50% 25%, var(--primary-soft, rgba(124, 58, 237, 0.10)), transparent 72%);
+  opacity: 0.8;
+}
+body:not(.dark) .aa-constellation { opacity: 0.3; }
 
 .aa-hero-inner {
   position: relative;
@@ -901,6 +909,12 @@ body:not(.dark) .aa-footer {
   background: var(--secondary);
 }
 
+/* Light mode: the blobs are full-strength theme colors sized 460px — at 0.55
+   opacity they read as huge color washes over the warm paper. Premium light
+   mode means a faint breath of the brand color, not a flood. */
+body:not(.dark) .aa-page .loc-bg-blob { opacity: 0.14; }
+body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
+
 .aa-page .section-inner {
   position: relative;
   max-width: 1180px;
@@ -1406,4 +1420,4 @@ body:not(.dark) .aa-footer {
   background: #25D366;
   color: #fff;
   border-color: #25D366;
-}
+}

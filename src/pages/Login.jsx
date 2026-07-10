@@ -191,6 +191,7 @@ export default function Login() {
   // visible, so existing tenants render exactly as before.
   const loginSections = tenant?.config?.login_sections || {}
   const showSection = (key) => loginSections[key] !== false
+
   const locationHoursDays = getLocalized(themeConfig.location?.hours_days || tenant?.config?.location?.hours_days, '', '') || null
   const locationHoursTime = getLocalized(themeConfig.location?.hours_time || tenant?.config?.location?.hours_time, '', '') || null
   const locationDirectionsLink = themeConfig.location?.directions_link || tenant?.config?.location?.directions_link || null

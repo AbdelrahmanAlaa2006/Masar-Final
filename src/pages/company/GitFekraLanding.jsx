@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import './GitFekraLanding.css'
-import { PLATFORMS, SERVICES, PROCESS } from './products'
+import { PLATFORMS, SERVICES, PROCESS, TOUR } from './products'
 
 /* GitFekra — company site (shown on the default tenant / gitfekra.com).
    Editorial, print-inspired design: light paper background, ink typography,
@@ -9,7 +9,7 @@ import { PLATFORMS, SERVICES, PROCESS } from './products'
 const COPY = {
   ar: {
     dir: 'rtl',
-    nav: { services: 'ماذا نبني', work: 'أعمالنا', process: 'كيف نعمل', about: 'من نحن', contact: 'تواصل' },
+    nav: { services: 'ماذا نبني', tour: 'جولة', work: 'أعمالنا', process: 'كيف نعمل', about: 'من نحن', contact: 'تواصل' },
     hero_kicker: 'GitFekra — شركة برمجيات متخصصة في المنصات التعليمية',
     hero_title: 'نبني لكل مدرّس منصته التعليمية الخاصة.',
     hero_sub: 'من الفكرة إلى الإطلاق: منصة كاملة باسمك وهويتك — فيديوهات محمية، امتحانات إلكترونية، حضور، مدفوعات، ومتابعة أولياء الأمور. أنت تدرّس، ونحن نتولى الباقي.',
@@ -24,6 +24,12 @@ const COPY = {
     services_title: 'كل ما يحتاجه مدرّس ليعمل أونلاين وفي السنتر',
     badge_live: 'يعمل الآن',
     badge_soon: 'قيد الإطلاق',
+    visit_platform: 'زيارة المنصة',
+    tour_kicker: 'جولة داخل المنصة',
+    tour_title: 'شاهد ما يحصل عليه طلابك',
+    tour_note: 'لقطات حقيقية من المنصة — اضغط على أي شاشة لتكبيرها.',
+    role_student: 'واجهة الطالب',
+    role_admin: 'لوحة المشرف',
     work_kicker: 'أعمالنا',
     work_title: 'منصات بنيناها لمدرّسين حقيقيين',
     work_note: 'كل منصة مستقلة بهوية صاحبها — الاسم، الألوان، والمحتوى ملك المعلم بالكامل.',
@@ -48,7 +54,7 @@ const COPY = {
   },
   en: {
     dir: 'ltr',
-    nav: { services: 'What we build', work: 'Work', process: 'Process', about: 'About', contact: 'Contact' },
+    nav: { services: 'What we build', tour: 'Tour', work: 'Work', process: 'Process', about: 'About', contact: 'Contact' },
     hero_kicker: 'GitFekra — an education software company',
     hero_title: 'We build every teacher their own education platform.',
     hero_sub: 'From idea to launch: a complete platform under your name and brand — protected videos, online exams, attendance, payments, and parent follow-up. You teach; we handle the rest.',
@@ -63,6 +69,12 @@ const COPY = {
     services_title: 'Everything a teacher needs, online and in-center',
     badge_live: 'Live',
     badge_soon: 'Launching soon',
+    visit_platform: 'Visit platform',
+    tour_kicker: 'Product tour',
+    tour_title: 'See what your students get',
+    tour_note: 'Real screens from the platform — click any shot to enlarge.',
+    role_student: 'Student view',
+    role_admin: 'Admin panel',
     work_kicker: 'Our work',
     work_title: 'Platforms we built for real teachers',
     work_note: 'Every platform stands on its own, under its owner’s identity — the name, colors, and content belong entirely to the teacher.',
@@ -118,8 +130,29 @@ export default function GitFekraLanding() {
       return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches || false
     } catch { return false }
   })
+  const [tourShot, setTourShot] = useState(null)
+  const [tourTab, setTourTab] = useState('student')
+  const [tourIndex, setTourIndex] = useState(0)
+  const tourShots = TOUR.filter((s) => s.role === tourTab)
+  const currentShot = tourShots[Math.min(tourIndex, tourShots.length - 1)]
   const t = COPY[lang]
   useReveal(lang)
+
+  // Auto-advance the showcase every 6s (paused while the lightbox is open)
+  useEffect(() => {
+    if (tourShot) return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
+    const id = setInterval(() => setTourIndex((i) => (i + 1) % tourShots.length), 6000)
+    return () => clearInterval(id)
+  }, [tourIndex, tourShot, tourTab, tourShots.length])
+
+  // Close the tour lightbox with Escape
+  useEffect(() => {
+    if (!tourShot) return
+    const onKey = (e) => { if (e.key === 'Escape') setTourShot(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [tourShot])
 
   useEffect(() => {
     document.title = lang === 'ar' ? 'GitFekra — جِت فِكرة | منصات تعليمية للمدرّسين' : 'GitFekra — Education platforms for teachers'
@@ -140,6 +173,7 @@ export default function GitFekraLanding() {
         <a href="#top" className="gf-nav-brand"><Wordmark /><span className="gf-nav-ar">جِت فِكرة</span></a>
         <nav className="gf-nav-links">
           <a href="#services">{t.nav.services}</a>
+          <a href="#tour">{t.nav.tour}</a>
           <a href="#work">{t.nav.work}</a>
           <a href="#process">{t.nav.process}</a>
           <a href="#about">{t.nav.about}</a>
@@ -191,6 +225,70 @@ export default function GitFekraLanding() {
         </ol>
       </section>
 
+      {/* Product tour — real screenshots */}
+      <section className="gf-section" id="tour">
+        <header className="gf-section-head gf-reveal">
+          <span className="gf-kicker">{t.tour_kicker}</span>
+          <h2>{t.tour_title}</h2>
+          <p className="gf-section-note">{t.tour_note}</p>
+        </header>
+        <div className="gf-showcase gf-reveal">
+          <div className="gf-tour-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tourTab === 'student'}
+              className={`gf-tour-tab ${tourTab === 'student' ? 'is-active' : ''}`}
+              onClick={() => { setTourTab('student'); setTourIndex(0) }}>
+              <i className="fas fa-graduation-cap" /> {t.role_student}
+            </button>
+            <button type="button" role="tab" aria-selected={tourTab === 'admin'}
+              className={`gf-tour-tab ${tourTab === 'admin' ? 'is-active' : ''}`}
+              onClick={() => { setTourTab('admin'); setTourIndex(0) }}>
+              <i className="fas fa-sliders" /> {t.role_admin}
+            </button>
+          </div>
+          <div className="gf-stage">
+            <button type="button" className="gf-stage-frame" onClick={() => setTourShot(currentShot)} aria-label={currentShot.title[lang]}>
+              <span className="gf-tour-chrome">
+                <i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
+                <em className={`gf-tour-role ${currentShot.role === 'admin' ? 'is-admin' : ''}`}>
+                  {currentShot.role === 'admin' ? t.role_admin : t.role_student}
+                </em>
+              </span>
+              <img key={currentShot.id} src={currentShot.img} alt={currentShot.title[lang]} className="gf-stage-img" />
+            </button>
+            <div className="gf-stage-meta">
+              <div className="gf-stage-text" key={`meta-${currentShot.id}`}>
+                <strong>{currentShot.title[lang]}</strong>
+                <p>{currentShot.caption[lang]}</p>
+              </div>
+              <div className="gf-stage-nav">
+                <button type="button" onClick={() => setTourIndex((tourIndex - 1 + tourShots.length) % tourShots.length)} aria-label="Previous">
+                  <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-right' : 'fa-arrow-left'}`} />
+                </button>
+                <span dir="ltr">{Math.min(tourIndex, tourShots.length - 1) + 1} / {tourShots.length}</span>
+                <button type="button" onClick={() => setTourIndex((tourIndex + 1) % tourShots.length)} aria-label="Next">
+                  <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-left' : 'fa-arrow-right'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="gf-thumbs" role="tablist">
+            {tourShots.map((shot, i) => (
+              <button
+                type="button"
+                key={shot.id}
+                role="tab"
+                aria-selected={i === tourIndex}
+                className={`gf-thumb ${i === tourIndex ? 'is-active' : ''}`}
+                onClick={() => setTourIndex(i)}
+              >
+                <img src={shot.img} alt="" loading="lazy" />
+                <span>{shot.title[lang]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Work — client platforms */}
       <section className="gf-section gf-section-tinted" id="work">
         <header className="gf-section-head gf-reveal">
@@ -203,6 +301,14 @@ export default function GitFekraLanding() {
             const inner = (
               <>
                 <span className="gf-work-swatch" style={{ background: p.accent }} aria-hidden="true" />
+                <div className="gf-work-media" style={{ '--accent': p.accent }} aria-hidden="true">
+                  {p.image ? (
+                    <img src={p.image} alt="" loading="lazy" />
+                  ) : (
+                    <span className="gf-work-monogram">{(p.name[lang] || '?').trim().charAt(0)}</span>
+                  )}
+                  {p.logo && <img className="gf-work-logo" src={p.logo} alt="" loading="lazy" />}
+                </div>
                 <div className="gf-work-body">
                   <div className="gf-work-toprow">
                     <h3>{p.name[lang]}</h3>
@@ -213,6 +319,12 @@ export default function GitFekraLanding() {
                   <p className="gf-work-owner">{p.owner[lang]}</p>
                   <p className="gf-work-subject">{p.subject[lang]}</p>
                   <p className="gf-work-blurb">{p.blurb[lang]}</p>
+                  {p.url && (
+                    <span className="gf-work-visit">
+                      {t.visit_platform}
+                      <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-left' : 'fa-arrow-right'}`} />
+                    </span>
+                  )}
                 </div>
               </>
             )
@@ -278,6 +390,19 @@ export default function GitFekraLanding() {
           <div className="gf-contact-email" dir="ltr">{CONTACT_EMAIL}</div>
         </div>
       </section>
+
+      {/* Tour lightbox */}
+      {tourShot && (
+        <div className="gf-lightbox" onClick={() => setTourShot(null)} role="dialog" aria-modal="true">
+          <figure onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="gf-lightbox-close" onClick={() => setTourShot(null)} aria-label="Close">
+              <i className="fas fa-times" />
+            </button>
+            <img src={tourShot.img} alt={tourShot.title[lang]} />
+            <figcaption>{tourShot.title[lang]} — {tourShot.caption[lang]}</figcaption>
+          </figure>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="gf-footer">

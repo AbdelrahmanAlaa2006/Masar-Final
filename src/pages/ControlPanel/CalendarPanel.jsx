@@ -254,7 +254,7 @@ export default function CalendarPanel({ onBack, flash }) {
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 24,
-        border: '1px solid #334155',
+        border: '1px solid var(--cp-divider)',
         flexWrap: 'wrap',
         gap: 16
       }}>
@@ -302,7 +302,7 @@ export default function CalendarPanel({ onBack, flash }) {
       ) : (
         <div style={{
           background: 'var(--cp-card-bg)',
-          border: '1px solid #334155',
+          border: '1px solid var(--cp-divider)',
           borderRadius: 20,
           overflow: 'hidden'
         }}>
@@ -311,7 +311,7 @@ export default function CalendarPanel({ onBack, flash }) {
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
             background: 'var(--cp-bg)',
-            borderBottom: '1px solid #334155',
+            borderBottom: '1px solid var(--cp-divider)',
             textAlign: 'center',
             fontWeight: 'bold',
             color: 'var(--cp-text-muted)',
@@ -429,7 +429,7 @@ export default function CalendarPanel({ onBack, flash }) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(15, 23, 42, 0.8)',
+          background: 'var(--cp-overlay, rgba(15, 23, 42, 0.8))',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -439,7 +439,7 @@ export default function CalendarPanel({ onBack, flash }) {
         }}>
           <form onSubmit={handleSaveEvent} style={{
             background: 'var(--cp-card-bg)',
-            border: '1px solid #334155',
+            border: '1px solid var(--cp-divider)',
             borderRadius: 20,
             maxWidth: 500,
             width: '100%',
@@ -449,7 +449,7 @@ export default function CalendarPanel({ onBack, flash }) {
             {/* Head */}
             <div style={{
               padding: '16px 24px',
-              borderBottom: '1px solid #334155',
+              borderBottom: '1px solid var(--cp-divider)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -604,7 +604,7 @@ export default function CalendarPanel({ onBack, flash }) {
             {/* Foot */}
             <div style={{
               padding: '16px 24px',
-              borderTop: '1px solid #334155',
+              borderTop: '1px solid var(--cp-divider)',
               background: 'var(--cp-bg)',
               display: 'flex',
               justifyContent: 'space-between',

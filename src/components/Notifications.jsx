@@ -139,7 +139,7 @@ export default function Notifications() {
       // Student filtering: discard admin-only notifications and unrelated students' alerts
       filtered = filtered.filter((n) => {
         // 1. Discard system-wide admin alerts (password reset requests, devtools violations, and student chat messages)
-        if (n.meta?.kind === 'password_reset_request' || n.meta?.kind === 'devtools_violation' || n.meta?.kind === 'student_chat_message') {
+        if (n.meta?.kind === 'password_reset_request' || n.meta?.kind === 'devtools_violation' || n.meta?.kind === 'student_chat_message' || n.meta?.kind === 'pending_student') {
           return false
         }
 
@@ -237,6 +237,11 @@ export default function Notifications() {
     } else if (meta.kind === 'password_reset_request') {
       if (isStaff) {
         target = '/control-panel?section=resets'
+      }
+    } else if (meta.kind === 'pending_student') {
+      // New signup awaiting approval → open the accounts activation panel
+      if (isStaff) {
+        target = '/control-panel?section=accounts'
       }
     } else if (meta.kind === 'devtools_violation') {
       if (isStaff) {

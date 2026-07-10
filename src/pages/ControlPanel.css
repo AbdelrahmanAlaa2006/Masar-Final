@@ -11,6 +11,7 @@ body {
   --cp-card-hover-bg: #f1f5f9;
   --cp-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   --cp-divider: rgba(0, 0, 0, 0.08);
+  --cp-overlay: rgba(43, 37, 28, 0.38);
   --cp-back-bg: rgba(0, 0, 0, 0.02);
   --cp-back-border: rgba(0, 0, 0, 0.08);
   --cp-input-bg: #ffffff;
@@ -1929,6 +1930,7 @@ body.dark {
   --cp-card-hover-bg: #1a2438;
   --cp-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   --cp-divider: rgba(255, 255, 255, 0.06);
+  --cp-overlay: rgba(2, 6, 15, 0.72);
   --cp-back-bg: rgba(255, 255, 255, 0.02);
   --cp-back-border: rgba(255, 255, 255, 0.08);
   --cp-input-bg: #111827;
@@ -2827,7 +2829,7 @@ body.dark .cp-sa-danger-card {
 .cp-portal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.65);
+  background: var(--cp-overlay, rgba(15, 23, 42, 0.65));
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;

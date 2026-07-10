@@ -701,7 +701,7 @@ export default function AccountsPanel({ onBack, flash }) {
         const groupText = getGroupName(selectedQrStudent);
 
         return createPortal(
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'var(--cp-overlay, rgba(15, 23, 42, 0.8))', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: 20 }}>
             <div style={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 24, padding: 32, maxWidth: 480, width: '100%', color: '#fff', textAlign: 'center', position: 'relative', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
               <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }} title="إغلاق">
                 <i className="fas fa-times"></i>

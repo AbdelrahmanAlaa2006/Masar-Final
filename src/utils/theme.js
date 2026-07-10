@@ -43,6 +43,9 @@ export function applyTenantTheme(tenant, themeConfig) {
   // Pinning it inline here wins over all of those in light mode; dark mode is
   // unaffected because their body.dark blocks redefine it closer to the body.
   root.style.setProperty('--bg-secondary', bgColor)
+  // The login/landing page reads --background (its .dark block re-wins in
+  // dark mode), so the tenant's light background applies there too.
+  root.style.setProperty('--background', bgColor)
 
   // Warm the light-mode surfaces to match the paper background: cards, the
   // control-panel cards, and the sticky header. Same inline-pin trick — the
@@ -114,7 +117,7 @@ export function applyTenantTheme(tenant, themeConfig) {
   const tokens = tenant.config?.theme || {}
   const TOKEN_MAP = {
     // light mode page background (already existed as config.bg_color)
-    bg_light: ['--bg-color', '--bg-secondary'],
+    bg_light: ['--bg-color', '--bg-secondary', '--background'],
     // dark mode page background (body.dark) + sections derived from it
     bg_dark: ['--bg-dark', '--dynamic-background', '--dynamic-section-bg-1'],
     // light mode card/surface color

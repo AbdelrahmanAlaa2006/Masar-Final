@@ -2,9 +2,9 @@
 
 /* Global variable overrides for Power theme (matches body.aa-power-theme) */
 .aa-power-theme {
-  --background: #fcf7e9 !important; /* Rich luxury warm ivory/parchment background */
+  --background: var(--bg-color, #f5f3ee) !important; /* Rich luxury warm ivory/parchment background */
   --surface: #f5ebd2 !important; /* Vibrant warm cream/surface */
-  --card: #ffffff !important; /* Crisp solid white card for high contrast */
+  --card: var(--card-bg, #fdfbf6) !important; /* Crisp solid white card for high contrast */
   --primary: #1e3a8a !important; /* Premium deep navy/royal blue */
   --secondary: #d4af37 !important; /* Luxury gold */
   
@@ -595,11 +595,11 @@ body:not(.dark).aa-power-theme .landing-package-card:hover {
 
 /* Custom background variables overrides for Power theme */
 .aa-power-theme {
-  --bg-color: #fcf7e9 !important;
-  --bg-primary: #fcf7e9 !important;
-  --bg-secondary: #fcf7e9 !important;
-  --page-bg: #fcf7e9 !important;
-  --cp-bg: #fcf7e9 !important;
+  --bg-color: #f5f3ee !important;
+  --bg-primary: #f5f3ee !important;
+  --bg-secondary: #f5f3ee !important;
+  --page-bg: #f5f3ee !important;
+  --cp-bg: #f5f3ee !important;
   --cp-bg-image: none !important;
 }
 
@@ -635,8 +635,8 @@ body.aa-power-theme,
 .aa-power-theme .packages-page,
 .aa-power-theme .pp-page,
 .aa-power-theme .sc-page {
-  background: #fcf7e9 !important;
-  background-color: #fcf7e9 !important;
+  background: #f5f3ee !important;
+  background-color: #f5f3ee !important;
   background-image: none !important;
 }
 

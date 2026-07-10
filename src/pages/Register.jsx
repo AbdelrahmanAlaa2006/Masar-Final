@@ -305,27 +305,38 @@ export default function Register() {
                 />
               </div>
 
+              {/* Permanent labels on the two phone fields: with placeholders
+                  only, a filled field gives no clue which phone it holds —
+                  students kept registering their own number as the parent's. */}
               <div className="register-input-wrapper">
-                <i className="fas fa-phone"></i>
-                <input 
-                  type="tel" 
-                  value={phone} 
-                  onChange={e => setPhone(e.target.value)} 
-                  required 
-                  placeholder={t.phone} 
-                  dir="ltr" 
+                <label style={{ position: 'absolute', top: '-9px', insetInlineStart: '14px', fontSize: '0.7rem', fontWeight: 700, padding: '0 6px', borderRadius: '4px', background: 'var(--card-bg, rgba(255,255,255,0.9))', color: 'var(--primary, #7c3aed)', zIndex: 1, lineHeight: '1.4' }}>
+                  {t.phone}
+                </label>
+                <i className="fas fa-mobile-screen-button"></i>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  required
+                  placeholder={t.phone}
+                  dir="ltr"
+                  autoComplete="tel"
                 />
               </div>
 
               <div className="register-input-wrapper">
-                <i className="fas fa-phone"></i>
-                <input 
-                  type="tel" 
-                  value={parentPhone} 
-                  onChange={e => setParentPhone(e.target.value)} 
-                  required 
-                  placeholder={t['parent-phone']} 
-                  dir="ltr" 
+                <label style={{ position: 'absolute', top: '-9px', insetInlineStart: '14px', fontSize: '0.7rem', fontWeight: 700, padding: '0 6px', borderRadius: '4px', background: 'var(--card-bg, rgba(255,255,255,0.9))', color: 'var(--primary, #7c3aed)', zIndex: 1, lineHeight: '1.4' }}>
+                  {t['parent-phone']}
+                </label>
+                <i className="fab fa-whatsapp"></i>
+                <input
+                  type="tel"
+                  value={parentPhone}
+                  onChange={e => setParentPhone(e.target.value)}
+                  required
+                  placeholder={t['parent-phone']}
+                  dir="ltr"
+                  autoComplete="off"
                 />
               </div>
 

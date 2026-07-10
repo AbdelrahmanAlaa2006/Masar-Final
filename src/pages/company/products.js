@@ -17,7 +17,11 @@ export const PLATFORMS = [
       en: 'A complete platform with a signature gold identity: videos, exams, and parent follow-up.',
     },
     accent: '#b08d2f',
-    url: null,
+    image: '/images/Mr Waleed Fawzy Image.png',
+    logo: '/images/Logo The Miracle.png',
+    // Temporary preview link until the custom domain is purchased —
+    // ?tenant= works on localhost, vercel, and the production domain alike.
+    url: '/login?tenant=waled-english',
   },
   {
     id: 'power-platform',
@@ -30,7 +34,9 @@ export const PLATFORMS = [
       en: 'A programming & AI education platform with two branches and full digital student tracking.',
     },
     accent: '#8a6d1f',
-    url: null,
+    image: '/images/Mr Mohamed Abdella Image.png',
+    logo: '/images/Power Logo.png',
+    url: '/login?tenant=power-platform',
   },
   {
     id: 'mona-chem',
@@ -43,7 +49,8 @@ export const PLATFORMS = [
       en: 'A branded learning experience: protected content, periodic assessments, and parent reports.',
     },
     accent: '#0f766e',
-    url: null,
+    image: null,
+    url: '/login?tenant=mona-chem',
   },
   {
     id: 'sherif-physics',
@@ -56,7 +63,8 @@ export const PLATFORMS = [
       en: 'High-quality videos, instant-result online exams, and barcode attendance.',
     },
     accent: '#1d4ed8',
-    url: null,
+    image: null,
+    url: '/login?tenant=sherif-physics',
   },
 ]
 
@@ -145,5 +153,101 @@ export const PROCESS = [
       ar: 'نطلق المنصة لطلابك ونبقى معك: دعم مستمر، تحسينات، وتطوير حسب احتياجك.',
       en: 'We launch to your students and stay with you: continuous support, refinements, and development as you grow.',
     },
+  },
+]
+
+// Product tour — real screenshots of the platform, shown as a framed strip.
+// role: 'student' | 'admin' — rendered as a chip on each frame.
+export const TOUR = [
+  {
+    id: 'student-home',
+    role: 'student',
+    img: '/images/tour-student-home.jpg',
+    title: { ar: 'الصفحة الرئيسية للطالب', en: 'Student home' },
+    caption: { ar: 'نظرة عامة وتقدّم الطالب — يكمل من حيث توقف بضغطة واحدة.', en: 'Overview and progress — students pick up right where they left off.' },
+  },
+  {
+    id: 'videos',
+    role: 'student',
+    img: '/images/tour-videos.jpg',
+    title: { ar: 'مكتبة الفيديوهات', en: 'Video library' },
+    caption: { ar: 'محاضرات منظمة بمواعيد إتاحة، ومشاهدة محمية مع تتبع لكل طالب.', en: 'Organized lectures with availability windows and protected, tracked viewing.' },
+  },
+  {
+    id: 'exams',
+    role: 'student',
+    img: '/images/tour-exams.jpg',
+    title: { ar: 'الامتحانات الإلكترونية', en: 'Online exams' },
+    caption: { ar: 'امتحانات شاملة وتسميعات دورية بتصحيح فوري ونتائج لحظية.', en: 'Comprehensive exams and recurring quizzes with instant grading.' },
+  },
+  {
+    id: 'homework',
+    role: 'student',
+    img: '/images/tour-homework.jpg',
+    title: { ar: 'الواجبات', en: 'Homework' },
+    caption: { ar: 'حل الواجبات ورفع الإجابات إلكترونياً مع تقييم المعلم وملاحظاته.', en: 'Students submit answers digitally and get teacher feedback.' },
+  },
+  {
+    id: 'reports',
+    role: 'student',
+    img: '/images/tour-reports.jpg',
+    title: { ar: 'تقارير الطالب', en: 'Student reports' },
+    caption: { ar: 'نتائج الفيديوهات والامتحانات والواجبات في تقارير واضحة للطالب وولي الأمر.', en: 'Video, exam, and homework results in clear reports for students and parents.' },
+  },
+  {
+    id: 'student-payments',
+    role: 'student',
+    img: '/images/tour-student-payments.jpg',
+    title: { ar: 'بوابة الدفع', en: 'Payment gateway' },
+    caption: { ar: 'اشتراك بفودافون كاش أو إنستا باي ورفع الإيصال — التفعيل خلال دقائق.', en: 'Subscribe via mobile wallet or InstaPay and upload the receipt — activation in minutes.' },
+  },
+  {
+    id: 'chat',
+    role: 'student',
+    img: '/images/tour-chat.jpg',
+    title: { ar: 'محادثة المعلم', en: 'Teacher chat' },
+    caption: { ar: 'تواصل مباشر بين الطالب والمعلم بالنص والصور والرسائل الصوتية.', en: 'Direct student–teacher chat with text, images, and voice notes.' },
+  },
+  {
+    id: 'profile',
+    role: 'student',
+    img: '/images/tour-profile.jpg',
+    title: { ar: 'الملف الشخصي والبطاقة الرقمية', en: 'Profile & digital ID' },
+    caption: { ar: 'بيانات الطالب وبطاقته الرقمية لتسجيل الحضور في السنتر.', en: 'Student details and the digital ID card used for center check-in.' },
+  },
+  {
+    id: 'admin-home',
+    role: 'admin',
+    img: '/images/tour-admin-home.jpg',
+    title: { ar: 'لوحة المشرف الرئيسية', en: 'Admin dashboard' },
+    caption: { ar: 'نظرة عامة على المنصة وإجراءات سريعة — كل شيء تحت يد المعلم.', en: 'Platform overview and quick actions — everything at the teacher’s fingertips.' },
+  },
+  {
+    id: 'admin-panel',
+    role: 'admin',
+    img: '/images/tour-admin-panel.jpg',
+    title: { ar: 'مركز التحكم الكامل', en: 'Full control center' },
+    caption: { ar: 'ستة عشر قسماً لإدارة كل شيء: الحضور، الفيديوهات، المجموعات، الفروع، الصلاحيات، والمزيد.', en: 'Sixteen sections to manage everything: attendance, videos, groups, branches, permissions, and more.' },
+  },
+  {
+    id: 'attendance',
+    role: 'admin',
+    img: '/images/tour-attendance.jpg',
+    title: { ar: 'الحضور بالباركود', en: 'Barcode attendance' },
+    caption: { ar: 'تحضير السنتر بالبطاقات الذكية — مسح فوري وإشعار لولي الأمر.', en: 'Smart-card check-in at the center with instant parent notifications.' },
+  },
+  {
+    id: 'grades',
+    role: 'admin',
+    img: '/images/tour-grades.jpg',
+    title: { ar: 'رصد الدرجات', en: 'Grade entry' },
+    caption: { ar: 'رصد درجات الواجبات والاختبارات والتقييم السلوكي للطلاب دفعة واحدة.', en: 'Batch entry for homework, test, and behavior grades.' },
+  },
+  {
+    id: 'payments',
+    role: 'admin',
+    img: '/images/tour-payments.jpg',
+    title: { ar: 'تقارير المدفوعات', en: 'Payment reports' },
+    caption: { ar: 'متابعة الاشتراكات والتحويلات المالية وتفعيل الحسابات فوراً.', en: 'Track subscriptions and transfers, and activate accounts instantly.' },
   },
 ]

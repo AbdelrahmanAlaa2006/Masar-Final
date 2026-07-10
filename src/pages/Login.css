@@ -2,8 +2,10 @@
   --login-bg-1: var(--secondary, var(--secondary));
   --login-bg-2: var(--primary, var(--primary));
   --login-bg-3: var(--primary-hover, #5b3f9a);
-  --login-orb-1: var(--secondary, var(--primary-hover));
-  --login-orb-2: var(--primary, var(--secondary));
+  /* Soft tints only — full-strength colors here rendered as saturated
+     "spots" over the light background on every tenant theme. */
+  --login-orb-1: var(--secondary-soft, rgba(6, 182, 212, 0.12));
+  --login-orb-2: var(--primary-soft, rgba(124, 58, 237, 0.12));
 
   --card-bg: rgba(255, 255, 255, 0.97);
   --card-border: rgba(255, 255, 255, 0.6);
@@ -1434,7 +1436,8 @@ body:not(.dark) .feature-card {
 }
 
 body:not(.dark) .feature-card::before {
-  background: radial-gradient(circle at 100% 0%, var(--primary-glow) 0%, transparent 60%);
+  background: radial-gradient(circle at 100% 0%, var(--primary-soft) 0%, transparent 55%);
+  opacity: 0.6;
 }
 
 .feature-card:hover {
@@ -1451,8 +1454,7 @@ body:not(.dark) .feature-card:hover {
   background: rgba(255, 255, 255, 0.95);
   border-color: var(--primary-glow);
   box-shadow: 
-    0 24px 60px -15px var(--primary-glow),
-    0 0 20px var(--primary-glow),
+    0 20px 48px -18px var(--primary-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
