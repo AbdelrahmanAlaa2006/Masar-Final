@@ -2,12 +2,14 @@ import { supabase } from './supabase'
 import { invalidate as invalidateCache } from '../src/utils/cache'
 import { updateNotificationStatus } from './unifiedNotificationsApi'
 
-// Get paginated parent notifications list
-export async function listNotificationQueue(page = 1, limit = 50) {
+// Get paginated parent notifications list.
+// statusFilter: 'all' | 'pending' | 'sent' | 'failed' — filtered in SQL so
+// pagination and counts stay correct per tab.
+export async function listNotificationQueue(page = 1, limit = 50, statusFilter = 'all') {
   const rangeStart = (page - 1) * limit
   const rangeEnd = page * limit - 1
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('unified_notifications')
     .select(`
       id,
@@ -21,6 +23,12 @@ export async function listNotificationQueue(page = 1, limit = 50) {
       )
     `, { count: 'exact' })
     .contains('channels', ['whatsapp'])
+
+  if (statusFilter && statusFilter !== 'all') {
+    query = query.eq('status->>whatsapp', statusFilter)
+  }
+
+  const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .range(rangeStart, rangeEnd)
 
@@ -51,25 +59,25 @@ export async function listNotificationQueue(page = 1, limit = 50) {
 
 // Get statistics summary of notifications
 export async function getNotificationQueueSummary() {
-  const { data, error } = await supabase
+  // Head-only count queries — previously this downloaded EVERY row's status
+  // and counted in the browser, which grows unbounded with message history.
+  const base = () => supabase
     .from('unified_notifications')
-    .select('status')
+    .select('id', { count: 'exact', head: true })
     .contains('channels', ['whatsapp'])
 
-  if (error) throw error
+  const [p, s, f] = await Promise.all([
+    base().eq('status->>whatsapp', 'pending'),
+    base().eq('status->>whatsapp', 'sent'),
+    base().eq('status->>whatsapp', 'failed'),
+  ])
+  const err = p.error || s.error || f.error
+  if (err) throw err
 
-  let pending = 0
-  let sent = 0
-  let failed = 0
-
-  data.forEach(r => {
-    const whatsappStatus = r.status?.whatsapp || 'pending'
-    if (whatsappStatus === 'pending') pending++
-    else if (whatsappStatus === 'sent') sent++
-    else if (whatsappStatus === 'failed') failed++
-  })
-
-  return { pending, sent, failed, total: data.length }
+  const pending = p.count || 0
+  const sent = s.count || 0
+  const failed = f.count || 0
+  return { pending, sent, failed, total: pending + sent + failed }
 }
 
 // Retry a specific notification
@@ -286,6 +294,23 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
       throw new Error('بيانات WAPilot غير مكتملة (Instance ID أو API Token مفقود)')
     }
 
+    // Preferred path: the wapilot-send Edge Function — server-side, works in
+    // production, and keeps the token off the client. Falls back to the dev
+    // proxy below only when the function isn't deployed yet.
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('wapilot-send', {
+        body: { phone: to, message: messageText },
+      })
+      if (!fnError && fnData?.ok) return true
+      if (!fnError && fnData?.error) throw new Error(fnData.error)
+      // fnError (e.g. 404 not deployed) → fall through to the direct path
+    } catch (fnErr) {
+      // Real gateway errors surface; deployment/availability errors fall through
+      if (fnErr?.message && !/Failed to send a request|not found|404/i.test(fnErr.message)) {
+        throw fnErr
+      }
+    }
+
     // WAPilot v2 API (from their dashboard docs):
     //   POST https://api.wapilot.net/api/v2/{INSTANCE_ID}/send-message
     //   headers: token, Idempotency-Key, Content-Type
@@ -352,6 +377,28 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
     throw new Error('يرجى ضبط إعدادات بوابة الإرسال أولاً')
   }
 
+  // WAPilot: drain the queue in server-side batches via the edge function —
+  // auth/config resolve once per 25 messages instead of once per message
+  // (~4× fewer requests), and the batch survives the admin closing the tab.
+  if (gatewayConfig.type === 'wapilot') {
+    let totalSent = 0
+    // Hard cap of 40 batches (1000 messages) per click as a runaway guard.
+    for (let i = 0; i < 40; i++) {
+      const { data, error } = await supabase.functions.invoke('wapilot-send', {
+        body: { batch: true, limit: 25 },
+      })
+      if (error) throw new Error(error.message || 'فشل الاتصال بدالة الإرسال')
+      if (data?.error) throw new Error(data.error)
+      const results = data?.results || []
+      results.forEach((r) => {
+        if (r.status === 'sent') totalSent++
+        onProgress?.(r.id, r.status, r.error || null)
+      })
+      if (!data?.remaining || results.length === 0) break
+    }
+    return totalSent
+  }
+
   // Fetch pending unified notifications for whatsapp
   const { data: pending, error } = await supabase
     .from('unified_notifications')
@@ -364,6 +411,10 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       profiles:student_id ( parent_phone )
     `)
     .contains('channels', ['whatsapp'])
+    // Filter for pending IN SQL — filtering after a 20-row window meant that
+    // once 20+ old sent rows existed, new pending messages were never reached
+    // and the processor reported "0 sent" forever.
+    .eq('status->>whatsapp', 'pending')
     .limit(20)
     .order('created_at', { ascending: true })
 

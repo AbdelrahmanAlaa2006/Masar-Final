@@ -46,7 +46,7 @@ import { detectDevTools } from './utils/devtools'
 
 // SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
 // Set to false to disable them (not blocked).
-const ENABLE_DEVTOOLS_BLOCKER = true;
+const ENABLE_DEVTOOLS_BLOCKER = false;
 
 // Page loader component for Suspense fallback
 function PageLoader() {

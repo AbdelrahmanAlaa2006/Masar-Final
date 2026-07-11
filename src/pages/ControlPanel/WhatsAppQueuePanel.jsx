@@ -19,6 +19,15 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   const [notifications, setNotifications] = useState([])
   const [totalNotifications, setTotalNotifications] = useState(0)
   const [page, setPage] = useState(1)
+  // Mobile responsiveness: below 900px the log + settings sidebar stack
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 900)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  // Log filter — default to what needs attention, not the whole history
+  const [statusFilter, setStatusFilter] = useState('pending')
   const limit = 10
 
   const [summary, setSummary] = useState({ pending: 0, sent: 0, failed: 0, total: 0 })
@@ -142,7 +151,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     try {
       const [sum, list] = await Promise.all([
         getNotificationQueueSummary(),
-        listNotificationQueue(page, limit)
+        listNotificationQueue(page, limit, statusFilter)
       ])
       setSummary(sum)
       setNotifications(list.items)
@@ -157,7 +166,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
 
   useEffect(() => {
     loadData()
-  }, [page])
+  }, [page, statusFilter])
 
   // Save gateway configurations
   const handleSaveSettings = async (e) => {
@@ -371,12 +380,42 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
       </div>
 
       {/* Grid: queue list + config settings */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: isMobile ? '16px' : '24px' }}>
 
-        {/* Left Side: Queue list */}
-        <div>
+        {/* Left Side: Queue list — minWidth 0 lets the 1fr grid track shrink
+            below the table width so the inner overflow-x scroll can engage */}
+        <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>سجل رسائل أولياء الأمور</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>سجل رسائل أولياء الأمور</h3>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'pending', label: `معلق (${summary.pending})`, color: '#f59e0b' },
+                  { key: 'failed', label: `فشلت (${summary.failed})`, color: '#ef4444' },
+                  { key: 'sent', label: `تم الإرسال (${summary.sent})`, color: '#10b981' },
+                  { key: 'all', label: 'الكل', color: 'var(--cp-text-muted)' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => { setStatusFilter(f.key); setPage(1) }}
+                    style={{
+                      padding: '5px 14px',
+                      borderRadius: '999px',
+                      fontSize: '0.78rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      border: `1.5px solid ${statusFilter === f.key ? f.color : 'var(--cp-divider)'}`,
+                      color: statusFilter === f.key ? f.color : 'var(--cp-text-muted)',
+                      background: statusFilter === f.key ? `color-mix(in srgb, ${f.color} 10%, transparent)` : 'transparent',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {summary.pending > 0 && gatewayType === 'whatsapp_manual' && (
                 <button
@@ -452,7 +491,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
             <>
               <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--cp-card-shadow)', marginBottom: '16px' }}>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
+                  <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--cp-list-header-bg)', borderBottom: '1px solid var(--cp-divider)' }}>
                         <th style={{ padding: '14px 16px', fontWeight: 'bold' }}>اسم الطالب</th>
