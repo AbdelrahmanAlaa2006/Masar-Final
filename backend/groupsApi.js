@@ -155,7 +155,9 @@ export async function listStudentsByGroup(groupId) {
         name,
         phone,
         grade,
-        "group"
+        "group",
+        barcode_token,
+        student_groups(group_id)
       )
     `)
     .eq('group_id', groupId)

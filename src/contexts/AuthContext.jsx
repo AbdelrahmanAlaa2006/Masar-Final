@@ -112,8 +112,15 @@ export function AuthProvider({ children }) {
 
   const hasPermission = useCallback((permission, branchId = null) => {
     if (user?.role === 'admin' || user?.role === 'super_admin') return true
+    if (!permission) return false
     if (permissions.includes(permission)) return true
     if (branchId && permissions.includes(`${permission}:${branchId}`)) return true
+    // The Assistants panel stores granular keys (e.g. 'videos:edit',
+    // 'attendance:take'), but tabs/gates are checked with the coarse key
+    // ('videos', 'attendance'). Treat a plain coarse check as satisfied by ANY
+    // granular grant in that category so panel permissions actually take effect.
+    if (!branchId && !String(permission).includes(':') &&
+        permissions.some(p => p.startsWith(`${permission}:`))) return true
     return false
   }, [user, permissions])
 

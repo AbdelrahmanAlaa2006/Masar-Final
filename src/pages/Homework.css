@@ -677,6 +677,7 @@ body.dark .hw-card-meta {
 
 .hw-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
   padding-top: 10px;

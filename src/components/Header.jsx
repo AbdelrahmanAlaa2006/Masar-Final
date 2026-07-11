@@ -169,6 +169,8 @@ export default function Header() {
 
     // If assistant, enforce permissions filter in navbar
     if (userRole === 'assistant') {
+      // Items with no permission key (e.g. Home '/') aren't gated — always show.
+      if (!key) return true
       if (key === 'reports') return hasPermission('reports')
       return hasPermission(key)
     }

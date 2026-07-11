@@ -300,9 +300,12 @@ export async function getPaymentSettings() {
 
 // Update payment settings
 export async function updatePaymentSetting(key, value) {
+  // Per-tenant settings: tenant_id is stamped by the set_tenant_id_on_insert
+  // trigger before conflict resolution, so conflict on (tenant_id, key) targets
+  // THIS tenant's own row (not the default tenant's seeded row).
   const { data, error } = await supabase
     .from('payment_settings')
-    .upsert({ key, value })
+    .upsert({ key, value }, { onConflict: 'tenant_id,key' })
     .select()
     .single()
   if (error) throw error

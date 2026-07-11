@@ -4,8 +4,9 @@ import { listStudentsPaged, getStudentStatusCounts, listStudentsByGrade, updateS
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
-import { listGroups, assignStudentToGroup } from '@backend/groupsApi'
+import { listGroups, assignStudentToGroup, listStudentsByGroup } from '@backend/groupsApi'
 import { initials, GRADE_LABEL } from './shared'
+import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE } from '../../utils/barcodeLabels'
 import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
@@ -224,57 +225,74 @@ export default function AccountsPanel({ onBack, flash }) {
     return ''
   }
 
-  // One barcode card (no QR) — shows name, level (Arabic), group + the barcode.
-  const barcodeCardHtml = (student) => {
-    const token = student.barcode_token || ''
-    if (!token) return ''
-    const barcodeApiUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(token)}&scale=3&rotate=N&includetext=true`
-    const level = GRADE_LABEL[student.grade] || student.grade || ''
-    const group = getGroupName(student)
-    return `
-      <div class="card">
-        <div class="logo">منصة مسار التعليمية</div>
-        <h2>${student.name || ''}</h2>
-        <p><strong>المرحلة:</strong> ${level}</p>
-        ${group ? `<p><strong>المجموعة:</strong> ${group}</p>` : ''}
-        <div class="barcode-wrap"><img src="${barcodeApiUrl}" class="barcode-image" alt="Barcode" /></div>
-      </div>`
+  // Map a student row to the fields a thermal label needs. Tenant-aware: grade
+  // uses the tenant's GRADE_LABEL and group resolves the student's live group.
+  const resolveLabel = (student) => ({
+    name: student.name || '',
+    grade: GRADE_LABEL[student.grade] || student.grade || '',
+    group: getGroupName(student),
+    token: student.barcode_token || '',
+  })
+
+  // Selected label size + multi-select state (checkboxes in the table).
+  const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkPrinting, setBulkPrinting] = useState(false)
+  const [printGroupId, setPrintGroupId] = useState('')
+
+  // Shared entry point: send a list of students to the thermal-label engine.
+  const printLabels = (list, title) => {
+    const count = printStudentLabels(list, {
+      resolve: resolveLabel,
+      size: labelSize,
+      title,
+      onError: (reason) => {
+        if (reason === 'popup-blocked') {
+          flash('متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.', 'warning')
+        } else {
+          flash('لا يوجد طلاب بأكواد باركود للطباعة.', 'warning')
+        }
+      },
+    })
+    return count
   }
 
-  // Open a print window laying cards out in a grid (1 card = single print,
-  // many cards = bulk print). The delayed print() lets the external barcode
-  // images finish loading first.
-  const printCardsPage = (title, cardsHtml) => {
-    const w = window.open('', '_blank')
-    if (!w) { flash('متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.', 'warning'); return }
-    w.document.write(`
-      <html><head><title>${title}</title><style>
-        body { font-family: 'Tajawal', sans-serif; direction: rtl; background: #fff; color: #000; margin: 0; padding: 16px; }
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        .card { border: 2px solid #ccc; border-radius: 16px; padding: 18px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); break-inside: avoid; page-break-inside: avoid; }
-        .card h2 { margin: 0 0 6px; font-size: 1.2rem; color: #1e293b; }
-        .card p { margin: 4px 0; color: #475569; font-size: 0.9rem; }
-        .logo { font-weight: 800; font-size: 1rem; color: #6366f1; margin-bottom: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
-        .barcode-wrap { margin-top: 12px; }
-        .barcode-image { width: 100%; max-width: 260px; height: auto; }
-      </style></head>
-      <body onload="setTimeout(function(){ window.print(); }, 700);">
-        <div class="grid">${cardsHtml}</div>
-      </body></html>`)
-    w.document.close()
-  }
-
-  // Single-student barcode print (from the card modal).
+  // 1) Single student (from the card modal).
   const handlePrint = () => {
     if (!selectedQrStudent) return
-    const card = barcodeCardHtml(selectedQrStudent)
-    if (!card) { flash('لا يوجد كود باركود لهذا الطالب', 'warning'); return }
-    printCardsPage(`باركود - ${selectedQrStudent.name}`, card)
+    printLabels([selectedQrStudent], `باركود - ${selectedQrStudent.name}`)
   }
 
-  // Bulk print: all barcodes for the selected level at once (or every level if
-  // "all" is selected). Keeps the single-print path above for new students.
-  const [bulkPrinting, setBulkPrinting] = useState(false)
+  // 2) Selected students (checkboxes) on the current page.
+  const handlePrintSelected = () => {
+    const chosen = students.filter(s => selectedIds.has(s.id))
+    if (chosen.length === 0) { flash('لم يتم تحديد أي طالب.', 'warning'); return }
+    printLabels(chosen, `باركودات (${chosen.length})`)
+  }
+
+  // 3) The whole current page of students.
+  const handlePrintPage = () => {
+    printLabels(students, `باركودات الصفحة (${students.length})`)
+  }
+
+  // 4) A whole group.
+  const handlePrintGroup = async () => {
+    if (!printGroupId) { flash('اختر مجموعة أولاً.', 'warning'); return }
+    if (bulkPrinting) return
+    setBulkPrinting(true)
+    try {
+      const list = await listStudentsByGroup(printGroupId)
+      const groupName = groups.find(g => g.id === printGroupId)?.name || 'مجموعة'
+      printLabels(list, `باركودات مجموعة ${groupName} (${list.length})`)
+    } catch (e) {
+      flash('تعذر تحضير باركودات المجموعة: ' + (e.message || ''), 'warning')
+    } finally {
+      setBulkPrinting(false)
+    }
+  }
+
+  // 5) Every barcode for the selected grade (or all grades). Unchanged behavior,
+  // now routed through the same thermal-label engine.
   const handlePrintAllBarcodes = async () => {
     if (bulkPrinting) return
     setBulkPrinting(true)
@@ -287,20 +305,42 @@ export default function AccountsPanel({ onBack, flash }) {
         const results = await Promise.all(gradeIds.map(g => listStudentsByGrade(g)))
         all = results.flat()
       }
-      const printable = all.filter(s => s.barcode_token)
-      if (printable.length === 0) {
-        flash('لا يوجد طلاب بأكواد باركود للطباعة في هذه المرحلة', 'warning')
-        return
-      }
-      const cards = printable.map(barcodeCardHtml).join('')
       const gradeLabel = selectedGrade !== 'all' ? (GRADE_LABEL[selectedGrade] || selectedGrade) : 'كل المراحل'
-      printCardsPage(`باركودات ${gradeLabel} (${printable.length})`, cards)
+      printLabels(all, `باركودات ${gradeLabel}`)
     } catch (e) {
       flash('تعذر تحضير الباركودات للطباعة: ' + (e.message || ''), 'warning')
     } finally {
       setBulkPrinting(false)
     }
   }
+
+  // Selection helpers (scoped to the current page of `students`).
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+  const pageIds = students.map(s => s.id)
+  const allPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id))
+  const toggleSelectAllPage = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allPageSelected) pageIds.forEach(id => next.delete(id))
+      else pageIds.forEach(id => next.add(id))
+      return next
+    })
+  }
+  // Drop selections that are no longer on the visible page (page/filter change).
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const visible = new Set(pageIds)
+      const next = new Set([...prev].filter(id => visible.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [students])
 
   // Tab badge counts now come from the server (see reloadCounts).
   const stats = counts
@@ -365,17 +405,50 @@ export default function AccountsPanel({ onBack, flash }) {
         <button className="cp-icon-btn" onClick={refreshList} title="تحديث القائمة" style={{ height: 42, width: 42 }}>
           <i className="fas fa-rotate"></i>
         </button>
+      </div>
 
-        {/* Bulk print all barcodes for the selected level (or every level). */}
-        <button
-          className="cp-btn cp-btn-info"
-          onClick={handlePrintAllBarcodes}
-          disabled={bulkPrinting}
-          title={selectedGrade !== 'all' ? 'طباعة باركودات هذه المرحلة' : 'طباعة باركودات كل المراحل'}
-          style={{ height: 42, opacity: bulkPrinting ? 0.6 : 1 }}
-        >
-          <i className={`fas ${bulkPrinting ? 'fa-spinner fa-spin' : 'fa-barcode'}`}></i>
-          {bulkPrinting ? ' جارٍ التحضير...' : ' طباعة كل الباركودات'}
+      {/* ── Barcode label printing toolbar (thermal / XPrinter) ───────────────
+          Label size is configurable; the four print modes all route through the
+          same thermal-label engine (src/utils/barcodeLabels.js). */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-color)' }}>
+          <i className="fas fa-barcode" style={{ marginInlineEnd: 6, color: '#6366f1' }}></i>
+          طباعة الباركود:
+        </span>
+
+        {/* Configurable label size */}
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--text-color)' }}>
+          مقاس الملصق
+          <select value={labelSize} onChange={(e) => setLabelSize(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
+            {LABEL_SIZE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+
+        {/* Selected students */}
+        <button className="cp-btn cp-btn-info" onClick={handlePrintSelected} disabled={selectedIds.size === 0} title="طباعة باركود الطلاب المحددين" style={{ height: 40, opacity: selectedIds.size === 0 ? 0.5 : 1 }}>
+          <i className="fas fa-print"></i> طباعة المحدد ({selectedIds.size})
+        </button>
+
+        {/* Current page */}
+        <button className="cp-btn cp-btn-info" onClick={handlePrintPage} disabled={students.length === 0} title="طباعة باركودات هذه الصفحة" style={{ height: 40 }}>
+          <i className="fas fa-file-lines"></i> طباعة الصفحة
+        </button>
+
+        {/* Whole group */}
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          <select value={printGroupId} onChange={(e) => setPrintGroupId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
+            <option value="">— اختر مجموعة —</option>
+            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+          <button className="cp-btn cp-btn-info" onClick={handlePrintGroup} disabled={!printGroupId || bulkPrinting} title="طباعة باركودات المجموعة كاملة" style={{ height: 40, opacity: (!printGroupId || bulkPrinting) ? 0.5 : 1 }}>
+            <i className="fas fa-users"></i> طباعة المجموعة
+          </button>
+        </span>
+
+        {/* Whole grade / all grades */}
+        <button className="cp-btn cp-btn-info" onClick={handlePrintAllBarcodes} disabled={bulkPrinting} title={selectedGrade !== 'all' ? 'طباعة باركودات هذه المرحلة' : 'طباعة باركودات كل المراحل'} style={{ height: 40, opacity: bulkPrinting ? 0.6 : 1 }}>
+          <i className={`fas ${bulkPrinting ? 'fa-spinner fa-spin' : 'fa-graduation-cap'}`}></i>
+          {bulkPrinting ? ' جارٍ التحضير...' : (selectedGrade !== 'all' ? ' طباعة المرحلة' : ' طباعة كل المراحل')}
         </button>
       </div>
 
@@ -395,6 +468,9 @@ export default function AccountsPanel({ onBack, flash }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.92rem' }}>
             <thead>
               <tr style={{ background: 'rgba(99, 102, 241, 0.05)', borderBottom: '1px solid var(--border-light)' }}>
+                <th style={{ padding: '14px 12px', width: 44, textAlign: 'center' }}>
+                  <input type="checkbox" checked={allPageSelected} onChange={toggleSelectAllPage} title="تحديد كل الصفحة" style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                </th>
                 <th style={{ padding: '14px 16px' }}>اسم الطالب</th>
                 <th style={{ padding: '14px 16px' }}>أرقام الهواتف</th>
                 <th style={{ padding: '14px 16px' }}>المرحلة</th>
@@ -418,7 +494,10 @@ export default function AccountsPanel({ onBack, flash }) {
                 const currentStatus = student.status || 'inactive'
                 
                 return (
-                  <tr key={student.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={student.id} style={{ borderBottom: '1px solid #f1f5f9', background: selectedIds.has(student.id) ? 'rgba(99, 102, 241, 0.06)' : 'transparent' }}>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <input type="checkbox" checked={selectedIds.has(student.id)} onChange={() => toggleSelect(student.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} title={student.barcode_token ? 'تحديد للطباعة' : 'لا يوجد باركود لهذا الطالب'} />
+                    </td>
                     <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>
                       {student.name}
                       {student.flags && student.flags.map(flag => (

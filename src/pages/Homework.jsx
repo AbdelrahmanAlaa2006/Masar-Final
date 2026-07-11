@@ -970,7 +970,8 @@ function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, o
               <button className="hw-btn hw-btn-ghost hw-btn-icon" onClick={onEdit} title="تعديل">
                 <i className="fas fa-pen"></i>
               </button>
-              <button className="hw-btn hw-btn-danger hw-btn-icon" onClick={onDelete} title="حذف">
+              {/* Delete homework (admins & assistants with the homework permission). */}
+              <button className="hw-btn hw-btn-danger hw-btn-icon" onClick={onDelete} title="حذف الواجب">
                 <i className="fas fa-trash"></i>
               </button>
             </>
