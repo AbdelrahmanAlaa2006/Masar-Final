@@ -86,8 +86,8 @@ const BRANCH_DEFS = [
   { key: 'name', label: 'اسم المقر / الفرع' },
   { key: 'address', label: 'العنوان التفصيلي' },
   { key: 'phone', label: 'هاتف المقر', ltr: true },
-  { key: 'map_iframe_url', label: 'رابط خريطة Google (embed)', ltr: true },
-  { key: 'directions_link', label: 'رابط الاتجاهات (Google Maps)', ltr: true },
+  { key: 'map_iframe_url', label: 'خريطة Google — رابط تضمين (مشاركة ← تضمين خريطة) أو رابط طويل بإحداثيات. الروابط المختصرة goo.gl لا تعمل هنا', ltr: true },
+  { key: 'directions_link', label: 'رابط الاتجاهات (أي رابط Google Maps حتى المختصر)', ltr: true },
   { key: 'hours_days', label: 'أيام العمل (مثال: السبت – الخميس)' },
   { key: 'hours_time', label: 'ساعات العمل (مثال: ٩ صباحًا – ٩ مساءً)' },
 ]

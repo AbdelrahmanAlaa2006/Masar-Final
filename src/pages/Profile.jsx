@@ -102,7 +102,10 @@ export default function Profile() {
 
   // Real account status — the chip used to claim "نشط" unconditionally
   const STATUS_CHIP_LABEL = { active: 'نشط', inactive: 'غير نشط', suspended: 'موقوف', graduated: 'خريج', archived: 'مؤرشف' }
-  const isAccountActive = user?.is_active !== false && (!user?.status || user.status === 'active')
+  const isStaffRole = user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'super_admin'
+  const isAccountActive = isStaffRole
+    ? user?.status !== 'suspended'
+    : (user?.is_active !== false && (!user?.status || user.status === 'active'))
   const statusChipLabel = isAccountActive ? 'نشط' : (STATUS_CHIP_LABEL[user?.status] || 'غير نشط')
 
   const handleCopyId = () => {

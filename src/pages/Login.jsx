@@ -10,6 +10,7 @@ import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { listPackages } from '@backend/packagesApi'
 import { useTenant } from '../contexts/TenantContext'
+import { toMapEmbed } from '../utils/mapEmbed'
 import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
 import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
@@ -184,7 +185,7 @@ export default function Login() {
   // No fabricated fallbacks — an unconfigured field simply doesn't render.
   const locationAddress = getLocalized(themeConfig.location?.address || tenant?.config?.location?.address, '', '') || null
   const locationCountry = getLocalized(themeConfig.location?.country || tenant?.config?.location?.country, '', '') || null
-  const locationMapUrl = themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url || null
+  const locationMapUrl = toMapEmbed(themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url)
   const locationPhone = themeConfig.location?.phone || tenant?.config?.location?.phone || null
 
   // Per-tenant landing sections (tenants.config.login_sections). Missing key =
@@ -821,7 +822,7 @@ export default function Login() {
               const bName = getLocalized(branch.name, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`)
               const bAddress = getLocalized(branch.address, '', '')
               const bPhone = branch.phone ? getLocalized(branch.phone, '', '') : null
-              const bMapUrl = branch.map_iframe_url || locationMapUrl
+              const bMapUrl = toMapEmbed(branch.map_iframe_url) || locationMapUrl
               const bDirections = branch.directions_link || locationDirectionsLink
               const bHoursDays = branch.hours_days ? getLocalized(branch.hours_days, '', '') : locationHoursDays
               const bHoursTime = branch.hours_time ? getLocalized(branch.hours_time, '', '') : locationHoursTime
@@ -830,7 +831,7 @@ export default function Login() {
               if (!bAddress && !bMapUrl && !bPhone && !locationPhone) return null
 
               return (
-                <div className="location-grid" key={index} style={{ marginTop: index > 0 ? '50px' : '0px', borderTop: index > 0 ? '1px dashed rgba(255, 255, 255, 0.15)' : 'none', paddingTop: index > 0 ? '50px' : '0px' }}>
+                <div className="location-grid" key={index} style={{ marginTop: index > 0 ? '50px' : '0px', borderTop: index > 0 ? '1px dashed rgba(255, 255, 255, 0.15)' : 'none', paddingTop: index > 0 ? '50px' : '0px', gridTemplateColumns: bMapUrl ? undefined : '1fr' }}>
                   {bMapUrl && (
                   <div className="location-map-wrapper">
                     <div className="map-shell">
@@ -938,7 +939,7 @@ export default function Login() {
               )
             })
           ) : (
-            <div className="location-grid">
+            <div className="location-grid" style={{ gridTemplateColumns: locationMapUrl ? undefined : '1fr' }}>
               {locationMapUrl && (
               <div className="location-map-wrapper">
                 <div className="map-shell">
