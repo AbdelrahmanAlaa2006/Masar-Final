@@ -81,17 +81,19 @@ export async function saveGradesBatch(records) {
 
       notifications.push({
         student_id: r.student_id,
-        phone: r.parent_phone.trim(),
+        title: 'تقييم جديد',
         message,
         type: 'grade_added',
-        status: 'pending'
+        channels: ['whatsapp', 'portal'],
+        status: { whatsapp: 'pending', portal: 'pending' },
+        created_by: r.created_by || null
       })
     }
   })
 
   if (notifications.length > 0) {
     const { error: notifError } = await supabase
-      .from('parent_notifications')
+      .from('unified_notifications')
       .insert(notifications)
     
     if (notifError) console.error('Failed to queue parent notification for grades:', notifError)
