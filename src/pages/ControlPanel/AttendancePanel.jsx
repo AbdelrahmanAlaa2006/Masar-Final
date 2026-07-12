@@ -27,6 +27,7 @@ export default function AttendancePanel({ onBack, flash }) {
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   
   // Lists
   const [branches, setBranches] = useState([])
@@ -150,6 +151,7 @@ export default function AttendancePanel({ onBack, flash }) {
     let active = true
     if (!selectedAcademicYearId) return
     setLoading(true)
+    setSearchQuery('') // Reset active search query when grade/branch changes
     ;(async () => {
       try {
         const [allStudents, sessionsList] = await Promise.all([
@@ -260,20 +262,37 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedSessionId])
 
-  // Filter student list by Group
+  // Filter student list by Group and Search Query (name or phone number)
   const filteredStudentsList = useMemo(() => {
-    if (!selectedGroupId) return students
-    const targetGroup = groups.find(g => g.id === selectedGroupId)
-    if (!targetGroup) return students
-    return students.filter(s => {
-      // Always show if student is explicitly marked present/late/excused in this session
-      if (attendanceRecords[s.id] && attendanceRecords[s.id] !== 'absent') return true
-
-      if (s.group === targetGroup.name) return true
-      if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
-      return false
-    })
-  }, [students, selectedGroupId, groups, attendanceRecords])
+    let list = students
+    
+    // 1. Group Filter
+    if (selectedGroupId) {
+      const targetGroup = groups.find(g => g.id === selectedGroupId)
+      if (targetGroup) {
+        list = list.filter(s => {
+          // Always show if student is explicitly marked present/late/excused in this session
+          if (attendanceRecords[s.id] && attendanceRecords[s.id] !== 'absent') return true
+          if (s.group === targetGroup.name) return true
+          if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
+          return false
+        })
+      }
+    }
+    
+    // 2. Search Query Filter (name, phone, or parent_phone)
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      list = list.filter(s => {
+        const nameMatch = s.name ? s.name.toLowerCase().includes(q) : false
+        const phoneMatch = s.phone ? s.phone.includes(q) : false
+        const parentPhoneMatch = s.parent_phone ? s.parent_phone.includes(q) : false
+        return nameMatch || phoneMatch || parentPhoneMatch
+      })
+    }
+    
+    return list
+  }, [students, selectedGroupId, groups, attendanceRecords, searchQuery])
 
   // Merged history records: every student in the current group/class merged with their database attendance record
   const mergedHistoryRecords = useMemo(() => {
@@ -774,6 +793,18 @@ export default function AttendancePanel({ onBack, flash }) {
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>البحث عن طالب</label>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="الاسم أو الهاتف..."
+            className="cp-input"
+            style={{ width: '100%' }}
+          />
         </div>
 
         <div>
