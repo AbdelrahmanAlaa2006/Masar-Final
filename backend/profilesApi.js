@@ -28,7 +28,8 @@ const STUDENT_LIST_COLUMNS =
 
 // Apply the same status/grade/search semantics the AccountsPanel used to do
 // client-side, but in the database so only one page of rows is returned.
-function applyStudentFilters(query, { statusTab, grade, search }) {
+// client-side, but in the database so only one page of rows is returned.
+function applyStudentFilters(query, { statusTab, grade, branchId, studentIds, search }) {
   switch (statusTab) {
     case 'pending':   query = query.eq('is_approved', false); break
     case 'active':    query = query.eq('status', 'active'); break
@@ -38,6 +39,12 @@ function applyStudentFilters(query, { statusTab, grade, search }) {
   }
   if (grade && grade !== 'all') {
     query = query.eq('grade', grade)
+  }
+  if (branchId && branchId !== 'all') {
+    query = query.eq('branch_id', branchId)
+  }
+  if (studentIds) {
+    query = query.in('id', studentIds.length > 0 ? studentIds : ['00000000-0000-0000-0000-000000000000'])
   }
   const q = (search || '').trim()
   if (q) {
@@ -49,17 +56,30 @@ function applyStudentFilters(query, { statusTab, grade, search }) {
 }
 
 // Returns one page of students plus the exact total for that filter.
-export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = 'all', grade = 'all', search = '' } = {}) {
+export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = 'all', grade = 'all', branchId = 'all', groupId = 'all', search = '' } = {}) {
   const from = page * pageSize
   const to = from + pageSize - 1
+
+  let studentIds = null
+  if (groupId && groupId !== 'all') {
+    const { data: sgData } = await supabase
+      .from('student_groups')
+      .select('student_id')
+      .eq('group_id', groupId)
+    studentIds = (sgData || []).map(r => r.student_id)
+  }
+
   let query = supabase
     .from('profiles')
     .select(STUDENT_LIST_COLUMNS, { count: 'exact' })
     .eq('role', 'student')
-  query = applyStudentFilters(query, { statusTab, grade, search })
+
+  query = applyStudentFilters(query, { statusTab, grade, branchId, studentIds, search })
+
   const { data, error, count } = await query
     .order('name', { ascending: true })
     .range(from, to)
+
   if (error) throw error
   return { rows: data || [], count: count || 0 }
 }
@@ -68,27 +88,44 @@ export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = '
 // Primary path: a single RPC (get_student_status_counts) returns all five
 // counts in ONE round-trip. Until that migration is applied, it transparently
 // falls back to five head-only COUNT queries so nothing breaks.
-export async function getStudentStatusCounts({ grade = 'all' } = {}) {
+export async function getStudentStatusCounts({ grade = 'all', branchId = 'all', groupId = 'all' } = {}) {
   const p_grade = grade && grade !== 'all' ? grade : null
+  const p_branch = branchId && branchId !== 'all' ? branchId : null
+  const p_group = groupId && groupId !== 'all' ? groupId : null
 
-  // One-request path via RPC (respects RLS / tenant scope).
-  try {
-    const { data, error } = await supabase.rpc('get_student_status_counts', { p_grade })
-    if (!error && data) {
-      return {
-        pending:   data.pending   || 0,
-        active:    data.active    || 0,
-        inactive:  data.inactive  || 0,
-        suspended: data.suspended || 0,
-        total:     data.total     || 0,
+  let studentIds = null
+  if (p_group) {
+    const { data: sgData } = await supabase
+      .from('student_groups')
+      .select('student_id')
+      .eq('group_id', p_group)
+    studentIds = (sgData || []).map(r => r.student_id)
+  }
+
+  // One-request path via RPC (respects RLS / tenant scope) - only when no branch/group specified
+  if (!p_branch && !p_group) {
+    try {
+      const { data, error } = await supabase.rpc('get_student_status_counts', { p_grade })
+      if (!error && data) {
+        return {
+          pending:   data.pending   || 0,
+          active:    data.active    || 0,
+          inactive:  data.inactive  || 0,
+          suspended: data.suspended || 0,
+          total:     data.total     || 0,
+        }
       }
-    }
-  } catch { /* RPC not deployed yet — use the fallback below */ }
+    } catch { /* RPC not deployed yet — use the fallback below */ }
+  }
 
   // Fallback: five cheap head-only COUNT queries (no rows transferred).
   const base = () => {
     let q = supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student')
     if (p_grade) q = q.eq('grade', p_grade)
+    if (p_branch) q = q.eq('branch_id', p_branch)
+    if (studentIds) {
+      q = q.in('id', studentIds.length > 0 ? studentIds : ['00000000-0000-0000-0000-000000000000'])
+    }
     return q
   }
   const [pending, active, inactive, suspended, total] = await Promise.all([

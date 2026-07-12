@@ -40,6 +40,8 @@ export default function AccountsPanel({ onBack, flash }) {
   // Search and filters
   const [query, setQuery] = useState('')
   const [selectedGrade, setSelectedGrade] = useState('all')
+  const [selectedBranch, setSelectedBranch] = useState('all')
+  const [selectedGroup, setSelectedGroup] = useState('all')
   const [statusTab, setStatusTab] = useState('pending')
 
   // Server-side pagination state (replaces loading the whole tenant roster).
@@ -81,7 +83,7 @@ export default function AccountsPanel({ onBack, flash }) {
     if (!silent) setLoading(true)
     try {
       const { rows, count } = await listStudentsPaged({
-        page, pageSize: PAGE_SIZE, statusTab, grade: selectedGrade, search: debouncedQuery
+        page, pageSize: PAGE_SIZE, statusTab, grade: selectedGrade, branchId: selectedBranch, groupId: selectedGroup, search: debouncedQuery
       })
       setStudents(rows)
       setTotalCount(count)
@@ -90,14 +92,14 @@ export default function AccountsPanel({ onBack, flash }) {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [page, statusTab, selectedGrade, debouncedQuery])
+  }, [page, statusTab, selectedGrade, selectedBranch, selectedGroup, debouncedQuery])
 
   // Tab badge counts come from cheap head-only COUNT queries (constant size).
   const reloadCounts = useCallback(async () => {
     try {
-      setCounts(await getStudentStatusCounts({ grade: selectedGrade }))
+      setCounts(await getStudentStatusCounts({ grade: selectedGrade, branchId: selectedBranch, groupId: selectedGroup }))
     } catch { /* badges are non-critical */ }
-  }, [selectedGrade])
+  }, [selectedGrade, selectedBranch, selectedGroup])
 
   useEffect(() => { loadPage() }, [loadPage])
   useEffect(() => { reloadCounts() }, [reloadCounts])
@@ -109,7 +111,21 @@ export default function AccountsPanel({ onBack, flash }) {
   }, [query])
 
   // Reset to the first page whenever the tab or grade filter changes.
-  useEffect(() => { setPage(0) }, [statusTab, selectedGrade])
+  useEffect(() => { setPage(0) }, [statusTab, selectedGrade, selectedBranch, selectedGroup])
+
+  // If the selected group doesn't belong to the newly selected grade or branch, reset it to 'all'
+  useEffect(() => {
+    if (selectedGroup !== 'all') {
+      const activeGroupObj = groups.find(g => g.id === selectedGroup)
+      if (activeGroupObj) {
+        const matchesGrade = selectedGrade === 'all' || activeGroupObj.grade === selectedGrade
+        const matchesBranch = selectedBranch === 'all' || activeGroupObj.branch_id === selectedBranch
+        if (!matchesGrade || !matchesBranch) {
+          setSelectedGroup('all')
+        }
+      }
+    }
+  }, [selectedGrade, selectedBranch, groups, selectedGroup])
 
   // After a mutation, refresh the current page rows + tab counts quietly.
   const softRefresh = useCallback(() => {
@@ -399,6 +415,26 @@ export default function AccountsPanel({ onBack, flash }) {
             {(gradesList || []).map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
+            <option value="all">جميع الفروع</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
+            <option value="all">جميع المجموعات</option>
+            {groups
+              .filter(g => (selectedGrade === 'all' || g.grade === selectedGrade) && (selectedBranch === 'all' || g.branch_id === selectedBranch))
+              .map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
           </select>
         </div>
 
