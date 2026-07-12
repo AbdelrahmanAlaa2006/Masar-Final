@@ -67,6 +67,7 @@ export async function saveGradesBatch(records) {
       let typeLabel = ''
       if (r.type === 'homework') typeLabel = 'واجب'
       else if (r.type === 'exam') typeLabel = 'امتحان'
+      else if (r.type === 'quiz') typeLabel = 'تسميع'
       else if (r.type === 'participation') typeLabel = 'مشاركة وتفاعل'
       else if (r.type === 'behavior') typeLabel = 'تقييم سلوكي'
 
@@ -190,6 +191,10 @@ export async function getStudentGradesSummary(studentId) {
     let totalExamMax = 0
     let examCount = 0
 
+    let totalQuizScore = 0
+    let totalQuizMax = 0
+    let quizCount = 0
+
     let participationCount = 0
     let behaviorNotesCount = 0
 
@@ -213,6 +218,10 @@ export async function getStudentGradesSummary(studentId) {
         totalExamScore += scoreVal
         totalExamMax += maxVal
         examCount++
+      } else if (r.type === 'quiz') {
+        totalQuizScore += scoreVal
+        totalQuizMax += maxVal
+        quizCount++
       } else if (r.type === 'participation') {
         participationCount++
       } else if (r.type === 'behavior') {
@@ -229,6 +238,10 @@ export async function getStudentGradesSummary(studentId) {
       ? Math.round((totalExamScore / totalExamMax) * 100)
       : null
 
+    const quizAverage = totalQuizMax > 0
+      ? Math.round((totalQuizScore / totalQuizMax) * 100)
+      : null
+
     return {
       homeworkCount,
       homeworkAverage,
@@ -238,6 +251,10 @@ export async function getStudentGradesSummary(studentId) {
       examAverage,
       examScore: totalExamScore,
       examMax: totalExamMax,
+      quizCount,
+      quizAverage,
+      quizScore: totalQuizScore,
+      quizMax: totalQuizMax,
       participationCount,
       behaviorNotesCount
     }
@@ -303,3 +320,39 @@ export async function listGradesForEvaluation(type, title) {
   if (error) throw error
   return data || []
 }
+
+// Delete a whole evaluation (كشف درجات) and invalidate caches
+export async function deleteEvaluation(type, title) {
+  if (!type || !title) return null
+
+  // 1. Fetch all student IDs who have a grade in this evaluation
+  const { data: records, error: fetchError } = await supabase
+    .from('grades')
+    .select('student_id')
+    .eq('type', type)
+    .eq('title', title)
+
+  if (fetchError) console.error('Error fetching student IDs for evaluation cache invalidation:', fetchError)
+
+  // 2. Delete the grade records
+  const { data, error } = await supabase
+    .from('grades')
+    .delete()
+    .eq('type', type)
+    .eq('title', title)
+    .select()
+
+  if (error) throw error
+
+  // 3. Invalidate caches for all affected students
+  if (records && records.length > 0) {
+    const studentIds = [...new Set(records.map(r => r.student_id))]
+    studentIds.forEach(id => {
+      invalidateCache(`grades-list:${id}`)
+      invalidateCache(`grades-summary:${id}`)
+    })
+  }
+
+  return data
+}
+

@@ -1,0 +1,1072 @@
+/* login-editorial.css — teacher landing / login page.
+   "Aurora glass" visual system, elevated: deep night background washed with
+   the tenant's colors, drifting aurora orbs, dot-grid texture, frosted glass
+   surfaces, pill buttons with shine sweeps, animated gradient headline, and
+   a rotating gradient tracer around the login card.
+   Motion language borrowed from the GitFekra site — reveal-on-scroll and
+   staggered rises on cubic-bezier(.16,1,.3,1), hover lifts, image scale.
+   Accent inherits the tenant's --primary / --secondary.
+   All classes prefixed .lgx- and self-contained. */
+
+@property --lgx-spin {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.lgx-root {
+  --lgx-a: var(--primary, #7c3aed);
+  --lgx-b: var(--secondary, #06b6d4);
+  --lgx-grad: linear-gradient(135deg, var(--lgx-a), var(--lgx-b));
+  --lgx-ease: cubic-bezier(.16, 1, .3, 1);
+
+  /* light theme */
+  --lgx-bg: #f3f5fa;
+  --lgx-card: rgba(255, 255, 255, 0.78);
+  --lgx-card-solid: #ffffff;
+  --lgx-tile: rgba(255, 255, 255, 0.62);
+  --lgx-ink: #131722;
+  --lgx-ink-soft: #3d4354;
+  --lgx-muted: #6b7386;
+  --lgx-line: rgba(19, 23, 34, 0.09);
+  --lgx-line-strong: rgba(19, 23, 34, 0.18);
+  --lgx-accent: color-mix(in srgb, var(--lgx-a) 88%, #131722);
+  --lgx-accent-soft: color-mix(in srgb, var(--lgx-a) 10%, transparent);
+  --lgx-glow-a: color-mix(in srgb, var(--lgx-a) 18%, transparent);
+  --lgx-glow-b: color-mix(in srgb, var(--lgx-b) 16%, transparent);
+  --lgx-nav-bg: rgba(243, 245, 250, 0.8);
+  --lgx-on-grad: #ffffff;
+  --lgx-danger: #c03d30;
+  --lgx-danger-soft: rgba(192, 61, 48, 0.09);
+  --lgx-shadow: 0 22px 55px -28px color-mix(in srgb, var(--lgx-a) 35%, rgba(19, 23, 34, 0.4));
+
+  min-height: 100vh;
+  background: var(--lgx-bg);
+  color: var(--lgx-ink);
+  font-family: 'Cairo', 'Tajawal', -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.7;
+  font-size: 16.5px;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s ease, color .3s ease;
+  position: relative;
+  overflow-x: clip;
+}
+
+/* Dark — deep night washed with the tenant aurora */
+.lgx-root.lgx-dark {
+  --lgx-bg: #090c14;
+  --lgx-card: rgba(255, 255, 255, 0.045);
+  --lgx-card-solid: #121724;
+  --lgx-tile: rgba(255, 255, 255, 0.04);
+  --lgx-ink: #eaeef7;
+  --lgx-ink-soft: #b6bdcf;
+  --lgx-muted: #8590a8;
+  --lgx-line: rgba(255, 255, 255, 0.08);
+  --lgx-line-strong: rgba(255, 255, 255, 0.16);
+  --lgx-accent: color-mix(in srgb, var(--lgx-a) 65%, #ffffff);
+  --lgx-accent-soft: color-mix(in srgb, var(--lgx-a) 16%, transparent);
+  --lgx-glow-a: color-mix(in srgb, var(--lgx-a) 24%, transparent);
+  --lgx-glow-b: color-mix(in srgb, var(--lgx-b) 20%, transparent);
+  --lgx-nav-bg: rgba(9, 12, 20, 0.72);
+  --lgx-danger: #ff7b6e;
+  --lgx-danger-soft: rgba(255, 123, 110, 0.1);
+  --lgx-shadow: 0 26px 60px -24px rgba(0, 0, 0, 0.65);
+}
+
+/* Ambient aurora wash + dot-grid texture behind everything */
+.lgx-root::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(52% 42% at 82% -6%, var(--lgx-glow-a), transparent 70%),
+    radial-gradient(46% 38% at 8% 22%, var(--lgx-glow-b), transparent 70%),
+    radial-gradient(60% 44% at 50% 118%, var(--lgx-glow-a), transparent 72%);
+}
+.lgx-root::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--lgx-line-strong) 1px, transparent 1.5px);
+  background-size: 30px 30px;
+  -webkit-mask-image: radial-gradient(70% 55% at 50% 0%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(70% 55% at 50% 0%, #000 30%, transparent 100%);
+  opacity: 0.5;
+}
+.lgx-root > * { position: relative; z-index: 1; }
+
+.lgx-root *, .lgx-root *::before, .lgx-root *::after { box-sizing: border-box; }
+.lgx-root ::selection { background: var(--lgx-a); color: #fff; }
+.lgx-root img { max-width: 100%; }
+
+/* ── Motion (borrowed from the GitFekra site, elevated) ────────── */
+.lgx-reveal {
+  opacity: 0; transform: translateY(22px);
+  filter: blur(5px);
+  transition: opacity .7s var(--lgx-ease), transform .7s var(--lgx-ease), filter .7s var(--lgx-ease);
+}
+.lgx-reveal.in { opacity: 1; transform: none; filter: none; }
+
+@keyframes lgxRise {
+  from { opacity: 0; transform: translateY(20px); filter: blur(5px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.lgx-rise { animation: lgxRise .75s var(--lgx-ease) both; }
+.lgx-rise-1 { animation-delay: .05s; }
+.lgx-rise-2 { animation-delay: .15s; }
+.lgx-rise-3 { animation-delay: .25s; }
+.lgx-rise-4 { animation-delay: .35s; }
+
+@keyframes lgxFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes lgxDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(4%, 7%) scale(1.12); }
+}
+@keyframes lgxGradShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes lgxSpinBorder { to { --lgx-spin: 360deg; } }
+@keyframes lgxShimmer {
+  0%, 60% { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(230%) skewX(-18deg); }
+}
+[dir="rtl"] .lgx-root, .lgx-root[dir="rtl"] { /* shimmer runs the same direction — it's decorative */ }
+
+@media (prefers-reduced-motion: reduce) {
+  .lgx-reveal, .lgx-rise { opacity: 1; transform: none; filter: none; animation: none; transition: none; }
+  .lgx-root *, .lgx-root *::before, .lgx-root *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; }
+}
+
+/* Visible keyboard focus everywhere */
+.lgx-root :focus-visible {
+  outline: 2px solid var(--lgx-accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* Shield headings from tenant theme sheets. Those sheets are written for the
+   old landing markup and repaint bare h1/h2 via `body.aa-*-theme h1 { ... }`
+   with !important gradients (navy/gold on the power theme). The theme class
+   lives on <body>, so it can't be dodged from the markup — out-specify it.
+   Intentional gradient text (.lgx-hero-title em, stat numbers, branch names)
+   lives on child/other elements and is unaffected. */
+.lgx-root.lgx-root.lgx-root h1,
+.lgx-root.lgx-root.lgx-root h2 {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--lgx-ink) !important;
+}
+
+/* ── Buttons — pill, gradient primary, shine sweep ─────────────── */
+.lgx-btn {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 28px; font-weight: 700; font-size: 0.95rem;
+  font-family: inherit; text-decoration: none; cursor: pointer;
+  border-radius: 999px; border: 1px solid transparent; line-height: 1.5;
+  transition: transform .25s var(--lgx-ease), box-shadow .3s ease,
+              background .2s ease, color .2s ease, border-color .2s ease;
+}
+.lgx-btn:hover { transform: translateY(-2px); }
+.lgx-btn:active { transform: translateY(0) scale(0.99); }
+.lgx-btn-sm { padding: 8px 18px; font-size: 0.85rem; }
+
+/* primary — tenant gradient with glow + shine sweep on hover */
+.lgx-btn-ink, .lgx-btn-accent {
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad);
+  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--lgx-a) 65%, transparent);
+}
+.lgx-btn-ink:hover, .lgx-btn-accent:hover {
+  box-shadow: 0 18px 38px -12px color-mix(in srgb, var(--lgx-a) 80%, transparent);
+}
+.lgx-btn-ink::after, .lgx-btn-accent::after {
+  content: '';
+  position: absolute; top: -20%; bottom: -20%; width: 36%;
+  left: 0;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+}
+.lgx-btn-ink:hover::after, .lgx-btn-accent:hover::after {
+  animation: lgxShimmer .9s ease forwards;
+}
+/* arrow / icon nudge inside the primary CTA */
+.lgx-btn-ink span { display: inline-block; transition: transform .3s var(--lgx-ease); }
+.lgx-btn-ink:hover span { transform: translateX(-4px); }
+[dir="ltr"] .lgx-btn-ink:hover span { transform: translateX(4px); }
+
+/* secondary — glass outline */
+.lgx-btn-line {
+  background: var(--lgx-tile);
+  color: var(--lgx-ink);
+  border-color: var(--lgx-line-strong);
+  backdrop-filter: blur(8px);
+}
+.lgx-btn-line:hover {
+  border-color: color-mix(in srgb, var(--lgx-a) 55%, transparent);
+  color: var(--lgx-accent);
+  box-shadow: 0 10px 26px -16px color-mix(in srgb, var(--lgx-a) 50%, transparent);
+}
+.lgx-btn[disabled] { opacity: 0.65; cursor: progress; transform: none; }
+
+.lgx-link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: inherit; font-weight: 700;
+  color: var(--lgx-accent);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+  transition: opacity .18s ease;
+}
+.lgx-link-btn:hover { opacity: 0.8; }
+
+.lgx-spin {
+  width: 16px; height: 16px; flex: 0 0 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  animation: lgxSpin .7s linear infinite;
+}
+@keyframes lgxSpin { to { transform: rotate(360deg); } }
+
+/* ── Nav — floating glass bar that elevates on scroll ──────────── */
+.lgx-nav {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px clamp(20px, 5vw, 64px);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background .3s ease, border-color .3s ease, box-shadow .3s ease, padding .3s ease;
+}
+.lgx-nav.is-scrolled {
+  padding-block: 10px;
+  background: var(--lgx-nav-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: var(--lgx-line);
+  box-shadow: 0 14px 40px -24px rgba(0, 0, 0, 0.4);
+}
+.lgx-brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.lgx-brand-logo {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  border-radius: 13px;
+  background: var(--lgx-grad);
+  padding: 6px; object-fit: contain;
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--lgx-a) 70%, transparent);
+  transition: transform .3s var(--lgx-ease);
+}
+.lgx-brand:hover .lgx-brand-logo { transform: rotate(-6deg) scale(1.06); }
+.lgx-brand-name {
+  font-weight: 800; font-size: 1.12rem; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lgx-nav-links { display: flex; gap: 4px; }
+.lgx-nav-links a {
+  position: relative;
+  color: var(--lgx-ink-soft); text-decoration: none; font-weight: 600; font-size: 0.9rem;
+  padding: 7px 14px; border-radius: 999px;
+  transition: background .18s ease, color .18s ease;
+}
+.lgx-nav-links a:hover { background: var(--lgx-accent-soft); color: var(--lgx-accent); }
+.lgx-nav-actions { display: flex; align-items: center; gap: 10px; }
+.lgx-chip-btn {
+  width: 38px; height: 38px; min-width: 38px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--lgx-tile); backdrop-filter: blur(8px);
+  border: 1px solid var(--lgx-line-strong); border-radius: 999px;
+  color: var(--lgx-ink); font-weight: 700; font-size: 0.85rem;
+  cursor: pointer; font-family: inherit; line-height: 1;
+  transition: border-color .18s ease, color .18s ease, transform .25s var(--lgx-ease), box-shadow .25s ease;
+}
+.lgx-chip-btn:hover {
+  border-color: color-mix(in srgb, var(--lgx-a) 55%, transparent);
+  color: var(--lgx-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--lgx-a) 55%, transparent);
+}
+@media (max-width: 860px) { .lgx-nav-links { display: none; } }
+@media (max-width: 560px) {
+  .lgx-brand-name { max-width: 32vw; }
+  .lgx-nav { padding-block: 9px; }
+}
+
+/* ── Kicker — pill badge with periodic shimmer ─────────────────── */
+.lgx-kicker {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--lgx-accent); text-transform: uppercase;
+  background: var(--lgx-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--lgx-a) 25%, transparent);
+  padding: 5px 14px; border-radius: 999px;
+}
+.lgx-kicker::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px;
+  background: var(--lgx-grad);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--lgx-a) 60%, transparent);
+}
+.lgx-kicker::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; width: 50%; left: 0;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--lgx-a) 14%, transparent), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  animation: lgxShimmer 4.5s ease infinite;
+  pointer-events: none;
+}
+.lgx-kicker i { font-size: 0.75rem; }
+
+.lgx-section { padding: clamp(56px, 9vw, 108px) clamp(20px, 5vw, 64px); max-width: 1160px; margin: 0 auto; }
+.lgx-section-tinted { max-width: none; background: transparent; border: none; }
+.lgx-section-tinted > * { max-width: 1160px; margin-inline: auto; }
+.lgx-section-head { max-width: 720px; margin-bottom: clamp(30px, 5vw, 52px); }
+.lgx-section-head h2 {
+  margin: 16px 0 0; font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  font-weight: 800; line-height: 1.28; letter-spacing: -0.015em;
+}
+.lgx-section-note { margin: 12px 0 0; color: var(--lgx-muted); font-size: 1rem; max-width: 560px; }
+
+/* ── Hero ──────────────────────────────────────────────────────── */
+.lgx-hero {
+  position: relative;
+  max-width: 1160px; margin: 0 auto;
+  padding: clamp(48px, 7vw, 96px) clamp(20px, 5vw, 64px) clamp(48px, 7vw, 84px);
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: start;
+}
+
+/* drifting aurora orbs — must stay absolutely positioned or the orbs div
+   becomes a real grid item and shoves the hero columns out of place
+   (higher specificity than the `.lgx-hero > *` stacking rule below) */
+.lgx-hero > .lgx-orbs { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.lgx-orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(70px); opacity: 0.55;
+  animation: lgxDrift 16s ease-in-out infinite alternate;
+}
+.lgx-orb-a { width: 360px; height: 360px; top: -90px; inset-inline-end: 4%; background: var(--lgx-glow-a); }
+.lgx-orb-b { width: 260px; height: 260px; bottom: -40px; inset-inline-start: -60px; background: var(--lgx-glow-b); animation-delay: -6s; animation-duration: 20s; }
+.lgx-orb-c { width: 200px; height: 200px; top: 40%; inset-inline-start: 38%; background: var(--lgx-glow-a); animation-delay: -11s; animation-duration: 24s; opacity: 0.35; }
+.lgx-hero > * { position: relative; z-index: 1; }
+
+.lgx-hero-text .lgx-kicker { margin-bottom: 22px; }
+.lgx-hero-title {
+  margin: 0;
+  font-size: clamp(2.25rem, 5.4vw, 3.9rem);
+  font-weight: 800; line-height: 1.2; letter-spacing: -0.02em;
+}
+.lgx-hero-title em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--lgx-a), var(--lgx-b), var(--lgx-a));
+  background-size: 220% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: lgxGradShift 5s ease-in-out infinite alternate;
+}
+.lgx-hero-sub {
+  margin: 22px 0 0; max-width: 540px;
+  font-size: clamp(1rem, 1.5vw, 1.15rem); color: var(--lgx-ink-soft);
+}
+.lgx-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+
+/* hero facts — glass tiles */
+.lgx-hero-facts {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin: clamp(36px, 5vw, 54px) 0 0; padding: 0;
+}
+.lgx-fact {
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line);
+  border-radius: 18px;
+  padding: 16px 18px;
+  backdrop-filter: blur(8px);
+  transition: transform .3s var(--lgx-ease), border-color .25s ease, box-shadow .3s ease;
+}
+.lgx-fact:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--lgx-a) 40%, transparent);
+  box-shadow: 0 16px 34px -22px color-mix(in srgb, var(--lgx-a) 50%, transparent);
+}
+.lgx-fact dt { margin: 0; color: var(--lgx-muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
+.lgx-fact dd { margin: 4px 0 0; font-size: clamp(1rem, 1.8vw, 1.16rem); font-weight: 800; line-height: 1.35; }
+
+@media (max-width: 980px) {
+  .lgx-hero { grid-template-columns: 1fr; }
+  .lgx-hero-form { max-width: 560px; }
+}
+@media (max-width: 560px) { .lgx-hero-facts { grid-template-columns: 1fr; } }
+
+/* ── Login card — frosted glass with rotating gradient tracer ──── */
+.lgx-hero-form { position: relative; }
+.lgx-hero-form::before {
+  content: '';
+  position: absolute; inset: -30px; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 55% at 30% 10%, var(--lgx-glow-a), transparent 72%),
+    radial-gradient(55% 50% at 80% 90%, var(--lgx-glow-b), transparent 72%);
+  filter: blur(8px);
+}
+.lgx-login-card {
+  position: relative;
+  background: var(--lgx-card);
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 26px;
+  padding: clamp(24px, 3vw, 36px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: var(--lgx-shadow);
+}
+/* rotating gradient tracer around the card edge */
+.lgx-login-card::before {
+  content: '';
+  position: absolute; inset: -1px; border-radius: 27px;
+  padding: 1.5px;
+  background: conic-gradient(from var(--lgx-spin),
+    transparent 0turn, transparent 0.62turn,
+    var(--lgx-a) 0.78turn, var(--lgx-b) 0.88turn,
+    transparent 1turn);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: lgxSpinBorder 7s linear infinite;
+  pointer-events: none;
+  opacity: 0.9;
+}
+/* static gradient sheen along the top edge (fallback when @property
+   isn't supported — the tracer simply doesn't rotate) */
+.lgx-login-card::after {
+  content: '';
+  position: absolute; top: 0; inset-inline: 24px; height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--lgx-a), var(--lgx-b), transparent);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.lgx-login-head { margin-bottom: 22px; }
+.lgx-login-head h2 { margin: 14px 0 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; }
+.lgx-login-head p { margin: 6px 0 0; color: var(--lgx-muted); font-size: 0.92rem; }
+
+.lgx-field { margin-bottom: 16px; }
+.lgx-field label {
+  display: block; margin-bottom: 7px;
+  font-size: 0.85rem; font-weight: 700; color: var(--lgx-ink-soft);
+}
+.lgx-input-wrap { position: relative; display: flex; align-items: center; }
+.lgx-input-wrap > i {
+  position: absolute; inset-inline-start: 16px;
+  color: var(--lgx-muted); font-size: 0.9rem; pointer-events: none;
+  transition: color .2s ease, transform .25s var(--lgx-ease);
+}
+.lgx-input-wrap:focus-within > i { color: var(--lgx-accent); transform: scale(1.12); }
+.lgx-input {
+  width: 100%;
+  padding: 13.5px 44px;
+  font-family: inherit; font-size: 1rem; font-weight: 600;
+  color: var(--lgx-ink);
+  caret-color: var(--lgx-accent);
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 14px;
+  transition: border-color .2s ease, box-shadow .25s ease, background .2s ease;
+}
+.lgx-input::placeholder { color: var(--lgx-muted); font-weight: 500; }
+.lgx-input:hover { border-color: color-mix(in srgb, var(--lgx-a) 40%, var(--lgx-line-strong)); }
+.lgx-input:focus {
+  outline: none;
+  border-color: var(--lgx-a);
+  box-shadow: 0 0 0 4px var(--lgx-accent-soft), 0 8px 22px -14px color-mix(in srgb, var(--lgx-a) 55%, transparent);
+  background: var(--lgx-card-solid);
+}
+.lgx-eye {
+  position: absolute; inset-inline-end: 8px;
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; border-radius: 999px;
+  color: var(--lgx-muted); font-size: 0.9rem;
+  transition: color .18s ease, background .18s ease, transform .2s var(--lgx-ease);
+}
+.lgx-eye:hover { color: var(--lgx-accent); background: var(--lgx-accent-soft); }
+.lgx-eye:active { transform: scale(0.9); }
+
+.lgx-form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: 4px 0 18px;
+}
+.lgx-check {
+  display: inline-flex; align-items: center; gap: 9px;
+  cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--lgx-ink-soft);
+  user-select: none;
+}
+.lgx-check input {
+  appearance: none; -webkit-appearance: none;
+  width: 19px; height: 19px; margin: 0; flex: 0 0 19px;
+  border: 1.5px solid var(--lgx-line-strong); border-radius: 6px;
+  background: var(--lgx-tile); cursor: pointer;
+  display: inline-grid; place-content: center;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s var(--lgx-ease);
+}
+.lgx-check input::before {
+  content: ''; width: 9px; height: 9px;
+  transform: scale(0); transition: transform .22s var(--lgx-ease);
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 40% 100%, 100% 16%, 80% 0%, 38% 66%);
+}
+.lgx-check input:checked {
+  background: var(--lgx-grad);
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--lgx-a) 60%, transparent);
+}
+.lgx-check input:checked::before { transform: scale(1); }
+.lgx-check:active input { transform: scale(0.92); }
+
+.lgx-submit { width: 100%; padding-block: 14px; font-size: 1rem; }
+
+.lgx-error {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 16px; padding: 12px 15px;
+  border: 1px solid color-mix(in srgb, var(--lgx-danger) 35%, transparent);
+  background: var(--lgx-danger-soft);
+  color: var(--lgx-danger);
+  border-radius: 13px; font-size: 0.88rem; font-weight: 700;
+  animation: lgxRise .35s var(--lgx-ease) both;
+}
+.lgx-error i { margin-top: 3px; flex: 0 0 auto; }
+
+.lgx-login-foot {
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid var(--lgx-line);
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 0.9rem; color: var(--lgx-ink-soft); text-align: center;
+}
+
+/* ── Teacher section ───────────────────────────────────────────── */
+.lgx-teacher-grid {
+  display: grid; grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(28px, 5vw, 64px); align-items: stretch;
+}
+.lgx-portrait {
+  position: relative;
+  background:
+    radial-gradient(120% 95% at 50% 100%, color-mix(in srgb, var(--lgx-a) 28%, transparent), transparent 72%),
+    var(--lgx-tile);
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 30px;
+  min-height: 440px;
+  display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--lgx-shadow);
+}
+.lgx-portrait::before {
+  /* aurora ring behind the person — breathes slowly */
+  content: '';
+  position: absolute; inset: auto -20% -45% -20%; height: 90%;
+  background: radial-gradient(50% 50% at 50% 50%, var(--lgx-glow-b), transparent 70%);
+  pointer-events: none;
+  animation: lgxBreathe 6s ease-in-out infinite;
+}
+@keyframes lgxBreathe {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+.lgx-portrait img {
+  position: relative;
+  width: 100%; height: 100%;
+  max-height: 580px;
+  object-fit: contain; object-position: bottom center;
+  padding-top: 26px;
+  filter: saturate(0.92);
+  transition: filter .35s ease, transform .55s var(--lgx-ease);
+  transform-origin: bottom center;
+}
+.lgx-portrait:hover img { filter: none; transform: scale(1.04); }
+.lgx-portrait-chips {
+  position: absolute; top: 18px; inset-inline-start: 18px; z-index: 2;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+}
+.lgx-chip {
+  font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 5px 14px; border-radius: 999px;
+  background: var(--lgx-card); color: var(--lgx-ink-soft);
+  border: 1px solid var(--lgx-line-strong);
+  backdrop-filter: blur(10px);
+  animation: lgxFloat 5s ease-in-out infinite;
+}
+.lgx-chip:nth-child(2) { animation-delay: -2.5s; }
+.lgx-chip-accent {
+  color: var(--lgx-on-grad);
+  background: var(--lgx-grad);
+  border-color: transparent;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--lgx-a) 65%, transparent);
+}
+.lgx-portrait-name {
+  position: absolute; bottom: 18px; inset-inline-start: 18px; inset-inline-end: 18px; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 18px;
+  background: var(--lgx-card);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 18px;
+  transition: transform .3s var(--lgx-ease), border-color .25s ease;
+}
+.lgx-portrait:hover .lgx-portrait-name {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--lgx-a) 40%, transparent);
+}
+.lgx-portrait-name strong { font-size: 1rem; font-weight: 800; display: block; line-height: 1.4; }
+.lgx-portrait-name span { display: block; font-size: 0.78rem; color: var(--lgx-muted); font-weight: 600; }
+.lgx-portrait-name i {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 13px; font-size: 1rem;
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad);
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--lgx-a) 60%, transparent);
+}
+
+.lgx-teacher-body h2 {
+  margin: 16px 0 0; font-size: clamp(1.7rem, 3vw, 2.35rem);
+  font-weight: 800; line-height: 1.28;
+}
+.lgx-teacher-role { margin: 6px 0 0; color: var(--lgx-accent); font-weight: 700; font-size: 1.02rem; }
+.lgx-teacher-bio { margin: 18px 0 0; color: var(--lgx-ink-soft); font-size: 1.02rem; max-width: 60ch; }
+
+.lgx-teacher-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: clamp(26px, 4vw, 40px) 0 0; padding: 0; list-style: none;
+}
+.lgx-teacher-stats li {
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line);
+  border-radius: 18px;
+  padding: 16px 18px;
+  backdrop-filter: blur(8px);
+  transition: transform .3s var(--lgx-ease), border-color .25s ease, box-shadow .3s ease;
+}
+.lgx-teacher-stats li:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--lgx-a) 40%, transparent);
+  box-shadow: 0 16px 34px -22px color-mix(in srgb, var(--lgx-a) 50%, transparent);
+}
+.lgx-teacher-stats .num {
+  display: block; font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 800; line-height: 1.2;
+  background: linear-gradient(120deg, var(--lgx-a), var(--lgx-b));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.lgx-teacher-stats .lbl { display: block; margin-top: 3px; color: var(--lgx-muted); font-size: 0.84rem; font-weight: 600; }
+
+.lgx-quote {
+  position: relative;
+  margin: clamp(26px, 4vw, 40px) 0 0; padding: 22px 26px;
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line);
+  border-inline-start: 3px solid var(--lgx-a);
+  border-radius: 18px;
+  backdrop-filter: blur(8px);
+}
+.lgx-quote::before {
+  content: '\201C';
+  position: absolute; top: -4px; inset-inline-end: 18px;
+  font-size: 4.5rem; line-height: 1; font-family: Georgia, serif;
+  background: linear-gradient(120deg, var(--lgx-a), var(--lgx-b));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  opacity: 0.35;
+}
+.lgx-quote p { margin: 0; font-size: 1.04rem; font-weight: 700; line-height: 1.8; }
+.lgx-quote footer { margin-top: 6px; color: var(--lgx-muted); font-size: 0.86rem; font-weight: 600; }
+
+@media (max-width: 860px) {
+  .lgx-teacher-grid { grid-template-columns: 1fr; }
+  .lgx-portrait { min-height: 340px; max-width: 480px; margin-inline: auto; width: 100%; }
+}
+@media (max-width: 540px) { .lgx-teacher-stats { grid-template-columns: 1fr 1fr; } }
+
+/* ── Shared card hover: gradient border reveal ─────────────────── */
+.lgx-pkg-card, .lgx-feature, .lgx-step { position: relative; }
+.lgx-pkg-card::before, .lgx-feature::before, .lgx-step::before {
+  content: '';
+  position: absolute; inset: -1px; border-radius: inherit;
+  padding: 1.5px;
+  background: var(--lgx-grad);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity .35s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.lgx-pkg-card:hover::before, .lgx-feature:hover::before, .lgx-step:hover::before { opacity: 0.65; }
+
+/* ── Packages ──────────────────────────────────────────────────── */
+.lgx-pkg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
+.lgx-pkg-card {
+  display: flex; flex-direction: column;
+  background: var(--lgx-card);
+  border: 1px solid var(--lgx-line);
+  border-radius: 24px; overflow: hidden;
+  backdrop-filter: blur(12px);
+  transition: transform .35s var(--lgx-ease), box-shadow .35s ease;
+}
+.lgx-pkg-card:hover { transform: translateY(-6px); box-shadow: var(--lgx-shadow); }
+.lgx-pkg-media {
+  position: relative; aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(110% 100% at 50% 100%, color-mix(in srgb, var(--lgx-a) 22%, transparent), transparent 72%),
+    var(--lgx-tile);
+  border-bottom: 1px solid var(--lgx-line);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.lgx-pkg-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .55s var(--lgx-ease); }
+.lgx-pkg-card:hover .lgx-pkg-media img { transform: scale(1.06); }
+.lgx-pkg-media > i { font-size: 2.2rem; color: var(--lgx-accent); opacity: 0.55; }
+.lgx-pkg-count {
+  position: absolute; top: 12px; inset-inline-start: 12px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  background: var(--lgx-card); color: var(--lgx-ink-soft);
+  border: 1px solid var(--lgx-line-strong);
+  padding: 3px 12px; border-radius: 999px;
+  backdrop-filter: blur(10px);
+}
+.lgx-pkg-body { display: flex; flex-direction: column; flex: 1; padding: 20px 22px 22px; }
+.lgx-pkg-body h3 { margin: 0; font-size: 1.12rem; font-weight: 800; }
+.lgx-pkg-body p {
+  margin: 8px 0 18px; color: var(--lgx-ink-soft); font-size: 0.92rem; flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.lgx-pkg-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-top: 14px; border-top: 1px solid var(--lgx-line);
+}
+.lgx-pkg-price { font-weight: 800; font-size: 1.2rem; }
+.lgx-pkg-price small { font-size: 0.8rem; color: var(--lgx-muted); font-weight: 700; }
+
+/* ── Features — glass cards with gradient icon tiles ───────────── */
+.lgx-features {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  border: none;
+}
+.lgx-feature {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 28px 26px 30px;
+  background: var(--lgx-card);
+  border: 1px solid var(--lgx-line);
+  border-radius: 24px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: transform .35s var(--lgx-ease), box-shadow .35s ease;
+}
+.lgx-feature:hover { transform: translateY(-6px); box-shadow: var(--lgx-shadow); }
+.lgx-feature-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lgx-feature-top i {
+  width: 50px; height: 50px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 15px; font-size: 1.15rem;
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--lgx-a) 65%, transparent);
+  transition: transform .35s var(--lgx-ease), box-shadow .35s ease;
+  order: -1;
+}
+.lgx-feature:hover .lgx-feature-top i {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 14px 30px -10px color-mix(in srgb, var(--lgx-a) 80%, transparent);
+}
+.lgx-feature-n {
+  font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 700;
+  color: var(--lgx-ink); opacity: 0.09; letter-spacing: 0;
+  line-height: 1;
+  transition: opacity .3s ease, transform .35s var(--lgx-ease);
+}
+.lgx-feature:hover .lgx-feature-n { opacity: 0.22; transform: translateY(-2px); }
+.lgx-feature h3 { margin: 4px 0 0; font-size: 1.1rem; font-weight: 800; }
+.lgx-feature p { margin: 0; color: var(--lgx-ink-soft); font-size: 0.94rem; }
+@media (max-width: 900px) { .lgx-features { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .lgx-features { grid-template-columns: 1fr; } }
+
+/* ── Steps — numbered gradient badges with connector ───────────── */
+.lgx-steps {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: clamp(18px, 3vw, 30px);
+}
+.lgx-step {
+  background: var(--lgx-card);
+  border: 1px solid var(--lgx-line);
+  border-radius: 24px;
+  padding: 28px 26px 30px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: transform .35s var(--lgx-ease), box-shadow .35s ease;
+}
+.lgx-step:hover { transform: translateY(-6px); box-shadow: var(--lgx-shadow); }
+.lgx-step-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px;
+  border-radius: 999px;
+  font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem;
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--lgx-a) 65%, transparent);
+  transition: transform .35s var(--lgx-ease);
+}
+.lgx-step:hover .lgx-step-n { transform: scale(1.1); }
+.lgx-step h3 { margin: 16px 0 8px; font-size: 1.08rem; font-weight: 800; }
+.lgx-step p { margin: 0; color: var(--lgx-ink-soft); font-size: 0.92rem; }
+@media (max-width: 720px) { .lgx-steps { grid-template-columns: 1fr; } }
+
+/* ── Location ──────────────────────────────────────────────────── */
+.lgx-branch {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: clamp(24px, 4vw, 48px); align-items: start;
+}
+.lgx-branch + .lgx-branch { margin-top: clamp(36px, 6vw, 56px); padding-top: clamp(36px, 6vw, 56px); border-top: 1px dashed var(--lgx-line-strong); }
+.lgx-branch.no-map { grid-template-columns: 1fr; max-width: 680px; }
+
+.lgx-map-frame {
+  position: relative;
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 26px; overflow: hidden;
+  background: var(--lgx-card);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--lgx-shadow);
+  transition: transform .35s var(--lgx-ease), border-color .25s ease;
+}
+.lgx-map-frame:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--lgx-a) 40%, transparent); }
+.lgx-map-chrome {
+  display: flex; align-items: center; gap: 5px;
+  padding: 11px 16px; border-bottom: 1px solid var(--lgx-line);
+  background: var(--lgx-tile);
+}
+.lgx-map-chrome i { width: 9px; height: 9px; border-radius: 50%; background: var(--lgx-line-strong); }
+.lgx-map-chrome em {
+  margin-inline-start: auto; font-style: normal;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--lgx-on-grad);
+  background: var(--lgx-grad);
+  border-radius: 999px; padding: 3px 12px; line-height: 1.6;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.lgx-map-chrome em::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: #fff;
+  animation: lgxPulse 1.6s ease-in-out infinite;
+}
+@keyframes lgxPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.lgx-map-frame iframe { display: block; width: 100%; aspect-ratio: 16 / 10.5; border: 0; }
+
+.lgx-branch-name {
+  margin: 0 0 14px; font-size: 1.3rem; font-weight: 800;
+  background: linear-gradient(120deg, var(--lgx-a), var(--lgx-b));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  display: inline-block;
+}
+.lgx-loc-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.lgx-loc-row {
+  display: flex; gap: 14px; padding: 16px 18px;
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line);
+  border-radius: 18px;
+  backdrop-filter: blur(8px);
+  transition: transform .3s var(--lgx-ease), border-color .25s ease, box-shadow .3s ease;
+}
+.lgx-loc-row:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--lgx-a) 40%, transparent);
+  box-shadow: 0 16px 34px -24px color-mix(in srgb, var(--lgx-a) 50%, transparent);
+}
+.lgx-loc-icon {
+  width: 42px; height: 42px; flex: 0 0 42px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 13px;
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad); font-size: 0.95rem;
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--lgx-a) 60%, transparent);
+  transition: transform .3s var(--lgx-ease);
+}
+.lgx-loc-row:hover .lgx-loc-icon { transform: scale(1.08) rotate(-4deg); }
+.lgx-loc-row .lbl {
+  display: block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--lgx-muted); text-transform: uppercase;
+}
+.lgx-loc-row .val { display: block; font-weight: 800; font-size: 0.98rem; white-space: pre-line; line-height: 1.6; }
+.lgx-loc-row .sub { display: block; color: var(--lgx-muted); font-size: 0.84rem; font-weight: 600; }
+.lgx-loc-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+@media (max-width: 860px) { .lgx-branch { grid-template-columns: 1fr; } }
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.lgx-footer {
+  border-top: 1px solid var(--lgx-line);
+  padding: 40px clamp(20px, 5vw, 64px) 30px;
+  max-width: 1160px; margin: 0 auto;
+}
+.lgx-footer-main {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 24px; flex-wrap: wrap;
+}
+.lgx-footer-brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.05rem; }
+.lgx-socials { display: flex; gap: 10px; }
+.lgx-social {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line-strong); border-radius: 999px;
+  color: var(--lgx-ink-soft); font-size: 0.95rem; text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: background .25s ease, color .2s ease, border-color .2s ease,
+              transform .3s var(--lgx-ease), box-shadow .3s ease;
+}
+.lgx-social:hover {
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad); border-color: transparent;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--lgx-a) 65%, transparent);
+}
+.lgx-footer-bottom {
+  margin-top: 30px; padding-top: 16px;
+  border-top: 1px solid var(--lgx-line);
+  color: var(--lgx-muted); font-size: 0.84rem;
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+
+/* ── Modals ────────────────────────────────────────────────────── */
+.lgx-modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(5, 7, 12, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: clamp(16px, 4vw, 40px);
+  animation: lgxFade .2s ease both;
+}
+@keyframes lgxFade { from { opacity: 0; } to { opacity: 1; } }
+.lgx-modal {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: 90vh; overflow-y: auto;
+  background: var(--lgx-card-solid);
+  color: var(--lgx-ink);
+  border: 1px solid var(--lgx-line-strong);
+  border-radius: 26px;
+  padding: clamp(24px, 4vw, 32px);
+  box-shadow: var(--lgx-shadow);
+  animation: lgxModalIn .4s var(--lgx-ease) both;
+}
+@keyframes lgxModalIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.lgx-modal::before {
+  content: '';
+  position: absolute; top: 0; inset-inline: 24px; height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--lgx-a), var(--lgx-b), transparent);
+}
+.lgx-modal-close {
+  position: absolute; top: 16px; inset-inline-end: 16px;
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--lgx-tile); border: 1px solid var(--lgx-line); border-radius: 999px;
+  color: var(--lgx-muted); font-size: 0.9rem; cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, transform .3s var(--lgx-ease);
+}
+.lgx-modal-close:hover { color: var(--lgx-ink); border-color: var(--lgx-accent); transform: rotate(90deg); }
+.lgx-modal-head { margin-bottom: 20px; padding-inline-end: 36px; }
+.lgx-modal-head h3 { margin: 12px 0 0; font-size: 1.25rem; font-weight: 800; }
+.lgx-modal-head p { margin: 6px 0 0; color: var(--lgx-muted); font-size: 0.9rem; }
+
+.lgx-modal-success { text-align: center; padding: 8px 0; }
+.lgx-modal-success .lgx-success-icon {
+  width: 64px; height: 64px; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--lgx-grad);
+  color: var(--lgx-on-grad);
+  font-size: 1.7rem;
+  box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--lgx-a) 70%, transparent);
+  animation: lgxPop .5s var(--lgx-ease) both;
+}
+@keyframes lgxPop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.lgx-modal-success h3 { margin: 0 0 8px; font-size: 1.2rem; font-weight: 800; }
+.lgx-modal-success p { margin: 0 0 20px; color: var(--lgx-ink-soft); font-size: 0.92rem; }
+
+.lgx-children { display: flex; flex-direction: column; gap: 10px; }
+.lgx-child-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 14px 18px;
+  background: var(--lgx-tile);
+  border: 1px solid var(--lgx-line-strong); border-radius: 16px;
+  font-family: inherit; cursor: pointer; color: var(--lgx-ink);
+  text-align: start;
+  transition: border-color .2s ease, background .2s ease, transform .3s var(--lgx-ease);
+}
+.lgx-child-btn:hover {
+  border-color: color-mix(in srgb, var(--lgx-a) 45%, transparent);
+  background: var(--lgx-accent-soft);
+  transform: translateY(-2px);
+}
+.lgx-child-btn strong { display: block; font-size: 0.95rem; font-weight: 800; }
+.lgx-child-btn span { display: block; color: var(--lgx-muted); font-size: 0.78rem; font-weight: 600; }
+.lgx-child-btn i { color: var(--lgx-accent); transition: transform .25s var(--lgx-ease); }
+.lgx-child-btn:hover i { transform: translateX(-3px); }
+[dir="ltr"] .lgx-child-btn:hover i { transform: translateX(3px); }
+
+/* ── Success toast (spawnToast keeps these class names) ────────── */
+.auth-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(5, 7, 12, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .3s ease;
+  padding: 20px;
+}
+.auth-overlay.open { opacity: 1; }
+.auth-overlay.closing { opacity: 0; }
+.auth-toast {
+  background: var(--lgx-card-solid, #121724);
+  color: var(--lgx-ink, #eaeef7);
+  border: 1px solid var(--lgx-line-strong, rgba(255, 255, 255, 0.16));
+  border-radius: 26px;
+  padding: 30px 36px 26px;
+  text-align: center;
+  min-width: min(320px, 90vw);
+  transform: translateY(14px) scale(0.96);
+  transition: transform .4s cubic-bezier(.16, 1, .3, 1);
+  overflow: hidden; position: relative;
+  font-family: 'Cairo', 'Tajawal', sans-serif;
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.6);
+}
+.auth-overlay.open .auth-toast { transform: none; }
+.auth-toast-check { width: 56px; height: 56px; margin: 0 auto 14px; }
+.auth-toast-check svg { width: 100%; height: 100%; }
+.auth-toast-check-circle {
+  stroke: var(--lgx-a, #7c3aed); stroke-width: 2.5;
+  stroke-dasharray: 145; stroke-dashoffset: 145;
+  animation: lgxStroke .5s cubic-bezier(.65, 0, .45, 1) forwards;
+}
+.auth-toast-check-path {
+  stroke: var(--lgx-b, #06b6d4); stroke-width: 3.2; stroke-linecap: round;
+  stroke-dasharray: 48; stroke-dashoffset: 48;
+  animation: lgxStroke .35s cubic-bezier(.65, 0, .45, 1) .35s forwards;
+}
+@keyframes lgxStroke { to { stroke-dashoffset: 0; } }
+.auth-toast-text { font-size: 1.1rem; font-weight: 800; }
+.auth-toast-sub { margin-top: 4px; color: var(--lgx-muted, #8590a8); font-size: 0.88rem; font-weight: 600; }
+.auth-toast-bar {
+  position: absolute; bottom: 0; inset-inline: 0; height: 3px;
+  background: var(--lgx-line, rgba(255, 255, 255, 0.08));
+}
+.auth-toast-bar span {
+  display: block; height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--lgx-a, #7c3aed), var(--lgx-b, #06b6d4));
+  transform-origin: inline-start;
+  animation: lgxBar 1.4s linear forwards;
+}
+@keyframes lgxBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }

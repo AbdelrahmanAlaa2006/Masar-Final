@@ -254,3 +254,37 @@ export async function listCustomAttendanceDates(grade) {
   const filtered = (data || []).map(r => r.date)
   return [...new Set(filtered)].sort((a, b) => new Date(b) - new Date(a))
 }
+
+// Delete an attendance session and clear related caches
+export async function deleteAttendanceSession(sessionId) {
+  if (!sessionId) return null
+
+  // 1. Fetch student IDs associated with this session to invalidate their caches
+  const { data: records, error: fetchError } = await supabase
+    .from('attendance_records')
+    .select('student_id')
+    .eq('session_id', sessionId)
+
+  if (fetchError) console.error('Error fetching student IDs for session cache invalidation:', fetchError)
+
+  // 2. Delete the session (which deletes attendance_records via cascade)
+  const { data, error } = await supabase
+    .from('attendance_sessions')
+    .delete()
+    .eq('id', sessionId)
+    .select()
+
+  if (error) throw error
+
+  // 3. Invalidate caches
+  invalidateCache('attendance-sessions-list')
+  if (records && records.length > 0) {
+    records.forEach(r => {
+      invalidateCache(`attendance-summary:${r.student_id}`)
+      invalidateCache(`attendance-history:${r.student_id}`)
+    })
+  }
+
+  return data
+}
+

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
-import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation } from '@backend/gradesApi'
+import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation } from '@backend/gradesApi'
 import { listGroups } from '@backend/groupsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, LIST_TTL } from '../../utils/cache'
@@ -26,6 +26,7 @@ export default function GradesPanel({ onBack, flash }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingEvaluation, setDeletingEvaluation] = useState(false)
 
   // Scores sheet states: studentId -> { score: num, notes: string }
   const [sheetData, setSheetData] = useState({})
@@ -59,6 +60,36 @@ export default function GradesPanel({ onBack, flash }) {
       }
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // Delete the selected evaluation sheet
+  const handleDeleteEvaluation = async () => {
+    if (!selectedEvaluation) return
+
+    const [type, title] = selectedEvaluation.split(':')
+    const typeLabels = {
+      'homework': 'واجب منزلي',
+      'exam': 'امتحان / اختبار',
+      'quiz': 'تسميع',
+      'participation': 'مشاركة وتفاعل',
+      'behavior': 'ملاحظة سلوكية'
+    }
+    const typeText = typeLabels[type] || type
+
+    const confirmMsg = `هل أنت متأكد من حذف كشف الدرجات "${title}" (${typeText}) بالكامل؟\nسيؤدي ذلك إلى حذف الكشف وجميع درجات الطلاب المسجلة فيه نهائياً ولا يمكن التراجع عن هذا الإجراء.`
+    if (!window.confirm(confirmMsg)) return
+
+    setDeletingEvaluation(true)
+    try {
+      await deleteEvaluation(type, title)
+      flash('تم حذف كشف الدرجات وجميع درجات الطلاب بنجاح', 'success')
+      await loadUniqueEvaluationsList(grade)
+    } catch (err) {
+      console.error(err)
+      flash('فشل حذف كشف الدرجات: ' + err.message, 'error')
+    } finally {
+      setDeletingEvaluation(false)
     }
   }
 
@@ -116,8 +147,8 @@ export default function GradesPanel({ onBack, flash }) {
   const getAutoTitle = (type, sId, dateVal, customTitleVal) => {
     const typeLabels = {
       'homework': 'واجب',
-      'quiz': 'امتحان قصير',
-      'exam': 'امتحان شامل',
+      'quiz': 'تسميع',
+      'exam': 'امتحان',
       'attendance': 'ملاحظة سلوكية',
       'behavior': 'ملاحظة سلوكية'
     }
@@ -393,6 +424,7 @@ export default function GradesPanel({ onBack, flash }) {
     const typeLabels = {
       'homework': 'واجب منزلي',
       'exam': 'امتحان / اختبار',
+      'quiz': 'تسميع',
       'participation': 'مشاركة وتفاعل',
       'behavior': 'ملاحظة سلوكية'
     }
@@ -537,6 +569,7 @@ export default function GradesPanel({ onBack, flash }) {
                   const typeLabels = {
                     'homework': 'واجب منزلي',
                     'exam': 'امتحان',
+                    'quiz': 'تسميع',
                     'participation': 'مشاركة',
                     'behavior': 'سلوك'
                   }
@@ -561,6 +594,7 @@ export default function GradesPanel({ onBack, flash }) {
               <select value={evalType} onChange={(e) => setEvalType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
                 <option value="homework">واجب منزلي</option>
                 <option value="exam">امتحان / اختبار</option>
+                <option value="quiz">تسميع</option>
                 <option value="participation">مشاركة وتفاعل</option>
                 <option value="behavior">ملاحظة سلوكية</option>
               </select>
@@ -787,16 +821,30 @@ export default function GradesPanel({ onBack, flash }) {
               <i className="fas fa-search" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
             </div>
 
-            {searchedHistoryRows.length > 0 && (
-              <button 
-                onClick={handlePrintGrades}
-                className="cp-btn cp-btn-info"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
-              >
-                <i className="fas fa-print" />
-                طباعة الكشف الحالي
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {selectedEvaluation && (
+                <button 
+                  onClick={handleDeleteEvaluation} 
+                  disabled={deletingEvaluation} 
+                  className="cp-btn cp-btn-danger"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                >
+                  {deletingEvaluation ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash" />}
+                  حذف الكشف بالكامل
+                </button>
+              )}
+
+              {searchedHistoryRows.length > 0 && (
+                <button 
+                  onClick={handlePrintGrades}
+                  className="cp-btn cp-btn-info"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+                >
+                  <i className="fas fa-print" />
+                  طباعة الكشف الحالي
+                </button>
+              )}
+            </div>
           </div>
 
           {/* History Grades Table */}

@@ -580,6 +580,30 @@ export default function Profile() {
                         </div>
                       </div>
 
+                      {/* Quiz Average */}
+                      <div className="stat-progress-item">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>درجات التسميعات</span>
+                          {gradesSummary.quizCount > 0 ? (
+                            <span>
+                              {gradesSummary.quizScore} من {gradesSummary.quizMax} درجة في {gradesSummary.quizCount} تسميع ({gradesSummary.quizAverage}%)
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--profile-row-label)', fontWeight: 'normal' }}>
+                              لا توجد تسميعات مُقيَّمة بعد
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--profile-avatar-bg)', borderRadius: '999px', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%',
+                            width: `${gradesSummary.quizAverage || 0}%`,
+                            background: 'linear-gradient(90deg, #f59e0b, #d97706)',
+                            borderRadius: '999px'
+                          }}></div>
+                        </div>
+                      </div>
+
                       {/* Badges for other evaluations */}
                       <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
                         <span className="profile-chip" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981' }}>

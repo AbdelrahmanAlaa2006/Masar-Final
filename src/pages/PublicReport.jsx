@@ -283,6 +283,7 @@ export default function PublicReport() {
 - نسبة حضور السنتر: ${attendance.percentage || 100}% (حضر ${attendance.present || 0} حصة من إجمالي ${attendance.total || 0}).
 - متوسط درجات واجبات السنتر: ${grades.homework_avg || 0}%
 - متوسط درجات امتحانات السنتر: ${grades.exam_avg || 0}%
+- متوسط درجات تسميعات السنتر: ${grades.quiz_avg || 0}%
 - نقاط المشاركة والتفاعل: ${grades.participation_count || 0}
 - التقييمات السلوكية: ${grades.behavior_count || 0}
 
@@ -362,7 +363,7 @@ export default function PublicReport() {
     const excusedAtt = filteredAttendance.filter(a => a.status === 'excused').length
     const attRate = totalAtt > 0 ? Math.round(((presentAtt + lateAtt) / totalAtt) * 100) : 100
 
-    const examGrades = filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework')
+    const examGrades = filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework' || g.type === 'quiz')
     const avgScore = examGrades.length > 0
       ? (examGrades.reduce((sum, g) => sum + Number(g.score), 0) / examGrades.length).toFixed(1)
       : '0.0'
@@ -405,7 +406,7 @@ export default function PublicReport() {
   // Slice last 5 items
   const last5Attendance = useMemo(() => filteredAttendance.slice(0, 5), [filteredAttendance])
   const last5Grades = useMemo(() => {
-    return filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework').slice(0, 5)
+    return filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework' || g.type === 'quiz').slice(0, 5)
   }, [filteredGrades])
 
   // Dynamic student evaluation for performance tab
@@ -1400,7 +1401,7 @@ export default function PublicReport() {
                       <div>
                         <div className="pr-list-item-title">{g.title}</div>
                         <div className="pr-list-item-date">
-                          {g.type === 'homework' ? 'واجب' : 'اختبار'} • {fmtDate(g.created_at)}
+                          {g.type === 'homework' ? 'واجب' : g.type === 'quiz' ? 'تسميع' : 'اختبار'} • {fmtDate(g.created_at)}
                         </div>
                       </div>
                       <div style={{ textAlign: 'left' }}>
@@ -1838,7 +1839,7 @@ export default function PublicReport() {
                               <div>
                                 <div style={{ fontWeight: 'bold', fontSize: '0.92rem' }}>{g.title}</div>
                                 <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
-                                  {g.type === 'homework' ? 'واجب' : 'اختبار'} • {fmtDate(g.created_at)}
+                                  {g.type === 'homework' ? 'واجب' : g.type === 'quiz' ? 'تسميع' : 'اختبار'} • {fmtDate(g.created_at)}
                                 </div>
                               </div>
                               <div style={{ textAlign: 'left' }}>

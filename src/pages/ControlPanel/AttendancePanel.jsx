@@ -7,7 +7,8 @@ import {
   listAttendanceSessions, 
   createAttendanceSession, 
   listAttendanceForSession, 
-  saveAttendanceBatch 
+  saveAttendanceBatch,
+  deleteAttendanceSession
 } from '@backend/attendanceApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
@@ -50,6 +51,7 @@ export default function AttendancePanel({ onBack, flash }) {
   // Loading & Saving States
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingSession, setDeletingSession] = useState(false)
   
   // QR scanner states
   const [showScanner, setShowScanner] = useState(false)
@@ -402,6 +404,42 @@ export default function AttendancePanel({ onBack, flash }) {
       flash('حدث خطأ أثناء إنشاء الحصة: ' + err.message, 'error')
     } finally {
       setIsCreatingSession(false)
+    }
+  }
+
+  // Delete the selected session
+  const handleDeleteSession = async () => {
+    if (!selectedSessionId || selectedSessionId === 'new') return
+
+    const currentSession = sessions.find(s => s.id === selectedSessionId)
+    const sessionTitle = currentSession ? currentSession.title : 'هذه الحصة'
+
+    const confirmMsg = `هل أنت متأكد من حذف "${sessionTitle}" بالكامل؟\nسيؤدي ذلك إلى حذف الحصة وجميع سجلات الحضور المرتبطة بها نهائياً ولا يمكن التراجع عن هذا الإجراء.`
+    if (!window.confirm(confirmMsg)) return
+
+    setDeletingSession(true)
+    try {
+      await deleteAttendanceSession(selectedSessionId)
+      flash('تم حذف الحصة وجميع سجلات الحضور المرتبطة بها بنجاح', 'success')
+      
+      // Refresh the sessions list
+      const sessionsList = await listAttendanceSessions(grade, selectedBranchId || null)
+      setSessions(sessionsList)
+      
+      // Reset selectedSessionId to the first session in the updated list or 'new'
+      if (sessionsList.length > 0) {
+        setSelectedSessionId(sessionsList[0].id)
+      } else {
+        setSelectedSessionId('new')
+      }
+
+      // Clear history records
+      setHistoryRecords([])
+    } catch (err) {
+      console.error(err)
+      flash('فشل حذف الحصة: ' + err.message, 'error')
+    } finally {
+      setDeletingSession(false)
     }
   }
 
@@ -1120,12 +1158,26 @@ export default function AttendancePanel({ onBack, flash }) {
               <i className="fas fa-search" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
             </div>
 
-            {searchedHistoryRecords.length > 0 && (
-              <button onClick={handlePrintHistory} className="cp-btn cp-btn-info" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
-                <i className="fas fa-print" />
-                طباعة الكشف
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {selectedSessionId && selectedSessionId !== 'new' && (
+                <button 
+                  onClick={handleDeleteSession} 
+                  disabled={deletingSession} 
+                  className="cp-btn cp-btn-danger"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                >
+                  {deletingSession ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash" />}
+                  حذف الحصة بالكامل
+                </button>
+              )}
+
+              {searchedHistoryRecords.length > 0 && (
+                <button onClick={handlePrintHistory} className="cp-btn cp-btn-info" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
+                  <i className="fas fa-print" />
+                  طباعة الكشف
+                </button>
+              )}
+            </div>
           </div>
 
           {/* History Records Table */}
