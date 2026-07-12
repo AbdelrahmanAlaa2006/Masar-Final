@@ -923,7 +923,17 @@ export default function AttendancePanel({ onBack, flash }) {
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Use the device/phone camera as the barcode reader (no USB scanner needed). */}
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="cp-btn cp-btn-info"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+                  title="استخدم كاميرا الموبايل أو اللابتوب كقارئ باركود"
+                >
+                  <i className="fas fa-camera" /> مسح بالكاميرا
+                </button>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--cp-text-muted)', fontWeight: 'bold' }}>
                   <input type="checkbox" checked={autoCheckIn} onChange={(e) => setAutoCheckIn(e.target.checked)} style={{ accentColor: '#10b981' }} />
                   تسجيل حضور تلقائي عند المسح

@@ -5,6 +5,7 @@ import { uploadAvatarImage, deleteR2Object } from '@backend/r2'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
 import { GRADE_LABEL } from './ControlPanel/shared'
+import { barcodeImageUrl } from '../utils/barcodeLabels'
 import './Profile.css'
 
 export default function Profile() {
@@ -210,7 +211,8 @@ export default function Profile() {
   if (!user) return null
 
   // Barcode for the student's digital card (QR removed).
-  const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(user.barcode_token || '')}&scale=3&rotate=N&includetext=true`
+  // Quiet-zone + crisp barcode so it scans off the phone screen (see barcodeLabels).
+  const barcodeUrl = barcodeImageUrl(user.barcode_token || '')
 
   return (
     <div className="profile-page" dir="rtl">
@@ -704,7 +706,7 @@ export default function Profile() {
                   <img
                     src={barcodeUrl}
                     alt="Barcode"
-                    style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '75px' }}
+                    style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '90px', imageRendering: 'crisp-edges' }}
                   />
                 </div>
               )}

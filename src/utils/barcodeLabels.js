@@ -45,12 +45,21 @@ export const LABEL_SIZE_OPTIONS = [
 ]
 
 // Reuse the existing Code128 barcode image source (bwip-js public API). Same
-// bcid/text as before, so scanners read the identical token. `includetext`
-// prints the human-readable number under the bars as a manual fallback.
-export function barcodeImageUrl(token, { scale = 3, barMm = 9 } = {}) {
+// bcid/text as before, so scanners read the identical token / value.
+//   paddingwidth=10  -> the Code128-mandated >=10-module QUIET ZONE on each side.
+//                       Without it the bars touch the image edge and scanners
+//                       (especially off a phone screen) fail — the real cause of
+//                       "can't scan from the mobile profile".
+//   scale=4          -> crisper bars so downscaling on small screens/thermal
+//                       heads keeps each module sharp.
+//   includetext      -> human-readable value under the bars (manual fallback).
+//   barMm (optional) -> requested bar height in mm for print; omitted on screen.
+export function barcodeImageUrl(token, { scale = 4, barMm = 0, quiet = 10 } = {}) {
   const t = encodeURIComponent(String(token || ''))
-  return `https://bwipjs-api.metafloor.com/?bcid=code128&text=${t}` +
-         `&scale=${scale}&height=${barMm}&includetext=true&rotate=N`
+  let url = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${t}` +
+            `&scale=${scale}&paddingwidth=${quiet}&includetext=true&rotate=N`
+  if (barMm) url += `&height=${barMm}`
+  return url
 }
 
 function escapeHtml(value) {
@@ -82,23 +91,31 @@ function labelHtml(item) {
 
 // Build the full, self-contained print document for a set of resolved items.
 function buildDocument(items, preset, title) {
-  const { w, h, name, meta, pad } = preset
+  const { name, meta } = preset
   const labels = items.map(labelHtml).join('')
 
-  // One @page sized to the label; margin:0 removes printer-added margins.
-  // `.lbl` is exactly one page tall and breaks after every label so the
-  // thermal printer advances exactly one label each time. The last label
-  // must not force an extra blank feed.
+  // ADAPTIVE PAGE: `size: auto` makes the page box equal the printer's ACTUAL
+  // label/roll (as configured in the XPrinter driver) — we never force a fixed
+  // mm size, so there is no size/orientation conflict with the driver. That
+  // conflict was what rotated the barcode (vertical) and tiled it across
+  // adjacent labels. `margin: 0` drops printer margins.
+  //
+  // Each `.lbl` is exactly one page tall (100vh) and breaks after itself, so
+  // one student = one physical label, and the barcode (contained) can never
+  // split across labels. Padding is a percentage so it scales to any label
+  // size. The barcode image stays horizontal (rotate=N) and is contained, so
+  // it fits inside whatever label is installed without stretching or clipping.
   const styles =
-    `@page { size: ${w}mm ${h}mm; margin: 0; }` +
+    `@page { size: auto; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { width: ${w}mm; background: #fff; }` +
+    `html, body { background: #fff; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${w}mm; height: ${h}mm; padding: ${pad}mm;` +
+      `width: 100%; height: 100vh; padding: 5%;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
+      `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
@@ -107,7 +124,7 @@ function buildDocument(items, preset, title) {
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 1mm;` +
+    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 3%;` +
       `display: flex; align-items: center; justify-content: center; }` +
     `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`

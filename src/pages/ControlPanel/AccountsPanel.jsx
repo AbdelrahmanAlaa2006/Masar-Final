@@ -6,7 +6,7 @@ import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
 import { listGroups, assignStudentToGroup, listStudentsByGroup } from '@backend/groupsApi'
 import { initials, GRADE_LABEL } from './shared'
-import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE } from '../../utils/barcodeLabels'
+import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl } from '../../utils/barcodeLabels'
 import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
@@ -809,9 +809,7 @@ export default function AccountsPanel({ onBack, flash }) {
       {/* Barcode card lightbox (QR removed — barcode only) */}
       {showQrModal && selectedQrStudent && (() => {
         const barcodeToken = selectedQrStudent.barcode_token || '';
-        const barcodeApiUrl = barcodeToken
-          ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(barcodeToken)}&scale=3&rotate=N&includetext=true`
-          : '';
+        const barcodeApiUrl = barcodeToken ? barcodeImageUrl(barcodeToken) : '';
         const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || 'غير محدد';
         const groupText = getGroupName(selectedQrStudent);
 
@@ -827,7 +825,7 @@ export default function AccountsPanel({ onBack, flash }) {
                 {/* Barcode only */}
                 {barcodeToken ? (
                   <div style={{ background: '#fff', padding: '16px 20px', borderRadius: 16, display: 'inline-block', width: '100%', maxWidth: '300px' }}>
-                    <img src={barcodeApiUrl} alt="Barcode" style={{ width: '100%', height: 'auto', maxHeight: '90px', display: 'block' }} />
+                    <img src={barcodeApiUrl} alt="Barcode" style={{ width: '100%', height: 'auto', maxHeight: '90px', display: 'block', imageRendering: 'crisp-edges' }} />
                   </div>
                 ) : (
                   <div style={{ color: '#94a3b8' }}>لا يوجد كود باركود لهذا الطالب</div>
