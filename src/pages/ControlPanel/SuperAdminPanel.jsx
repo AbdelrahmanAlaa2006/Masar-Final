@@ -603,22 +603,48 @@ export default function SuperAdminPanel({ onBack, flash }) {
     }
   }
 
-  // Update user role handler
+  // Update user role handler. Promoting to a staff role also ACTIVATES the
+  // account (an inactive/pending user can't function as an admin) and lets the
+  // super admin optionally set a known login password so the new admin/assistant
+  // can sign in right away.
   const handleUpdateUserRole = async (userId, newRole) => {
     setUserRoleUpdating(userId)
     try {
+      const isStaff = newRole === 'admin' || newRole === 'assistant'
+      const patch = { role: newRole }
+      if (isStaff) {
+        patch.is_active = true
+        patch.is_approved = true
+        patch.status = 'active'
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ role: newRole })
+        .update(patch)
         .eq('id', userId)
 
       if (error) throw error
 
+      // Optional password set on promotion (empty = keep their current password).
+      if (isStaff) {
+        const pwd = window.prompt('كلمة مرور تسجيل الدخول لهذا الحساب (6 أحرف على الأقل — اتركها فارغة للإبقاء على كلمة المرور الحالية):')
+        if (pwd && pwd.trim().length >= 6) {
+          const { error: pErr } = await supabase.rpc('super_admin_set_password', {
+            p_user_id: userId,
+            p_password: pwd.trim(),
+          })
+          if (pErr) throw pErr
+          flash('تم تعيين كلمة المرور الجديدة لهذا المدير.', 'success')
+        } else if (pwd && pwd.trim().length > 0) {
+          flash('كلمة المرور قصيرة (6 أحرف على الأقل) — لم يتم تغييرها.', 'warning')
+        }
+      }
+
       flash('تم تغيير صلاحيات المستخدم بنجاح!', 'success')
-      
+
       // Update local profiles list state
       setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
-      
+
       // Refresh statistics locally
       fetchStats()
     } catch (err) {
