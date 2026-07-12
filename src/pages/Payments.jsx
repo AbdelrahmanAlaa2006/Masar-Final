@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
-import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment } from '@backend/paymentsApi'
+import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment, deletePayment } from '@backend/paymentsApi'
 import { searchStudents } from '@backend/profilesApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
@@ -724,6 +724,28 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   // Notes and resolve actions mapping
   const [notesMap, setNotesMap] = useState({})
   const [resolvingId, setResolvingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+
+  // Permanently delete a payment (test data / mistake). RLS keeps it tenant-safe.
+  // We drop it from local state so every derived total (stats, tab counts) and
+  // the student's monthly "paid?" status update immediately — real, not fake.
+  const handleDeletePayment = async (p) => {
+    if (!window.confirm(`حذف هذه العملية نهائياً؟\nالطالب: ${p.profiles?.name || '—'}\nالمبلغ: ${p.amount} ج.م\nلا يمكن التراجع.`)) return
+    setDeletingId(p.id)
+    try {
+      await deletePayment(p.id)
+      invalidateCache('students')
+      // Re-pull from the DB so every derived total/tab-count reflects reality
+      // (the row is truly gone) — real, not a local guess.
+      onRefresh()
+      notify('تم حذف العملية بنجاح.', 'success')
+    } catch (err) {
+      console.error('Delete payment error:', err)
+      notify('تعذر حذف العملية: ' + (err.message || ''), 'danger')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const handleResolve = async (paymentId, status, studentId) => {
     if (!adminId) return
@@ -1428,6 +1450,16 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                             )}
                           </div>
                         )}
+                        {/* Delete any payment (test data / mistake) — tenant-safe via RLS. */}
+                        <button
+                          onClick={() => handleDeletePayment(p)}
+                          disabled={deletingId === p.id}
+                          className="cp-btn cp-btn-ghost"
+                          title="حذف هذه العملية نهائياً"
+                          style={{ marginTop: 8, padding: '5px 10px', fontSize: '0.75rem', color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          {deletingId === p.id ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-trash"></i> حذف العملية</>}
+                        </button>
                       </td>
 
                     </tr>
@@ -1482,7 +1514,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     <div>
                       <strong style={{ color: 'var(--cp-text-main)' }}>{studentsList.find(s => s.id === cashStudentId)?.name}</strong>
                       <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', marginRight: 10 }}>
-                        ({GRADE_SHORT[studentsList.find(s => s.id === cashStudentId)?.grade] || studentsList.find(s => s.id === cashStudentId)?.grade || ''})
+                        ({GRADE_LABEL[studentsList.find(s => s.id === cashStudentId)?.grade] || studentsList.find(s => s.id === cashStudentId)?.grade || ''})
                       </span>
                     </div>
                     <button 
@@ -1518,7 +1550,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                               <small style={{ opacity: 0.7, marginRight: 8 }}>({s.phone || 'بدون هاتف'})</small>
                             </div>
                             <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
-                              {GRADE_SHORT[s.grade] || s.grade}
+                              {GRADE_LABEL[s.grade] || s.grade}
                             </span>
                           </div>
                         ))

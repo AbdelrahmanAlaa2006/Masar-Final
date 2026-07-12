@@ -89,6 +89,16 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   const hasDebt = student.outstanding_balance > 0
 
+  // Monthly subscription check ("should he pay this month, or is he safe?"):
+  // safe if the last approved payment falls in the CURRENT calendar month.
+  const paidThisMonth = (() => {
+    const iso = student.last_payment?.created_at
+    if (!iso) return false
+    const p = new Date(iso)
+    const now = new Date()
+    return p.getFullYear() === now.getFullYear() && p.getMonth() === now.getMonth()
+  })()
+
   const modalBackground = hasWarning
     ? (isDark ? 'rgba(45, 34, 12, 0.85)' : 'rgba(254, 243, 199, 0.95)')
     : (isDark ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.9)')
@@ -392,6 +402,17 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
               </div>
             )}
           </div>
+        </div>
+
+        {/* Monthly subscription status — the "should pay / safe" indicator */}
+        <div style={{
+          marginBottom: '20px', padding: '14px 16px', borderRadius: '14px', textAlign: 'center',
+          background: paidThisMonth ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+          border: `1px solid ${paidThisMonth ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          color: paidThisMonth ? '#10b981' : '#ef4444', fontWeight: 800, fontSize: '1rem'
+        }}>
+          <i className={`fas ${paidThisMonth ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ marginInlineEnd: '8px' }} />
+          {paidThisMonth ? 'سدّد اشتراك هذا الشهر ✅' : 'لم يسدّد اشتراك هذا الشهر — مطلوب الدفع ⚠️'}
         </div>
 
         {/* Last Payment */}

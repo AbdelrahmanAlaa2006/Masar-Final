@@ -278,6 +278,24 @@ export async function recordCashPayment({ studentId, amount, packageName, adminI
   return data
 }
 
+// Admin/assistant: permanently delete a payment/ledger entry (e.g. test data or
+// a mistaken record). RLS on student_ledger is
+//   FOR ALL USING (tenant_id = current_tenant_id() AND has_permission(uid,'payments'))
+// so this ONLY ever deletes a row belonging to the caller's own tenant, and only
+// for staff who hold the 'payments' permission — each tenant owns its own data.
+// Removing the row is real: all totals/balances (attendance debt, parent report,
+// admin stats) are derived from student_ledger, so they drop immediately.
+export async function deletePayment(paymentId) {
+  const { error } = await supabase
+    .from('student_ledger')
+    .delete()
+    .eq('id', paymentId)
+  if (error) throw error
+  invalidatePrefix('student-payments-')
+  invalidatePrefix('admin-payments')
+  return true
+}
+
 // Fetch all payment settings
 export async function getPaymentSettings() {
   const key = 'payment-settings'
