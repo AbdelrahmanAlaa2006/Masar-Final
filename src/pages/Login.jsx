@@ -78,6 +78,9 @@ const translations = {
 export default function Login() {
   const { login, isLoggedIn, user } = useAuth()
   const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, themeConfig } = useTenant()
+  // Every tenant lets students sign in with a short alphanumeric login code
+  // instead of a phone. Purely additive — a normal phone still works.
+  const codeLoginEnabled = true
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
@@ -430,7 +433,8 @@ export default function Login() {
       setError(lang === 'ar' ? `محاولات كثيرة. حاول مجدداً بعد ${Math.ceil(cooldown / 1000)} ثانية` : `Too many attempts. Try again in ${Math.ceil(cooldown / 1000)}s`)
       return
     }
-    if (phone.trim().length < 8) { setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number'); return }
+    const handleOk = phone.trim().length >= 8 || (codeLoginEnabled && /^[a-zA-Z0-9]{4,20}$/.test(phone.trim()))
+    if (!handleOk) { setError(lang === 'ar' ? (codeLoginEnabled ? 'رقم الهاتف أو الكود غير صحيح' : 'رقم الهاتف غير صحيح') : (codeLoginEnabled ? 'Invalid phone or code' : 'Invalid phone number')); return }
     if (password.length < 6) { setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters'); return }
     setLoading(true)
     try {

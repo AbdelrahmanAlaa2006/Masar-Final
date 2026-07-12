@@ -43,6 +43,12 @@ export default function Register() {
   const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, gradesList, themeConfig } = useTenant()
   const navigate = useNavigate()
 
+  // Every tenant may sign a student up with a short alphanumeric login code
+  // instead of a phone (the parent's WhatsApp phone stays required). This is
+  // purely additive — a normal phone (>=8 digits) still works everywhere.
+  const codeLoginEnabled = true
+  const isValidHandle = (h) => h.length >= 8 || /^[a-zA-Z0-9]{4,20}$/.test(h)
+
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const t = translations[lang]
@@ -197,7 +203,7 @@ export default function Register() {
     e.preventDefault()
     setError('')
     if (name.trim().length < 3) { setError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters'); return }
-    if (phone.trim().length < 8) { setError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number'); return }
+    if (!isValidHandle(phone.trim())) { setError(lang === 'ar' ? (codeLoginEnabled ? 'رقم الهاتف أو الكود غير صحيح' : 'رقم الهاتف غير صحيح') : (codeLoginEnabled ? 'Invalid phone or code' : 'Invalid phone number')); return }
     if (parentPhone.trim().length < 8) { setError(lang === 'ar' ? 'رقم هاتف ولي الأمر غير صحيح' : 'Invalid parent phone number'); return }
     if (phone.trim() === parentPhone.trim()) { setError(lang === 'ar' ? 'رقم هاتف الطالب لا يمكن أن يكون هو نفسه رقم هاتف ولي الأمر' : 'Student phone number cannot be the same as parent phone number'); return }
     if (password.length < 6) { setError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters'); return }
@@ -314,11 +320,11 @@ export default function Register() {
                 </label>
                 <i className="fas fa-mobile-screen-button"></i>
                 <input
-                  type="tel"
+                  type={codeLoginEnabled ? 'text' : 'tel'}
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   required
-                  placeholder={t.phone}
+                  placeholder={codeLoginEnabled ? (lang === 'ar' ? 'رقم الهاتف أو الكود' : 'Phone or code') : t.phone}
                   dir="ltr"
                   autoComplete="tel"
                 />

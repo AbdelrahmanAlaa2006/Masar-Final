@@ -2,7 +2,11 @@ import { supabase } from './supabase'
 
 // Convert phone number to a fake email for Supabase auth, scoped per tenant
 const phoneToEmail = (phone, tenantId) => {
-  const cleanPhone = phone.replace(/\s+/g, '')
+  // The login handle is usually a phone, but tenants with the `login_code`
+  // feature let special-case students sign up with a short alphanumeric code.
+  // Lowercasing normalizes codes so signup and login always resolve to the same
+  // email; for digit-only phones it's a no-op (fully backward compatible).
+  const cleanPhone = phone.replace(/\s+/g, '').toLowerCase()
   const defaultTenantId = 'd3b07384-d113-4ec2-a5d6-d005b6be4979'
   if (!tenantId || tenantId === defaultTenantId) {
     return `${cleanPhone}@masaar.app`
