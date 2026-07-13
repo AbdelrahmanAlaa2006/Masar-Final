@@ -8,7 +8,8 @@ import {
   processNotificationQueue,
   sendGatewayMessage,
   buildWaMeLink,
-  markNotificationManuallySent
+  markNotificationManuallySent,
+  clearPendingQueue
 } from '@backend/parentNotificationsApi'
 import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp, pairWhatsApp } from '@backend/whatsappGatewayApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -33,6 +34,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   const [summary, setSummary] = useState({ pending: 0, sent: 0, failed: 0, total: 0 })
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [clearingPending, setClearingPending] = useState(false)
   const [processingProgress, setProcessingProgress] = useState('')
 
   // Settings states — only two modes now:
@@ -330,6 +332,24 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     }
   }
 
+  const handleClearPendingQueue = async () => {
+    if (!window.confirm('هل أنت متأكد من مسح جميع الرسائل المعلقة بقائمة الانتظار؟ لن يؤثر هذا على كشوفات الحضور أو أي بيانات أخرى.')) {
+      return
+    }
+    
+    setClearingPending(true)
+    try {
+      await clearPendingQueue(tenantId)
+      flash('تم مسح قائمة الانتظار المعلقة بنجاح.', 'success')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      flash('فشل مسح قائمة الانتظار المعلقة: ' + err.message, 'error')
+    } finally {
+      setClearingPending(false)
+    }
+  }
+
   const totalPages = Math.ceil(totalNotifications / limit) || 1
 
   return (
@@ -453,6 +473,15 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                   إعادة المحاولة للفاشل
                 </button>
               )}
+              <button
+                onClick={handleClearPendingQueue}
+                disabled={clearingPending}
+                className="cp-btn cp-btn-danger"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+              >
+                {clearingPending ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-can" />}
+                <span>مسح قائمة الانتظار المعلقة</span>
+              </button>
             </div>
           </div>
 

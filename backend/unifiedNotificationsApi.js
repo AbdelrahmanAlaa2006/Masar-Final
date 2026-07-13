@@ -10,7 +10,7 @@ export async function listNotificationsForStudent(studentId) {
   return data || []
 }
 
-export async function queueNotification({ studentId, title, message, type, channels, createdBy }) {
+export async function queueNotification({ studentId, title, message, type, channels, createdBy, attendanceRecordId = null }) {
   const statusMap = {}
   channels.forEach(ch => {
     statusMap[ch] = 'pending'
@@ -25,7 +25,8 @@ export async function queueNotification({ studentId, title, message, type, chann
       type,
       channels,
       status: statusMap,
-      created_by: createdBy || null
+      created_by: createdBy || null,
+      attendance_record_id: attendanceRecordId || null
     })
     .select()
     .single()

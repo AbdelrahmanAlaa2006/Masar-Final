@@ -124,10 +124,41 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
     invalidateCache(`attendance-history:${r.student_id}`)
   })
 
-  // Step 2: Queue notifications for absent/late students using the unified queue
+  // Fetch updated records first to obtain the database-generated attendance_records IDs
+  const sessionIds = [...new Set(records.map(r => r.session_id))]
+  const { data: updatedRecords } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .in('session_id', sessionIds)
+
+  const activeRecords = updatedRecords || []
+
+  // Step 2: Queue notifications for absent/late students using the unified queue (idempotent)
   const dateLabel = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   
   const notifPromises = records.map(async (r) => {
+    // Find the database record row
+    const recordRow = activeRecords.find(ur => ur.student_id === r.student_id && ur.session_id === r.session_id)
+    if (!recordRow) return
+
+    const attendanceRecordId = recordRow.id
+
+    // A. If student status is 'present' or 'excused':
+    // Clear any pending/unprocessed WhatsApp notifications for this attendance entry.
+    if (r.status === 'present' || r.status === 'excused') {
+      try {
+        await supabase
+          .from('unified_notifications')
+          .delete()
+          .eq('attendance_record_id', attendanceRecordId)
+          .eq('status->>whatsapp', 'pending')
+      } catch (err) {
+        console.error('Failed to clear pending notifications on attendance update:', err)
+      }
+      return
+    }
+
+    // B. If student status is 'absent' or 'late':
     if (r.parent_phone && r.parent_phone.trim() !== '') {
       let message = ''
       let type = ''
@@ -136,18 +167,43 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
         type = 'attendance_absent'
       } else if (r.status === 'late') {
         message = `نود إعلامكم بأن الطالب(ة) ${r.student_name} حضر اليوم متأخراً عن حصة ${sessionTitle || 'الدرس'}.`
-        type = 'attendance_makeup' // or mapping to similar type
+        type = 'attendance_makeup'
       }
 
       if (message && type) {
         try {
+          // Check if a notification already exists for this attendance record and type
+          const { data: existing } = await supabase
+            .from('unified_notifications')
+            .select('id')
+            .eq('attendance_record_id', attendanceRecordId)
+            .eq('type', type)
+            .maybeSingle()
+
+          if (existing) {
+            // Already exists (either pending, sent, or failed). Do not duplicate!
+            return
+          }
+
+          // If they changed status between absent and late, there might be a pending notification of the OTHER type.
+          // Delete it first so we don't dispatch both.
+          const otherType = type === 'attendance_absent' ? 'attendance_makeup' : 'attendance_absent'
+          await supabase
+            .from('unified_notifications')
+            .delete()
+            .eq('attendance_record_id', attendanceRecordId)
+            .eq('type', otherType)
+            .eq('status->>whatsapp', 'pending')
+
+          // Queue the new notification linked to this attendance record
           await queueNotification({
             studentId: r.student_id,
             title: 'تنبيه الحضور والغياب',
             message,
             type,
             channels: ['whatsapp', 'portal'],
-            createdBy: r.created_by
+            createdBy: r.created_by,
+            attendanceRecordId
           })
         } catch (notifErr) {
           console.error('Failed to queue unified notification for student:', r.student_id, notifErr)
@@ -158,14 +214,7 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
 
   await Promise.all(notifPromises)
 
-  // Fetch updated records to return
-  const sessionIds = [...new Set(records.map(r => r.session_id))]
-  const { data: updatedRecords } = await supabase
-    .from('attendance_records')
-    .select('*')
-    .in('session_id', sessionIds)
-
-  return updatedRecords || []
+  return activeRecords
 }
 
 // Get optimized attendance statistics for a single student (cached to reduce Supabase queries)

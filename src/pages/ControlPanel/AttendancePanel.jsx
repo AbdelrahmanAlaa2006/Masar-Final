@@ -81,6 +81,7 @@ export default function AttendancePanel({ onBack, flash }) {
   // Loading & Saving States
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savingStudents, setSavingStudents] = useState({})
   const [deletingSession, setDeletingSession] = useState(false)
   const [showSessionDeleteConfirm, setShowSessionDeleteConfirm] = useState(false)
   // Monthly subscription fee per grade (for the "amount due" on scan).
@@ -429,19 +430,95 @@ export default function AttendancePanel({ onBack, flash }) {
   }, [filteredSessions, selectedSessionId])
 
   // Bulk status change
-  const setAllStatus = (status) => {
-    const next = { ...attendanceRecords }
+  // Bulk status change (saves immediately to the database)
+  const setAllStatus = async (status) => {
+    if (!selectedSessionId || selectedSessionId === 'new') {
+      flash('يرجى إنشاء حصة أو اختيار حصة مسجلة لتعديل الحضور للكل', 'warning')
+      return
+    }
+    if (filteredStudentsList.length === 0) return
+
+    // Set saving for all filtered students
+    const savingMap = {}
     filteredStudentsList.forEach(s => {
-      next[s.id] = status
+      savingMap[s.id] = true
     })
-    setAttendanceRecords(next)
+    setSavingStudents(prev => ({ ...prev, ...savingMap }))
+
+    // Update local records state immediately
+    const nextRecords = { ...attendanceRecords }
+    filteredStudentsList.forEach(s => {
+      nextRecords[s.id] = status
+    })
+    setAttendanceRecords(nextRecords)
+
+    try {
+      const currentSession = sessions.find(s => s.id === selectedSessionId)
+      const sessionTitle = currentSession ? currentSession.title : 'حصة دراسية'
+
+      const payload = filteredStudentsList.map(s => ({
+        student_id: s.id,
+        student_name: s.name,
+        parent_phone: s.parent_phone,
+        session_id: selectedSessionId,
+        status: status,
+        notes: '',
+        created_by: currentUser?.id
+      }))
+
+      await saveAttendanceBatch(payload, sessionTitle)
+      flash('تم حفظ الحضور لجميع طلاب المجموعة بنجاح.', 'success')
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء حفظ الحضور الجماعي: ' + err.message, 'error')
+    } finally {
+      // Clear saving for all filtered students
+      const clearedMap = {}
+      filteredStudentsList.forEach(s => {
+        clearedMap[s.id] = false
+      })
+      setSavingStudents(prev => ({ ...prev, ...clearedMap }))
+    }
   }
 
-  const handleStatusChange = (studentId, status) => {
+  // Single status change (saves immediately to the database)
+  const handleStatusChange = async (studentId, status) => {
+    if (!selectedSessionId || selectedSessionId === 'new') {
+      flash('يرجى إنشاء حصة أو اختيار حصة مسجلة لتسجيل الحضور', 'warning')
+      return
+    }
+
+    const student = students.find(s => s.id === studentId)
+    if (!student) return
+
+    setSavingStudents(prev => ({ ...prev, [studentId]: true }))
+    
+    // Update local state immediately
     setAttendanceRecords(prev => ({
       ...prev,
       [studentId]: status
     }))
+
+    try {
+      const currentSession = sessions.find(s => s.id === selectedSessionId)
+      const sessionTitle = currentSession ? currentSession.title : 'حصة دراسية'
+      
+      await saveAttendanceBatch([{
+        student_id: studentId,
+        student_name: student.name,
+        parent_phone: student.parent_phone,
+        session_id: selectedSessionId,
+        status: status,
+        notes: '',
+        created_by: currentUser?.id
+      }], sessionTitle)
+      
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء حفظ التحضير: ' + err.message, 'error')
+    } finally {
+      setSavingStudents(prev => ({ ...prev, [studentId]: false }))
+    }
   }
 
   // Create a new attendance session inline
@@ -1155,7 +1232,14 @@ export default function AttendancePanel({ onBack, flash }) {
                               onChange={() => toggleStudentSelection(student.id)} 
                             />
                           </td>
-                          <td style={{ padding: '14px 20px', fontWeight: 'bold' }}>{student.name}</td>
+                          <td style={{ padding: '14px 20px', fontWeight: 'bold' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {student.name}
+                              {savingStudents[student.id] && (
+                                <i className="fas fa-spinner fa-spin" style={{ color: 'var(--primary)', fontSize: '0.82rem' }} />
+                              )}
+                            </div>
+                          </td>
                           <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{student.phone}</td>
                           <td style={{ padding: '14px' }}>
                             <span className="cp-id-pill">{student.group || '—'}</span>
@@ -1174,6 +1258,7 @@ export default function AttendancePanel({ onBack, flash }) {
                                 return (
                                   <button
                                     key={st}
+                                    disabled={savingStudents[student.id]}
                                     onClick={() => handleStatusChange(student.id, st)}
                                     style={{
                                       padding: '5px 12px',
@@ -1199,17 +1284,7 @@ export default function AttendancePanel({ onBack, flash }) {
                 </table>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 20px', borderTop: '1px solid var(--cp-divider)', background: 'var(--cp-list-header-bg)' }}>
-                <button 
-                  onClick={handleSaveAttendance} 
-                  disabled={saving} 
-                  className="cp-btn cp-btn-success"
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', fontWeight: 'bold' }}
-                >
-                  {saving ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-save" />}
-                  <span>حفظ كشف التحضير وإرسال الإشعارات</span>
-                </button>
-              </div>
+
             </div>
           )}
         </>

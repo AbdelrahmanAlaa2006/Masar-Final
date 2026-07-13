@@ -133,6 +133,20 @@ export async function retryAllFailed(tenantId) {
   return failedWhatsapp
 }
 
+// Clear all pending WhatsApp notifications for a tenant
+export async function clearPendingQueue(tenantId) {
+  if (!tenantId) throw new Error('Tenant ID is required')
+  
+  const { data, error } = await supabase
+    .from('unified_notifications')
+    .delete()
+    .eq('tenant_id', tenantId)
+    .eq('status->>whatsapp', 'pending')
+
+  if (error) throw error
+  return true
+}
+
 // Update gateway configuration inside the tenant's config column
 export async function updateGatewayConfig(tenantId, newGatewaySettings) {
   if (!tenantId) throw new Error('Tenant ID is required')
