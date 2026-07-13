@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
-import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount } from '@backend/paymentsApi'
+import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount } from '@backend/paymentsApi'
 import { searchStudents } from '@backend/profilesApi'
+import { recordSubscriptionPayment } from '@backend/financeApi'
 import { listBranches } from '@backend/branchesApi'
 import DatePicker from '../components/DatePicker'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
@@ -741,6 +742,9 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [studentsList, setStudentsList] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [savingCash, setSavingCash] = useState(false)
+  // Actual payment date — the secretary can record yesterday's payment today
+  // (backdating); reports use this transaction date, not the entry timestamp.
+  const [cashDate, setCashDate] = useState(() => new Date().toISOString().split('T')[0])
 
   const handleSaveDiscount = async () => {
     if (!cashStudentId) return
@@ -782,7 +786,18 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const cashStudentObj = studentsList.find(s => s.id === cashStudentId)
   const cashFee = cashStudentObj ? (parseFloat(feeInputs[cashStudentObj.grade]) || 0) : 0
-  const cashAmountLocked = cashFee > 0
+  // Monthly due (fee − discount). The amount stays EDITABLE so partial
+  // payments are possible — a student can pay 100 of a 150 due; the remainder
+  // is tracked in the ledger automatically.
+  const cashDue = Math.max(0, cashFee - (parseFloat(cashDiscount) || 0))
+  // Paid so far toward the selected subscription month (from loaded payments).
+  const cashPaidSoFar = useMemo(() => {
+    const month = (cashPackageName || '').trim()
+    if (!cashStudentId || !month) return 0
+    return (payments || [])
+      .filter(p => p.student_id === cashStudentId && p.status === 'approved' && (p.package_name || '').trim() === month)
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  }, [payments, cashStudentId, cashPackageName])
 
   // Configuration editing states
   const [showConfigEditor, setShowConfigEditor] = useState(false)
@@ -967,6 +982,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     setCashStudentId('')
     setCashAmount('')
     setStudentSearchQuery('')
+    setCashDate(new Date().toISOString().split('T')[0])
     if (availablePackages.length > 0) {
       setCashPackageName(availablePackages[0])
     } else {
@@ -987,22 +1003,37 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       notify('الرجاء إدخال مبلغ صالح 💰', 'danger')
       return
     }
-    // Block paying twice for the same subscription month for the same student.
+    // Partial payments are allowed: block only when the month is already FULLY
+    // paid (paid so far >= the month's due) — the old hard "paid once" guard
+    // made a 100/150 partial payment impossible to complete later.
     const month = (cashPackageName || '').trim()
-    if (month && payments.some(p => p.student_id === cashStudentId && p.status === 'approved' && (p.package_name || '').trim() === month)) {
-      notify(`هذا الطالب سدّد بالفعل «${month}». احذف العملية القديمة أولاً إن أردت تعديلها.`, 'danger')
+    if (month && cashDue > 0 && cashPaidSoFar >= cashDue) {
+      notify(`هذا الطالب سدّد «${month}» بالكامل (${cashPaidSoFar} ج.م). احذف العملية القديمة أولاً إن أردت تعديلها.`, 'danger')
       return
     }
 
     setSavingCash(true)
     try {
-      await recordCashPayment({
+      // Ledger-aware recording: auto-creates the month's charge (fee − discount)
+      // once, then records this (possibly partial) payment against it, with the
+      // real transaction date (backdating supported).
+      await recordSubscriptionPayment({
         studentId: cashStudentId,
         amount: cashAmount,
-        packageName: cashPackageName,
+        billingPeriod: month || null,
+        monthlyDue: cashDue,
+        paymentMethod: 'Cash',
+        transactionDate: cashDate,
         adminId: adminId
       })
-      notify('تم تسجيل الدفع النقدي وتفعيل حساب الطالب بنجاح! 🎉', 'success')
+      const paid = parseFloat(cashAmount) || 0
+      const remaining = Math.max(0, cashDue - cashPaidSoFar - paid)
+      notify(
+        remaining > 0
+          ? `تم تسجيل دفعة جزئية (${paid} ج.م) — المتبقي ${remaining} ج.م على «${month}».`
+          : 'تم تسجيل الدفع النقدي وتفعيل حساب الطالب بنجاح! 🎉',
+        'success'
+      )
       setShowCashModal(false)
       onRefresh()
     } catch (err) {
@@ -1021,13 +1052,16 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   // specific day / month / stage / branch / group" is always in sync.
   const baseFiltered = useMemo(() => {
     return payments.filter(p => {
+      // Day/range filters use the ACTUAL payment date (transaction_date —
+      // backdated entries included); rows without one fall back to created_at.
+      const effectiveDate = p.transaction_date || p.created_at
       // Specific DAY (by actual payment date). Overrides the range when set.
       if (dayFilter) {
-        if (!p.created_at) return false
-        const pd = new Date(p.created_at), d = new Date(dayFilter)
+        if (!effectiveDate) return false
+        const pd = new Date(effectiveDate), d = new Date(dayFilter)
         if (pd.getFullYear() !== d.getFullYear() || pd.getMonth() !== d.getMonth() || pd.getDate() !== d.getDate()) return false
-      } else if (p.created_at) {
-        const pDate = new Date(p.created_at)
+      } else if (effectiveDate) {
+        const pDate = new Date(effectiveDate)
         if (startDate) { const s = new Date(startDate); s.setHours(0, 0, 0, 0); if (pDate < s) return false }
         if (endDate) { const e = new Date(endDate); e.setHours(23, 59, 59, 999); if (pDate > e) return false }
       }
@@ -1757,15 +1791,25 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   value={cashAmount}
                   onChange={(e) => setCashAmount(e.target.value)}
                   className="paypg-admin-input"
-                  style={{ width: '100%', height: 42, ...(cashAmountLocked ? { background: 'rgba(16,185,129,0.06)', fontWeight: 800 } : {}) }}
+                  style={{ width: '100%', height: 42, ...(cashDue > 0 ? { background: 'rgba(16,185,129,0.06)', fontWeight: 800 } : {}) }}
                   required
-                  readOnly={cashAmountLocked}
                 />
-                {cashAmountLocked && (
+                {cashDue > 0 && (
                   <small style={{ display: 'block', marginTop: 4, color: '#10b981', fontWeight: 700 }}>
-                    محدد تلقائياً حسب اشتراك المرحلة{parseFloat(cashDiscount) > 0 ? ` بعد خصم ${parseFloat(cashDiscount)} ج.م` : ''}.
+                    المستحق الشهري: {cashDue} ج.م
+                    {parseFloat(cashDiscount) > 0 ? ` (بعد خصم ${parseFloat(cashDiscount)} ج.م)` : ''}
+                    {cashPaidSoFar > 0 ? ` — مدفوع سابقاً ${cashPaidSoFar} ج.م، المتبقي ${Math.max(0, cashDue - cashPaidSoFar)} ج.م` : ''}
+                    {' '}— يمكن تسجيل دفعة جزئية والمتبقي يُتابَع تلقائياً.
                   </small>
                 )}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="paypg-modal-label">تاريخ الدفع الفعلي</label>
+                <DatePicker value={cashDate} onChange={setCashDate} style={{ width: '100%' }} placeholder="تاريخ الدفع" />
+                <small style={{ display: 'block', marginTop: 4, color: 'var(--cp-text-muted, #64748b)' }}>
+                  يمكن اختيار تاريخ سابق إذا سُجّلت الدفعة متأخراً — التقارير تعتمد هذا التاريخ.
+                </small>
               </div>
 
               <div className="form-group" style={{ marginBottom: 24, position: 'relative' }}>

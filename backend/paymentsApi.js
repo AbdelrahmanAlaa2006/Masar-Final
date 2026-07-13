@@ -23,6 +23,8 @@ export async function listPayments() {
         description,
         notes,
         created_at,
+        transaction_date,
+        billing_period,
         resolved_at,
         resolved_by,
         profiles:student_id ( name, phone, grade, "group", branch_id )
@@ -43,6 +45,10 @@ export async function listPayments() {
       admin_notes: p.notes, // map notes to admin_notes
       package_name: p.description, // map description to package_name
       created_at: p.created_at,
+      // Actual payment date (backdating): reports/filters should prefer this;
+      // rows created before the ledger migration fall back to created_at.
+      transaction_date: p.transaction_date || p.created_at,
+      billing_period: p.billing_period,
       resolved_at: p.resolved_at,
       resolved_by: p.resolved_by,
       profiles: p.profiles

@@ -17,6 +17,8 @@ export async function listNotificationQueue(page = 1, limit = 50, statusFilter =
       type,
       status,
       created_at,
+      recipient,
+      recipient_phone,
       profiles:student_id (
         name,
         parent_phone
@@ -42,7 +44,10 @@ export async function listNotificationQueue(page = 1, limit = 50, statusFilter =
 
       return {
         id: item.id,
-        phone: item.profiles?.parent_phone || '—',
+        // recipient_phone is the phone snapshot resolved when the row was
+        // queued (announcements); legacy rows fall back to the parent phone.
+        phone: item.recipient_phone || item.profiles?.parent_phone || '—',
+        recipient: item.recipient || 'parent',
         message: item.message,
         type: item.type,
         status: whatsappStatus,
@@ -408,6 +413,7 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       type,
       status,
       created_at,
+      recipient_phone,
       profiles:student_id ( parent_phone )
     `)
     .contains('channels', ['whatsapp'])
@@ -427,12 +433,14 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
   let processedCount = 0
 
   for (const notif of pendingWhatsapp) {
-    const parentPhone = notif.profiles?.parent_phone
-    if (!parentPhone) {
-      // Mark as failed if parent phone is missing
+    // Announcement rows carry the resolved phone snapshot (parent OR the
+    // student's own number); legacy rows fall back to the parent phone.
+    const targetPhone = notif.recipient_phone || notif.profiles?.parent_phone
+    if (!targetPhone) {
+      // Mark as failed if no phone can be resolved
       const statusMap = { ...(notif.status || {}) }
       statusMap.whatsapp = 'failed'
-      statusMap.whatsapp_error = 'رقم هاتف ولي الأمر غير متوفر'
+      statusMap.whatsapp_error = 'رقم الهاتف غير متوفر'
       await supabase.from('unified_notifications').update({ status: statusMap }).eq('id', notif.id)
       continue
     }
@@ -440,7 +448,7 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
     try {
       // 1. Call API gateway
       await sendGatewayMessage(gatewayConfig, {
-        phone: parentPhone,
+        phone: targetPhone,
         message: notif.message,
         type: notif.type
       })

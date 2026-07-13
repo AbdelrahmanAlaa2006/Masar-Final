@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 // html5-qrcode (~200 kB) is loaded on demand when the camera scanner opens,
 // so it stays out of the panel's initial bundle.
-import { cached, LIST_TTL } from '../../utils/cache'
+import { cached, LIST_TTL, invalidate as invalidateCache } from '../../utils/cache'
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
@@ -113,6 +113,11 @@ export default function AttendancePanel({ onBack, flash }) {
   const [historySearchQuery, setHistorySearchQuery] = useState('')
 
   const html5QrcodeRef = useRef(null)
+  // Scans are processed strictly one at a time: a fast cashier (or a scanner
+  // configured to re-send) can fire a second barcode while the first lookup is
+  // still in flight. Chaining on this promise keeps lookups ordered so two
+  // scans can never interleave or be read as one concatenated string.
+  const scanChainRef = useRef(Promise.resolve())
 
 
 
@@ -536,9 +541,15 @@ export default function AttendancePanel({ onBack, flash }) {
   const handleQrScanned = async (text, isCashier = false) => {
     if (!text) return
     try {
-      // Strip control/non-printable characters and translate Arabic layout keystrokes
-      const cleanText = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim()
-      let scannedToken = mapArabicKeysToEnglish(cleanText)
+      // Translate Arabic layout keystrokes first (the wedge scanner types
+      // through the OS layout), then strip everything that cannot be part of
+      // a token: control chars, NBSP/zero-width chars, spaces and Code39 '*'
+      // wrappers. Tokens are printable ASCII, so a whitelist is bulletproof;
+      // the server normalizes the same way (normalize_scan_code).
+      let scannedToken = mapArabicKeysToEnglish(String(text).trim())
+        .replace(/[^\x20-\x7E]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/^\*+|\*+$/g, '')
       if (scannedToken.includes(',')) {
         const parts = scannedToken.split(',')
         if (parts.length >= 3) {
@@ -1016,38 +1027,24 @@ export default function AttendancePanel({ onBack, flash }) {
                 value={scannerText}
                 onChange={(e) => setScannerText(e.target.value)}
                 onKeyDown={(e) => {
-                  const now = Date.now();
-                  
-                  console.log(`[Barcode Debug] onKeyDown for key: "${e.key}" at timestamp: ${now}`);
-                  console.log(`[Barcode Debug] Current React state scannerText: "${scannerText}" (len: ${scannerText.length})`);
-                  console.log(`[Barcode Debug] Current DOM e.target.value: "${e.target.value}" (len: ${e.target.value.length})`);
-                  
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    
-                    const inputEl = e.target;
-                    const preDelayedVal = inputEl.value;
-                    
-                    // Delay execution slightly to ensure any very last characters typed before Enter
-                    // are fully written by the browser's native text event loop into inputEl.value.
-                    setTimeout(() => {
-                      const lookupStart = Date.now();
-                      const lookupValue = inputEl.value;
-                      
-                      console.log(`[Barcode Debug] Delayed Lookup started at: ${lookupStart}`);
-                      console.log(`[Barcode Debug] Pre-delay value was: "${preDelayedVal}" (len: ${preDelayedVal.length})`);
-                      console.log(`[Barcode Debug] Delayed Lookup value: "${lookupValue}" (len: ${lookupValue.length})`);
-                      for (let i = 0; i < lookupValue.length; i++) {
-                        console.log(`  char[${i}]: "${lookupValue[i]}" (code: ${lookupValue.charCodeAt(i)})`);
-                      }
-                      
-                      handleQrScanned(lookupValue, true).finally(() => {
-                        const lookupFinish = Date.now();
-                        console.log(`[Barcode Debug] Lookup finished at: ${lookupFinish} (duration: ${lookupFinish - lookupStart}ms)`);
-                      });
-                      
-                      setScannerText('');
-                    }, 50); // 50ms delay
+                  // Scanners terminate with Enter (some models send Tab).
+                  // Keyboard events are strictly ordered, so by the time the
+                  // terminator's keydown fires every character of the barcode
+                  // is already in the DOM value — read it synchronously and
+                  // clear the field IMMEDIATELY. The old 50ms-delayed read let
+                  // a second fast scan append to the first one's value, which
+                  // guaranteed a "student not found" on repeated scans.
+                  if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault()
+                    const inputEl = e.target
+                    const lookupValue = inputEl.value
+                    inputEl.value = ''
+                    setScannerText('')
+                    if (!lookupValue.trim()) return
+                    // Serialize lookups so overlapping scans process in order.
+                    scanChainRef.current = scanChainRef.current
+                      .then(() => handleQrScanned(lookupValue, true))
+                      .catch(() => {})
                   }
                 }}
                 onFocus={() => setScannerFocused(true)}

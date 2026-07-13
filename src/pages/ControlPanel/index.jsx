@@ -26,6 +26,8 @@ const AttendancePanel = lazy(() => import('./AttendancePanel'))
 const GradesPanel = lazy(() => import('./GradesPanel'))
 const AssistantsPanel = lazy(() => import('./AssistantsPanel'))
 const WhatsAppQueuePanel = lazy(() => import('./WhatsAppQueuePanel'))
+const AnnouncementsPanel = lazy(() => import('./AnnouncementsPanel'))
+const FinancePanel = lazy(() => import('./FinancePanel'))
 const SuperAdminPanel = lazy(() => import('./SuperAdminPanel'))
 const BranchesPanel = lazy(() => import('./BranchesPanel'))
 
@@ -58,6 +60,7 @@ export default function ControlPanelIndex() {
     if (s === 'homeworks' && !isFeatureEnabled('homework')) return false
     if (s === 'videos' && !isFeatureEnabled('videos')) return false
     if (s === 'whatsapp' && !isFeatureEnabled('notifications')) return false
+    if (s === 'announcements' && !isFeatureEnabled('notifications')) return false
 
     if (user.role === 'admin' || user.role === 'super_admin') return true
     if (s === 'home') return true
@@ -76,6 +79,8 @@ export default function ControlPanelIndex() {
       return hasPermission('students')
     }
     if (s === 'whatsapp') return hasPermission('whatsapp')
+    if (s === 'announcements') return hasPermission('whatsapp')
+    if (s === 'finance') return hasPermission('payments')
     if (s === 'branches') {
       return hasPermission('branches:view') || hasPermission('branches:edit')
     }
@@ -426,6 +431,28 @@ export default function ControlPanelIndex() {
                   />
                 )}
 
+                {/* Manual announcements (Gate by whatsapp) */}
+                {hasPermission('whatsapp') && (
+                  <SectionCard
+                    icon="fa-bullhorn"
+                    accent="orange"
+                    title="الإعلانات والرسائل الجماعية"
+                    desc="إرسال إعلانات يدوية للطلاب وأولياء الأمور مع رسائل محفوظة وقوالب"
+                    onClick={() => enterSection('announcements')}
+                  />
+                )}
+
+                {/* Financial ledger (Gate by payments) */}
+                {(user?.role === 'admin' || hasPermission('payments')) && (
+                  <SectionCard
+                    icon="fa-cash-register"
+                    accent="green"
+                    title="الدفتر المالي والمصروفات"
+                    desc="دفتر يومي شامل: إيرادات ومصروفات وتقارير وأرصدة الطلاب المتأخرة"
+                    onClick={() => enterSection('finance')}
+                  />
+                )}
+
                 {/* Reset requests (Gate by students) */}
                 {hasPermission('students') && (
                   <SectionCard
@@ -574,6 +601,8 @@ export default function ControlPanelIndex() {
               {section === 'grades' && <GradesPanel onBack={goHome} flash={flash} />}
               {section === 'assistants' && <AssistantsPanel onBack={goHome} flash={flash} />}
               {section === 'whatsapp' && <WhatsAppQueuePanel onBack={goHome} flash={flash} />}
+              {section === 'announcements' && <AnnouncementsPanel onBack={goHome} flash={flash} />}
+              {section === 'finance' && <FinancePanel onBack={goHome} flash={flash} />}
               {section === 'super_admin' && <SuperAdminPanel onBack={goHome} flash={flash} />}
               {section === 'branches' && <BranchesPanel onBack={goHome} flash={flash} />}
 

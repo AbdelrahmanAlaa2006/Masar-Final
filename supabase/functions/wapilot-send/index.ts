@@ -121,7 +121,7 @@ serve(async (req) => {
     const batchLimit = Math.min(Math.max(Number(limit) || 25, 1), 25)
     const { data: rows, error: qErr } = await admin
       .from('unified_notifications')
-      .select('id, message, status, profiles:student_id ( parent_phone )')
+      .select('id, message, status, recipient_phone, profiles:student_id ( parent_phone )')
       .eq('tenant_id', profile.tenant_id)
       .contains('channels', ['whatsapp'])
       .eq('status->>whatsapp', 'pending')
@@ -132,10 +132,14 @@ serve(async (req) => {
     const results: Array<{ id: string; status: string; error?: string }> = []
     for (const row of rows || []) {
       const statusMap = { ...(row.status || {}) } as Record<string, unknown>
-      const parentPhone = (row as { profiles?: { parent_phone?: string } }).profiles?.parent_phone
+      // recipient_phone is the phone snapshot resolved when the row was queued
+      // (manual announcements can target the student's own number); legacy
+      // rows fall back to the parent phone as before.
+      const typed = row as { recipient_phone?: string; profiles?: { parent_phone?: string } }
+      const targetPhone = typed.recipient_phone || typed.profiles?.parent_phone
       try {
-        if (!parentPhone) throw new Error('رقم هاتف ولي الأمر غير متوفر')
-        await sendOne(normalizePhoneIntl(parentPhone, g.country_code || '20'), row.message)
+        if (!targetPhone) throw new Error('رقم الهاتف غير متوفر')
+        await sendOne(normalizePhoneIntl(targetPhone, g.country_code || '20'), row.message)
         statusMap.whatsapp = 'sent'
         statusMap.whatsapp_sent_at = new Date().toISOString()
         delete statusMap.whatsapp_error
