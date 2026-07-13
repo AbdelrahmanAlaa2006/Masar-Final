@@ -536,8 +536,9 @@ export default function AttendancePanel({ onBack, flash }) {
   const handleQrScanned = async (text, isCashier = false) => {
     if (!text) return
     try {
-      // Translate Arabic layout keystrokes and decode QR token (Format: student_id,tenant_id,qr_token OR just token)
-      let scannedToken = mapArabicKeysToEnglish(text.trim())
+      // Strip control/non-printable characters and translate Arabic layout keystrokes
+      const cleanText = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim()
+      let scannedToken = mapArabicKeysToEnglish(cleanText)
       if (scannedToken.includes(',')) {
         const parts = scannedToken.split(',')
         if (parts.length >= 3) {
@@ -1016,31 +1017,37 @@ export default function AttendancePanel({ onBack, flash }) {
                 onChange={(e) => setScannerText(e.target.value)}
                 onKeyDown={(e) => {
                   const now = Date.now();
-                  const currentReactValue = scannerText;
-                  const currentDomValue = e.target.value;
                   
                   console.log(`[Barcode Debug] onKeyDown for key: "${e.key}" at timestamp: ${now}`);
-                  console.log(`[Barcode Debug] Current React state scannerText: "${currentReactValue}" (len: ${currentReactValue.length})`);
-                  console.log(`[Barcode Debug] Current DOM e.target.value: "${currentDomValue}" (len: ${currentDomValue.length})`);
+                  console.log(`[Barcode Debug] Current React state scannerText: "${scannerText}" (len: ${scannerText.length})`);
+                  console.log(`[Barcode Debug] Current DOM e.target.value: "${e.target.value}" (len: ${e.target.value.length})`);
                   
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     
-                    const lookupStart = Date.now();
-                    const lookupValue = currentDomValue;
+                    const inputEl = e.target;
+                    const preDelayedVal = inputEl.value;
                     
-                    console.log(`[Barcode Debug] Lookup started at: ${lookupStart}`);
-                    console.log(`[Barcode Debug] Lookup value: "${lookupValue}" (len: ${lookupValue.length})`);
-                    for (let i = 0; i < lookupValue.length; i++) {
-                      console.log(`  char[${i}]: "${lookupValue[i]}" (code: ${lookupValue.charCodeAt(i)})`);
-                    }
-                    
-                    handleQrScanned(lookupValue.trim(), true).finally(() => {
-                      const lookupFinish = Date.now();
-                      console.log(`[Barcode Debug] Lookup finished at: ${lookupFinish} (duration: ${lookupFinish - lookupStart}ms)`);
-                    });
-                    
-                    setScannerText('');
+                    // Delay execution slightly to ensure any very last characters typed before Enter
+                    // are fully written by the browser's native text event loop into inputEl.value.
+                    setTimeout(() => {
+                      const lookupStart = Date.now();
+                      const lookupValue = inputEl.value;
+                      
+                      console.log(`[Barcode Debug] Delayed Lookup started at: ${lookupStart}`);
+                      console.log(`[Barcode Debug] Pre-delay value was: "${preDelayedVal}" (len: ${preDelayedVal.length})`);
+                      console.log(`[Barcode Debug] Delayed Lookup value: "${lookupValue}" (len: ${lookupValue.length})`);
+                      for (let i = 0; i < lookupValue.length; i++) {
+                        console.log(`  char[${i}]: "${lookupValue[i]}" (code: ${lookupValue.charCodeAt(i)})`);
+                      }
+                      
+                      handleQrScanned(lookupValue, true).finally(() => {
+                        const lookupFinish = Date.now();
+                        console.log(`[Barcode Debug] Lookup finished at: ${lookupFinish} (duration: ${lookupFinish - lookupStart}ms)`);
+                      });
+                      
+                      setScannerText('');
+                    }, 50); // 50ms delay
                   }
                 }}
                 onFocus={() => setScannerFocused(true)}
