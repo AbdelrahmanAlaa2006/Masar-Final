@@ -21,6 +21,33 @@ import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
 
+const mapArabicKeysToEnglish = (str) => {
+  if (!str) return '';
+  const ligatures = {
+    'لا': 'b',
+    'لأ': 't',
+    'لإ': 'y',
+    'لآ': 'b'
+  };
+  const singleKeys = {
+    'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p', 'ج': '[', 'د': ']',
+    'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k', 'م': 'l', 'ك': ';', 'ط': '\'',
+    'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'ى': 'n', 'ة': 'm',
+    'أ': 'h', 'إ': 'y', 'آ': 'n',
+    'و': ',', 'ز': '.', 'ظ': '/',
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+  };
+  
+  let s = str;
+  for (const [lig, eng] of Object.entries(ligatures)) {
+    s = s.replaceAll(lig, eng);
+  }
+  
+  return s.split('').map(c => {
+    const lowerC = c.toLowerCase();
+    return singleKeys[c] || singleKeys[lowerC] || c;
+  }).join('');
+};
 
 export default function AttendancePanel({ onBack, flash }) {
   const { tenantId, gradesList } = useTenant()
@@ -509,10 +536,10 @@ export default function AttendancePanel({ onBack, flash }) {
   const handleQrScanned = async (text, isCashier = false) => {
     if (!text) return
     try {
-      // Decode QR token (Format: student_id,tenant_id,qr_token OR just token)
-      let scannedToken = text.trim()
-      if (text.includes(',')) {
-        const parts = text.split(',')
+      // Translate Arabic layout keystrokes and decode QR token (Format: student_id,tenant_id,qr_token OR just token)
+      let scannedToken = mapArabicKeysToEnglish(text.trim())
+      if (scannedToken.includes(',')) {
+        const parts = scannedToken.split(',')
         if (parts.length >= 3) {
           scannedToken = parts[2].trim()
         }
