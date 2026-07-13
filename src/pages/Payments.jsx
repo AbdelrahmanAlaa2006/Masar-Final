@@ -42,6 +42,32 @@ export default function Payments() {
   // Dynamic payment config loaded from Supabase DB (falls back to PAYMENT_CONFIG)
   const [activeConfig, setActiveConfig] = useState(PAYMENT_CONFIG)
 
+  // The student's REQUIRED amount = his grade's monthly fee minus his personal
+  // discount. When a fee is configured we auto-fill and LOCK the amount field so
+  // he pays exactly what's due (already discounted) — no free typing, no
+  // mismatch with what the admin later sees.
+  const [requiredAmount, setRequiredAmount] = useState(null)
+  const [requiredDiscount, setRequiredDiscount] = useState(0)
+  useEffect(() => {
+    if (!userId || user?.role !== 'student' || !user?.grade) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [fees, disc] = await Promise.all([listSubscriptionFees(), getStudentDiscount(userId)])
+        if (cancelled) return
+        const fee = Number((fees || []).find(f => f.grade === user.grade)?.amount) || 0
+        if (fee > 0) {
+          const d = Number(disc) || 0
+          setRequiredDiscount(d)
+          const due = Math.max(0, fee - d)
+          setRequiredAmount(due)
+          setAmount(String(due))
+        }
+      } catch { /* no fee configured -> keep the free input as fallback */ }
+    })()
+    return () => { cancelled = true }
+  }, [userId, user?.role, user?.grade])
+
   // Hoisted receipt preview modal states (shared by students and admins)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [rotateDeg, setRotateDeg] = useState(0)
@@ -387,7 +413,14 @@ export default function Payments() {
                     onChange={(e) => setAmount(e.target.value)}
                     required
                     disabled={submitting}
+                    readOnly={requiredAmount != null}
+                    style={requiredAmount != null ? { background: 'rgba(16,185,129,0.06)', fontWeight: 800 } : undefined}
                   />
+                  {requiredAmount != null && (
+                    <small style={{ display: 'block', marginTop: 4, color: '#10b981', fontWeight: 700 }}>
+                      القيمة محددة تلقائياً حسب اشتراك مرحلتك{requiredDiscount > 0 ? ` بعد خصم ${requiredDiscount} ج.م` : ''}.
+                    </small>
+                  )}
                 </div>
 
                 <div className="form-group" style={{ position: 'relative' }}>
@@ -683,6 +716,13 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [cashAmount, setCashAmount] = useState('')
   const [cashDiscount, setCashDiscount] = useState('')
   const [savingDiscount, setSavingDiscount] = useState(false)
+  const [cashPackageName, setCashPackageName] = useState('')
+  const [showAdminPkgDropdown, setShowAdminPkgDropdown] = useState(false)
+  const [studentSearchQuery, setStudentSearchQuery] = useState('')
+  const [studentsList, setStudentsList] = useState([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
+  const [savingCash, setSavingCash] = useState(false)
+
   const handleSaveDiscount = async () => {
     if (!cashStudentId) return
     setSavingDiscount(true)
@@ -695,12 +735,30 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       setSavingDiscount(false)
     }
   }
-  const [cashPackageName, setCashPackageName] = useState('')
-  const [showAdminPkgDropdown, setShowAdminPkgDropdown] = useState(false)
-  const [studentSearchQuery, setStudentSearchQuery] = useState('')
-  const [studentsList, setStudentsList] = useState([])
-  const [loadingStudents, setLoadingStudents] = useState(false)
-  const [savingCash, setSavingCash] = useState(false)
+
+  // When a student is picked in the cash modal, auto-fill the amount to his due
+  // (grade fee - his discount) and load his current discount — the admin/assistant
+  // doesn't retype it, and it stays consistent with what the student pays online.
+  useEffect(() => {
+    if (!cashStudentId) return
+    const stud = studentsList.find(s => s.id === cashStudentId)
+    if (!stud) return
+    let cancelled = false
+    ;(async () => {
+      let disc = 0
+      try { disc = Number(await getStudentDiscount(cashStudentId)) || 0 } catch { disc = 0 }
+      if (cancelled) return
+      setCashDiscount(String(disc))
+      const fee = parseFloat(feeInputs[stud.grade]) || 0
+      if (fee > 0) setCashAmount(String(Math.max(0, fee - disc)))
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cashStudentId, studentsList])
+
+  const cashStudentObj = studentsList.find(s => s.id === cashStudentId)
+  const cashFee = cashStudentObj ? (parseFloat(feeInputs[cashStudentObj.grade]) || 0) : 0
+  const cashAmountLocked = cashFee > 0
 
   // Configuration editing states
   const [showConfigEditor, setShowConfigEditor] = useState(false)
@@ -1669,9 +1727,15 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   value={cashAmount}
                   onChange={(e) => setCashAmount(e.target.value)}
                   className="paypg-admin-input"
-                  style={{ width: '100%', height: 42 }}
+                  style={{ width: '100%', height: 42, ...(cashAmountLocked ? { background: 'rgba(16,185,129,0.06)', fontWeight: 800 } : {}) }}
                   required
+                  readOnly={cashAmountLocked}
                 />
+                {cashAmountLocked && (
+                  <small style={{ display: 'block', marginTop: 4, color: '#10b981', fontWeight: 700 }}>
+                    محدد تلقائياً حسب اشتراك المرحلة{parseFloat(cashDiscount) > 0 ? ` بعد خصم ${parseFloat(cashDiscount)} ج.م` : ''}.
+                  </small>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: 24, position: 'relative' }}>
