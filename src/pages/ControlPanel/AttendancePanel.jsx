@@ -19,6 +19,7 @@ import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { cached, LIST_TTL } from '../../utils/cache'
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
+import DatePicker from '../../components/DatePicker'
 
 
 export default function AttendancePanel({ onBack, flash }) {
@@ -922,13 +923,11 @@ export default function AttendancePanel({ onBack, flash }) {
             </div>
             <div style={{ flex: 1, minWidth: '150px' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>التاريخ</label>
-              <input 
-                type="date" 
+              <DatePicker 
                 value={newSessionDate} 
-                onChange={(e) => setNewSessionDate(e.target.value)} 
-                className="cp-input" 
+                onChange={setNewSessionDate} 
                 style={{ width: '100%' }}
-                required 
+                placeholder="اختر تاريخاً"
               />
             </div>
             <button type="submit" disabled={isCreatingSession} className="cp-btn cp-btn-success" style={{ padding: '10px 24px', fontWeight: 'bold' }}>

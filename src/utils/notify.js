@@ -15,6 +15,8 @@ export function notify(message, { title = '', type = 'info', duration = 2200 } =
   const overlay = document.createElement('div')
   overlay.className = `auth-overlay notify-overlay notify--${type}`
   overlay.setAttribute('dir', 'rtl')
+  // Always above modals/dialogs so success/error messages are never hidden.
+  overlay.style.zIndex = '2147483000'
   overlay.innerHTML = `
     <div class="auth-toast" role="status" aria-live="polite">
       <div class="auth-toast-check notify-icon">

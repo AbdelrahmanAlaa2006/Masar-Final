@@ -228,6 +228,22 @@
   color: var(--cp-text-main);
 }
 
+/* Render the native date-picker popup in dark to match the panel, and make the
+   calendar icon visible on the dark input (the popup itself is OS-drawn, so this
+   is the correct way to theme it without a custom picker). */
+.paypg-admin-input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+.paypg-admin-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+  opacity: 0.9;
+}
+.paypg-admin-input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 .form-group input:focus,
 .form-group select:focus,
 .paypg-admin-input:focus {

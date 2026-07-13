@@ -25,7 +25,7 @@ export async function listPayments() {
         created_at,
         resolved_at,
         resolved_by,
-        profiles:student_id ( name, phone, grade, "group" )
+        profiles:student_id ( name, phone, grade, "group", branch_id )
       `)
       .eq('type', 'payment')
       .order('created_at', { ascending: false })

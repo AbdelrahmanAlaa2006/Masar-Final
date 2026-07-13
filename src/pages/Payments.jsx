@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount } from '@backend/paymentsApi'
 import { searchStudents } from '@backend/profilesApi'
+import { listBranches } from '@backend/branchesApi'
+import DatePicker from '../components/DatePicker'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
 import { invalidate as invalidateCache } from '../utils/cache'
@@ -705,6 +707,23 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [activeTab, setActiveTab] = useState('pending') // 'pending' is default for immediate attention, can switch to 'all', 'approved', 'rejected'
   const [searchQuery, setSearchQuery] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
+  const [branchFilter, setBranchFilter] = useState('all')
+  const [groupFilter, setGroupFilter] = useState('all')
+  const [dayFilter, setDayFilter] = useState('')      // specific day (by payment date)
+  const [monthFilter, setMonthFilter] = useState('all') // specific subscription month (by package)
+
+  // Branches for the branch filter.
+  const [branchList, setBranchList] = useState([])
+  useEffect(() => { listBranches().then(setBranchList).catch(() => {}) }, [])
+
+  // Subscription months (matches the "اشتراك شهر X" package naming) — a payment
+  // for August counts toward August's total even if paid in July.
+  const SUB_MONTHS = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس']
+  // Groups present in the loaded payments (derived — no extra fetch).
+  const groupOptions = useMemo(() => {
+    const set = new Set((payments || []).map(p => p.profiles?.group).filter(Boolean))
+    return Array.from(set)
+  }, [payments])
 
   // Date range filters
   const [startDate, setStartDate] = useState('')
@@ -725,10 +744,15 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const handleSaveDiscount = async () => {
     if (!cashStudentId) return
+    const d = parseFloat(cashDiscount) || 0
     setSavingDiscount(true)
     try {
-      await setStudentDiscount(cashStudentId, parseFloat(cashDiscount) || 0)
-      notify('تم حفظ الخصم الاستثنائي للطالب.', 'success')
+      await setStudentDiscount(cashStudentId, d)
+      // Reflect the new discount in the due amount immediately.
+      const stud = studentsList.find(s => s.id === cashStudentId)
+      const fee = stud ? (parseFloat(feeInputs[stud.grade]) || 0) : 0
+      if (fee > 0) setCashAmount(String(Math.max(0, fee - d)))
+      notify('تم حفظ الخصم الاستثنائي للطالب (' + d + ' ج.م).', 'success')
     } catch (err) {
       notify('تعذر حفظ الخصم: ' + (err.message || ''), 'danger')
     } finally {
@@ -844,8 +868,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const handleResolve = async (paymentId, status, studentId) => {
     if (!adminId) return
+    // Prevent approving a duplicate payment for a month the student already paid.
+    if (status === 'approved') {
+      const thisPay = payments.find(p => p.id === paymentId)
+      const month = (thisPay?.package_name || '').trim()
+      if (month && payments.some(p => p.id !== paymentId && p.student_id === studentId && p.status === 'approved' && (p.package_name || '').trim() === month)) {
+        notify(`هذا الطالب سدّد بالفعل «${month}». لا يمكن قبول دفعة مكررة لنفس الشهر — ارفضها أو احذف السابقة.`, 'danger')
+        return
+      }
+    }
     const notes = notesMap[paymentId] || ''
-    
+
     setResolvingId(paymentId)
     try {
       await resolvePayment(paymentId, {
@@ -954,6 +987,12 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       notify('الرجاء إدخال مبلغ صالح 💰', 'danger')
       return
     }
+    // Block paying twice for the same subscription month for the same student.
+    const month = (cashPackageName || '').trim()
+    if (month && payments.some(p => p.student_id === cashStudentId && p.status === 'approved' && (p.package_name || '').trim() === month)) {
+      notify(`هذا الطالب سدّد بالفعل «${month}». احذف العملية القديمة أولاً إن أردت تعديلها.`, 'danger')
+      return
+    }
 
     setSavingCash(true)
     try {
@@ -977,63 +1016,45 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   // Results are already server-filtered by the search effect above.
   const filteredStudents = studentsList
 
-  // Filter payments by date range first
-  const paymentsFilteredByDate = useMemo(() => {
+  // Base filter — applies day/date, subscription month, grade, branch, group.
+  // Both the totals (stats) and the table read from this, so the "total for a
+  // specific day / month / stage / branch / group" is always in sync.
+  const baseFiltered = useMemo(() => {
     return payments.filter(p => {
-      if (!p.created_at) return true
-      const pDate = new Date(p.created_at)
-      if (startDate) {
-        const start = new Date(startDate)
-        start.setHours(0, 0, 0, 0)
-        if (pDate < start) return false
+      // Specific DAY (by actual payment date). Overrides the range when set.
+      if (dayFilter) {
+        if (!p.created_at) return false
+        const pd = new Date(p.created_at), d = new Date(dayFilter)
+        if (pd.getFullYear() !== d.getFullYear() || pd.getMonth() !== d.getMonth() || pd.getDate() !== d.getDate()) return false
+      } else if (p.created_at) {
+        const pDate = new Date(p.created_at)
+        if (startDate) { const s = new Date(startDate); s.setHours(0, 0, 0, 0); if (pDate < s) return false }
+        if (endDate) { const e = new Date(endDate); e.setHours(23, 59, 59, 999); if (pDate > e) return false }
       }
-      if (endDate) {
-        const end = new Date(endDate)
-        end.setHours(23, 59, 59, 999)
-        if (pDate > end) return false
-      }
+      // Specific SUBSCRIPTION month (by package name, e.g. "اشتراك شهر أغسطس").
+      if (monthFilter !== 'all' && !((p.package_name || '').includes(monthFilter))) return false
+      // Stage / branch / group.
+      if (gradeFilter !== 'all' && p.profiles?.grade !== gradeFilter) return false
+      if (branchFilter !== 'all' && p.profiles?.branch_id !== branchFilter) return false
+      if (groupFilter !== 'all' && (p.profiles?.group || '') !== groupFilter) return false
       return true
     })
-  }, [payments, startDate, endDate])
+  }, [payments, dayFilter, startDate, endDate, monthFilter, gradeFilter, branchFilter, groupFilter])
 
-  // Financial statistics calculations on the date-filtered set
+  // Financial statistics on the fully-filtered set (respects every filter).
   const stats = useMemo(() => {
-    let approvedSum = 0
-    let pendingCount = 0
-    let approvedCount = 0
-    let rejectedCount = 0
-
-    paymentsFilteredByDate.forEach(p => {
+    let approvedSum = 0, pendingCount = 0, approvedCount = 0, rejectedCount = 0
+    baseFiltered.forEach(p => {
       if (p.status === 'pending') pendingCount++
-      else if (p.status === 'approved') {
-        approvedCount++
-        approvedSum += (p.amount || 0)
-      } else if (p.status === 'rejected') rejectedCount++
+      else if (p.status === 'approved') { approvedCount++; approvedSum += (p.amount || 0) }
+      else if (p.status === 'rejected') rejectedCount++
     })
-
-    return {
-      approvedSum,
-      pendingCount,
-      approvedCount,
-      rejectedCount,
-      totalCount: paymentsFilteredByDate.length
-    }
-  }, [paymentsFilteredByDate])
+    return { approvedSum, pendingCount, approvedCount, rejectedCount, totalCount: baseFiltered.length }
+  }, [baseFiltered])
 
   const filteredPayments = useMemo(() => {
-    let list = paymentsFilteredByDate
-
-    // 1. Filter by tab status
-    if (activeTab !== 'all') {
-      list = list.filter(p => p.status === activeTab)
-    }
-
-    // 2. Filter by prep grade
-    if (gradeFilter !== 'all') {
-      list = list.filter(p => p.profiles?.grade === gradeFilter)
-    }
-
-    // 3. Filter by search query (student name or phone)
+    let list = baseFiltered
+    if (activeTab !== 'all') list = list.filter(p => p.status === activeTab)
     if (!searchQuery.trim()) return list
     const q = searchQuery.toLowerCase().trim()
     return list.filter((p) => {
@@ -1041,7 +1062,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       const phone = p.profiles?.phone || ''
       return name.includes(q) || phone.includes(q)
     })
-  }, [paymentsFilteredByDate, activeTab, gradeFilter, searchQuery])
+  }, [baseFiltered, activeTab, searchQuery])
 
   // Excel/CSV export function
   const handleExportCSV = () => {
@@ -1289,6 +1310,27 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 ))}
               </select>
 
+              {/* Branch filter */}
+              <select className="paypg-admin-input" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={{ height: 42, cursor: 'pointer', fontWeight: 600 }}>
+                <option value="all">كل الفروع</option>
+                {branchList.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
+              </select>
+
+              {/* Group filter */}
+              <select className="paypg-admin-input" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} style={{ height: 42, cursor: 'pointer', fontWeight: 600 }}>
+                <option value="all">كل المجموعات</option>
+                {groupOptions.map((g) => (<option key={g} value={g}>{g}</option>))}
+              </select>
+
+              {/* Subscription-month filter (total for that month, e.g. أغسطس) */}
+              <select className="paypg-admin-input" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ height: 42, cursor: 'pointer', fontWeight: 600 }} title="إجمالي دفعات شهر اشتراك معيّن">
+                <option value="all">كل شهور الاشتراك</option>
+                {SUB_MONTHS.map((m) => (<option key={m} value={m}>اشتراك شهر {m}</option>))}
+              </select>
+
+              {/* Specific-day filter (total paid that day) */}
+              <DatePicker value={dayFilter} onChange={setDayFilter} placeholder="يوم محدد" />
+
               {/* Text Search Field */}
               <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
                 <i className="fas fa-search" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}></i>
@@ -1333,24 +1375,12 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
             {/* Date Filters */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>من تاريخ:</label>
-                <input 
-                  type="date" 
-                  value={startDate} 
-                  onChange={(e) => setStartDate(e.target.value)} 
-                  className="paypg-admin-input" 
-                  style={{ height: 38, padding: '4px 10px', fontSize: '0.85rem', minWidth: 140 }}
-                />
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-text-muted, #94a3b8)' }}>من تاريخ:</label>
+                <DatePicker value={startDate} onChange={setStartDate} placeholder="من تاريخ" />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>إلى تاريخ:</label>
-                <input 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)} 
-                  className="paypg-admin-input" 
-                  style={{ height: 38, padding: '4px 10px', fontSize: '0.85rem', minWidth: 140 }}
-                />
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-text-muted, #94a3b8)' }}>إلى تاريخ:</label>
+                <DatePicker value={endDate} onChange={setEndDate} placeholder="إلى تاريخ" />
               </div>
               {(startDate || endDate) && (
                 <button

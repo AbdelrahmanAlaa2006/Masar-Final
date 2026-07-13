@@ -8,6 +8,7 @@ import { cached, LIST_TTL } from '../../utils/cache'
 import { useTenant } from '../../contexts/TenantContext'
 import { dbToUiGrade } from '@backend/examsApi'
 import { GRADE_LABEL } from './shared'
+import DatePicker from '../../components/DatePicker'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
@@ -612,7 +613,12 @@ export default function GradesPanel({ onBack, flash }) {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>التاريخ</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="cp-input" style={{ width: '100%' }} />
+              <DatePicker 
+                value={date} 
+                onChange={setDate} 
+                style={{ width: '100%' }}
+                placeholder="اختر تاريخاً"
+              />
             </div>
 
             <div>
