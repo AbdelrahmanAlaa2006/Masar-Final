@@ -217,7 +217,7 @@ export default function PurchasesPanel({ onBack, flash }) {
                       ) : p.payment_method === 'Cash' ? (
                         <><i className="fas fa-money-bill-wave"></i> نقدي</>
                       ) : (
-                        <><i className="fas fa-mobile-screen"></i> فودافون كاش</>
+                        <><i className="fas fa-mobile-screen"></i> محفظة إلكترونية</>
                       )}
                     </span>
                   </td>

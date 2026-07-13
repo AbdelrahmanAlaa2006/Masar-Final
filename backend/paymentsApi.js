@@ -296,6 +296,48 @@ export async function deletePayment(paymentId) {
   return true
 }
 
+// ── Monthly subscription fees (per grade, per tenant) + per-student discount ──
+
+// All configured grade fees for the current tenant (RLS scopes to the tenant).
+export async function listSubscriptionFees() {
+  const { data, error } = await supabase
+    .from('subscription_fees')
+    .select('grade, amount')
+  if (error) throw error
+  return data || []
+}
+
+// Create/update the fee for one grade. tenant_id is stamped by the trigger, so
+// the conflict target is (tenant_id, grade) — each tenant keeps its own fee.
+export async function upsertSubscriptionFee(grade, amount) {
+  const { error } = await supabase
+    .from('subscription_fees')
+    .upsert({ grade, amount: Math.max(0, parseFloat(amount) || 0), updated_at: new Date().toISOString() },
+            { onConflict: 'tenant_id,grade' })
+  if (error) throw error
+  return true
+}
+
+// Set a single student's exception discount (EGP). Gated to 'payments' staff.
+export async function setStudentDiscount(studentId, amount) {
+  const { error } = await supabase.rpc('set_student_discount', {
+    p_student_id: studentId,
+    p_amount: Math.max(0, parseFloat(amount) || 0),
+  })
+  if (error) throw error
+  return true
+}
+
+// Read one student's current discount (for the attendance "amount due").
+export async function getStudentDiscount(studentId) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('subscription_discount')
+    .eq('id', studentId)
+    .maybeSingle()
+  return data?.subscription_discount || 0
+}
+
 // Fetch all payment settings
 export async function getPaymentSettings() {
   const key = 'payment-settings'

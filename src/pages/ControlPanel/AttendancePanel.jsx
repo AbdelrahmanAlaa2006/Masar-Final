@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { listStudentsByGrade, getStudentIdentityByQr } from '@backend/profilesApi'
+import { listSubscriptionFees, getStudentDiscount } from '@backend/paymentsApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { listGroups, bulkTransferStudents } from '@backend/groupsApi'
@@ -12,6 +13,7 @@ import {
 } from '@backend/attendanceApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 // html5-qrcode (~200 kB) is loaded on demand when the camera scanner opens,
 // so it stays out of the panel's initial bundle.
 import { cached, LIST_TTL } from '../../utils/cache'
@@ -52,6 +54,14 @@ export default function AttendancePanel({ onBack, flash }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingSession, setDeletingSession] = useState(false)
+  const [showSessionDeleteConfirm, setShowSessionDeleteConfirm] = useState(false)
+  // Monthly subscription fee per grade (for the "amount due" on scan).
+  const [feesByGrade, setFeesByGrade] = useState({})
+  useEffect(() => {
+    listSubscriptionFees()
+      .then(rows => setFeesByGrade(Object.fromEntries((rows || []).map(r => [r.grade, Number(r.amount) || 0]))))
+      .catch(() => {})
+  }, [])
   
   // QR scanner states
   const [showScanner, setShowScanner] = useState(false)
@@ -111,6 +121,30 @@ export default function AttendancePanel({ onBack, flash }) {
       gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.25)
       osc.start()
       osc.stop(ctx.currentTime + 0.25)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Distinct triple "bell" chime for a scanned student who hasn't paid this
+  // month — clearly different from the single success beep (safe student) and
+  // from the harsh warning buzz (errors), so the cashier hears "should pay".
+  const playPaymentDueBell = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      ;[0, 0.18, 0.36].forEach((t) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'triangle'
+        osc.frequency.setValueAtTime(1000, ctx.currentTime + t)
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + t)
+        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + t + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.15)
+        osc.start(ctx.currentTime + t)
+        osc.stop(ctx.currentTime + t + 0.16)
+      })
     } catch (e) {
       console.error(e)
     }
@@ -410,12 +444,7 @@ export default function AttendancePanel({ onBack, flash }) {
   // Delete the selected session
   const handleDeleteSession = async () => {
     if (!selectedSessionId || selectedSessionId === 'new') return
-
-    const currentSession = sessions.find(s => s.id === selectedSessionId)
-    const sessionTitle = currentSession ? currentSession.title : 'هذه الحصة'
-
-    const confirmMsg = `هل أنت متأكد من حذف "${sessionTitle}" بالكامل؟\nسيؤدي ذلك إلى حذف الحصة وجميع سجلات الحضور المرتبطة بها نهائياً ولا يمكن التراجع عن هذا الإجراء.`
-    if (!window.confirm(confirmMsg)) return
+    setShowSessionDeleteConfirm(false)
 
     setDeletingSession(true)
     try {
@@ -494,8 +523,26 @@ export default function AttendancePanel({ onBack, flash }) {
         throw new Error('لم يتم العثور على طالب مطابق لهذا الباركود أو البطاقة')
       }
 
-      // Play success audio
-      playSuccessBeep()
+      // Compute the REAL monthly amount due: paid this calendar month -> 0,
+      // otherwise max(0, grade fee - this student's exception discount).
+      const lastPayIso = studentData.last_payment?.created_at
+      const paidThisMonth = (() => {
+        if (!lastPayIso) return false
+        const d = new Date(lastPayIso), now = new Date()
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      })()
+      const monthlyFee = Number(feesByGrade[studentData.grade]) || 0
+      let discount = 0
+      try { discount = Number(await getStudentDiscount(studentData.student_id)) || 0 } catch { discount = 0 }
+      studentData.monthly_fee = monthlyFee
+      studentData.discount = discount
+      studentData.paid_this_month = paidThisMonth
+      studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
+
+      // Payment-aware scan chime: paid this month -> default success beep (safe);
+      // otherwise the distinct triple bell so the cashier knows he should pay.
+      if (paidThisMonth) playSuccessBeep()
+      else playPaymentDueBell()
 
       const isDifferentGrade = studentData.grade !== grade
       const isOnlineStudent = studentData.enrollment_type === 'ONLINE'
@@ -1160,9 +1207,9 @@ export default function AttendancePanel({ onBack, flash }) {
 
             <div style={{ display: 'flex', gap: '8px' }}>
               {selectedSessionId && selectedSessionId !== 'new' && (
-                <button 
-                  onClick={handleDeleteSession} 
-                  disabled={deletingSession} 
+                <button
+                  onClick={() => setShowSessionDeleteConfirm(true)}
+                  disabled={deletingSession}
                   className="cp-btn cp-btn-danger"
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
                 >
@@ -1346,6 +1393,18 @@ export default function AttendancePanel({ onBack, flash }) {
 
             flash(`تم تسجيل حضور: ${stud.name}`, 'success')
           }}
+        />
+      )}
+
+      {showSessionDeleteConfirm && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف الحصة"
+          itemLabel={sessions.find(s => s.id === selectedSessionId)?.title || 'هذه الحصة'}
+          message="سيؤدي هذا إلى حذف الحصة وجميع سجلات الحضور المرتبطة بها نهائياً، ولا يمكن التراجع."
+          confirmText="نعم، احذف الحصة"
+          cancelText="إلغاء"
+          onConfirm={handleDeleteSession}
+          onCancel={() => setShowSessionDeleteConfirm(false)}
         />
       )}
 

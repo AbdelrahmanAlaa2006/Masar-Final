@@ -89,15 +89,21 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   const hasDebt = student.outstanding_balance > 0
 
-  // Monthly subscription check ("should he pay this month, or is he safe?"):
-  // safe if the last approved payment falls in the CURRENT calendar month.
-  const paidThisMonth = (() => {
-    const iso = student.last_payment?.created_at
-    if (!iso) return false
-    const p = new Date(iso)
-    const now = new Date()
-    return p.getFullYear() === now.getFullYear() && p.getMonth() === now.getMonth()
-  })()
+  // Monthly subscription status ("should he pay this month, or is he safe?").
+  // AttendancePanel computes the real figures (grade fee - discount) and passes
+  // them on the scanned student; fall back to a date check if they're absent.
+  const paidThisMonth = typeof student.paid_this_month === 'boolean'
+    ? student.paid_this_month
+    : (() => {
+        const iso = student.last_payment?.created_at
+        if (!iso) return false
+        const p = new Date(iso), now = new Date()
+        return p.getFullYear() === now.getFullYear() && p.getMonth() === now.getMonth()
+      })()
+  // Real amount due this month (0 when paid). Falls back to the ledger balance.
+  const amountDue = typeof student.amount_due === 'number'
+    ? student.amount_due
+    : (student.outstanding_balance || 0)
 
   const modalBackground = hasWarning
     ? (isDark ? 'rgba(45, 34, 12, 0.85)' : 'rgba(254, 243, 199, 0.95)')
@@ -386,19 +392,24 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             gridColumn: 'span 2',
             textAlign: 'center'
           }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold' }}>الحساب المالي (الرصيد المستحق)</span>
+            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold' }}>المستحق هذا الشهر (الاشتراك)</span>
             <div style={{
               fontSize: '2rem',
               fontWeight: 900,
               marginTop: '6px',
-              color: hasDebt ? '#ef4444' : '#10b981'
+              color: amountDue > 0 ? '#ef4444' : '#10b981'
             }}>
-              {student.outstanding_balance} جنيه
+              {amountDue} جنيه
             </div>
-            {hasDebt && (
+            {typeof student.discount === 'number' && student.discount > 0 && (
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+                (بعد خصم استثنائي {student.discount} ج.م)
+              </div>
+            )}
+            {amountDue > 0 && (
               <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '4px', fontWeight: 'bold' }}>
                 <i className="fas fa-circle-exclamation" style={{ marginInlineEnd: '4px' }} />
-                يوجد مستحقات مالية متأخرة على الطالب
+                لم يسدّد اشتراك هذا الشهر
               </div>
             )}
           </div>
@@ -412,7 +423,9 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
           color: paidThisMonth ? '#10b981' : '#ef4444', fontWeight: 800, fontSize: '1rem'
         }}>
           <i className={`fas ${paidThisMonth ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ marginInlineEnd: '8px' }} />
-          {paidThisMonth ? 'سدّد اشتراك هذا الشهر ✅' : 'لم يسدّد اشتراك هذا الشهر — مطلوب الدفع ⚠️'}
+          {paidThisMonth
+            ? 'سدّد اشتراك هذا الشهر ✅'
+            : `مطلوب الدفع${amountDue > 0 ? ` — ${amountDue} ج.م` : ''} ⚠️`}
         </div>
 
         {/* Last Payment */}

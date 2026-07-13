@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
-import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment, deletePayment } from '@backend/paymentsApi'
+import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, recordCashPayment, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount } from '@backend/paymentsApi'
 import { searchStudents } from '@backend/profilesApi'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
 import { invalidate as invalidateCache } from '../utils/cache'
 import { useTenant } from '../contexts/TenantContext'
 import { GRADE_LABEL } from './ControlPanel/shared'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import './Payments.css'
 
 
@@ -325,10 +326,10 @@ export default function Payments() {
 
           {/* Vodafone Cash */}
           <div className="pay-card pay-card-voda">
-            <div className="pay-card-badge">Vodafone Cash</div>
+            <div className="pay-card-badge">E-wallet</div>
             <div className="pay-card-icon"><i className="fas fa-mobile-screen"></i></div>
-            <h3 className="pay-card-title">فودافون كاش</h3>
-            <p className="pay-card-text">قم بتحويل قيمة الاشتراك إلى رقم فودافون كاش التالي:</p>
+            <h3 className="pay-card-title">محفظة إلكترونية</h3>
+            <p className="pay-card-text">قم بتحويل قيمة الاشتراك إلى رقم محفظة إلكترونية التالي:</p>
             <div className="pay-card-value-box">
               <span className="pay-card-value">{activeConfig.vodafoneCash.number}</span>
               <button 
@@ -451,7 +452,7 @@ export default function Payments() {
                     disabled={submitting}
                   >
                     <option value="InstaPay">تطبيق InstaPay</option>
-                    <option value="Vodafone Cash">فودافون كاش (Vodafone Cash)</option>
+                    <option value="Vodafone Cash">محفظة إلكترونية (Vodafone Cash)</option>
                   </select>
                 </div>
 
@@ -533,7 +534,7 @@ export default function Payments() {
                           ) : p.payment_method === 'Cash' ? (
                             <><i className="fas fa-money-bill-wave"></i> دفع نقدي</>
                           ) : (
-                            <><i className="fas fa-mobile-screen"></i> فودافون كاش</>
+                            <><i className="fas fa-mobile-screen"></i> محفظة إلكترونية</>
                           )}
                         </span>
                         <span className="pay-item-amount">{p.amount} ج.م</span>
@@ -645,6 +646,28 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const adminId = user?.id || null
   const { gradesList } = useTenant()
 
+  // Monthly subscription fee per grade (admins + assistants with 'payments').
+  const [feeInputs, setFeeInputs] = useState({})
+  const [savingFees, setSavingFees] = useState(false)
+  const [showFees, setShowFees] = useState(false)
+  useEffect(() => {
+    listSubscriptionFees()
+      .then(rows => setFeeInputs(Object.fromEntries((rows || []).map(r => [r.grade, String(r.amount ?? '')]))))
+      .catch(() => {})
+  }, [])
+  const handleSaveFees = async () => {
+    setSavingFees(true)
+    try {
+      for (const g of (gradesList || [])) {
+        await upsertSubscriptionFee(g.id, parseFloat(feeInputs[g.id]) || 0)
+      }
+      notify('تم حفظ أسعار الاشتراك الشهري.', 'success')
+    } catch (err) {
+      notify('تعذر حفظ الأسعار: ' + (err.message || ''), 'danger')
+    } finally {
+      setSavingFees(false)
+    }
+  }
 
   const [activeTab, setActiveTab] = useState('pending') // 'pending' is default for immediate attention, can switch to 'all', 'approved', 'rejected'
   const [searchQuery, setSearchQuery] = useState('')
@@ -658,6 +681,20 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [showCashModal, setShowCashModal] = useState(false)
   const [cashStudentId, setCashStudentId] = useState('')
   const [cashAmount, setCashAmount] = useState('')
+  const [cashDiscount, setCashDiscount] = useState('')
+  const [savingDiscount, setSavingDiscount] = useState(false)
+  const handleSaveDiscount = async () => {
+    if (!cashStudentId) return
+    setSavingDiscount(true)
+    try {
+      await setStudentDiscount(cashStudentId, parseFloat(cashDiscount) || 0)
+      notify('تم حفظ الخصم الاستثنائي للطالب.', 'success')
+    } catch (err) {
+      notify('تعذر حفظ الخصم: ' + (err.message || ''), 'danger')
+    } finally {
+      setSavingDiscount(false)
+    }
+  }
   const [cashPackageName, setCashPackageName] = useState('')
   const [showAdminPkgDropdown, setShowAdminPkgDropdown] = useState(false)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
@@ -725,18 +762,18 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [notesMap, setNotesMap] = useState({})
   const [resolvingId, setResolvingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [paymentToDelete, setPaymentToDelete] = useState(null)
 
   // Permanently delete a payment (test data / mistake). RLS keeps it tenant-safe.
-  // We drop it from local state so every derived total (stats, tab counts) and
-  // the student's monthly "paid?" status update immediately — real, not fake.
+  // We re-pull from the DB so every derived total (stats, tab counts) and the
+  // student's monthly "paid?" status update immediately — real, not fake.
   const handleDeletePayment = async (p) => {
-    if (!window.confirm(`حذف هذه العملية نهائياً؟\nالطالب: ${p.profiles?.name || '—'}\nالمبلغ: ${p.amount} ج.م\nلا يمكن التراجع.`)) return
+    if (!p) return
+    setPaymentToDelete(null)
     setDeletingId(p.id)
     try {
       await deletePayment(p.id)
       invalidateCache('students')
-      // Re-pull from the DB so every derived total/tab-count reflects reality
-      // (the row is truly gone) — real, not a local guess.
       onRefresh()
       notify('تم حذف العملية بنجاح.', 'success')
     } catch (err) {
@@ -955,7 +992,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       const studentName = p.profiles?.name || '—'
       const grade = GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || '—'
       const amount = p.amount || 0
-      const method = p.payment_method === 'InstaPay' ? 'InstaPay' : p.payment_method === 'Cash' ? 'دفع نقدي' : 'Vodafone Cash'
+      const method = p.payment_method === 'InstaPay' ? 'InstaPay' : p.payment_method === 'Cash' ? 'دفع نقدي' : 'E-wallet'
       const packageName = p.package_name || '—'
       const date = fmtDate(p.created_at)
       const status = p.status === 'pending' ? 'قيد المراجعة' : p.status === 'approved' ? 'مقبول' : 'مرفوض'
@@ -1068,7 +1105,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رقم فودافون كاش (Vodafone Cash Number) *</label>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رقم محفظة إلكترونية (Vodafone Cash Number) *</label>
                 <input 
                   type="text" 
                   value={vodaNumber} 
@@ -1287,7 +1324,43 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               >
                 <i className="fas fa-file-excel"></i> تصدير البيانات 📊
               </button>
+              <button
+                type="button"
+                onClick={() => setShowFees(v => !v)}
+                className="cp-btn cp-btn-info"
+                style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-money-check-dollar"></i> أسعار الاشتراك الشهري ⚙️
+              </button>
             </div>
+
+            {/* Monthly subscription fee per grade (staff with 'payments' permission). */}
+            {showFees && (
+              <div style={{ marginTop: 16, padding: 16, borderRadius: 14, background: 'var(--cp-card-bg, rgba(255,255,255,0.03))', border: '1px solid var(--cp-card-border, rgba(255,255,255,0.1))' }}>
+                <div style={{ fontWeight: 800, marginBottom: 4, color: 'var(--cp-text-main)' }}>قيمة الاشتراك الشهري لكل مرحلة</div>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: 12 }}>
+                  هذه القيمة تظهر كمبلغ مستحق للطالب الذي لم يسدّد هذا الشهر عند تحضيره وفي تقرير ولي الأمر.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                  {(gradesList || []).map(g => (
+                    <label key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--cp-text-muted)' }}>{g.name}</span>
+                      <input
+                        type="number" min="0"
+                        value={feeInputs[g.id] ?? ''}
+                        onChange={(e) => setFeeInputs(prev => ({ ...prev, [g.id]: e.target.value }))}
+                        placeholder="0 ج.م"
+                        className="cp-input"
+                        style={{ padding: '8px 10px' }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <button onClick={handleSaveFees} disabled={savingFees} className="cp-btn cp-btn-success" style={{ marginTop: 12, padding: '8px 18px' }}>
+                  {savingFees ? <i className="fas fa-spinner fa-spin"></i> : 'حفظ الأسعار'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1355,7 +1428,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                           ) : p.payment_method === 'Cash' ? (
                             <><i className="fas fa-money-bill-wave"></i> دفع نقدي</>
                           ) : (
-                            <><i className="fas fa-mobile-screen"></i> فودافون كاش</>
+                            <><i className="fas fa-mobile-screen"></i> محفظة إلكترونية</>
                           )}
                         </span>
                       </td>
@@ -1452,7 +1525,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                         )}
                         {/* Delete any payment (test data / mistake) — tenant-safe via RLS. */}
                         <button
-                          onClick={() => handleDeletePayment(p)}
+                          onClick={() => setPaymentToDelete(p)}
                           disabled={deletingId === p.id}
                           className="cp-btn cp-btn-ghost"
                           title="حذف هذه العملية نهائياً"
@@ -1486,6 +1559,18 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       </div>
 
       {/* ─────────── Record Cash Payment Modal ─────────── */}
+      {paymentToDelete && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف العملية المالية"
+          itemLabel={`${paymentToDelete.profiles?.name || 'طالب'} — ${paymentToDelete.amount} ج.م`}
+          message="سيتم حذف هذه العملية نهائياً وتُخصم من الإجماليات وحالة اشتراك الطالب. لا يمكن التراجع."
+          confirmText="نعم، احذف العملية"
+          cancelText="إلغاء"
+          onConfirm={() => handleDeletePayment(paymentToDelete)}
+          onCancel={() => setPaymentToDelete(null)}
+        />
+      )}
+
       {showCashModal && (
         <div className="rp-modal-overlay" onClick={() => setShowCashModal(false)} role="dialog" aria-modal="true">
           <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 500 }}>
@@ -1510,6 +1595,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label className="paypg-modal-label">البحث عن الطالب واختياره *</label>
                 {cashStudentId ? (
+                  <>
                   <div className="paypg-modal-selected-student">
                     <div>
                       <strong style={{ color: 'var(--cp-text-main)' }}>{studentsList.find(s => s.id === cashStudentId)?.name}</strong>
@@ -1517,14 +1603,25 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                         ({GRADE_LABEL[studentsList.find(s => s.id === cashStudentId)?.grade] || studentsList.find(s => s.id === cashStudentId)?.grade || ''})
                       </span>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setCashStudentId('')} 
+                    <button
+                      type="button"
+                      onClick={() => setCashStudentId('')}
                       style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontFamily: 'Tajawal' }}
                     >
                       تغيير الطالب
                     </button>
                   </div>
+                  {/* Per-student exception discount (special cases) — independent of recording a payment. */}
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem', flex: 1, minWidth: 160 }}>
+                      <span style={{ color: 'var(--cp-text-muted)' }}>خصم استثنائي دائم لهذا الطالب (ج.م)</span>
+                      <input type="number" min="0" value={cashDiscount} onChange={(e) => setCashDiscount(e.target.value)} placeholder="0" className="cp-input" style={{ padding: '8px 10px' }} />
+                    </label>
+                    <button type="button" onClick={handleSaveDiscount} disabled={savingDiscount} className="cp-btn cp-btn-info" style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}>
+                      {savingDiscount ? <i className="fas fa-spinner fa-spin"></i> : 'حفظ الخصم'}
+                    </button>
+                  </div>
+                  </>
                 ) : (
                   <>
                     <input

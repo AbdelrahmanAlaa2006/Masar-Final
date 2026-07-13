@@ -244,7 +244,7 @@ export default function PaymentsPanel() {
                       {p.payment_method === 'InstaPay' ? (
                         <><i className="fas fa-bolt"></i> InstaPay</>
                       ) : (
-                        <><i className="fas fa-mobile-screen"></i> فودافون كاش</>
+                        <><i className="fas fa-mobile-screen"></i> محفظة إلكترونية</>
                       )}
                     </span>
                   </td>
