@@ -1015,9 +1015,32 @@ export default function AttendancePanel({ onBack, flash }) {
                 value={scannerText}
                 onChange={(e) => setScannerText(e.target.value)}
                 onKeyDown={(e) => {
+                  const now = Date.now();
+                  const currentReactValue = scannerText;
+                  const currentDomValue = e.target.value;
+                  
+                  console.log(`[Barcode Debug] onKeyDown for key: "${e.key}" at timestamp: ${now}`);
+                  console.log(`[Barcode Debug] Current React state scannerText: "${currentReactValue}" (len: ${currentReactValue.length})`);
+                  console.log(`[Barcode Debug] Current DOM e.target.value: "${currentDomValue}" (len: ${currentDomValue.length})`);
+                  
                   if (e.key === 'Enter') {
-                    handleQrScanned(scannerText.trim(), true)
-                    setScannerText('')
+                    e.preventDefault();
+                    
+                    const lookupStart = Date.now();
+                    const lookupValue = currentDomValue;
+                    
+                    console.log(`[Barcode Debug] Lookup started at: ${lookupStart}`);
+                    console.log(`[Barcode Debug] Lookup value: "${lookupValue}" (len: ${lookupValue.length})`);
+                    for (let i = 0; i < lookupValue.length; i++) {
+                      console.log(`  char[${i}]: "${lookupValue[i]}" (code: ${lookupValue.charCodeAt(i)})`);
+                    }
+                    
+                    handleQrScanned(lookupValue.trim(), true).finally(() => {
+                      const lookupFinish = Date.now();
+                      console.log(`[Barcode Debug] Lookup finished at: ${lookupFinish} (duration: ${lookupFinish - lookupStart}ms)`);
+                    });
+                    
+                    setScannerText('');
                   }
                 }}
                 onFocus={() => setScannerFocused(true)}
