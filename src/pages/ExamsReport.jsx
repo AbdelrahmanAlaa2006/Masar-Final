@@ -4,6 +4,7 @@ import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import { getProfile } from '@backend/profilesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { cached, LIST_TTL } from '../utils/cache'
+import PrintReportHeader from '../components/PrintReportHeader'
 import './ExamsReport.css'
 
 /* Format a JS date as dd/mm/yyyy in ar-EG digits-neutral form */
@@ -430,6 +431,7 @@ export default function ExamsReport() {
         {/* TABLE VIEW — admin only (the detailed report card) */}
         {isAdmin && viewMode === 'table' && (
           <div className="cp-table-card" id="er-reportTable">
+            <PrintReportHeader subtitle="تقرير الامتحانات" />
             <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}><i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> تقرير النتائج التفصيلي</h2>

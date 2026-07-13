@@ -4,6 +4,7 @@ import './HomeworkGroupReport.css'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { cached, LIST_TTL } from '../utils/cache'
+import PrintReportHeader from '../components/PrintReportHeader'
 
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
@@ -492,6 +493,7 @@ export default function HomeworkGroupReport() {
         {/* Report Table */}
         {displayedStudents.length > 0 && (
           <div className="cp-table-card" id="hgr-reportTable">
+            <PrintReportHeader subtitle="التقرير الجماعي للواجبات" />
             <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--cp-text-main)' }}>

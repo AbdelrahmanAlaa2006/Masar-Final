@@ -5,6 +5,7 @@ import { getProfile } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
 import { cached, LIST_TTL } from '../utils/cache'
+import PrintReportHeader from '../components/PrintReportHeader'
 import './VideosReport.css'
 
 const fmtDate = (d) => {
@@ -395,6 +396,7 @@ export default function VideosReport() {
         {/* TABLE VIEW — admin only (the detailed report card) */}
         {isAdmin && viewMode === 'table' && (
           <div className="cp-table-card" id="vr-reportTable">
+            <PrintReportHeader subtitle="تقرير مشاهدة الفيديوهات" />
             <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}><i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> تقرير المشاهدة التفصيلي</h2>

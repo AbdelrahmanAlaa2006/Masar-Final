@@ -6,6 +6,7 @@ import { listVideos } from '@backend/videosApi'
 import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
 import { cached, LIST_TTL } from '../utils/cache'
+import PrintReportHeader from '../components/PrintReportHeader'
 
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
@@ -481,6 +482,7 @@ export default function VideosGroupReport() {
         {/* Report Table */}
         {displayedStudents.length > 0 && (
           <div className="cp-table-card" id="vgr-reportTable">
+            <PrintReportHeader subtitle="التقرير الجماعي للفيديوهات" />
             <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>

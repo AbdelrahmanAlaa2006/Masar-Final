@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listHomeworks, getMySubmissionsBatch, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { getProfile } from '@backend/profilesApi'
 import { cached, LIST_TTL } from '../utils/cache'
+import PrintReportHeader from '../components/PrintReportHeader'
 import './HomeworkReport.css'
 
 /* Format a JS date as dd/mm/yyyy */
@@ -361,6 +362,7 @@ export default function HomeworkReport() {
         {/* TABLE VIEW — admin only */}
         {isAdmin && viewMode === 'table' && (
           <div className="cp-table-card" id="hr-reportTable">
+            <PrintReportHeader subtitle="تقرير الواجبات" />
             <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}><i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> تقرير الواجبات التفصيلي</h2>
