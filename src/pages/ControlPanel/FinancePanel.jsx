@@ -8,6 +8,7 @@ import { deletePayment } from '@backend/paymentsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import DatePicker from '../../components/DatePicker'
+import BookletsPanel from './BookletsPanel'
 import { GRADE_LABEL } from './shared'
 
 const todayIso = () => new Date().toISOString().split('T')[0]
@@ -359,6 +360,8 @@ export default function FinancePanel({ onBack, flash }) {
           ['categories', 'fa-tags', 'التصنيفات'],
           ['reports', 'fa-chart-pie', 'التقارير'],
           ['debts', 'fa-hand-holding-dollar', 'مديونيات الطلاب'],
+          ['booklets_manage', 'fa-book-open', 'إدارة الكتيبات'],
+          ['booklets_reports', 'fa-file-invoice-dollar', 'تقارير الكتيبات'],
         ].map(([key, icon, label]) => (
           <button
             key={key}
@@ -607,6 +610,11 @@ export default function FinancePanel({ onBack, flash }) {
           </div>
         ) : null
       )}
+
+      {/* ── Booklets (manage / reports) — Booklet Payment lives on the
+             Payment Confirmation page (Payments.jsx) beside manual payment. ── */}
+      {activeTab === 'booklets_manage' && <BookletsPanel mode="manage" flash={flash} />}
+      {activeTab === 'booklets_reports' && <BookletsPanel mode="reports" flash={flash} />}
 
       {/* ── Debts ── */}
       {activeTab === 'debts' && (

@@ -12,6 +12,7 @@ import { invalidate as invalidateCache } from '../utils/cache'
 import { useTenant } from '../contexts/TenantContext'
 import { GRADE_LABEL } from './ControlPanel/shared'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import BookletsPanel from './ControlPanel/BookletsPanel'
 import './Payments.css'
 
 
@@ -730,6 +731,14 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
+  // Booklet payment modal — reuses the existing BookletsPanel payment workflow
+  // (same APIs, services, validation, and business logic; only its location
+  // moves here, beside the manual cash payment action).
+  const [showBookletModal, setShowBookletModal] = useState(false)
+  // Adapter: BookletsPanel calls flash(msg, kind) with kind in
+  // 'success' | 'error' | 'warning'; map it onto this page's notify().
+  const bookletFlash = (msg, kind = 'success') => notify(msg, { type: kind })
+
   // Cash payment modal states
   const [showCashModal, setShowCashModal] = useState(false)
   const [cashStudentId, setCashStudentId] = useState('')
@@ -1440,6 +1449,14 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               </button>
               <button
                 type="button"
+                onClick={() => setShowBookletModal(true)}
+                className="cp-btn cp-btn-success"
+                style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-book"></i> تسجيل دفع الكتيبات 📚
+              </button>
+              <button
+                type="button"
                 onClick={handleExportCSV}
                 className="cp-btn cp-btn-ghost"
                 style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
@@ -1691,6 +1708,35 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
           onConfirm={() => handleDeletePayment(paymentToDelete)}
           onCancel={() => setPaymentToDelete(null)}
         />
+      )}
+
+      {/* ─────────── Booklet Payment Modal ─────────── */}
+      {/* Reuses the existing BookletsPanel payment workflow verbatim — no
+          logic is duplicated; the feature simply lives here now. */}
+      {showBookletModal && (
+        <div className="rp-modal-overlay" onClick={() => setShowBookletModal(false)} role="dialog" aria-modal="true">
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 1100 }}>
+
+            {/* Modal Header */}
+            <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+              <div className="rp-modal-icon" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                <i className="fas fa-book"></i>
+              </div>
+              <div className="rp-modal-title">
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>تسجيل دفع الكتيبات</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>ابحث عن الطالب واعرض كتيباته المعيّنة وسجّل المدفوعة منها</p>
+              </div>
+              <button className="rp-modal-close" onClick={() => setShowBookletModal(false)} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Modal Body — scrollable workflow */}
+            <div style={{ padding: 20, overflowY: 'auto' }}>
+              <BookletsPanel mode="payment" flash={bookletFlash} />
+            </div>
+          </div>
+        </div>
       )}
 
       {showCashModal && (
