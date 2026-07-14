@@ -26,8 +26,33 @@ import {
   isScannerDebugEnabled, createScanRecorder,
   buildScannerDiagnosticReport, copyDiagnosticReport,
 } from '../../utils/scannerDiagnostics'
+import { submitScannerDiagnostic } from '@backend/scannerDiagnosticsApi'
 
 const SCANNER_DEBUG = isScannerDebugEnabled()
+
+/* ── Layout-independent scan capture ─────────────────────────────────────────
+   A USB wedge scanner "types" its barcode through the OS keyboard layout, so
+   with an Arabic (or any non-US) layout active the characters that reach the
+   input can be garbled beyond repair. KeyboardEvent.code however identifies
+   the PHYSICAL key (KeyB, Digit4, Minus…) regardless of layout. Tokens only
+   contain letters/digits/'-' (case-insensitive in the DB), so rebuilding the
+   scan from key codes recovers the exact token under ANY layout. Used as a
+   silent fallback when the typed text fails the lookup. */
+const codeToTokenChar = (code) => {
+  if (!code) return ''
+  if (code.startsWith('Key') && code.length === 4) return code.slice(3).toLowerCase()
+  if (code.startsWith('Digit') && code.length === 6) return code.slice(5)
+  if (code.startsWith('Numpad') && /^Numpad\d$/.test(code)) return code.slice(6)
+  if (code === 'Minus' || code === 'NumpadSubtract') return '-'
+  if (code === 'Comma') return ','  // legacy 3-field cards
+  return ''
+}
+
+// A burst is treated as a scanner (not a human) when keys arrive this fast.
+const SCAN_FAST_GAP_MS = 45
+// If a machine-speed burst stops for this long without Enter/Tab, submit it
+// anyway — covers scanners whose CR/LF suffix got disabled by a config scan.
+const SCAN_IDLE_SUBMIT_MS = 200
 
 const mapArabicKeysToEnglish = (str) => {
   if (!str) return '';
@@ -127,10 +152,22 @@ export default function AttendancePanel({ onBack, flash }) {
   // still in flight. Chaining on this promise keeps lookups ordered so two
   // scans can never interleave or be read as one concatenated string.
   const scanChainRef = useRef(Promise.resolve())
+  // Layout-independent shadow of the current scan, rebuilt from physical key
+  // codes; used as a silent fallback lookup when the typed text fails.
+  const physicalBufferRef = useRef('')
+  const lastKeyTsRef = useRef(0)
+  const burstStatsRef = useRef({ keys: 0, fast: 0 })
+  const burstTimerRef = useRef(null)
+  useEffect(() => () => clearTimeout(burstTimerRef.current), [])
 
-  // ── TEMPORARY scanner diagnostics (no-ops when SCANNER_DEBUG is false) ──
+  // ── TEMPORARY scanner diagnostics ──
+  // Capture is ALWAYS on (a few listeners on one input — negligible cost):
+  // every failed scan silently files its full report into the
+  // scanner_diagnostics table so the developer can read it remotely, with
+  // zero action needed from the assistants. The on-screen copy dialog stays
+  // behind the debug flag (?debugScanner=1 / VITE_DEBUG_SCANNER).
   const scanRecorderRef = useRef(null)
-  if (SCANNER_DEBUG && !scanRecorderRef.current) scanRecorderRef.current = createScanRecorder()
+  if (!scanRecorderRef.current) scanRecorderRef.current = createScanRecorder()
   const [diagReport, setDiagReport] = useState(null)
   const [diagCopied, setDiagCopied] = useState(false)
 
@@ -138,7 +175,7 @@ export default function AttendancePanel({ onBack, flash }) {
   // input/keyup/change + focus movements) so a failed scan's report shows
   // exactly what the physical scanner typed and in what order/timing.
   useEffect(() => {
-    if (!SCANNER_DEBUG || activeSubTab !== 'record') return
+    if (activeSubTab !== 'record') return
     const el = scannerInputRef.current
     const rec = scanRecorderRef.current
     if (!el || !rec) return
@@ -664,12 +701,16 @@ export default function AttendancePanel({ onBack, flash }) {
     }
   }
 
-  // QR card validation and display
-  const handleQrScanned = async (text, isCashier = false) => {
-    if (!text) return
+  // QR card validation and display.
+  // Returns true when a student was found (even if a business rule then
+  // blocked the check-in), false when the lookup failed. With
+  // opts.silent=true a failed lookup shows no error/beep — used for the
+  // first attempt when a layout-independent fallback value is available.
+  const handleQrScanned = async (text, isCashier = false, opts = {}) => {
+    if (!text) return false
     // Diagnostic capture (observation only — the lookup flow below is
-    // untouched; `diag` is null in production so nothing here runs).
-    const diag = SCANNER_DEBUG ? {
+    // untouched). Always on so failed scans self-report to the developer.
+    const diag = {
       rawInput: String(text),
       probes: [],
       reachedBackend: false,
@@ -680,7 +721,7 @@ export default function AttendancePanel({ onBack, flash }) {
         const a = document.activeElement
         return a ? `<${a.tagName.toLowerCase()}>${a === scannerInputRef.current ? ' (scanner input)' : a.className ? ` class="${String(a.className).slice(0, 60)}"` : ''}` : '(none)'
       })(),
-    } : null
+    }
     if (diag) {
       const raw = String(text)
       const arabicMapped = mapArabicKeysToEnglish(raw.trim())
@@ -755,14 +796,14 @@ export default function AttendancePanel({ onBack, flash }) {
           flash(`لا يمكن تحضير ${studentData.name} — الطالب مشترك أونلاين فقط وليس ضمن نظام حضور السنتر`, 'error')
           // Open details modal to show error
           setScannedStudent(studentData)
-          return
+          return true
         }
         if (isDifferentGrade) {
           playWarningBeep()
           flash(`لا يمكن تحضير ${studentData.name} تلقائياً لأنه ينتمي لصف دراسي مختلف`, 'error')
           // Open details modal to show error
           setScannedStudent(studentData)
-          return
+          return true
         }
 
         // Automatically check-in student to session
@@ -801,8 +842,12 @@ export default function AttendancePanel({ onBack, flash }) {
 
       // Open details modal
       setScannedStudent(studentData)
+      return true
 
     } catch (err) {
+      // Silent attempt: the caller has a layout-independent fallback value to
+      // try next — report failure without any UI noise or diagnostics yet.
+      if (opts.silent) return false
       playWarningBeep()
       const shownMessage = err.message || 'رمز البطاقة غير صالح'
       if (isCashier) {
@@ -837,7 +882,7 @@ export default function AttendancePanel({ onBack, flash }) {
         } catch { /* probes are best-effort */ }
 
         const groupRow = groups.find(g => g.id === selectedGroupId)
-        setDiagReport(buildScannerDiagnosticReport({
+        const reportText = buildScannerDiagnosticReport({
           rawInput: diag.rawInput,
           displayedValue: diag.rawInput, // the DOM value read at Enter — exactly what was on screen
           normalizationStages: diag.stages || {},
@@ -860,10 +905,93 @@ export default function AttendancePanel({ onBack, flash }) {
           recorder: scanRecorderRef.current,
           lookupStartMark: diag.lookupStartMark,
           focusedElementAtLookup: diag.focusedElement,
-        }))
-        setDiagCopied(false)
+        })
+
+        // Auto-file the report (fire-and-forget) so the developer can read it
+        // remotely — the assistants don't have to do anything at all.
+        submitScannerDiagnostic({
+          report: reportText,
+          rawInput: diag.rawInput,
+          finalLookupValue: diag.finalLookupValue ?? diag.stages?.afterCommaRule ?? '',
+          createdBy: currentUser?.id,
+        }).catch(() => {})
+
+        // On-screen copy dialog only in explicit debug mode.
+        if (SCANNER_DEBUG) {
+          setDiagReport(reportText)
+          setDiagCopied(false)
+        }
       }
+      return false
     }
+  }
+
+  // ── Scanner-field submission (final hardening) ─────────────────────────
+  // Reads the typed DOM value AND the physical-keycode shadow buffer, clears
+  // both immediately (no double-scan race), then looks up the typed value
+  // first; if that fails and the shadow differs, silently retries with it —
+  // recovering scans garbled by ANY OS keyboard layout.
+  const submitScan = () => {
+    clearTimeout(burstTimerRef.current)
+    const inputEl = scannerInputRef.current
+    const typedValue = inputEl ? inputEl.value : ''
+    const physicalValue = physicalBufferRef.current
+    physicalBufferRef.current = ''
+    burstStatsRef.current = { keys: 0, fast: 0 }
+    if (inputEl) inputEl.value = ''
+    setScannerText('')
+
+    const primary = typedValue.trim() ? typedValue : physicalValue
+    if (!primary.trim()) return
+    const fallback = physicalValue && physicalValue.trim() && physicalValue !== primary ? physicalValue : null
+
+    // Serialize lookups so overlapping scans process in order.
+    scanChainRef.current = scanChainRef.current
+      .then(async () => {
+        const found = await handleQrScanned(primary, true, { silent: !!fallback })
+        if (!found && fallback) await handleQrScanned(fallback, true)
+      })
+      .catch(() => {})
+  }
+
+  const handleScannerKeyDown = (e) => {
+    // Explicit terminator from the scanner (or the user pressing Enter).
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      submitScan()
+      return
+    }
+
+    // Maintain the layout-independent shadow buffer from physical key codes.
+    if (e.key === 'Backspace') {
+      physicalBufferRef.current = physicalBufferRef.current.slice(0, -1)
+    } else if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+      physicalBufferRef.current += codeToTokenChar(e.code)
+    }
+
+    // Track burst speed to tell a scanner (machine-fast) from a human.
+    const now = performance.now()
+    const gap = now - lastKeyTsRef.current
+    lastKeyTsRef.current = now
+    const stats = burstStatsRef.current
+    stats.keys += 1
+    if (gap > 0 && gap < SCAN_FAST_GAP_MS) stats.fast += 1
+
+    // Auto-submit for scanners whose Enter/CR suffix is disabled: once a
+    // machine-speed burst goes idle, submit it. Human typing (slow gaps)
+    // never qualifies, so manual entry + Enter keeps working unchanged.
+    clearTimeout(burstTimerRef.current)
+    burstTimerRef.current = setTimeout(() => {
+      const s = burstStatsRef.current
+      const el = scannerInputRef.current
+      const len = Math.max(el ? el.value.length : 0, physicalBufferRef.current.length)
+      if (len >= 6 && s.keys >= 6 && s.fast / s.keys >= 0.7) {
+        submitScan()
+      } else {
+        // Human typing pause — keep the text, just reset the burst counters.
+        burstStatsRef.current = { keys: 0, fast: 0 }
+      }
+    }, SCAN_IDLE_SUBMIT_MS)
   }
 
   const handleManualCheckIn = () => {
@@ -1239,28 +1367,13 @@ export default function AttendancePanel({ onBack, flash }) {
                 ref={scannerInputRef}
                 type="text" 
                 value={scannerText}
-                onChange={(e) => setScannerText(e.target.value)}
-                onKeyDown={(e) => {
-                  // Scanners terminate with Enter (some models send Tab).
-                  // Keyboard events are strictly ordered, so by the time the
-                  // terminator's keydown fires every character of the barcode
-                  // is already in the DOM value — read it synchronously and
-                  // clear the field IMMEDIATELY. The old 50ms-delayed read let
-                  // a second fast scan append to the first one's value, which
-                  // guaranteed a "student not found" on repeated scans.
-                  if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault()
-                    const inputEl = e.target
-                    const lookupValue = inputEl.value
-                    inputEl.value = ''
-                    setScannerText('')
-                    if (!lookupValue.trim()) return
-                    // Serialize lookups so overlapping scans process in order.
-                    scanChainRef.current = scanChainRef.current
-                      .then(() => handleQrScanned(lookupValue, true))
-                      .catch(() => {})
-                  }
+                onChange={(e) => {
+                  setScannerText(e.target.value)
+                  // Field manually emptied (select-all + delete, etc.) —
+                  // drop the physical shadow buffer so it can't go stale.
+                  if (e.target.value === '') physicalBufferRef.current = ''
                 }}
+                onKeyDown={handleScannerKeyDown}
                 onFocus={() => setScannerFocused(true)}
                 onBlur={() => setScannerFocused(false)}
                 placeholder="انقر هنا لبدء المسح بالباركود مباشرة..."
