@@ -20,6 +20,14 @@ import { cached, LIST_TTL, invalidate as invalidateCache } from '../../utils/cac
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
+// TEMPORARY scanner diagnostic mode (attendance only). Fully inert unless
+// VITE_DEBUG_SCANNER=true or the page is opened with ?debugScanner=1.
+import {
+  isScannerDebugEnabled, createScanRecorder,
+  buildScannerDiagnosticReport, copyDiagnosticReport,
+} from '../../utils/scannerDiagnostics'
+
+const SCANNER_DEBUG = isScannerDebugEnabled()
 
 const mapArabicKeysToEnglish = (str) => {
   if (!str) return '';
@@ -50,7 +58,7 @@ const mapArabicKeysToEnglish = (str) => {
 };
 
 export default function AttendancePanel({ onBack, flash }) {
-  const { tenantId, gradesList } = useTenant()
+  const { tenantId, tenantSlug, gradesList } = useTenant()
   const { user: currentUser } = useAuth()
   
   // Scopes & Filters
@@ -119,6 +127,48 @@ export default function AttendancePanel({ onBack, flash }) {
   // still in flight. Chaining on this promise keeps lookups ordered so two
   // scans can never interleave or be read as one concatenated string.
   const scanChainRef = useRef(Promise.resolve())
+
+  // ── TEMPORARY scanner diagnostics (no-ops when SCANNER_DEBUG is false) ──
+  const scanRecorderRef = useRef(null)
+  if (SCANNER_DEBUG && !scanRecorderRef.current) scanRecorderRef.current = createScanRecorder()
+  const [diagReport, setDiagReport] = useState(null)
+  const [diagCopied, setDiagCopied] = useState(false)
+
+  // Capture the raw DOM event stream on the scanner input (keydown/keypress/
+  // input/keyup/change + focus movements) so a failed scan's report shows
+  // exactly what the physical scanner typed and in what order/timing.
+  useEffect(() => {
+    if (!SCANNER_DEBUG || activeSubTab !== 'record') return
+    const el = scannerInputRef.current
+    const rec = scanRecorderRef.current
+    if (!el || !rec) return
+    const kd = (e) => rec.record('keydown', { key: e.key, code: e.code, shiftKey: e.shiftKey, valueLen: el.value.length })
+    const kp = (e) => rec.record('keypress', { key: e.key, code: e.code, shiftKey: e.shiftKey, valueLen: el.value.length })
+    const ku = (e) => rec.record('keyup', { key: e.key, code: e.code, shiftKey: e.shiftKey, valueLen: el.value.length })
+    const inp = () => rec.record('input', { valueLen: el.value.length })
+    const chg = () => rec.record('change', { valueLen: el.value.length })
+    const blur = () => rec.record('blur', { detail: 'scanner input lost focus' })
+    const focusElsewhere = (e) => {
+      if (e.target !== el) rec.record('focusin-elsewhere', { detail: `focus moved to <${(e.target.tagName || '?').toLowerCase()}>` })
+    }
+    // Capture phase so events are recorded even when handlers preventDefault.
+    el.addEventListener('keydown', kd, true)
+    el.addEventListener('keypress', kp, true)
+    el.addEventListener('keyup', ku, true)
+    el.addEventListener('input', inp, true)
+    el.addEventListener('change', chg, true)
+    el.addEventListener('blur', blur, true)
+    document.addEventListener('focusin', focusElsewhere, true)
+    return () => {
+      el.removeEventListener('keydown', kd, true)
+      el.removeEventListener('keypress', kp, true)
+      el.removeEventListener('keyup', ku, true)
+      el.removeEventListener('input', inp, true)
+      el.removeEventListener('change', chg, true)
+      el.removeEventListener('blur', blur, true)
+      document.removeEventListener('focusin', focusElsewhere, true)
+    }
+  }, [activeSubTab])
 
 
 
@@ -617,6 +667,35 @@ export default function AttendancePanel({ onBack, flash }) {
   // QR card validation and display
   const handleQrScanned = async (text, isCashier = false) => {
     if (!text) return
+    // Diagnostic capture (observation only — the lookup flow below is
+    // untouched; `diag` is null in production so nothing here runs).
+    const diag = SCANNER_DEBUG ? {
+      rawInput: String(text),
+      probes: [],
+      reachedBackend: false,
+      response: null,
+      error: null,
+      lookupStartMark: null,
+      focusedElement: (() => {
+        const a = document.activeElement
+        return a ? `<${a.tagName.toLowerCase()}>${a === scannerInputRef.current ? ' (scanner input)' : a.className ? ` class="${String(a.className).slice(0, 60)}"` : ''}` : '(none)'
+      })(),
+    } : null
+    if (diag) {
+      const raw = String(text)
+      const arabicMapped = mapArabicKeysToEnglish(raw.trim())
+      diag.stages = {
+        afterTrim: raw.trim(),
+        afterRemoveCR: raw.replace(/\r/g, ''),
+        afterRemoveLF: raw.replace(/\n/g, ''),
+        afterRemoveTab: raw.replace(/\t/g, ''),
+        afterRemoveWhitespace: raw.replace(/\s+/g, ''),
+        afterArabicMap: arabicMapped,
+        afterAsciiWhitelist: arabicMapped.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '').replace(/^\*+|\*+$/g, ''),
+      }
+      diag.lookupStartMark = scanRecorderRef.current.markLookup('lookup start')
+      scanRecorderRef.current.record('lookup', { label: `lookup started (${isCashier ? 'USB scanner / cashier field' : 'manual or camera'})` })
+    }
     try {
       // Translate Arabic layout keystrokes first (the wedge scanner types
       // through the OS layout), then strip everything that cannot be part of
@@ -633,9 +712,15 @@ export default function AttendancePanel({ onBack, flash }) {
           scannedToken = parts[2].trim()
         }
       }
+      if (diag) diag.stages.afterCommaRule = scannedToken
 
       // Fetch student details from the single DB RPC lookup
       const studentData = await getStudentIdentityByQr(scannedToken, tenantId)
+      if (diag) {
+        diag.reachedBackend = true
+        diag.response = studentData
+        diag.finalLookupValue = scannedToken
+      }
       if (!studentData) {
         throw new Error('لم يتم العثور على طالب مطابق لهذا الباركود أو البطاقة')
       }
@@ -719,12 +804,64 @@ export default function AttendancePanel({ onBack, flash }) {
 
     } catch (err) {
       playWarningBeep()
+      const shownMessage = err.message || 'رمز البطاقة غير صالح'
       if (isCashier) {
-        setCashierError(err.message || 'رمز البطاقة غير صالح')
+        setCashierError(shownMessage)
         setTimeout(() => setCashierError(''), 5000)
       } else {
-        setScannerError(err.message || 'رمز البطاقة غير صالح')
+        setScannerError(shownMessage)
         setTimeout(() => setScannerError(''), 4000)
+      }
+
+      // ── Diagnostic report on failed lookup (debug mode only) ──
+      if (diag) {
+        diag.error = err
+        scanRecorderRef.current.record('lookup', { label: `lookup FAILED: ${shownMessage}` })
+        // Evidence probes (read-only, debug-only): would the backend have
+        // matched other variants of the same scan? Distinguishes "client
+        // normalization destroyed the token" from "token never matched".
+        const probe = async (label, value) => {
+          try {
+            const r = await getStudentIdentityByQr(value, tenantId)
+            diag.probes.push({ label, value, result: r ? `MATCHED student "${r.name}" (${r.student_id})` : 'no match' })
+          } catch (probeErr) {
+            diag.probes.push({ label, value, result: `RPC error: ${probeErr.message}` })
+          }
+        }
+        try {
+          await probe('raw input sent completely unmodified', String(text))
+          const noArabicMap = String(text).trim().replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '').replace(/^\*+|\*+$/g, '')
+          if (noArabicMap !== (diag.finalLookupValue || '')) {
+            await probe('cleaned WITHOUT Arabic key mapping', noArabicMap)
+          }
+        } catch { /* probes are best-effort */ }
+
+        const groupRow = groups.find(g => g.id === selectedGroupId)
+        setDiagReport(buildScannerDiagnosticReport({
+          rawInput: diag.rawInput,
+          displayedValue: diag.rawInput, // the DOM value read at Enter — exactly what was on screen
+          normalizationStages: diag.stages || {},
+          finalLookupValue: diag.finalLookupValue ?? diag.stages?.afterCommaRule ?? diag.stages?.afterAsciiWhitelist ?? '',
+          lookupApi: 'supabase.rpc("get_student_identity") via getStudentIdentityByQr()',
+          lookupPayload: { p_code: diag.finalLookupValue ?? diag.stages?.afterCommaRule ?? '', p_tenant_id: tenantId },
+          lookupResponse: diag.response,
+          reachedBackend: diag.reachedBackend,
+          lookupError: diag.error,
+          validationFailure: diag.reachedBackend ? null : 'lookup rejected before/without a backend response',
+          probes: diag.probes,
+          sessionId: selectedSessionId,
+          tenantId,
+          tenantSlug,
+          grade: `${GRADE_LABEL[grade] || grade} (${grade})`,
+          groupName: groupRow?.name || '',
+          autoCheckIn,
+          alwaysFocus,
+          notificationState: `UI error shown: "${shownMessage}"`,
+          recorder: scanRecorderRef.current,
+          lookupStartMark: diag.lookupStartMark,
+          focusedElementAtLookup: diag.focusedElement,
+        }))
+        setDiagCopied(false)
       }
     }
   }
@@ -1522,6 +1659,42 @@ export default function AttendancePanel({ onBack, flash }) {
             flash(`تم تسجيل حضور: ${stud.name}`, 'success')
           }}
         />
+      )}
+
+      {/* TEMPORARY diagnostic dialog — only after a FAILED lookup in debug mode */}
+      {SCANNER_DEBUG && diagReport && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+          onClick={() => setDiagReport(null)}
+        >
+          <div
+            style={{ maxWidth: '480px', width: '100%', background: 'var(--cp-card-bg)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '20px', padding: '28px', boxShadow: 'var(--cp-card-shadow)', textAlign: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', margin: '0 auto 14px' }}>
+              <i className="fas fa-stethoscope" />
+            </div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px' }}>
+              لم يتم العثور على الطالب — وضع التشخيص
+            </h3>
+            <p style={{ fontSize: '0.86rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: 1.7 }}>
+              تم تجهيز تقرير فني كامل عن هذه المحاولة. اضغط «نسخ تقرير التشخيص» ثم أرسل ما تم نسخه للمطور (واتساب أو غيره) — لا حاجة لأي خطوات أخرى.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={async () => { setDiagCopied(await copyDiagnosticReport(diagReport)) }}
+                className="cp-btn cp-btn-success"
+                style={{ padding: '10px 22px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <i className={`fas ${diagCopied ? 'fa-check' : 'fa-copy'}`} />
+                {diagCopied ? 'تم النسخ ✓' : 'نسخ تقرير التشخيص'}
+              </button>
+              <button onClick={() => setDiagReport(null)} className="cp-btn cp-btn-secondary" style={{ padding: '10px 22px' }}>
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showSessionDeleteConfirm && (
