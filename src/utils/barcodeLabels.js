@@ -30,7 +30,7 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 30, h: 40, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
+  '30x40': { w: 30, h: 40, name: 6.5, meta: 5, pad: 1, barMm: 6, scale: 3 },
   '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
   '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
@@ -113,7 +113,7 @@ function buildDocument(items, preset, title) {
     `html, body { background: #fff; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 100vh; padding: 5%;` +
+      `width: 100%; height: 100vh; padding: 3% 3%;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
@@ -126,9 +126,9 @@ function buildDocument(items, preset, title) {
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 3%;` +
+    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 1%;` +
       `display: flex; align-items: center; justify-content: center; }` +
-    `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
+    `.lbl-bc img { max-width: 90%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Print only after every barcode image has loaded (or errored), so no label
