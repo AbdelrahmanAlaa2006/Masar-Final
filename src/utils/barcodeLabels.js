@@ -93,15 +93,15 @@ function buildDocument(items, preset, title) {
   const labels = items.map(labelHtml).join('')
 
   // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly,
-  // we align with the physical stock size. Each .lbl is sized exactly to the preset
-  // width/height with page-break rules to avoid cumulative drift.
+  // we align with the physical stock size. Each .lbl is sized slightly below the physical height
+  // (preset.h - 0.5mm) to provide a sub-pixel buffer that prevents cumulative pagination drift.
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
+    `html, body { background: #fff; margin: 0; padding: 0; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${w}mm; height: ${h}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
+      `width: ${w}mm; height: ${h - 0.5}mm; padding: 2.5mm ${pad}mm 1mm ${pad}mm;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
