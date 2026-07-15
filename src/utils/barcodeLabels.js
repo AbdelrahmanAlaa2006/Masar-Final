@@ -30,15 +30,17 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '40x30': { w: 40, h: 30, name: 7.2, meta: 5.8, pad: 1.5, barMm: 8,  scale: 3 },
-  '50x30': { w: 50, h: 30, name: 8.0, meta: 6.2, pad: 2,   barMm: 9,  scale: 3 },
-  '60x40': { w: 60, h: 40, name: 10.0, meta: 7.8, pad: 2.5, barMm: 13, scale: 4 },
+  '30x40': { w: 30, h: 40, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
+  '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
+  '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
+  '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
 }
 
-export const DEFAULT_LABEL_SIZE = '50x30'
+export const DEFAULT_LABEL_SIZE = '30x40'
 
 // Human labels for a size selector in the UI.
 export const LABEL_SIZE_OPTIONS = [
+  { value: '30x40', label: '30 × 40 مم (بورتريت)' },
   { value: '40x30', label: '40 × 30 مم' },
   { value: '50x30', label: '50 × 30 مم' },
   { value: '60x40', label: '60 × 40 مم' },
@@ -71,9 +73,9 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
-// One label's markup. Layout: name (bold — auto-fits to one line, wraps to a
-// max of two only when unavoidable), grade, group (optional), then the barcode
-// filling the remaining vertical space (contained, never clipped or stretched).
+// One label's markup. Layout: name (bold, single line), grade, group (optional),
+// then the barcode filling the remaining vertical space (contained, never
+// clipped or stretched).
 function labelHtml(item) {
   const name = escapeHtml(item.name)
   const grade = escapeHtml(item.grade)
@@ -81,12 +83,10 @@ function labelHtml(item) {
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
-      `<div class="lbl-inner">` +
-        `<div class="lbl-name">${name}</div>` +
-        (grade ? `<div class="lbl-meta">${grade}</div>` : '') +
-        (group ? `<div class="lbl-meta">${group}</div>` : '') +
-        `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
-      `</div>` +
+      `<div class="lbl-name">${name}</div>` +
+      (grade ? `<div class="lbl-meta">${grade}</div>` : '') +
+      (group ? `<div class="lbl-meta">${group}</div>` : '') +
+      `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
     `</div>`
   )
 }
@@ -102,34 +102,26 @@ function buildDocument(items, preset, title) {
   // conflict was what rotated the barcode (vertical) and tiled it across
   // adjacent labels. `margin: 0` drops printer margins.
   //
-  // Each `.lbl` is exactly preset.h mm tall (matching the physical label size preset)
-  // to align perfectly with the print page boxes and prevent viewport-scaling drift.
-  // One student = one physical label, and the barcode (contained) can never
-  // split across labels. The barcode image stays horizontal (rotate=N) and is contained, so
+  // Each `.lbl` is exactly one page tall (100vh) and breaks after itself, so
+  // one student = one physical label, and the barcode (contained) can never
+  // split across labels. Padding is a percentage so it scales to any label
+  // size. The barcode image stays horizontal (rotate=N) and is contained, so
   // it fits inside whatever label is installed without stretching or clipping.
   const styles =
-    `@page { size: ${preset.w}mm ${preset.h}mm; margin: 0; }` +
+    `@page { size: auto; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; margin: 0; padding: 0; height: auto; }` +
+    `html, body { background: #fff; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: ${preset.h}mm;` +
-      `display: block; overflow: hidden;` +
+      `width: 100%; height: 100vh; padding: 5%;` +
+      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+      `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
-    `.lbl-inner {` +
-      `width: 100%; height: 100%;` +
-      `padding: ${preset.pad + 1.2}mm ${preset.pad}mm ${preset.pad}mm ${preset.pad}mm;` +
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
-      `text-align: center; box-sizing: border-box;` +
-    `}` +
-    // Name starts at the preset size on ONE line. The print-time script below
-    // shrinks the font (never the barcode) to keep it on one line, and only
-    // when even the minimum font can't fit does it wrap to a max of two lines.
-    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.12; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }` +
+    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
+      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     `.lbl-meta { font-size: ${meta}pt; line-height: 1.15; width: 100%;` +
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
@@ -139,34 +131,12 @@ function buildDocument(items, preset, title) {
     `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
 
-  // Auto-fit the student name so long names stay readable WITHOUT ever
-  // shrinking the barcode: shrink the font first to keep one line; only when
-  // even MIN pt can't fit does it wrap to a maximum of two lines. Runs once,
-  // right before printing.
-  const nameStart = name
-  const nameMin = Math.max(5, +(name * 0.6).toFixed(1))
-
   // Print only after every barcode image has loaded (or errored), so no label
   // prints blank. Single-fire guard + safety timeout in case an image hangs.
   const script =
     `(function(){` +
-      `var START=${nameStart}, MIN=${nameMin};` +
-      `function fitNames(){` +
-        `var els=document.querySelectorAll('.lbl-name');` +
-        `for(var i=0;i<els.length;i++){` +
-          `var el=els[i], pt=START;` +
-          `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
-          `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
-          `if(el.scrollWidth>el.clientWidth+0.5){` +
-            // Still too long on one line at min font -> wrap to two lines max.
-            `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
-            `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
-          `}` +
-        `}` +
-      `}` +
       `var printed=false;` +
       `function go(){ if(printed) return; printed=true;` +
-        `try{ fitNames(); }catch(e){}` +
         `try{ window.focus(); }catch(e){}` +
         `window.print();` +
       `}` +
