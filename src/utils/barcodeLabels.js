@@ -35,7 +35,7 @@ export const LABEL_PRESETS = {
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
 }
 
-export const DEFAULT_LABEL_SIZE = '50x30'
+export const DEFAULT_LABEL_SIZE = '40x30'
 
 // Human labels for a size selector in the UI.
 export const LABEL_SIZE_OPTIONS = [
@@ -72,19 +72,15 @@ function escapeHtml(value) {
 }
 
 // One label's markup. Layout: name (bold — auto-fits to one line, wraps to a
-// max of two only when unavoidable), grade, group (optional), then the barcode
-// filling the remaining vertical space (contained, never clipped or stretched).
+// max of two only when unavoidable), then the barcode filling the remaining
+// vertical space (contained, never clipped or stretched).
 function labelHtml(item) {
   const name = escapeHtml(item.name)
-  const grade = escapeHtml(item.grade)
-  const group = item.group ? escapeHtml(item.group) : ''
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
       `<div class="lbl-inner">` +
         `<div class="lbl-name">${name}</div>` +
-        (grade ? `<div class="lbl-meta">${grade}</div>` : '') +
-        (group ? `<div class="lbl-meta">${group}</div>` : '') +
         `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
       `</div>` +
     `</div>`
@@ -121,7 +117,7 @@ function buildDocument(items, preset, title) {
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-inner {` +
-      `width: 100%; height: 100%; padding: 5%;` +
+      `width: 100%; height: 100%; padding: 3mm 2mm 2mm 2mm;` + /* 3mm top padding shifts name down from top edge */
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; box-sizing: border-box;` +
     `}` +
