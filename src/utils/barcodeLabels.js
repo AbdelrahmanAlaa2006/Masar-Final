@@ -30,7 +30,7 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 30, h: 40, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
+  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
   '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
   '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
@@ -94,28 +94,29 @@ function buildDocument(items, preset, title) {
 
   // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly,
   // we align with the physical stock size. Each .lbl is sized slightly below the physical height
-  // (preset.h - 0.5mm) to provide a sub-pixel buffer that prevents cumulative pagination drift.
+  // (preset.h - 0.8mm) using standard block layout (avoiding flexbox print pagination bugs)
+  // to provide a sub-pixel buffer that completely prevents cumulative pagination drift.
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
     `html, body { background: #fff; margin: 0; padding: 0; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${w}mm; height: ${h - 0.5}mm; padding: 2.5mm ${pad}mm 1mm ${pad}mm;` +
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+      `width: ${w}mm; height: ${h - 0.8}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
+      `display: block;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
+      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2mm; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { width: 100%; margin-top: 1.5mm;` +
-      `display: flex; align-items: center; justify-content: center; }` +
-    `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
-      `object-fit: contain; image-rendering: crisp-edges; }`
+    `.lbl-bc { width: 100%;` +
+      `display: block; text-align: center; }` +
+    `.lbl-bc img { max-width: 100%; height: 12mm; width: auto;` +
+      `object-fit: contain; image-rendering: crisp-edges; display: inline-block; }`
 
   // Auto-fit the student name so long names stay readable WITHOUT ever
   // shrinking the barcode: shrink the font first to keep one line; only when
