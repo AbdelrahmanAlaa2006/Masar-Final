@@ -92,31 +92,36 @@ function buildDocument(items, preset, title) {
   const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly,
-  // we align with the physical stock size. Each .lbl is sized slightly below the physical height
-  // (preset.h - 0.8mm) using standard block layout (avoiding flexbox print pagination bugs)
-  // to provide a sub-pixel buffer that completely prevents cumulative pagination drift.
+  // ROTATED COORDINATES: Since the printer driver orientation rotates the landscape 40x30 page
+  // by 90 degrees to print it as a 30x40 portrait label, the physical page box height in the browser
+  // is actually 40mm and the width is 30mm. We size the .lbl element using these rotated dimensions
+  // (pageW/pageH) to match the physical boundaries, eliminating cumulative print drift.
+  const isRotatedPreset = (w === 40 && h === 30)
+  const pageW = isRotatedPreset ? 30 : w
+  const pageH = isRotatedPreset ? 40 : h
+  const labelH = pageH - 0.5 // 0.5mm safety buffer to prevent cumulative pagination rounding drift
+
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
     `html, body { background: #fff; margin: 0; padding: 0; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${w}mm; height: ${h - 0.8}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
-      `display: block;` +
+      `width: ${pageW}mm; height: ${labelH}mm; padding: 3.5mm ${pad}mm 1mm ${pad}mm;` +
+      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2mm; }` +
+      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { width: 100%;` +
-      `display: block; text-align: center; }` +
-    `.lbl-bc img { max-width: 100%; height: 12mm; width: auto;` +
-      `object-fit: contain; image-rendering: crisp-edges; display: inline-block; }`
+    `.lbl-bc { width: 100%; margin-top: 1.5mm;` +
+      `display: flex; align-items: center; justify-content: center; }` +
+    `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
+      `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Auto-fit the student name so long names stay readable WITHOUT ever
   // shrinking the barcode: shrink the font first to keep one line; only when
