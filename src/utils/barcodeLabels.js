@@ -98,7 +98,7 @@ function buildDocument(items, preset, title) {
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
+    `html, body { background: #fff; margin: 0; padding: 0; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
     `width: ${w}mm; height: ${h - 1}mm; padding: 3.5mm ${pad}mm 1mm ${pad}mm;` +
