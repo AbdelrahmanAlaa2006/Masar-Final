@@ -30,7 +30,7 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3 },
+  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 10, scale: 4 },
   '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3 },
   '50x30': { w: 50, h: 30, name: 9, meta: 7, pad: 2, barMm: 9, scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
