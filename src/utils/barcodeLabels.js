@@ -102,11 +102,10 @@ function buildDocument(items, preset, title) {
   // conflict was what rotated the barcode (vertical) and tiled it across
   // adjacent labels. `margin: 0` drops printer margins.
   //
-  // Each `.lbl` is exactly 100vh tall to align perfectly with the print page boxes
-  // and prevent layout shifts or page splitting.
+  // Each `.lbl` is exactly preset.h mm tall (matching the physical label size preset)
+  // to align perfectly with the print page boxes and prevent viewport-scaling drift.
   // One student = one physical label, and the barcode (contained) can never
-  // split across labels. Padding is a percentage so it scales to any label
-  // size. The barcode image stays horizontal (rotate=N) and is contained, so
+  // split across labels. The barcode image stays horizontal (rotate=N) and is contained, so
   // it fits inside whatever label is installed without stretching or clipping.
   const styles =
     `@page { size: auto; margin: 0; }` +
@@ -114,14 +113,14 @@ function buildDocument(items, preset, title) {
     `html, body { background: #fff; margin: 0; padding: 0; height: auto; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 100vh;` +
+      `width: 100%; height: ${preset.h}mm;` +
       `display: block; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-inner {` +
-      `width: 100%; height: 100%; padding: 5%;` +
+      `width: 100%; height: 100%; padding: ${preset.pad}mm;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; box-sizing: border-box;` +
     `}` +
