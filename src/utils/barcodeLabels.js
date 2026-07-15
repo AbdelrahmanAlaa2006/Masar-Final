@@ -92,16 +92,17 @@ function buildDocument(items, preset, title) {
   const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly (w mm x h mm),
-  // we align with the physical stock size. Each .lbl is sized slightly below the physical height
-  // (preset.h - 1.0mm) to provide a sub-pixel buffer that completely prevents cumulative pagination drift.
+  // EXACT PAGE SIZE: By setting @page size to match the preset target (w=40, h=30) and margin to 0,
+  // we align with the physical stock size. We size .lbl slightly smaller than the page height
+  // (preset.h - 2mm = 28mm) to act as a safety buffer against browser sub-pixel rounding errors,
+  // ensuring zero cumulative drift and preventing a second blank page.
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
     `html, body { background: #fff; margin: 0; padding: 0; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-    `width: ${w}mm; height: ${h - 1}mm; padding: 3.5mm ${pad}mm 1mm ${pad}mm;` +
+    `width: ${w}mm; height: ${h - 2}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
     `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
     `text-align: center; overflow: hidden;` +
     `page-break-after: always; break-after: page;` +
@@ -149,13 +150,14 @@ function buildDocument(items, preset, title) {
     `window.print();` +
     `}` +
     `var imgs=Array.prototype.slice.call(document.images);` +
-    `var left=imgs.length;` +
-    `function tick(){ if(--left<=0) setTimeout(go,120); }` +
-    `if(left===0){ setTimeout(go,120); }` +
-    `else imgs.forEach(function(im){` +
-    `if(im.complete) tick();` +
-    `else { im.addEventListener('load',tick); im.addEventListener('error',tick); }` +
+    `var promises=imgs.map(function(im){` +
+    `if(im.decode){ return im.decode().catch(function(){}); }` +
+    `return new Promise(function(res){` +
+    `if(im.complete){ res(); }` +
+    `else { im.addEventListener('load',res); im.addEventListener('error',res); }` +
     `});` +
+    `});` +
+    `Promise.all(promises).then(function(){ setTimeout(go,500); }).catch(function(){ setTimeout(go,500); });` +
     `setTimeout(go,8000);` +               // fallback: never hang forever
     `window.onafterprint=function(){ setTimeout(function(){ try{ window.close(); }catch(e){} },200); };` +
     `})();`
