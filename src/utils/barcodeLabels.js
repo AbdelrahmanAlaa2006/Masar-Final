@@ -102,8 +102,8 @@ function buildDocument(items, preset, title) {
   // conflict was what rotated the barcode (vertical) and tiled it across
   // adjacent labels. `margin: 0` drops printer margins.
   //
-  // Each `.lbl` is exactly 99.5vh tall to provide a sub-pixel rounding safety
-  // margin, preventing layout shifts or page splitting.
+  // Each `.lbl` is exactly 100vh tall to align perfectly with the print page boxes
+  // and prevent layout shifts or page splitting.
   // One student = one physical label, and the barcode (contained) can never
   // split across labels. Padding is a percentage so it scales to any label
   // size. The barcode image stays horizontal (rotate=N) and is contained, so
@@ -114,7 +114,7 @@ function buildDocument(items, preset, title) {
     `html, body { background: #fff; margin: 0; padding: 0; height: auto; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 99.5vh;` +
+      `width: 100%; height: 100vh;` +
       `display: block; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
