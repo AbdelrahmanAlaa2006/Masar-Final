@@ -30,9 +30,9 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
-  '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
-  '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
+  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3 },
+  '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3 },
+  '50x30': { w: 50, h: 30, name: 9, meta: 7, pad: 2, barMm: 9, scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
 }
 
@@ -59,7 +59,7 @@ export const LABEL_SIZE_OPTIONS = [
 export function barcodeImageUrl(token, { scale = 4, barMm = 0, quiet = 10 } = {}) {
   const t = encodeURIComponent(String(token || ''))
   let url = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${t}` +
-            `&scale=${scale}&paddingwidth=${quiet}&includetext=true&rotate=N`
+    `&scale=${scale}&paddingwidth=${quiet}&includetext=true&rotate=N`
   if (barMm) url += `&height=${barMm}`
   return url
 }
@@ -81,8 +81,8 @@ function labelHtml(item) {
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
-      `<div class="lbl-name">${name}</div>` +
-      `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
+    `<div class="lbl-name">${name}</div>` +
+    `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
     `</div>`
   )
 }
@@ -92,36 +92,30 @@ function buildDocument(items, preset, title) {
   const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // ROTATED COORDINATES: Since the printer driver orientation rotates the landscape 40x30 page
-  // by 90 degrees to print it as a 30x40 portrait label, the physical page box height in the browser
-  // is actually 40mm and the width is 30mm. We size the .lbl element using these rotated dimensions
-  // (pageW/pageH) to match the physical boundaries, eliminating cumulative print drift.
-  const isRotatedPreset = (w === 40 && h === 30)
-  const pageW = isRotatedPreset ? 30 : w
-  const pageH = isRotatedPreset ? 40 : h
-  const labelH = pageH - 0.5 // 0.5mm safety buffer to prevent cumulative pagination rounding drift
-
+  // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly (w mm x h mm),
+  // we align with the physical stock size. Each .lbl is sized slightly below the physical height
+  // (preset.h - 1.0mm) to provide a sub-pixel buffer that completely prevents cumulative pagination drift.
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; margin: 0; padding: 0; }` +
+    `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${pageW}mm; height: ${labelH}mm; padding: 3.5mm ${pad}mm 1mm ${pad}mm;` +
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
-      `text-align: center; overflow: hidden;` +
-      `page-break-after: always; break-after: page;` +
-      `page-break-inside: avoid; break-inside: avoid;` +
+    `width: ${w}mm; height: ${h - 1}mm; padding: 3.5mm ${pad}mm 1mm ${pad}mm;` +
+    `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+    `text-align: center; overflow: hidden;` +
+    `page-break-after: always; break-after: page;` +
+    `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
+    `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
     `.lbl-bc { width: 100%; margin-top: 1.5mm;` +
-      `display: flex; align-items: center; justify-content: center; }` +
+    `display: flex; align-items: center; justify-content: center; }` +
     `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
-      `object-fit: contain; image-rendering: crisp-edges; }`
+    `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Auto-fit the student name so long names stay readable WITHOUT ever
   // shrinking the barcode: shrink the font first to keep one line; only when
@@ -134,36 +128,36 @@ function buildDocument(items, preset, title) {
   // prints blank. Single-fire guard + safety timeout in case an image hangs.
   const script =
     `(function(){` +
-      `var START=${nameStart}, MIN=${nameMin};` +
-      `function fitNames(){` +
-        `var els=document.querySelectorAll('.lbl-name');` +
-        `for(var i=0;i<els.length;i++){` +
-          `var el=els[i], pt=START;` +
-          `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
-          `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
-          `if(el.scrollWidth>el.clientWidth+0.5){` +
-            // Still too long on one line at min font -> wrap to two lines max.
-            `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
-            `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
-          `}` +
-        `}` +
-      `}` +
-      `var printed=false;` +
-      `function go(){ if(printed) return; printed=true;` +
-        `try{ fitNames(); }catch(e){}` +
-        `try{ window.focus(); }catch(e){}` +
-        `window.print();` +
-      `}` +
-      `var imgs=Array.prototype.slice.call(document.images);` +
-      `var left=imgs.length;` +
-      `function tick(){ if(--left<=0) setTimeout(go,120); }` +
-      `if(left===0){ setTimeout(go,120); }` +
-      `else imgs.forEach(function(im){` +
-        `if(im.complete) tick();` +
-        `else { im.addEventListener('load',tick); im.addEventListener('error',tick); }` +
-      `});` +
-      `setTimeout(go,8000);` +               // fallback: never hang forever
-      `window.onafterprint=function(){ setTimeout(function(){ try{ window.close(); }catch(e){} },200); };` +
+    `var START=${nameStart}, MIN=${nameMin};` +
+    `function fitNames(){` +
+    `var els=document.querySelectorAll('.lbl-name');` +
+    `for(var i=0;i<els.length;i++){` +
+    `var el=els[i], pt=START;` +
+    `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
+    `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
+    `if(el.scrollWidth>el.clientWidth+0.5){` +
+    // Still too long on one line at min font -> wrap to two lines max.
+    `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
+    `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
+    `}` +
+    `}` +
+    `}` +
+    `var printed=false;` +
+    `function go(){ if(printed) return; printed=true;` +
+    `try{ fitNames(); }catch(e){}` +
+    `try{ window.focus(); }catch(e){}` +
+    `window.print();` +
+    `}` +
+    `var imgs=Array.prototype.slice.call(document.images);` +
+    `var left=imgs.length;` +
+    `function tick(){ if(--left<=0) setTimeout(go,120); }` +
+    `if(left===0){ setTimeout(go,120); }` +
+    `else imgs.forEach(function(im){` +
+    `if(im.complete) tick();` +
+    `else { im.addEventListener('load',tick); im.addEventListener('error',tick); }` +
+    `});` +
+    `setTimeout(go,8000);` +               // fallback: never hang forever
+    `window.onafterprint=function(){ setTimeout(function(){ try{ window.close(); }catch(e){} },200); };` +
     `})();`
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">` +
