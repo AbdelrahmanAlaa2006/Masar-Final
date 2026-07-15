@@ -30,7 +30,7 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 30, h: 40, name: 6.5, meta: 5, pad: 1, barMm: 6, scale: 3 },
+  '30x40': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
   '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
   '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
@@ -93,27 +93,19 @@ function labelHtml(item) {
 
 // Build the full, self-contained print document for a set of resolved items.
 function buildDocument(items, preset, title) {
-  const { name, meta } = preset
+  const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // ADAPTIVE PAGE: `size: auto` makes the page box equal the printer's ACTUAL
-  // label/roll (as configured in the XPrinter driver) — we never force a fixed
-  // mm size, so there is no size/orientation conflict with the driver. That
-  // conflict was what rotated the barcode (vertical) and tiled it across
-  // adjacent labels. `margin: 0` drops printer margins.
-  //
-  // Each `.lbl` is exactly one page tall (100vh) and breaks after itself, so
-  // one student = one physical label, and the barcode (contained) can never
-  // split across labels. Padding is a percentage so it scales to any label
-  // size. The barcode image stays horizontal (rotate=N) and is contained, so
-  // it fits inside whatever label is installed without stretching or clipping.
+  // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly,
+  // we align with the physical stock size. Each .lbl is sized exactly to the preset
+  // width/height with page-break rules to avoid cumulative drift.
   const styles =
-    `@page { size: auto; margin: 0; }` +
+    `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; }` +
+    `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 100vh; padding: 3% 3%;` +
+      `width: ${w}mm; height: ${h}mm; padding: ${pad}mm;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
@@ -126,9 +118,9 @@ function buildDocument(items, preset, title) {
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 1%;` +
+    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 1mm;` +
       `display: flex; align-items: center; justify-content: center; }` +
-    `.lbl-bc img { max-width: 90%; max-height: 100%; width: auto; height: auto;` +
+    `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Print only after every barcode image has loaded (or errored), so no label
