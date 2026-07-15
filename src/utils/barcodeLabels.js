@@ -108,7 +108,7 @@ function buildDocument(items, preset, title) {
   // split across labels. The barcode image stays horizontal (rotate=N) and is contained, so
   // it fits inside whatever label is installed without stretching or clipping.
   const styles =
-    `@page { size: auto; margin: 0; }` +
+    `@page { size: ${preset.w}mm ${preset.h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
     `html, body { background: #fff; margin: 0; padding: 0; height: auto; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
@@ -121,7 +121,7 @@ function buildDocument(items, preset, title) {
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-inner {` +
       `width: 100%; height: 100%;` +
-      `padding: ${preset.pad + 1.8}mm ${preset.pad}mm ${preset.pad}mm ${preset.pad}mm;` +
+      `padding: ${preset.pad + 1.2}mm ${preset.pad}mm ${preset.pad}mm ${preset.pad}mm;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; box-sizing: border-box;` +
     `}` +
