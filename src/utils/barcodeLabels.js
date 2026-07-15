@@ -30,9 +30,9 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
-  '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
-  '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
+  '40x30': { w: 40, h: 30, name: 7.2, meta: 5.8, pad: 1.5, barMm: 8,  scale: 3 },
+  '50x30': { w: 50, h: 30, name: 8.0, meta: 6.2, pad: 2,   barMm: 9,  scale: 3 },
+  '60x40': { w: 60, h: 40, name: 10.0, meta: 7.8, pad: 2.5, barMm: 13, scale: 4 },
 }
 
 export const DEFAULT_LABEL_SIZE = '50x30'
@@ -120,7 +120,8 @@ function buildDocument(items, preset, title) {
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-inner {` +
-      `width: 100%; height: 100%; padding: ${preset.pad}mm;` +
+      `width: 100%; height: 100%;` +
+      `padding: ${preset.pad + 1.8}mm ${preset.pad}mm ${preset.pad}mm ${preset.pad}mm;` +
       `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
       `text-align: center; box-sizing: border-box;` +
     `}` +
