@@ -30,10 +30,10 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '30x40': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
-  '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
-  '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
-  '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
+  '30x40': { w: 40, h: 30, name: 7,  meta: 5.5, pad: 1.2, barMm: 6,  scale: 3 },
+  '40x30': { w: 40, h: 30, name: 7,  meta: 5.5, pad: 1.2, barMm: 6,  scale: 3 },
+  '50x30': { w: 50, h: 30, name: 8.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
+  '60x40': { w: 60, h: 40, name: 10.5, meta: 8,   pad: 2,   barMm: 11, scale: 4 },
 }
 
 export const DEFAULT_LABEL_SIZE = '30x40'
@@ -105,20 +105,20 @@ function buildDocument(items, preset, title) {
     `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: ${w}mm; height: ${h}mm; padding: ${pad}mm;` +
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+      `width: ${w}mm; height: ${h}mm; padding: 0.8mm ${pad}mm;` +
+      `display: flex; flex-direction: column; align-items: center; justify-content: space-between;` +
       `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
-    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
+    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.0; width: 100%;` +
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
-    `.lbl-meta { font-size: ${meta}pt; line-height: 1.15; width: 100%;` +
+    `.lbl-meta { font-size: ${meta}pt; line-height: 1.0; width: 100%;` +
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 1mm;` +
+    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 0.5mm;` +
       `display: flex; align-items: center; justify-content: center; }` +
     `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
