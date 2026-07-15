@@ -30,15 +30,17 @@
 //   barMm – requested barcode bar height (mm) from the barcode service
 //   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
 export const LABEL_PRESETS = {
-  '40x30': { w: 40, h: 30, name: 8,  meta: 6.5, pad: 1.5, barMm: 8,  scale: 3 },
+  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
+  '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7,  scale: 3 },
   '50x30': { w: 50, h: 30, name: 9,  meta: 7,   pad: 2,   barMm: 9,  scale: 3 },
   '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
 }
 
-export const DEFAULT_LABEL_SIZE = '40x30'
+export const DEFAULT_LABEL_SIZE = '30x40'
 
 // Human labels for a size selector in the UI.
 export const LABEL_SIZE_OPTIONS = [
+  { value: '30x40', label: '30 × 40 مم (بورتريت)' },
   { value: '40x30', label: '40 × 30 مم' },
   { value: '50x30', label: '50 × 30 مم' },
   { value: '60x40', label: '60 × 40 مم' },
@@ -79,60 +81,40 @@ function labelHtml(item) {
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
-      `<div class="lbl-inner">` +
-        `<div class="lbl-name">${name}</div>` +
-        `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
-      `</div>` +
+      `<div class="lbl-name">${name}</div>` +
+      `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
     `</div>`
   )
 }
 
 // Build the full, self-contained print document for a set of resolved items.
 function buildDocument(items, preset, title) {
-  const { name, meta } = preset
+  const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // ADAPTIVE PAGE: `size: auto` makes the page box equal the printer's ACTUAL
-  // label/roll (as configured in the XPrinter driver) — we never force a fixed
-  // mm size, so there is no size/orientation conflict with the driver. That
-  // conflict was what rotated the barcode (vertical) and tiled it across
-  // adjacent labels. `margin: 0` drops printer margins.
-  //
-  // Each `.lbl` is exactly 100vh tall to align perfectly with the print page boxes
-  // and prevent layout shifts or page splitting.
-  // One student = one physical label, and the barcode (contained) can never
-  // split across labels. Padding is a percentage so it scales to any label
-  // size. The barcode image stays horizontal (rotate=N) and is contained, so
-  // it fits inside whatever label is installed without stretching or clipping.
+  // EXACT PAGE SIZE: By setting @page size to match the preset millimeters exactly,
+  // we align with the physical stock size. Each .lbl is sized exactly to the preset
+  // width/height with page-break rules to avoid cumulative drift.
   const styles =
-    `@page { size: auto; margin: 0; }` +
+    `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; margin: 0; padding: 0; height: 100%; }` +
+    `html, body { width: ${w}mm; height: ${h}mm; background: #fff; margin: 0; padding: 0; overflow: hidden; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 100%;` +
-      `display: block; overflow: hidden;` +
+      `width: ${w}mm; height: ${h}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
+      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+      `text-align: center; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
-    `.lbl-inner {` +
-      `width: 100%; height: 100%; padding: 3mm 2mm 2mm 2mm;` + /* 3mm top padding shifts name down from top edge */
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
-      `text-align: center; box-sizing: border-box;` +
-    `}` +
-    // Name starts at the preset size on ONE line. The print-time script below
-    // shrinks the font (never the barcode) to keep it on one line, and only
-    // when even the minimum font can't fit does it wrap to a max of two lines.
-    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.12; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }` +
-    `.lbl-meta { font-size: ${meta}pt; line-height: 1.15; width: 100%;` +
+    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { flex: 1; min-height: 0; width: 100%; margin-top: 3%;` +
+    `.lbl-bc { width: 100%; margin-top: 1.5mm;` +
       `display: flex; align-items: center; justify-content: center; }` +
-    `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
+    `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Auto-fit the student name so long names stay readable WITHOUT ever
