@@ -81,10 +81,12 @@ function labelHtml(item) {
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
-      `<div class="lbl-name">${name}</div>` +
-      (grade ? `<div class="lbl-meta">${grade}</div>` : '') +
-      (group ? `<div class="lbl-meta">${group}</div>` : '') +
-      `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
+      `<div class="lbl-inner">` +
+        `<div class="lbl-name">${name}</div>` +
+        (grade ? `<div class="lbl-meta">${grade}</div>` : '') +
+        (group ? `<div class="lbl-meta">${group}</div>` : '') +
+        `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
+      `</div>` +
     `</div>`
   )
 }
@@ -100,24 +102,29 @@ function buildDocument(items, preset, title) {
   // conflict was what rotated the barcode (vertical) and tiled it across
   // adjacent labels. `margin: 0` drops printer margins.
   //
-  // Each `.lbl` is exactly one page tall (100vh) and breaks after itself, so
-  // one student = one physical label, and the barcode (contained) can never
+  // Each `.lbl` is exactly 99.5vh tall to provide a sub-pixel rounding safety
+  // margin, preventing layout shifts or page splitting.
+  // One student = one physical label, and the barcode (contained) can never
   // split across labels. Padding is a percentage so it scales to any label
   // size. The barcode image stays horizontal (rotate=N) and is contained, so
   // it fits inside whatever label is installed without stretching or clipping.
   const styles =
     `@page { size: auto; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; }` +
+    `html, body { background: #fff; margin: 0; padding: 0; height: auto; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-      `width: 100%; height: 100vh; padding: 5%;` +
-      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
-      `text-align: center; overflow: hidden;` +
+      `width: 100%; height: 99.5vh;` +
+      `display: block; overflow: hidden;` +
       `page-break-after: always; break-after: page;` +
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
+    `.lbl-inner {` +
+      `width: 100%; height: 100%; padding: 5%;` +
+      `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
+      `text-align: center; box-sizing: border-box;` +
+    `}` +
     // Name starts at the preset size on ONE line. The print-time script below
     // shrinks the font (never the barcode) to keep it on one line, and only
     // when even the minimum font can't fit does it wrap to a max of two lines.

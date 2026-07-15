@@ -25,6 +25,26 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const [submitting, setSubmitting] = React.useState(false)
   const submittingRef = React.useRef(false)
   const confirmBtnRef = React.useRef(null)
+  const modalBoxRef = React.useRef(null)
+
+  React.useEffect(() => {
+    if (modalBoxRef.current) {
+      const rect = modalBoxRef.current.getBoundingClientRect()
+      const isFullyVisible = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+      )
+      if (!isFullyVisible) {
+        try {
+          modalBoxRef.current.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' })
+        } catch (e) {
+          console.error(e)
+        }
+      }
+    }
+  }, [])
 
   const confirm = React.useCallback(async () => {
     if (isBlocked || !onMarkAttendance) return
@@ -153,7 +173,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
       fontFamily: 'Tajawal, sans-serif',
       direction: 'rtl'
     }} onClick={onClose}>
-      <div style={{
+      <div ref={modalBoxRef} style={{
         maxWidth: '540px',
         width: '100%',
         background: modalBackground,
