@@ -1471,9 +1471,19 @@ export default function AttendancePanel({ onBack, flash }) {
 
       {/* QR Details Modal */}
       {scannedStudent && (
-        <StudentDetailsModal 
-          student={scannedStudent} 
-          onClose={() => setScannedStudent(null)} 
+        <StudentDetailsModal
+          student={scannedStudent}
+          onClose={() => {
+            setScannedStudent(null)
+            // Return focus to the barcode input so the next student can be
+            // scanned immediately with no mouse (record tab only). The small
+            // delay lets the modal unmount before we refocus.
+            setTimeout(() => {
+              if (activeSubTab === 'record' && scannerInputRef.current) {
+                scannerInputRef.current.focus()
+              }
+            }, 60)
+          }}
           selectedGroupId={selectedGroupId}
           groups={groups}
           currentGrade={grade}

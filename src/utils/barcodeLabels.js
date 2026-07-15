@@ -71,9 +71,9 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
-// One label's markup. Layout: name (bold, single line), grade, group (optional),
-// then the barcode filling the remaining vertical space (contained, never
-// clipped or stretched).
+// One label's markup. Layout: name (bold — auto-fits to one line, wraps to a
+// max of two only when unavoidable), grade, group (optional), then the barcode
+// filling the remaining vertical space (contained, never clipped or stretched).
 function labelHtml(item) {
   const name = escapeHtml(item.name)
   const grade = escapeHtml(item.grade)
@@ -118,8 +118,11 @@ function buildDocument(items, preset, title) {
       `page-break-inside: avoid; break-inside: avoid;` +
     `}` +
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
-    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
-      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
+    // Name starts at the preset size on ONE line. The print-time script below
+    // shrinks the font (never the barcode) to keep it on one line, and only
+    // when even the minimum font can't fit does it wrap to a max of two lines.
+    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.12; width: 100%;` +
+      `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }` +
     `.lbl-meta { font-size: ${meta}pt; line-height: 1.15; width: 100%;` +
       `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     // Barcode takes all remaining height; the image is contained so it never
@@ -129,12 +132,34 @@ function buildDocument(items, preset, title) {
     `.lbl-bc img { max-width: 100%; max-height: 100%; width: auto; height: auto;` +
       `object-fit: contain; image-rendering: crisp-edges; }`
 
+  // Auto-fit the student name so long names stay readable WITHOUT ever
+  // shrinking the barcode: shrink the font first to keep one line; only when
+  // even MIN pt can't fit does it wrap to a maximum of two lines. Runs once,
+  // right before printing.
+  const nameStart = name
+  const nameMin = Math.max(5, +(name * 0.6).toFixed(1))
+
   // Print only after every barcode image has loaded (or errored), so no label
   // prints blank. Single-fire guard + safety timeout in case an image hangs.
   const script =
     `(function(){` +
+      `var START=${nameStart}, MIN=${nameMin};` +
+      `function fitNames(){` +
+        `var els=document.querySelectorAll('.lbl-name');` +
+        `for(var i=0;i<els.length;i++){` +
+          `var el=els[i], pt=START;` +
+          `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
+          `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
+          `if(el.scrollWidth>el.clientWidth+0.5){` +
+            // Still too long on one line at min font -> wrap to two lines max.
+            `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
+            `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
+          `}` +
+        `}` +
+      `}` +
       `var printed=false;` +
       `function go(){ if(printed) return; printed=true;` +
+        `try{ fitNames(); }catch(e){}` +
         `try{ window.focus(); }catch(e){}` +
         `window.print();` +
       `}` +
