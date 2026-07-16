@@ -272,10 +272,13 @@ export default function Login() {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
     
-    // Update tab title dynamically based on active language
-    const localizedTitle = themeConfig?.branding?.brand_short
-      ? (themeConfig.branding.brand_short[lang] || themeConfig.branding.brand_short['ar'] || tenantName)
-      : tenantName
+    // Update tab title dynamically based on active language. Tenants may
+    // define a keyword-rich branding.seo_title (used on their public landing
+    // for search engines); others keep the short brand title as before.
+    const localizedTitle = themeConfig?.branding?.seo_title?.[lang]
+      || (themeConfig?.branding?.brand_short
+        ? (themeConfig.branding.brand_short[lang] || themeConfig.branding.brand_short['ar'] || tenantName)
+        : tenantName)
     document.title = localizedTitle
   }, [lang, themeConfig, tenantName])
 
@@ -540,7 +543,7 @@ export default function Login() {
       <header className="aa-nav">
         <div className="aa-nav-inner">
           <div className="aa-brand">
-            <img src={brandLogo} alt="Logo" className="aa-brand-logo" />
+            <img src={brandLogo} alt={brandShort} className="aa-brand-logo" />
             <span className="aa-brand-name">{brandShort}</span>
           </div>
 
@@ -725,8 +728,9 @@ export default function Login() {
                     <div className="landing-package-image" style={{ background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
                       {pkg.thumbnail ? (
                         <img 
-                          src={pkg.thumbnail} 
-                          alt={pkg.title} 
+                          src={pkg.thumbnail}
+                          alt={pkg.title}
+                          loading="lazy"
                           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
                           className="landing-pkg-img"
                         />
@@ -1053,7 +1057,7 @@ export default function Login() {
       <footer className="login-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <img src={brandLogo} alt="Logo" className="footer-logo" />
+            <img src={brandLogo} alt={brandShort} className="footer-logo" loading="lazy" />
             <span className="footer-brand-name">
               {isDefaultTenant
                 ? (lang === 'ar' ? 'جِت فِكرة' : 'GitFekra')

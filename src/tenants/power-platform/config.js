@@ -15,6 +15,10 @@ export const themeConfig = {
   logoUrl: '/images/Power Logo.png',
   branding: {
     brand_short: { ar: 'منصة باور', en: 'Power Platform' },
+    seo_title: {
+      ar: 'منصة باور — مستر محمد عبداللاه | تعليم البرمجة والذكاء الاصطناعي',
+      en: 'Power Platform — Mr Mohamed Abdella | Programming & AI Education'
+    },
     hero_title_a: { ar: 'منصة باور', en: 'Power Platform' },
     hero_title_b: { ar: 'للبرمجة والذكاء الاصطناعي', en: 'for Programming & AI' },
     hero_sub: {

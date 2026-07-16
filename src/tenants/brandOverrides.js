@@ -36,6 +36,7 @@ const BRAND_OVERRIDES = [
       t.slug === 'cyber' ||
       t.slug === 'power-platform' ||
       t.slug === 'sherif-programming' ||
+      t.slug === 'mohamed-abdella' ||
       t.config?.subject === 'cyber' ||
       t.config?.subject === 'computer' ||
       t.config?.subject === 'programming' ||
@@ -74,7 +75,7 @@ export function remapAvailableTenants(allTenants) {
     if (t.slug === 'sherif-english' || t.slug === 'waled-english') {
       return { slug: 'waled-english', name: 'The Miracle in English' }
     }
-    if (t.slug === 'cyber' || t.slug === 'power-platform' || t.slug === 'sherif-programming') {
+    if (t.slug === 'cyber' || t.slug === 'power-platform' || t.slug === 'sherif-programming' || t.slug === 'mohamed-abdella') {
       return { slug: 'power-platform', name: 'منصة باور' }
     }
     return t

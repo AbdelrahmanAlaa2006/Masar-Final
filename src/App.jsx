@@ -42,6 +42,7 @@ import './seasonal/seasonal.css'
 import './App.css'
 import DevToolsBlocker from './components/DevToolsBlocker'
 import ErrorBoundary from './components/ErrorBoundary'
+import RouteSeo from './components/RouteSeo'
 import { detectDevTools } from './utils/devtools'
 
 // SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
@@ -583,6 +584,7 @@ function AppContent() {
           the seasonal accent classes on <body> still apply, so the
           subtle top tint and selection color remain. */}
       <SeasonalDecor suppress={isExamTaking} />
+      <RouteSeo />
       {showHeaderFooter && <Header />}
 
       <div className="page-container">

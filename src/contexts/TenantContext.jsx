@@ -36,6 +36,7 @@ export function TenantProvider({ children }) {
             localStorage.removeItem('masar-cache:tenant-config:power-platform')
             localStorage.removeItem('masar-cache:tenant-config:cyber')
             localStorage.removeItem('masar-cache:tenant-config:sherif-programming')
+            localStorage.removeItem('masar-cache:tenant-config:mohamed-abdella')
           } catch {}
         }
 
@@ -74,8 +75,10 @@ export function TenantProvider({ children }) {
         if (candidate === 'waled-english') {
           querySlug = 'sherif-english'
         }
-        if (candidate === 'power-platform') {
-          querySlug = 'sherif-programming'
+        // Physical slug is mohamed-abdella (renamed from sherif-programming);
+        // keep old preview links working via both aliases.
+        if (candidate === 'power-platform' || candidate === 'sherif-programming') {
+          querySlug = 'mohamed-abdella'
         }
 
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
