@@ -51,7 +51,7 @@ export function resolveTeacherDetails(tenant) {
     if (waPhone) phone1 = '0' + waPhone.slice(2)
   }
 
-  const mergedPhones = [phone1, phone2].filter(Boolean).join('\n')
+  const mergedPhones = [phone1, phone2].filter(Boolean).join(' - ')
   const teacherRole = teacher.role && typeof teacher.role === 'object' 
     ? (teacher.role.ar || teacher.role.en || '') 
     : (teacher.role || '')
@@ -66,239 +66,160 @@ export function resolveTeacherDetails(tenant) {
 }
 
 /**
+ * Translates academic stage keys into friendly UI labels.
+ */
+export function getGradeUiLabel(grade) {
+  const GRADE_LABEL = {
+    'primary-1': 'الأول الابتدائي',
+    'primary-2': 'الثاني الابتدائي',
+    'primary-3': 'الثالث الابتدائي',
+    'primary-4': 'الرابع الابتدائي',
+    'primary-5': 'الخامس الابتدائي',
+    'primary-6': 'السادس الابتدائي',
+    'first-prep': 'الأول الإعدادي',
+    'second-prep': 'الثاني الإعدادي',
+    'third-prep': 'الثالث الإعدادي',
+    'first-sec': 'الأول الثانوي',
+    'second-sec': 'الثاني الثانوي',
+    'third-sec': 'الثالث الثانوي',
+    'bac-1': 'البكالوريا المستوى الأول',
+    'bac-2': 'البكالوريا المستوى الثاني',
+    'bac-3': 'البكالوريا المستوى الثالث'
+  }
+  return GRADE_LABEL[grade] || grade || ''
+}
+
+/**
+ * Normalizes assessment titles by stripping standard prefixes and generated dates.
+ * If the title is strictly a date, returns "اليوم" to avoid redundancy.
+ */
+export function normalizeAssessmentTitle(title) {
+  if (!title) return ''
+  let clean = title.trim()
+  
+  // 1. Strip prefixes first
+  clean = clean.replace(/^(تسميع|اختبار|واجب|تقييم|امتحان)\s*[-:]\s*/, '')
+
+  // 2. Check if remaining text is strictly a date
+  const isStrictDate = /^\d{4}[-/]\d{2}[-/]\d{2}(?:\s*\([^)]+\))?$/.test(clean) ||
+                       /^\d{2}[-/]\d{2}[-/]\d{4}(?:\s*\([^)]+\))?$/.test(clean)
+  if (isStrictDate) {
+    return 'اليوم'
+  }
+
+  // 3. Otherwise strip trailing date suffixes
+  clean = clean.replace(/\s*[-:]\s*\d{4}[-/]\d{2}[-/]\d{2}(?:\s*\([^)]+\))?$/, '')
+  clean = clean.replace(/\s*[-:]\s*\d{2}[-/]\d{2}[-/]\d{4}(?:\s*\([^)]+\))?$/, '')
+
+  const finalTitle = clean.trim()
+  
+  // Re-verify in case stripping trailing date left it empty or as a date
+  if (!finalTitle || 
+      /^\d{4}[-/]\d{2}[-/]\d{2}(?:\s*\([^)]+\))?$/.test(finalTitle) ||
+      /^\d{2}[-/]\d{2}[-/]\d{4}(?:\s*\([^)]+\))?$/.test(finalTitle)) {
+    return 'اليوم'
+  }
+
+  return finalTitle
+}
+
+/**
  * Returns the default template text for a specific notification type and tenant.
+ * Uses compact formatting, consistent spacing, and gender-neutral Arabic wording.
  */
 export function getDefaultTemplate(tenant, notification_type) {
-  const teacherDetails = resolveTeacherDetails(tenant)
   const isAbdella = tenant?.slug === 'mohamed-abdella'
-  const signatureLine = isAbdella ? 'مع تحيات\nأ/ محمد عبداللاه' : 'مع تحيات\nأ/ {{teacher_name}}'
-  const phonesBlock = isAbdella 
-    ? '0453176310\n01155731401' 
-    : '{{teacher_phones}}'
+  const signatureLine = isAbdella ? 'مع تحيات: أ/ محمد عبداللاه' : 'مع تحيات: أ/ {{teacher_name}}'
+  const phonesBlock = isAbdella ? '0453176310 - 01155731401' : '{{teacher_phones}}'
 
   switch (notification_type) {
     case 'attendance_absent':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد تغيب اليوم *{{day_name}}*
-
-بتاريخ *{{date}}*
-
-عن حصة *{{lesson_name}}*
-
-مجموعة الساعة *{{group_name}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد تغيب/ت اليوم *{{day_name}}* (*{{date}}*) عن حصة *{{session_title}}* (من درس: *{{lesson_name}}*).
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'attendance_makeup':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد حضر متأخراً اليوم *{{day_name}}*
-
-بتاريخ *{{date}}*
-
-عن حصة *{{lesson_name}}*
-
-مجموعة الساعة *{{group_name}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد حضر/ت متأخراً/ة اليوم *{{day_name}}* (*{{date}}*) عن حصة *{{session_title}}* (من درس: *{{lesson_name}}*).
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'quiz':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد حصل على درجة
-
-*{{grade}}*
-
-من
-
-*{{total_grade}}*
-
-في تسميع
-
-*{{quiz_name}}*
-
-بتاريخ
-
-*{{date}}*
-
-من درس
-
-*{{lesson_name}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد حصل/ت على درجة *{{grade}}* من *{{total_grade}}* في تسميع *{{quiz_name}}* بتاريخ *{{date}}* (من درس: *{{lesson_name}}*).
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'exam':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد حصل على درجة
-
-*{{grade}}*
-
-من
-
-*{{total_grade}}*
-
-في امتحان
-
-*{{exam_name}}*
-
-بتاريخ
-
-*{{date}}*
-
-من درس
-
-*{{lesson_name}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد حصل/ت على درجة *{{grade}}* من *{{total_grade}}* في امتحان *{{exam_name}}* بتاريخ *{{date}}* (من درس: *{{lesson_name}}*).
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'homework':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد حصل على درجة
-
-*{{grade}}*
-
-من
-
-*{{total_grade}}*
-
-في واجب
-
-*{{homework_name}}*
-
-بتاريخ
-
-*{{date}}*
-
-من درس
-
-*{{lesson_name}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد حصل/ت على درجة *{{grade}}* من *{{total_grade}}* في واجب *{{homework_name}}* بتاريخ *{{date}}* (من درس: *{{lesson_name}}*).
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'payment':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-يرجى العلم بضرورة سداد المصروفات المستحقة لكورس *{{course_name}}*
+يرجى العلم بضرورة سداد المصروفات المستحقة للطالب/ة *{{student_name}}* لكورس *{{course_name}}*.
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 حتى نتأكد من متابعتكم للطالب/ة 🤎`
 
     case 'behavior':
     case 'participation':
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بأن
-
-الطالب / *{{student_name}}*
-
-قد حصل على درجة تقييم سلوكي ومشاركة
-
-*{{grade}}*
-
-من
-
-*{{total_grade}}*
-
-بتاريخ
-
-*{{date}}*
+نود إبلاغكم بأن الطالب/ة *{{student_name}}* قد حصل/ت على درجة تقييم سلوكي ومشاركة *{{grade}}* من *{{total_grade}}* بتاريخ *{{date}}*.
 
 ${signatureLine}
+للتواصل: ${phonesBlock}
 
-للتواصل معنا على رقم
-
-${phonesBlock}
-
-يرجى التفاعل على الرسالة بـ 👍🏻
-حتى نتأكد من متابعتكم للطالب 🤎`
+يرجى التفاعل على الرسالة بـ 👍🏻 لمتابعة الطالب/ة 🤎`
 
     case 'general':
     default:
       return `السلام عليكم ورحمة الله وبركاته
 
-نود إبلاغكم بالتالي للطالب / *{{student_name}}*
-
+نود إبلاغكم بالتالي للطالب/ة *{{student_name}}*:
 {{message}}
 
 ${signatureLine}
-
-للتواصل معنا على رقم
-
-${phonesBlock}`
+للتواصل: ${phonesBlock}`
   }
 }
 
 /**
  * Replaces placeholders in template text with payload values.
  * Any unknown placeholder will be replaced with an empty string.
+ * Performs whitespace and spacing normalizations to format the final output professionally.
  */
 export function renderTemplateText(templateText, tenant, payload) {
   const teacherDetails = resolveTeacherDetails(tenant)
@@ -310,11 +231,12 @@ export function renderTemplateText(templateText, tenant, payload) {
     teacher_phone_2: teacherDetails.phone_2 || '',
     teacher_phones: teacherDetails.phones || '',
     teacher_signature: teacherDetails.signature || '',
-    lesson_name: payload.lesson_name || '',
+    session_title: payload.session_title || '',
+    lesson_name: normalizeAssessmentTitle(payload.lesson_name || ''),
     group_name: payload.group_name || '',
-    quiz_name: payload.quiz_name || '',
-    exam_name: payload.exam_name || '',
-    homework_name: payload.homework_name || '',
+    quiz_name: normalizeAssessmentTitle(payload.quiz_name || ''),
+    exam_name: normalizeAssessmentTitle(payload.exam_name || ''),
+    homework_name: normalizeAssessmentTitle(payload.homework_name || ''),
     grade: payload.grade !== undefined && payload.grade !== null ? String(payload.grade) : '',
     total_grade: payload.total_grade !== undefined && payload.total_grade !== null ? String(payload.total_grade) : '',
     date: payload.date || '',
@@ -334,10 +256,27 @@ export function renderTemplateText(templateText, tenant, payload) {
   }
 
   // Replace all {{variable}} placeholders with resolved values or empty string
-  return templateText.replace(/\{\{([a-zA-Z0-9_-]+)\}\}/g, (match, key) => {
+  let rendered = templateText.replace(/\{\{([a-zA-Z0-9_-]+)\}\}/g, (match, key) => {
     const trimmedKey = key.trim()
     return placeholders[trimmedKey] !== undefined ? placeholders[trimmedKey] : ''
   })
+
+  // 1. Normalize line endings and trim whole text
+  let result = rendered.replace(/\r\n/g, '\n').trim()
+
+  // 2. Process line by line to clean up spaces
+  const lines = result.split('\n').map(line => {
+    // Replace multiple spaces/tabs with a single space
+    let cleaned = line.replace(/[ \t]+/g, ' ')
+    // Trim leading/trailing spaces from the line
+    return cleaned.trim()
+  })
+
+  // 3. Rejoin and replace multiple consecutive blank lines (3 or more newlines) with a single blank line
+  result = lines.join('\n')
+  result = result.replace(/\n{3,}/g, '\n\n')
+
+  return result
 }
 
 /**

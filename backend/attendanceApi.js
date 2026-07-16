@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
 import { queueNotification } from './unifiedNotificationsApi'
-import { renderNotificationTemplate } from './whatsappTemplates'
+import { renderNotificationTemplate, getGradeUiLabel } from './whatsappTemplates'
 
 // Fetch sessions for a grade, optionally filtered by branch
 export async function listAttendanceSessions(grade, branchId = null) {
@@ -137,25 +137,30 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
   // Step 2: Queue notifications for absent/late students using the unified queue (idempotent)
   let tenant = null
   let groupName = ''
+  const profilesMap = new Map()
   if (records.length > 0) {
     try {
-      const firstStudentId = records[0].student_id
-      const { data: studentProfile } = await supabase
+      const studentIds = records.map(r => r.student_id)
+      const { data: profilesList } = await supabase
         .from('profiles')
-        .select('tenant_id')
-        .eq('id', firstStudentId)
-        .maybeSingle()
+        .select('id, tenant_id, grade, "group"')
+        .in('id', studentIds)
+      
+      if (profilesList && profilesList.length > 0) {
+        profilesList.forEach(p => profilesMap.set(p.id, p))
         
-      if (studentProfile?.tenant_id) {
-        const { data: tenantData } = await supabase
-          .from('tenants')
-          .select('*')
-          .eq('id', studentProfile.tenant_id)
-          .maybeSingle()
-        tenant = tenantData
+        const tenantId = profilesList[0].tenant_id
+        if (tenantId) {
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('id', tenantId)
+            .maybeSingle()
+          tenant = tenantData
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch tenant configuration for attendance template:', err)
+      console.error('Failed to fetch profiles/tenant configuration for attendance template:', err)
     }
 
     try {
@@ -228,11 +233,16 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
             .eq('type', otherType)
             .eq('status->>whatsapp', 'pending')
 
+          const studentProfile = profilesMap.get(r.student_id)
+          const gradeLabel = getGradeUiLabel(studentProfile?.grade)
+          const groupLabel = studentProfile?.group || groupName || ''
+          const groupNameResolved = [gradeLabel, groupLabel].filter(Boolean).join(' - ')
+
           // Render template dynamically
           const payload = {
             student_name: r.student_name,
             lesson_name: sessionTitle || 'الدرس',
-            group_name: groupName || '',
+            group_name: groupNameResolved || 'العامة',
             date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
             day_name: new Date().toLocaleDateString('ar-EG', { weekday: 'long' }),
             attendance_status: r.status === 'absent' ? 'تغيب' : 'حضر متأخراً'
@@ -385,5 +395,147 @@ export async function deleteAttendanceSession(sessionId) {
   }
 
   return data
+}
+
+// Rebuild and send WhatsApp notifications for a past attendance session
+export async function rebuildAndSendAttendanceNotifications(sessionId, tenantId, createdBy = null) {
+  if (!sessionId || !tenantId) {
+    throw new Error('Session ID and tenant ID are required')
+  }
+
+  // 1. Fetch all attendance records in this session
+  const { data: records, error: fetchError } = await supabase
+    .from('attendance_records')
+    .select('id, student_id, status, attendance_sessions(title, date, group_id)')
+    .eq('session_id', sessionId)
+
+  if (fetchError) throw fetchError
+  if (!records || records.length === 0) return 0
+
+  const attendanceRecordIds = records.map(r => r.id)
+  const studentIds = records.map(r => r.student_id)
+
+  // 2. Fetch profiles of all students
+  const { data: profilesList, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, name, phone, parent_phone, grade, "group"')
+    .in('id', studentIds)
+
+  if (profileError) throw profileError
+  const profilesMap = new Map((profilesList || []).map(p => [p.id, p]))
+
+  // 3. Fetch tenant config
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('*')
+    .eq('id', tenantId)
+    .single()
+
+  if (tenantError || !tenant) {
+    throw new Error('Failed to load tenant configuration: ' + (tenantError?.message || 'Tenant not found'))
+  }
+
+  // 4. Fetch all existing notifications for these attendance records to identify sent, failed, or pending status
+  const { data: existingNotifs, error: notifFetchError } = await supabase
+    .from('unified_notifications')
+    .select('id, attendance_record_id, status')
+    .in('attendance_record_id', attendanceRecordIds)
+
+  if (notifFetchError) throw notifFetchError
+
+  const hasSentOrFailed = new Set()
+  const pendingNotifIdsToDelete = []
+
+  if (existingNotifs) {
+    existingNotifs.forEach(notif => {
+      const whatsappStatus = notif.status?.whatsapp || 'pending'
+      if (whatsappStatus === 'sent' || whatsappStatus === 'failed') {
+        hasSentOrFailed.add(notif.attendance_record_id)
+      } else if (whatsappStatus === 'pending') {
+        pendingNotifIdsToDelete.push(notif.id)
+      }
+    })
+  }
+
+  // 5. Delete only the PENDING notifications related to this session
+  if (pendingNotifIdsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('unified_notifications')
+      .delete()
+      .in('id', pendingNotifIdsToDelete)
+
+    if (deleteError) throw deleteError
+  }
+
+  // 6. Generate and insert new notifications for students who haven't received them yet
+  const notificationsToInsert = []
+
+  for (const r of records) {
+    if (r.status !== 'absent' && r.status !== 'late') {
+      continue // Skip present or excused students
+    }
+    if (hasSentOrFailed.has(r.id)) {
+      continue // Keep sent and failed states untouched
+    }
+
+    const profile = profilesMap.get(r.student_id)
+    const recipientPhone = profile?.parent_phone || profile?.phone
+    if (!recipientPhone || recipientPhone.trim() === '') {
+      continue
+    }
+
+    const gradeLabel = getGradeUiLabel(profile?.grade)
+    const groupLabel = profile?.group || ''
+    const groupNameResolved = [gradeLabel, groupLabel].filter(Boolean).join(' - ')
+
+    const sessionTitle = r.attendance_sessions?.title || 'الدرس'
+    const dateObj = new Date(r.attendance_sessions?.date)
+
+    // Construct structured payload variables
+    const payload = {
+      student_name: profile?.name || '',
+      session_title: sessionTitle,
+      lesson_name: groupNameResolved || 'العامة',
+      date: dateObj.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+      day_name: dateObj.toLocaleDateString('ar-EG', { weekday: 'long' }),
+      attendance_status: r.status === 'absent' ? 'تغيب' : 'حضر متأخراً'
+    }
+
+    const type = r.status === 'absent' ? 'attendance_absent' : 'attendance_makeup'
+
+    try {
+      const renderedMessage = await renderNotificationTemplate({
+        tenant,
+        notification_type: type,
+        locale: 'ar-EG',
+        payload
+      })
+
+      notificationsToInsert.push({
+        tenant_id: tenantId,
+        student_id: r.student_id,
+        title: 'تنبيه الحضور والغياب',
+        message: renderedMessage,
+        type,
+        channels: ['whatsapp', 'portal'],
+        status: { whatsapp: 'pending', portal: 'pending' },
+        created_by: createdBy || null,
+        attendance_record_id: r.id,
+        recipient_phone: recipientPhone
+      })
+    } catch (renderErr) {
+      console.error(`Failed to render template during rebuild for student ${r.student_id}:`, renderErr)
+    }
+  }
+
+  if (notificationsToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from('unified_notifications')
+      .insert(notificationsToInsert)
+
+    if (insertError) throw insertError
+  }
+
+  return notificationsToInsert.length
 }
 

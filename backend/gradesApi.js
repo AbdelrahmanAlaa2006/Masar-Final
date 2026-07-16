@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
-import { renderNotificationTemplate } from './whatsappTemplates'
+import { renderNotificationTemplate, getGradeUiLabel } from './whatsappTemplates'
 
 // Fetch all grades for a single student
 export async function getStudentGrades(studentId) {
@@ -64,25 +64,30 @@ export async function saveGradesBatch(records) {
   const notifications = []
   
   let tenant = null
+  const profilesMap = new Map()
   if (records.length > 0) {
     try {
-      const firstStudentId = records[0].student_id
-      const { data: studentProfile } = await supabase
+      const studentIds = records.map(r => r.student_id)
+      const { data: profilesList } = await supabase
         .from('profiles')
-        .select('tenant_id')
-        .eq('id', firstStudentId)
-        .maybeSingle()
+        .select('id, tenant_id, grade, "group"')
+        .in('id', studentIds)
+      
+      if (profilesList && profilesList.length > 0) {
+        profilesList.forEach(p => profilesMap.set(p.id, p))
         
-      if (studentProfile?.tenant_id) {
-        const { data: tenantData } = await supabase
-          .from('tenants')
-          .select('*')
-          .eq('id', studentProfile.tenant_id)
-          .maybeSingle()
-        tenant = tenantData
+        const tenantId = profilesList[0].tenant_id
+        if (tenantId) {
+          const { data: tenantData } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('id', tenantId)
+            .maybeSingle()
+          tenant = tenantData
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch tenant configuration for grades template:', err)
+      console.error('Failed to fetch profiles/tenant configuration for grades template:', err)
     }
   }
 
@@ -105,6 +110,11 @@ export async function saveGradesBatch(records) {
       )
       const gradeId = insertedGrade ? insertedGrade.id : null
 
+      const studentProfile = profilesMap.get(r.student_id)
+      const gradeLabel = getGradeUiLabel(studentProfile?.grade)
+      const groupLabel = studentProfile?.group || ''
+      const lessonNameResolved = [gradeLabel, groupLabel].filter(Boolean).join(' - ') || 'الدرس'
+
       // Construct placeholders payload
       const payload = {
         student_name: r.student_name,
@@ -113,7 +123,7 @@ export async function saveGradesBatch(records) {
         quiz_name: r.type === 'quiz' ? r.title : '',
         exam_name: r.type === 'exam' ? r.title : '',
         homework_name: r.type === 'homework' ? r.title : '',
-        lesson_name: r.title || 'الدرس',
+        lesson_name: lessonNameResolved,
         date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
         day_name: new Date().toLocaleDateString('ar-EG', { weekday: 'long' }),
         course_name: r.subject || tenant?.config?.subject || ''
@@ -484,6 +494,10 @@ export async function rebuildAndSendGradeNotifications(type, title, tenantId, cr
       continue
     }
 
+    const gradeLabel = getGradeUiLabel(g.profiles?.grade)
+    const groupLabel = g.profiles?.group || ''
+    const lessonNameResolved = [gradeLabel, groupLabel].filter(Boolean).join(' - ') || 'الدرس'
+
     // Construct structured payload variables
     const payload = {
       student_name: g.profiles?.name || '',
@@ -492,7 +506,7 @@ export async function rebuildAndSendGradeNotifications(type, title, tenantId, cr
       quiz_name: g.type === 'quiz' ? g.title : '',
       exam_name: g.type === 'exam' ? g.title : '',
       homework_name: g.type === 'homework' ? g.title : '',
-      lesson_name: g.title || 'الدرس',
+      lesson_name: lessonNameResolved,
       date: new Date(g.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
       day_name: new Date(g.created_at).toLocaleDateString('ar-EG', { weekday: 'long' }),
       course_name: g.subject || tenant.config?.subject || ''

@@ -9,7 +9,8 @@ import {
   createAttendanceSession, 
   listAttendanceForSession, 
   saveAttendanceBatch,
-  deleteAttendanceSession
+  deleteAttendanceSession,
+  rebuildAndSendAttendanceNotifications
 } from '@backend/attendanceApi'
 import { useTenant } from '../../contexts/TenantContext'
 import { useAuth } from '../../contexts/AuthContext'
@@ -84,6 +85,7 @@ export default function AttendancePanel({ onBack, flash }) {
   const [savingStudents, setSavingStudents] = useState({})
   const [deletingSession, setDeletingSession] = useState(false)
   const [showSessionDeleteConfirm, setShowSessionDeleteConfirm] = useState(false)
+  const [rebuildingNotifications, setRebuildingNotifications] = useState(false)
   // Monthly subscription fee per grade (for the "amount due" on scan).
   const [feesByGrade, setFeesByGrade] = useState({})
   useEffect(() => {
@@ -579,6 +581,28 @@ export default function AttendancePanel({ onBack, flash }) {
       flash('فشل حذف الحصة: ' + err.message, 'error')
     } finally {
       setDeletingSession(false)
+    }
+  }
+
+  // Rebuild and send notifications for the selected attendance session
+  const handleRebuildSendNotifications = async () => {
+    if (!selectedSessionId || selectedSessionId === 'new') return
+
+    const session = sessions.find(s => s.id === selectedSessionId)
+    const title = session?.title || 'الحصة'
+
+    const confirmMsg = `هل أنت متأكد من إعادة بناء وإرسال الإشعارات لحصة "${title}" بالكامل؟\nسيؤدي ذلك إلى حذف الإشعارات المعلقة (قيد الانتظار) فقط وإعادة توليدها وإرسالها بالصياغة والقوالب الحالية دون المساس بالإشعارات المرسلة أو الفاشلة سابقاً.`
+    if (!window.confirm(confirmMsg)) return
+
+    setRebuildingNotifications(true)
+    try {
+      const count = await rebuildAndSendAttendanceNotifications(selectedSessionId, tenantId, currentUser?.id)
+      flash(`تم إعادة بناء وجدولة عدد ${count} إشعارات حضور بنجاح!`, 'success')
+    } catch (err) {
+      console.error(err)
+      flash('فشل إعادة بناء وإرسال الإشعارات: ' + err.message, 'error')
+    } finally {
+      setRebuildingNotifications(false)
     }
   }
 
@@ -1334,6 +1358,18 @@ export default function AttendancePanel({ onBack, flash }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
+              {selectedSessionId && selectedSessionId !== 'new' && (
+                <button 
+                  onClick={handleRebuildSendNotifications} 
+                  disabled={rebuildingNotifications} 
+                  className="cp-btn"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.2)' }}
+                >
+                  {rebuildingNotifications ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                  إعادة بناء وإرسال الإشعارات
+                </button>
+              )}
+
               {selectedSessionId && selectedSessionId !== 'new' && (
                 <button
                   onClick={() => setShowSessionDeleteConfirm(true)}
