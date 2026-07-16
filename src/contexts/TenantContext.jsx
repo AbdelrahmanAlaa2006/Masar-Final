@@ -15,7 +15,9 @@ export function TenantProvider({ children }) {
   useEffect(() => {
     async function resolveTenant() {
       try {
-        const hostname = window.location.hostname
+        // Strip a leading "www." so www.mrmohamedabdella.com matches the
+        // tenants.domain value stored without it (mrmohamedabdella.com).
+        const hostname = window.location.hostname.replace(/^www\./, '')
         const urlParams = new URLSearchParams(window.location.search)
 
         // 1. Resolve slug/domain candidate first
