@@ -728,8 +728,14 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   }, [payments])
 
   // Date range filters
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const getTodayLocalDate = () => {
+    const d = new Date()
+    const offset = d.getTimezoneOffset()
+    const localDate = new Date(d.getTime() - offset * 60 * 1000)
+    return localDate.toISOString().split('T')[0]
+  }
+  const [startDate, setStartDate] = useState(getTodayLocalDate())
+  const [endDate, setEndDate] = useState(getTodayLocalDate())
 
   // Booklet payment modal — reuses the existing BookletsPanel payment workflow
   // (same APIs, services, validation, and business logic; only its location
@@ -1453,7 +1459,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 className="cp-btn cp-btn-success"
                 style={{ height: 38, padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
               >
-                <i className="fas fa-book"></i> تسجيل دفع الكتيبات 📚
+                <i className="fas fa-book"></i> تسجيل دفع الملازم 📚
               </button>
               <button
                 type="button"
@@ -1723,8 +1729,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 <i className="fas fa-book"></i>
               </div>
               <div className="rp-modal-title">
-                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>تسجيل دفع الكتيبات</h3>
-                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>ابحث عن الطالب واعرض كتيباته المعيّنة وسجّل المدفوعة منها</p>
+                <h3 style={{ color: 'var(--cp-text-main)', margin: 0 }}>تسجيل دفع الملازم</h3>
+                <p style={{ color: 'var(--cp-text-muted)', margin: '4px 0 0', fontSize: '0.85rem' }}>ابحث عن الطالب واعرض ملازمه المعيّنة وسجّل المدفوعة منها</p>
               </div>
               <button className="rp-modal-close" onClick={() => setShowBookletModal(false)} style={{ background: 'var(--cp-back-bg)', border: '1px solid var(--cp-back-border)', color: 'var(--cp-text-muted)' }}>
                 <i className="fas fa-times"></i>

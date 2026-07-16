@@ -1,5 +1,9 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
+import { listSubscriptionFees } from './paymentsApi'
+import { listStudentBooklets, markBookletsPaid } from './bookletsApi'
+import { recordSubscriptionPayment } from './financeApi'
+import { createClient } from '@supabase/supabase-js'
 
 /* Admin-only: list every student profile. RLS policy profiles_admin_all
    lets an admin read all rows; a student would only see themselves. */
@@ -285,3 +289,174 @@ export async function getStudentIdentityByQr(qrToken, tenantId) {
   if (error) throw error
   return data
 }
+
+const phoneToEmail = (phone, tenantId) => {
+  const cleanPhone = phone.replace(/\s+/g, '').toLowerCase()
+  const defaultTenantId = 'd3b07384-d113-4ec2-a5d6-d005b6be4979'
+  if (!tenantId || tenantId === defaultTenantId) {
+    return `${cleanPhone}@masaar.app`
+  }
+  return `${cleanPhone}-${tenantId}@masaar.app`
+}
+
+const getTempClient = () => {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+  const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: undefined,
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  })
+}
+
+export async function createStudentByAdmin({
+  name,
+  phone,
+  password,
+  grade,
+  parentPhone,
+  enrollmentType,
+  branchId,
+  groupId,
+  groupName,
+  status = 'active',
+  tenantId,
+  registerMonthly = false,
+  monthlyMonth = '',
+  registerBooklet = false,
+  adminId = null
+}) {
+  if (!tenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
+  if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
+
+  const tempClient = getTempClient()
+  const email = phoneToEmail(phone, tenantId)
+
+  // Fetch active academic year
+  let activeYearId = null
+  try {
+    const { data: activeYear } = await supabase
+      .from('academic_years')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (activeYear) {
+      activeYearId = activeYear.id
+    }
+  } catch (err) {
+    console.error('Failed to fetch active academic year:', err)
+  }
+
+  // 1. Sign up in Supabase auth using temp client
+  const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name: name.trim(),
+        phone: phone.trim(),
+        role: 'student',
+        grade,
+        tenant_id: tenantId,
+        parent_phone: parentPhone ? parentPhone.trim() : '',
+        enrollment_type: enrollmentType || 'CENTER',
+        branch_id: branchId || null,
+        group_id: groupId || null,
+        group: groupName || null,
+        academic_year_id: activeYearId
+      }
+    }
+  })
+
+  if (signUpError) throw signUpError
+  if (!signUpData.user) throw new Error('فشل إنشاء حساب الطالب في المصادقة')
+
+  const studentId = signUpData.user.id
+
+  // 2. Manually upsert profile
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: studentId,
+      name: name.trim(),
+      phone: phone.trim(),
+      role: 'student',
+      tenant_id: tenantId,
+      grade: grade,
+      parent_phone: parentPhone ? parentPhone.trim() : '',
+      enrollment_type: enrollmentType || 'CENTER',
+      branch_id: branchId || null,
+      group: groupName || null,
+      academic_year_id: activeYearId,
+      is_approved: status === 'active',
+      is_active: status === 'active',
+      status: status
+    }, { onConflict: 'id' })
+
+  if (profileError) {
+    console.error('Profile upsert error:', profileError)
+    throw new Error('فشل إنشاء الملف الشخصي للطالب: ' + profileError.message)
+  }
+
+  // 3. Link to group in student_groups join table
+  if (groupId) {
+    try {
+      await supabase
+        .from('student_groups')
+        .upsert({
+          student_id: studentId,
+          group_id: groupId,
+          is_primary: true
+        }, { onConflict: 'student_id,group_id' })
+    } catch (err) {
+      console.error('Failed to link student to group:', err)
+    }
+  }
+
+  // 4. Handle automatic payments
+  // Monthly payment
+  if (registerMonthly && monthlyMonth) {
+    const billingPeriod = 'اشتراك شهر ' + monthlyMonth
+    const { data: existingPayment, error } = await supabase
+      .from('student_ledger')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('type', 'payment')
+      .eq('billing_period', billingPeriod)
+      .limit(1)
+
+    if (!error && (!existingPayment || existingPayment.length === 0)) {
+      // Get grade fee
+      const fees = await listSubscriptionFees()
+      const fee = Number((fees || []).find(f => f.grade === grade)?.amount) || 0
+      if (fee > 0) {
+        await recordSubscriptionPayment({
+          studentId: studentId,
+          amount: fee,
+          billingPeriod: billingPeriod,
+          monthlyDue: fee,
+          paymentMethod: 'Cash',
+          adminId: adminId
+        })
+      }
+    }
+  }
+
+  // Booklet payment
+  if (registerBooklet) {
+    const studentBooklets = await listStudentBooklets(studentId)
+    const bookletIds = studentBooklets
+      .filter(sb => sb.payment_status === 'unpaid')
+      .map(sb => sb.id)
+    if (bookletIds.length > 0) {
+      await markBookletsPaid(bookletIds, 'دفعة أولى عند التسجيل')
+    }
+  }
+
+  invalidateCache('students')
+  return { id: studentId, name, phone }
+}
+

@@ -303,16 +303,20 @@ export default function ControlPanelIndex() {
     <main className="cp-page">
       <div className="cp-container">
         {/* Top header */}
-        <div className="cp-page-header">
-          <div className="cp-page-header-text">
-            <h1>لوحة التحكم</h1>
-            <p>إدارة صلاحيات الفيديوهات والامتحانات للطلاب والمراحل الدراسية</p>
-          </div>
-          <div className="cp-page-icon">
-            <i className="fas fa-sliders"></i>
-          </div>
-        </div>
-        <div className="cp-header-divider"></div>
+        {section === 'home' && (
+          <>
+            <div className="cp-page-header">
+              <div className="cp-page-header-text">
+                <h1>لوحة التحكم</h1>
+                <p>إدارة صلاحيات الفيديوهات والامتحانات للطلاب والمراحل الدراسية</p>
+              </div>
+              <div className="cp-page-icon">
+                <i className="fas fa-sliders"></i>
+              </div>
+            </div>
+            <div className="cp-header-divider"></div>
+          </>
+        )}
 
         {loadError && (
           <div className="cp-empty" style={{ color: '#c53030' }}>

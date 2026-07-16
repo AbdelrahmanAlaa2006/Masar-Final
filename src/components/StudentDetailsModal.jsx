@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 
 export default function StudentDetailsModal({ student, onClose, onMarkAttendance, selectedGroupId, groups, currentGrade }) {
   if (!student) return null
@@ -158,7 +159,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   const dividerColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)'
 
-  return (
+  return createPortal(
     <div style={{
       position: 'fixed',
       inset: 0,
@@ -540,6 +541,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
         })()}
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -164,7 +164,7 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
         status: filterStatus || null,
       }))
     } catch (err) {
-      flash('فشل تحميل الكتيبات: ' + (err.message || ''), 'error')
+      flash('فشل تحميل الملازم: ' + (err.message || ''), 'error')
     } finally {
       setLoading(false)
     }
@@ -208,15 +208,15 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
         : await createBooklet(payload)
       flash(
         editing
-          ? `تم تعديل الكتيب وتحديث التعيينات (+${assignment.added} طالب)`
-          : `تم إنشاء الكتيب وتعيينه لـ ${assignment.added} طالب تلقائياً`,
+          ? `تم تعديل الملزمة وتحديث التعيينات (+${assignment.added} طالب)`
+          : `تم إنشاء الملزمة وتعيينها لـ ${assignment.added} طالب تلقائياً`,
         'success'
       )
       setShowForm(false)
       setEditing(null)
       reload()
     } catch (err) {
-      flash(err.message || 'فشل حفظ الكتيب', 'error')
+      flash(err.message || 'فشل حفظ الملزمة', 'error')
     } finally {
       setSaving(false)
     }
@@ -229,9 +229,9 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
       await setBookletStatus(row.id, next)
       if (next === 'active') {
         const res = await syncBookletAssignments(row.id)
-        flash(`تم تفعيل الكتيب وتحديث التعيينات (+${res.added} طالب)`, 'success')
+        flash(`تم تفعيل الملزمة وتحديث التعيينات (+${res.added} طالب)`, 'success')
       } else {
-        flash('تمت أرشفة الكتيب — لن يُعيَّن لطلاب جدد', 'success')
+        flash('تمت أرشفة الملزمة — لن تُعيَّن لطلاب جدد', 'success')
       }
       reload()
     } catch (err) {
@@ -260,7 +260,7 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
     if (!row) return
     try {
       await deleteBooklet(row.id)
-      flash('تم حذف الكتيب وجميع تعييناته', 'success')
+      flash('تم حذف الملزمة وجميع تعييناتها', 'success')
       reload()
     } catch (err) {
       flash(err.message || 'فشل الحذف', 'error')
@@ -273,7 +273,7 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div style={{ flex: 2, minWidth: '200px' }}>
           <label style={labelStyle}>بحث</label>
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم الكتيب..." className="cp-input" style={{ width: '100%' }} />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث باسم الملزمة..." className="cp-input" style={{ width: '100%' }} />
         </div>
         <div style={{ flex: 1, minWidth: '150px' }}>
           <label style={labelStyle}>المرحلة</label>
@@ -291,18 +291,18 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
           </select>
         </div>
         <button onClick={() => openForm()} className="cp-btn cp-btn-success" style={{ fontWeight: 'bold' }}>
-          <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} /> إنشاء كتيب جديد
+          <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} /> إنشاء ملزمة جديدة
         </button>
       </div>
 
       {/* Create / edit form */}
       {showForm && (
         <form onSubmit={handleSave} style={{ ...cardStyle, animation: 'cpFadeUp 0.2s ease' }}>
-          <h4 style={{ margin: '0 0 16px', fontWeight: 'bold' }}>{editing ? 'تعديل كتيب' : 'إنشاء كتيب جديد'}</h4>
+          <h4 style={{ margin: '0 0 16px', fontWeight: 'bold' }}>{editing ? 'تعديل ملزمة' : 'إنشاء ملزمة جديدة'}</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', marginBottom: '14px' }}>
             <div>
-              <label style={labelStyle}>اسم الكتيب *</label>
-              <input type="text" value={fName} onChange={(e) => setFName(e.target.value)} placeholder="مثال: كتيب الجبر" className="cp-input" style={{ width: '100%' }} required />
+              <label style={labelStyle}>اسم الملزمة *</label>
+              <input type="text" value={fName} onChange={(e) => setFName(e.target.value)} placeholder="مثال: ملزمة الجبر" className="cp-input" style={{ width: '100%' }} required />
             </div>
             <div>
               <label style={labelStyle}>المرحلة الدراسية *</label>
@@ -341,10 +341,10 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
             </div>
           </div>
           <label style={labelStyle}>الوصف (اختياري)</label>
-          <input type="text" value={fDescription} onChange={(e) => setFDescription(e.target.value)} placeholder="وصف مختصر للكتيب..." className="cp-input" style={{ width: '100%', marginBottom: '14px' }} />
+          <input type="text" value={fDescription} onChange={(e) => setFDescription(e.target.value)} placeholder="وصف مختصر للملزمة..." className="cp-input" style={{ width: '100%', marginBottom: '14px' }} />
           <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.2)', fontSize: '0.83rem', marginBottom: '14px' }}>
             <i className="fas fa-wand-magic-sparkles" style={{ marginInlineEnd: 6, color: '#06b6d4' }} />
-            عند الحفظ سيُعيَّن الكتيب تلقائياً لكل الطلاب المطابقين (حالة الدفع: غير مدفوع)، وسيحصل عليه أي طالب جديد مطابق تلقائياً.
+            عند الحفظ ستُعيَّن الملزمة تلقائياً لكل الطلاب المطابقين (حالة الدفع: غير مدفوع)، وسيحصل عليها أي طالب جديد مطابق تلقائياً.
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" disabled={saving} className="cp-btn cp-btn-success" style={{ fontWeight: 'bold' }}>
@@ -357,16 +357,16 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
 
       {/* List */}
       {loading ? (
-        <div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل الكتيبات...</p></div>
+        <div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل الملازم...</p></div>
       ) : booklets.length === 0 ? (
-        <div className="cp-empty"><i className="fas fa-book" /><p>لا توجد كتيبات مطابقة — أنشئ أول كتيب من الزر أعلاه</p></div>
+        <div className="cp-empty"><i className="fas fa-book" /><p>لا توجد ملازم مطابقة — أنشئ أول ملزمة من الزر أعلاه</p></div>
       ) : (
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.88rem' }}>
               <thead>
                 <tr style={{ background: 'var(--cp-list-header-bg)', borderBottom: '1px solid var(--cp-divider)' }}>
-                  <th style={thStyle}>الكتيب</th>
+                  <th style={thStyle}>الملزمة</th>
                   <th style={thStyle}>المرحلة</th>
                   <th style={thStyle}>الفرع</th>
                   <th style={thStyle}>المجموعة</th>
@@ -407,7 +407,7 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => openForm(b)} className="cp-btn cp-btn-secondary" style={{ padding: '4px 10px', fontSize: '0.76rem' }}>تعديل</button>
-                        <button onClick={() => handleSync(b)} disabled={busyId === b.id} className="cp-btn cp-btn-info" style={{ padding: '4px 10px', fontSize: '0.76rem' }} title="إعادة تعيين الكتيب لكل الطلاب المطابقين">
+                        <button onClick={() => handleSync(b)} disabled={busyId === b.id} className="cp-btn cp-btn-info" style={{ padding: '4px 10px', fontSize: '0.76rem' }} title="إعادة تعيين الملزمة لكل الطلاب المطابقين">
                           {busyId === b.id ? '...' : 'مزامنة'}
                         </button>
                         <button onClick={() => handleToggleStatus(b)} disabled={busyId === b.id} className="cp-btn cp-btn-secondary" style={{ padding: '4px 10px', fontSize: '0.76rem' }}>
@@ -426,9 +426,9 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
 
       {deleteTarget && (
         <ConfirmDeleteDialog
-          title="تأكيد حذف الكتيب"
+          title="تأكيد حذف الملزمة"
           itemLabel={deleteTarget.name}
-          message="سيتم حذف الكتيب وجميع تعييناته للطلاب. سجلات المدفوعات السابقة تبقى محفوظة في سجل التدقيق والدفتر المالي."
+          message="سيتم حذف الملزمة وجميع تعييناتها للطلاب. سجلات المدفوعات السابقة تبقى محفوظة في سجل التدقيق والدفتر المالي."
           confirmText="نعم، احذف"
           cancelText="إلغاء"
           onConfirm={handleConfirmedDelete}
@@ -494,7 +494,7 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
     try {
       setItems(await listStudentBooklets(st.id, { scope: scope || null, term: term || null }))
     } catch (err) {
-      flash('فشل تحميل كتيبات الطالب: ' + (err.message || ''), 'error')
+      flash('فشل تحميل ملازم الطالب: ' + (err.message || ''), 'error')
     } finally {
       setItemsLoading(false)
     }
@@ -516,14 +516,14 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
     .reduce((sum, i) => sum + Number(i.price || 0), 0)
 
   const handlePay = async () => {
-    if (selected.size === 0) { flash('اختر كتيباً واحداً على الأقل', 'warning'); return }
+    if (selected.size === 0) { flash('اختر ملزمة واحدة على الأقل', 'warning'); return }
     setPaying(true)
     try {
       const res = await markBookletsPaid([...selected], notes)
       if (res.updated > 0) {
-        flash(`تم تسجيل دفع ${res.updated} كتيب بإجمالي ${fmtMoney(res.total_amount)} 🎉`, 'success')
+        flash(`تم تسجيل دفع ${res.updated} ملزمة بإجمالي ${fmtMoney(res.total_amount)} 🎉`, 'success')
       } else {
-        flash('لم يتم تحديث أي كتيب — ربما تم دفعها بالفعل', 'warning')
+        flash('لم يتم تحديث أي ملزمة — ربما تم دفعها بالفعل', 'warning')
       }
       setNotes('')
       loadItems()
@@ -540,7 +540,7 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
     if (!row) return
     try {
       await revertBookletPayment(row.id)
-      flash('تم إلغاء الدفع وإرجاع الكتيب لغير مدفوع (مسجل في الدفتر)', 'success')
+      flash('تم إلغاء الدفع وإرجاع الملزمة لغير مدفوعة (مسجل في الدفتر)', 'success')
       loadItems()
     } catch (err) {
       flash(err.message || 'فشل إلغاء الدفع', 'error')
@@ -628,9 +628,9 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
           </div>
 
           {itemsLoading ? (
-            <div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل الكتيبات...</p></div>
+            <div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل الملازم...</p></div>
           ) : items.length === 0 ? (
-            <div className="cp-empty"><i className="fas fa-book-open" /><p>لا توجد كتيبات معيّنة لهذا الطالب ضمن النطاق المحدد</p></div>
+            <div className="cp-empty"><i className="fas fa-book-open" /><p>لا توجد ملازم معيّنة لهذا الطالب ضمن النطاق المحدد</p></div>
           ) : (
             <>
               <div style={{ overflowX: 'auto' }}>
@@ -645,7 +645,7 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
                           title="تحديد كل غير المدفوع"
                         />
                       </th>
-                      <th style={thStyle}>الكتيب</th>
+                      <th style={thStyle}>الملزمة</th>
                       <th style={thStyle}>النطاق</th>
                       <th style={thStyle}>السعر</th>
                       <th style={thStyle}>حالة الدفع</th>
@@ -696,7 +696,7 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
                   <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثال: دفع نقدي في السنتر" className="cp-input" style={{ width: '100%' }} />
                 </div>
                 <div style={{ fontWeight: 800, fontSize: '1rem', padding: '8px 14px', borderRadius: 10, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  المحدد: {selected.size} كتيب — <span style={{ color: '#10b981' }}>{fmtMoney(selectedTotal)}</span>
+                  المحدد: {selected.size} ملزمة — <span style={{ color: '#10b981' }}>{fmtMoney(selectedTotal)}</span>
                 </div>
                 <button
                   onClick={handlePay}
@@ -718,9 +718,9 @@ function BookletPayment({ flash, gradeOptions, branchOptions, groupOptions }) {
 
       {revertTarget && (
         <ConfirmDeleteDialog
-          title="إلغاء دفع كتيب"
-          itemLabel={revertTarget.booklets?.name || 'الكتيب'}
-          message="سيعود الكتيب إلى حالة غير مدفوع، مع تسجيل عملية عكسية في الدفتر المالي وسجل التدقيق. لا يتم حذف أي سجل."
+          title="إلغاء دفع ملزمة"
+          itemLabel={revertTarget.booklets?.name || 'الملزمة'}
+          message="ستعود الملزمة إلى حالة غير مدفوعة، مع تسجيل عملية عكسية في الدفتر المالي وسجل التدقيق. لا يتم حذف أي سجل."
           confirmText="نعم، ألغِ الدفع"
           cancelText="تراجع"
           onConfirm={handleConfirmedRevert}
@@ -816,12 +816,12 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
     try {
       if (row.payment_status === 'paid') {
         await revertBookletPayment(row.id)
-        flash('تم إرجاع الكتيب إلى غير مدفوع (مسجل في الدفتر وسجل التدقيق)', 'success')
+        flash('تم إرجاع الملزمة إلى غير مدفوعة (مسجل في الدفتر وسجل التدقيق)', 'success')
       } else {
         const res = await markBookletsPaid([row.id])
         flash(res.updated > 0
-          ? `تم تسجيل دفع الكتيب (${fmtMoney(row.price)}) 🎉`
-          : 'لم يتغير شيء — ربما تم دفعه بالفعل', res.updated > 0 ? 'success' : 'warning')
+          ? `تم تسجيل دفع الملزمة (${fmtMoney(row.price)}) 🎉`
+          : 'لم يتغير شيء — ربما تم دفعها بالفعل', res.updated > 0 ? 'success' : 'warning')
       }
       await runReport()
     } catch (err) {
@@ -847,7 +847,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
   const exportCsv = () => {
     downloadCsv(
       `booklets-report-${new Date().toISOString().split('T')[0]}.csv`,
-      ['الطالب', 'المرحلة', 'الفرع', 'المجموعة', 'الكتيب', 'النطاق', 'الترم', 'السعر', 'الحالة', 'تاريخ الدفع'],
+      ['الطالب', 'المرحلة', 'الفرع', 'المجموعة', 'الملزمة', 'النطاق', 'الترم', 'السعر', 'الحالة', 'تاريخ الدفع'],
       exportRows()
     )
   }
@@ -863,7 +863,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
         ${r.map((c, idx) => `<td${idx === 0 || idx === 4 ? ' style="text-align:right"' : ''}>${idx === 7 ? Number(c).toLocaleString('ar-EG') : c}</td>`).join('')}
       </tr>`).join('')
     win.document.write(`
-      <html dir="rtl"><head><title>تقرير الكتيبات</title>
+      <html dir="rtl"><head><title>تقرير الملازم</title>
       <style>
         body { font-family: 'Tajawal', Arial, sans-serif; padding: 24px; color: #1e293b; }
         h1 { font-size: 20px; text-align: center; margin: 0 0 4px; }
@@ -876,7 +876,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
         .kpi strong { display:block; font-size: 15px; margin-top: 4px; }
       </style></head>
       <body onload="window.print(); window.close();">
-        <h1>تقرير رسوم الكتيبات</h1>
+        <h1>تقرير رسوم الملازم</h1>
         <h2>${fromDate || toDate ? `الفترة: ${fromDate || '...'} — ${toDate || '...'}` : `حتى تاريخ ${new Date().toLocaleDateString('ar-EG')}`}</h2>
         <div class="kpis">
           <div class="kpi">إجمالي التعيينات<strong>${totals.assigned}</strong></div>
@@ -886,7 +886,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
           <div class="kpi">المتبقي<strong style="color:#ef4444">${Number(totals.remaining_amount).toLocaleString('ar-EG')} ج.م</strong></div>
         </div>
         <table>
-          <thead><tr><th>#</th><th>الطالب</th><th>المرحلة</th><th>الفرع</th><th>المجموعة</th><th>الكتيب</th><th>النطاق</th><th>الترم</th><th>السعر</th><th>الحالة</th><th>تاريخ الدفع</th></tr></thead>
+          <thead><tr><th>#</th><th>الطالب</th><th>المرحلة</th><th>الفرع</th><th>المجموعة</th><th>الملزمة</th><th>النطاق</th><th>الترم</th><th>السعر</th><th>الحالة</th><th>تاريخ الدفع</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </body></html>`)
@@ -916,9 +916,9 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
           </div>
           <ScopeTermFilters scope={scope} term={term} onScope={(v) => { setScope(v); setBookletId('') }} onTerm={(v) => { setTerm(v); setBookletId('') }} />
           <div>
-            <label style={labelStyle}>الكتيب</label>
+            <label style={labelStyle}>الملزمة</label>
             <select value={bookletId} onChange={(e) => setBookletId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-              <option value="">كل الكتيبات</option>
+              <option value="">كل الملازم</option>
               {bookletChoices.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
@@ -956,8 +956,8 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
       <div className="cp-home-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
         {[
           ['إجمالي التعيينات', totals.assigned, '#06b6d4', false],
-          ['كتيبات مدفوعة', totals.paid, '#10b981', false],
-          ['كتيبات غير مدفوعة', totals.unpaid, '#ef4444', false],
+          ['ملازم مدفوعة', totals.paid, '#10b981', false],
+          ['ملازم غير مدفوعة', totals.unpaid, '#ef4444', false],
           ['إجمالي المحصَّل', totals.paid_amount, '#10b981', true],
           ['المبلغ المتبقي', totals.remaining_amount, '#f59e0b', true],
         ].map(([label, value, color, money]) => (
@@ -988,7 +988,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
                   <th style={thStyle}>المرحلة</th>
                   <th style={thStyle}>الفرع</th>
                   <th style={thStyle}>المجموعة</th>
-                  <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => toggleSort('booklet')}>الكتيب <i className={`fas ${sortIcon('booklet')}`} /></th>
+                  <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => toggleSort('booklet')}>الملزمة <i className={`fas ${sortIcon('booklet')}`} /></th>
                   <th style={thStyle}>النطاق</th>
                   <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => toggleSort('price')}>السعر <i className={`fas ${sortIcon('price')}`} /></th>
                   <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => toggleSort('status')}>الحالة <i className={`fas ${sortIcon('status')}`} /></th>
@@ -1023,7 +1023,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
                           disabled={busyId === r.id}
                           className="cp-btn"
                           style={{ padding: '4px 10px', fontSize: '0.74rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
-                          title="إرجاع الكتيب إلى غير مدفوع"
+                          title="إرجاع الملزمة إلى غير مدفوعة"
                         >
                           {busyId === r.id ? '...' : <><i className="fas fa-rotate-left" style={{ marginInlineEnd: 5 }} /> إلغاء الدفع</>}
                         </button>
@@ -1033,7 +1033,7 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
                           disabled={busyId === r.id}
                           className="cp-btn cp-btn-success"
                           style={{ padding: '4px 10px', fontSize: '0.74rem' }}
-                          title="تسجيل أن الطالب دفع قيمة الكتيب"
+                          title="تسجيل أن الطالب دفع قيمة الملزمة"
                         >
                           {busyId === r.id ? '...' : <><i className="fas fa-check" style={{ marginInlineEnd: 5 }} /> تسجيل كدفع</>}
                         </button>
@@ -1049,11 +1049,11 @@ function BookletReports({ flash, gradeOptions, branchOptions, groupOptions }) {
 
       {statusTarget && (
         <ConfirmDeleteDialog
-          title={statusTarget.payment_status === 'paid' ? 'إلغاء دفع كتيب' : 'تسجيل دفع كتيب'}
+          title={statusTarget.payment_status === 'paid' ? 'إلغاء دفع ملزمة' : 'تسجيل دفع ملزمة'}
           itemLabel={`${statusTarget.student_name} — ${statusTarget.booklet_name} (${fmtMoney(statusTarget.price)})`}
           message={statusTarget.payment_status === 'paid'
-            ? 'سيعود الكتيب إلى حالة غير مدفوع، مع تسجيل عملية عكسية في الدفتر المالي وسجل التدقيق. لا يتم حذف أي سجل.'
-            : 'سيتم تسجيل أن الطالب دفع قيمة الكتيب الآن، مع إضافة الإيراد للدفتر المالي وسجل التدقيق.'}
+            ? 'ستعود الملزمة إلى حالة غير مدفوعة، مع تسجيل عملية عكسية في الدفتر المالي وسجل التدقيق. لا يتم حذف أي سجل.'
+            : 'سيتم تسجيل أن الطالب دفع قيمة الملزمة الآن، مع إضافة الإيراد للدفتر المالي وسجل التدقيق.'}
           confirmText={statusTarget.payment_status === 'paid' ? 'نعم، ألغِ الدفع' : 'نعم، سجّل الدفع'}
           cancelText="تراجع"
           onConfirm={handleConfirmedToggle}

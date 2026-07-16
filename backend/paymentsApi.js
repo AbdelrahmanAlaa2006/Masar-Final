@@ -1,6 +1,8 @@
 import { supabase } from './supabase'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
+import { listStudentBooklets, markBookletsPaid, revertBookletPayment } from './bookletsApi'
+import { recordSubscriptionPayment } from './financeApi'
 
 // ────────────────────────────────────────────────────────────────────
 // Refactored Payments API (utilizing Student Ledger)
@@ -378,3 +380,243 @@ export async function updatePaymentSetting(key, value) {
   invalidatePrefix('payment-settings')
   return data
 }
+
+export async function getBulkInitialPaymentsPreview({ studentIds, registerMonthly, registerBooklet, monthlyMonth }) {
+  if (!studentIds || studentIds.length === 0) {
+    return { monthlyAmount: 0, bookletAmount: 0, grandTotal: 0 }
+  }
+
+  let monthlyAmount = 0
+  let bookletAmount = 0
+
+  if (registerMonthly) {
+    // 1. Find who has already paid monthly
+    let paidMonthlyStudentIds = new Set()
+    if (monthlyMonth) {
+      const billingPeriod = 'اشتراك شهر ' + monthlyMonth
+      const { data: existingPayments, error } = await supabase
+        .from('student_ledger')
+        .select('student_id')
+        .in('student_id', studentIds)
+        .eq('type', 'payment')
+        .eq('billing_period', billingPeriod)
+      if (!error && existingPayments) {
+        paidMonthlyStudentIds = new Set(existingPayments.map(p => p.student_id))
+      }
+    }
+
+    // 2. Fetch student profiles (need grade and discount)
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, grade, subscription_discount')
+      .in('id', studentIds)
+    if (profilesError) throw profilesError
+
+    // 3. Fetch subscription fees
+    const fees = await listSubscriptionFees()
+    const feeMap = Object.fromEntries(fees.map(f => [f.grade, Number(f.amount || 0)]))
+
+    for (const student of profiles) {
+      // Skip if already paid
+      if (paidMonthlyStudentIds.has(student.id)) continue
+
+      const baseFee = feeMap[student.grade] || 0
+      const discount = Number(student.subscription_discount || 0)
+      monthlyAmount += Math.max(0, baseFee - discount)
+    }
+  }
+
+  if (registerBooklet) {
+    // 4. Fetch unpaid booklets for these students
+    const { data, error } = await supabase
+      .from('student_booklets')
+      .select('price')
+      .in('student_id', studentIds)
+      .eq('payment_status', 'unpaid')
+    if (error) throw error
+
+    bookletAmount = (data || []).reduce((sum, item) => sum + Number(item.price || 0), 0)
+  }
+
+  return {
+    monthlyAmount,
+    bookletAmount,
+    grandTotal: monthlyAmount + bookletAmount
+  }
+}
+
+export async function registerBulkInitialPayments({
+  studentIds,
+  registerMonthly,
+  registerBooklet,
+  monthlyMonth,
+  adminId
+}) {
+  if (!studentIds || studentIds.length === 0) throw new Error('لم يتم اختيار أي طالب')
+
+  // Find who has already paid monthly
+  let paidMonthlyStudentIds = new Set()
+  if (registerMonthly && monthlyMonth) {
+    const billingPeriod = 'اشتراك شهر ' + monthlyMonth
+    const { data: existingPayments, error } = await supabase
+      .from('student_ledger')
+      .select('student_id')
+      .in('student_id', studentIds)
+      .eq('type', 'payment')
+      .eq('billing_period', billingPeriod)
+    if (error) throw error
+    paidMonthlyStudentIds = new Set((existingPayments || []).map(p => p.student_id))
+  }
+
+  // 1. Fetch student profiles (need grade, discount and name)
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, name, grade, subscription_discount')
+    .in('id', studentIds)
+  if (profilesError) throw profilesError
+
+  // 2. Fetch subscription fees
+  const fees = await listSubscriptionFees()
+  const feeMap = Object.fromEntries(fees.map(f => [f.grade, Number(f.amount || 0)]))
+
+  let registeredCount = 0
+  let skippedCount = 0
+  let registeredNames = []
+  let skippedNames = []
+
+  // 3. Register payments for each student
+  for (const student of profiles) {
+    let registeredForThisStudent = false
+    let skippedForThisStudent = false
+
+    // Monthly payment
+    if (registerMonthly && monthlyMonth) {
+      if (paidMonthlyStudentIds.has(student.id)) {
+        skippedForThisStudent = true
+      } else {
+        const baseFee = feeMap[student.grade] || 0
+        const discount = Number(student.subscription_discount || 0)
+        const due = Math.max(0, baseFee - discount)
+        if (due > 0) {
+          await recordSubscriptionPayment({
+            studentId: student.id,
+            amount: due,
+            billingPeriod: 'اشتراك شهر ' + monthlyMonth,
+            monthlyDue: due,
+            paymentMethod: 'Cash',
+            adminId: adminId
+          })
+          registeredForThisStudent = true
+        } else {
+          skippedForThisStudent = true
+        }
+      }
+    }
+
+    // Booklet payment
+    if (registerBooklet) {
+      const studentBooklets = await listStudentBooklets(student.id)
+      const bookletIds = studentBooklets
+        .filter(sb => sb.payment_status === 'unpaid')
+        .map(sb => sb.id)
+      if (bookletIds.length > 0) {
+        await markBookletsPaid(bookletIds, 'دفعة أولى جماعية')
+        registeredForThisStudent = true
+      } else {
+        if (!registeredForThisStudent) {
+          skippedForThisStudent = true
+        }
+      }
+    }
+
+    if (registeredForThisStudent) {
+      registeredCount++
+      registeredNames.push(student.name)
+    } else if (skippedForThisStudent) {
+      skippedCount++
+      skippedNames.push(student.name)
+    }
+  }
+
+  return {
+    totalSelected: studentIds.length,
+    skippedCount,
+    registeredCount,
+    registeredNames,
+    skippedNames
+  }
+}
+
+export async function removeBulkInitialPayments({
+  studentIds,
+  removeMonthly,
+  removeBooklet,
+  monthlyMonth
+}) {
+  let targetIds = studentIds || []
+  if (targetIds.length === 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+    if (error) throw error
+    targetIds = (data || []).map(r => r.id)
+  }
+
+  if (targetIds.length === 0) return true
+
+  for (const studentId of targetIds) {
+    // 1. Remove Monthly Payment
+    if (removeMonthly && monthlyMonth) {
+      const billingPeriod = 'اشتراك شهر ' + monthlyMonth
+      const { error } = await supabase
+        .from('student_ledger')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('billing_period', billingPeriod)
+      if (error) throw error
+    }
+
+    // 2. Remove Booklet Payment
+    if (removeBooklet) {
+      const studentBooklets = await listStudentBooklets(studentId)
+      const paidBooklets = studentBooklets.filter(sb => sb.payment_status === 'paid')
+      for (const sb of paidBooklets) {
+        // Revert status to unpaid directly
+        const { error: sbError } = await supabase
+          .from('student_booklets')
+          .update({
+            payment_status: 'unpaid',
+            payment_date: null,
+            paid_by: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', sb.id)
+        if (sbError) throw sbError
+
+        // Delete logs for this booklet
+        await supabase
+          .from('booklet_payment_logs')
+          .delete()
+          .eq('student_booklet_id', sb.id)
+      }
+
+      // Delete the payment transaction entries from finance_transactions completely
+      const { error: ftError } = await supabase
+        .from('finance_transactions')
+        .delete()
+        .eq('student_id', studentId)
+        .like('description', 'كتيب:%')
+      if (ftError) throw ftError
+    }
+  }
+
+  // Invalidate caches
+  invalidatePrefix('student-payments-')
+  invalidatePrefix('admin-payments')
+  invalidatePrefix('finance')
+  invalidatePrefix('booklets')
+
+  return true
+}
+

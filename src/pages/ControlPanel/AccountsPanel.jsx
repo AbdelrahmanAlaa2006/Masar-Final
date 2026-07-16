@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { listStudentsPaged, getStudentStatusCounts, listStudentsByGrade, updateStudentStatus, updateStudentProfile } from '@backend/profilesApi'
+import { listStudentsPaged, getStudentStatusCounts, listStudentsByGrade, updateStudentStatus, updateStudentProfile, createStudentByAdmin } from '@backend/profilesApi'
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
 import { listGroups, assignStudentToGroup, listStudentsByGroup } from '@backend/groupsApi'
+import { getBulkInitialPaymentsPreview, registerBulkInitialPayments, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { initials, GRADE_LABEL } from './shared'
 import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl } from '../../utils/barcodeLabels'
 import { invalidate as invalidateCache } from '../../utils/cache'
@@ -12,6 +13,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { useTenant } from '../../contexts/TenantContext'
+
+const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
 
 const fmtDate = (iso) => {
   if (!iso) return ''
@@ -28,7 +31,7 @@ const fmtDate = (iso) => {
 
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList } = useTenant()
+  const { gradesList, tenantId } = useTenant()
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -44,6 +47,12 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedGroup, setSelectedGroup] = useState('all')
   const [statusTab, setStatusTab] = useState('pending')
 
+  // Selected label size + multi-select state (checkboxes in the table).
+  const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkPrinting, setBulkPrinting] = useState(false)
+  const [printGroupId, setPrintGroupId] = useState('')
+
   // Server-side pagination state (replaces loading the whole tenant roster).
   const PAGE_SIZE = 50
   const [page, setPage] = useState(0)
@@ -58,6 +67,42 @@ export default function AccountsPanel({ onBack, flash }) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editStudent, setEditStudent] = useState(null)
   const [deletingStudent, setDeletingStudent] = useState(null)
+
+  // Add student modal and state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addStudentForm, setAddStudentForm] = useState({
+    name: '',
+    phone: '',
+    password: '',
+    grade: '',
+    branch_id: '',
+    selectedGroupId: '',
+    enrollment_type: 'CENTER',
+    status: 'active',
+    parent_phone: '',
+    registerMonthly: false,
+    monthlyMonth: '',
+    registerBooklet: false
+  })
+
+  // Bulk pay / remove modals and states
+  const [showBulkPayModal, setShowBulkPayModal] = useState(false)
+  const [bulkPayForm, setBulkPayForm] = useState({
+    registerMonthly: false,
+    registerBooklet: false,
+    monthlyMonth: ''
+  })
+  const [bulkPreview, setBulkPreview] = useState(null)
+  const [loadingBulkPreview, setLoadingBulkPreview] = useState(false)
+  const [bulkPaySummary, setBulkPaySummary] = useState(null)
+
+  const [showBulkRemoveModal, setShowBulkRemoveModal] = useState(false)
+  const [bulkRemoveForm, setBulkRemoveForm] = useState({
+    removeMonthly: false,
+    removeBooklet: false,
+    monthlyMonth: ''
+  })
+  const [submittingBulkAction, setSubmittingBulkAction] = useState(false)
 
   // Branches / years / groups are small and stable — load once (cached).
   useEffect(() => {
@@ -232,6 +277,138 @@ export default function AccountsPanel({ onBack, flash }) {
     }
   }
 
+  const loadBulkPreview = async (form = bulkPayForm) => {
+    setLoadingBulkPreview(true)
+    try {
+      const res = await getBulkInitialPaymentsPreview({
+        studentIds: Array.from(selectedIds),
+        registerMonthly: form.registerMonthly,
+        registerBooklet: form.registerBooklet,
+        monthlyMonth: form.monthlyMonth
+      })
+      setBulkPreview(res)
+    } catch (e) {
+      console.error('Failed to load bulk payments preview:', e)
+    } finally {
+      setLoadingBulkPreview(false)
+    }
+  }
+
+  useEffect(() => {
+    if (showBulkPayModal && selectedIds.size > 0) {
+      loadBulkPreview()
+    }
+  }, [showBulkPayModal, selectedIds, bulkPayForm.registerMonthly, bulkPayForm.registerBooklet, bulkPayForm.monthlyMonth])
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault()
+    if (!addStudentForm.phone.trim()) {
+      flash('رقم هاتف أو كود الطالب مطلوب', 'warning')
+      return
+    }
+    if (!addStudentForm.parent_phone.trim()) {
+      flash('رقم هاتف ولي الأمر مطلوب', 'warning')
+      return
+    }
+    if (addStudentForm.parent_phone.trim().length < 4) {
+      flash('رقم هاتف ولي الأمر غير صحيح (يجب أن يكون 4 أرقام على الأقل)', 'warning')
+      return
+    }
+    if (addStudentForm.password.length < 6) {
+      flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'warning')
+      return
+    }
+    if (addStudentForm.registerMonthly && !addStudentForm.monthlyMonth) {
+      flash('يجب اختيار شهر الاشتراك للمدفوعات الشهرية', 'warning')
+      return
+    }
+
+    setBusyId('new-student')
+    try {
+      const groupObj = addStudentForm.selectedGroupId ? groups.find(g => g.id === addStudentForm.selectedGroupId) : null
+      
+      await createStudentByAdmin({
+        name: addStudentForm.name,
+        phone: addStudentForm.phone,
+        password: addStudentForm.password,
+        grade: addStudentForm.grade,
+        parentPhone: addStudentForm.parent_phone,
+        enrollmentType: addStudentForm.enrollment_type,
+        branchId: addStudentForm.branch_id || null,
+        groupId: addStudentForm.selectedGroupId || null,
+        groupName: groupObj ? groupObj.name : '',
+        status: addStudentForm.status,
+        tenantId: tenantId,
+        registerMonthly: addStudentForm.registerMonthly,
+        monthlyMonth: addStudentForm.monthlyMonth,
+        registerBooklet: addStudentForm.registerBooklet,
+        adminId: currentUser.id
+      })
+
+      flash('تم إنشاء حساب الطالب وتسجيل المدفوعات المحددة بنجاح', 'success')
+      setShowAddModal(false)
+      softRefresh()
+    } catch (err) {
+      console.error(err)
+      flash('فشل إنشاء حساب الطالب: ' + (err.message || ''), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleBulkPaySubmit = async (e) => {
+    e.preventDefault()
+    if (bulkPayForm.registerMonthly && !bulkPayForm.monthlyMonth) {
+      flash('يجب اختيار شهر الاشتراك', 'warning')
+      return
+    }
+    setSubmittingBulkAction(true)
+    try {
+      const result = await registerBulkInitialPayments({
+        studentIds: Array.from(selectedIds),
+        registerMonthly: bulkPayForm.registerMonthly,
+        registerBooklet: bulkPayForm.registerBooklet,
+        monthlyMonth: bulkPayForm.monthlyMonth,
+        adminId: currentUser.id
+      })
+      setBulkPaySummary(result)
+      setShowBulkPayModal(false)
+      setSelectedIds(new Set()) // clear selection
+      softRefresh()
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء تسجيل الدفعات: ' + (err.message || ''), 'error')
+    } finally {
+      setSubmittingBulkAction(false)
+    }
+  }
+
+  const handleBulkRemoveSubmit = async (e) => {
+    e.preventDefault()
+    if (bulkRemoveForm.removeMonthly && !bulkRemoveForm.monthlyMonth) {
+      flash('يجب اختيار شهر الاشتراك لإزالة الدفعات', 'warning')
+      return
+    }
+    setSubmittingBulkAction(true)
+    try {
+      await removeBulkInitialPayments({
+        studentIds: selectedIds.size > 0 ? Array.from(selectedIds) : null,
+        removeMonthly: bulkRemoveForm.removeMonthly,
+        removeBooklet: bulkRemoveForm.removeBooklet,
+        monthlyMonth: bulkRemoveForm.monthlyMonth
+      })
+      flash(selectedIds.size > 0 ? 'تمت إزالة الدفعات المحددة للطلاب المحددين بنجاح' : 'تمت إزالة الدفعات لجميع طلاب المنصة بنجاح', 'success')
+      setShowBulkRemoveModal(false)
+      setSelectedIds(new Set()) // clear selection
+      softRefresh()
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء إزالة الدفعات: ' + (err.message || ''), 'error')
+    } finally {
+      setSubmittingBulkAction(false)
+    }
+  }
+
   // Resolve a student's current group name (so a printed barcode always shows
   // the latest group — if an admin moves the student, the next print updates).
   const getGroupName = (student) => {
@@ -249,12 +426,6 @@ export default function AccountsPanel({ onBack, flash }) {
     group: getGroupName(student),
     token: student.barcode_token || '',
   })
-
-  // Selected label size + multi-select state (checkboxes in the table).
-  const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE)
-  const [selectedIds, setSelectedIds] = useState(() => new Set())
-  const [bulkPrinting, setBulkPrinting] = useState(false)
-  const [printGroupId, setPrintGroupId] = useState('')
 
   // Shared entry point: send a list of students to the thermal-label engine.
   const printLabels = (list, title) => {
@@ -441,6 +612,26 @@ export default function AccountsPanel({ onBack, flash }) {
         <button className="cp-icon-btn" onClick={refreshList} title="تحديث القائمة" style={{ height: 42, width: 42 }}>
           <i className="fas fa-rotate"></i>
         </button>
+
+        <button className="cp-btn cp-btn-success" onClick={() => {
+          setAddStudentForm({
+            name: '',
+            phone: '',
+            password: '',
+            grade: gradesList?.[0]?.id || '',
+            branch_id: branches?.[0]?.id || '',
+            selectedGroupId: '',
+            enrollment_type: 'CENTER',
+            status: 'active',
+            parent_phone: '',
+            registerMonthly: false,
+            monthlyMonth: '',
+            registerBooklet: false
+          });
+          setShowAddModal(true);
+        }} style={{ height: 42, fontWeight: 'bold', marginInlineStart: 'auto' }}>
+          <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} /> إضافة طالب جديد
+        </button>
       </div>
 
       {/* ── Barcode label printing toolbar (thermal / XPrinter) ───────────────
@@ -463,6 +654,22 @@ export default function AccountsPanel({ onBack, flash }) {
         {/* Selected students */}
         <button className="cp-btn cp-btn-info" onClick={handlePrintSelected} disabled={selectedIds.size === 0} title="طباعة باركود الطلاب المحددين" style={{ height: 40, opacity: selectedIds.size === 0 ? 0.5 : 1 }}>
           <i className="fas fa-print"></i> طباعة المحدد ({selectedIds.size})
+        </button>
+
+        <button className="cp-btn cp-btn-success" onClick={() => {
+          setBulkPayForm({ registerMonthly: false, registerBooklet: false, monthlyMonth: '' });
+          setBulkPreview(null);
+          setShowBulkPayModal(true);
+        }} disabled={selectedIds.size === 0} title="تسجيل دفعات أولية للطلاب المحددين" style={{ height: 40, opacity: selectedIds.size === 0 ? 0.5 : 1 }}>
+          <i className="fas fa-money-bill-wave" style={{ marginInlineEnd: 6 }}></i> تسجيل دفعات أولية ({selectedIds.size})
+        </button>
+
+        <button className="cp-btn" onClick={() => {
+          setBulkRemoveForm({ removeMonthly: false, removeBooklet: false, monthlyMonth: '' });
+          setShowBulkRemoveModal(true);
+        }} title="إلغاء الدفعات للطلاب" style={{ height: 40, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <i className="fas fa-trash-can" style={{ marginInlineEnd: 6 }}></i> 
+          {selectedIds.size > 0 ? `إلغاء الدفعات للمحددين (${selectedIds.size})` : 'إلغاء دفعات جميع الطلاب'}
         </button>
 
         {/* Current page */}
@@ -851,6 +1058,400 @@ export default function AccountsPanel({ onBack, flash }) {
           document.body
         )
       })()}
+
+      {/* Add Student Modal */}
+      {showAddModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <form onSubmit={handleAddSubmit} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+              <i className="fas fa-user-plus" style={{ marginInlineEnd: 8, color: '#10b981' }}></i>
+              إضافة طالب جديد
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>الاسم بالكامل *</label>
+                <input type="text" value={addStudentForm.name} onChange={(e) => setAddStudentForm({ ...addStudentForm, name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف الطالب *</label>
+                <input type="text" value={addStudentForm.phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>كلمة المرور *</label>
+                <input type="password" value={addStudentForm.password} onChange={(e) => setAddStudentForm({ ...addStudentForm, password: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required minLength={6} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف ولي الأمر *</label>
+                <input type="text" value={addStudentForm.parent_phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, parent_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المرحلة الدراسية *</label>
+                <select value={addStudentForm.grade} onChange={(e) => setAddStudentForm({ ...addStudentForm, grade: e.target.value, selectedGroupId: '' })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر المرحلة...</option>
+                  {(gradesList || []).map(g => (
+                    <option key={g.id} style={{ background: '#0f172a', color: '#fff' }} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>الفرع الدراسي</label>
+                <select value={addStudentForm.branch_id} onChange={(e) => setAddStudentForm({ ...addStudentForm, branch_id: e.target.value, selectedGroupId: '' })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الفرع...</option>
+                  {branches.map(b => (
+                    <option key={b.id} style={{ background: '#0f172a', color: '#fff' }} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المجموعة الدراسية</label>
+                <select 
+                  value={addStudentForm.selectedGroupId} 
+                  onChange={(e) => setAddStudentForm({ ...addStudentForm, selectedGroupId: e.target.value })} 
+                  className="cp-input" 
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="">بدون مجموعة...</option>
+                  {groups
+                    .filter(g => g.grade === addStudentForm.grade && (!addStudentForm.branch_id || g.branch_id === addStudentForm.branch_id))
+                    .map(g => (
+                      <option key={g.id} style={{ background: '#0f172a', color: '#fff' }} value={g.id}>{g.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>نوع التسجيل والاشتراك</label>
+                <select value={addStudentForm.enrollment_type} onChange={(e) => setAddStudentForm({ ...addStudentForm, enrollment_type: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="CENTER">CENTER (حضور سنتر)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="ONLINE">ONLINE (منصة الكترونية)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="HYBRID">HYBRID (مدمج سنتر + اونلاين)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>حالة الطالب</label>
+                <select value={addStudentForm.status} onChange={(e) => setAddStudentForm({ ...addStudentForm, status: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="active">نشط (مفعل)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="inactive">غير نشط (غير مشترك)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="suspended">موقوف</option>
+                </select>
+              </div>
+            </div>
+
+
+
+            {/* Configurable automatic payment registration checkboxes */}
+            <h4 style={{ fontSize: '0.98rem', fontWeight: 'bold', marginBottom: '12px', color: '#38bdf8', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+              تسجيل المدفوعات الأولية تلقائياً
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={addStudentForm.registerMonthly} 
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, registerMonthly: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#10b981' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>تسجيل اشتراك شهري (Monthly Payment)</span>
+                </label>
+              </div>
+              
+              {addStudentForm.registerMonthly && (
+                <div style={{ paddingInlineStart: '28px', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>شهر الاشتراك *</label>
+                  <select 
+                    value={addStudentForm.monthlyMonth} 
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, monthlyMonth: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '200px', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                    required
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الشهر...</option>
+                    {['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'].map(m => (
+                      <option key={m} style={{ background: '#0f172a', color: '#fff' }} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={addStudentForm.registerBooklet} 
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, registerBooklet: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#10b981' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>تسجيل دفع الملزمة (Booklet Payment)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="submit" disabled={busyId === 'new-student'} className="cp-btn cp-btn-success" style={{ flex: 1, padding: '12px', fontWeight: 'bold' }}>
+                {busyId === 'new-student' ? 'جاري إنشاء الحساب...' : 'حفظ وإنشاء الحساب'}
+              </button>
+              <button type="button" onClick={() => { setShowAddModal(false); }} className="cp-btn cp-btn-secondary" style={{ padding: '12px 24px' }}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {/* Bulk Register Payments Modal */}
+      {showBulkPayModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <form onSubmit={handleBulkPaySubmit} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+              <i className="fas fa-money-bill-wave" style={{ marginInlineEnd: 8, color: '#10b981' }}></i>
+              تسجيل دفعات أولية جماعية للطلاب المحددين
+            </h3>
+
+            <div style={{ background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.88rem' }}>
+              عدد الطلاب المحددين: <strong>{selectedIds.size} طالب</strong>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={bulkPayForm.registerMonthly} 
+                    onChange={(e) => setBulkPayForm({ ...bulkPayForm, registerMonthly: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#10b981' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>تسجيل اشتراك شهري (Monthly Payment)</span>
+                </label>
+              </div>
+
+              {bulkPayForm.registerMonthly && (
+                <div style={{ paddingInlineStart: '28px', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>اختر الشهر *</label>
+                  <select 
+                    value={bulkPayForm.monthlyMonth} 
+                    onChange={(e) => setBulkPayForm({ ...bulkPayForm, monthlyMonth: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '200px', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                    required
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الشهر...</option>
+                    {['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'].map(m => (
+                      <option key={m} style={{ background: '#0f172a', color: '#fff' }} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={bulkPayForm.registerBooklet} 
+                    onChange={(e) => setBulkPayForm({ ...bulkPayForm, registerBooklet: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#10b981' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>تسجيل دفع الملازم (Booklet Payment)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Preview of prices and grand total */}
+            {(bulkPayForm.registerMonthly || bulkPayForm.registerBooklet) && (
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '16px', marginBottom: '24px' }}>
+                <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 'bold', color: '#38bdf8' }}>
+                  تفاصيل وتكلفة الدفعات المقترحة:
+                </h4>
+                {loadingBulkPreview ? (
+                  <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }}></i>
+                    جاري حساب إجمالي الدفعات...
+                  </div>
+                ) : bulkPreview ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
+                    {bulkPayForm.registerMonthly && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#94a3b8' }}>إجمالي الاشتراكات الشهرية:</span>
+                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{fmtMoney(bulkPreview.monthlyAmount)}</span>
+                      </div>
+                    )}
+                    {bulkPayForm.registerBooklet && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#94a3b8' }}>إجمالي ثمن الملازم:</span>
+                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>{fmtMoney(bulkPreview.bookletAmount)}</span>
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 'bold' }}>
+                      <span>المبلغ الإجمالي المستحق:</span>
+                      <span style={{ color: '#06b6d4' }}>{fmtMoney(bulkPreview.grandTotal)}</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="submit" disabled={submittingBulkAction || loadingBulkPreview || (!bulkPayForm.registerMonthly && !bulkPayForm.registerBooklet)} className="cp-btn cp-btn-success" style={{ flex: 1, padding: '12px', fontWeight: 'bold' }}>
+                {submittingBulkAction ? 'جاري التسجيل...' : 'تأكيد وتسجيل الدفعات'}
+              </button>
+              <button type="button" onClick={() => setShowBulkPayModal(false)} className="cp-btn cp-btn-secondary" style={{ padding: '12px 24px' }}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {/* Bulk Remove Payments Modal */}
+      {showBulkRemoveModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <form onSubmit={handleBulkRemoveSubmit} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px', color: '#ef4444' }}>
+              <i className="fas fa-trash-can" style={{ marginInlineEnd: 8, color: '#ef4444' }}></i>
+              {selectedIds.size > 0 ? 'إلغاء وحذف الدفعات للطلاب المحددين' : 'إلغاء وحذف الدفعات لجميع طلاب المنصة'}
+            </h3>
+
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.88rem', color: '#fca5a5' }}>
+              {selectedIds.size > 0 ? (
+                <>عدد الطلاب المحددين: <strong>{selectedIds.size} طالب</strong></>
+              ) : (
+                <strong style={{ color: '#f87171' }}>⚠️ سيتم إلغاء وحذف الدفعات لجميع طلاب المنصة بالكامل!</strong>
+              )}
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>سيقوم النظام بإلغاء المدفوعات المسجلة وإرجاعها لحالة غير مدفوع.</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={bulkRemoveForm.removeMonthly} 
+                    onChange={(e) => setBulkRemoveForm({ ...bulkRemoveForm, removeMonthly: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#ef4444' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>إلغاء وحذف الاشتراك الشهري (Monthly Payment)</span>
+                </label>
+              </div>
+
+              {bulkRemoveForm.removeMonthly && (
+                <div style={{ paddingInlineStart: '28px', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>الشهر المراد إلغاؤه *</label>
+                  <select 
+                    value={bulkRemoveForm.monthlyMonth} 
+                    onChange={(e) => setBulkRemoveForm({ ...bulkRemoveForm, monthlyMonth: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '200px', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                    required
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الشهر...</option>
+                    {['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'].map(m => (
+                      <option key={m} style={{ background: '#0f172a', color: '#fff' }} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={bulkRemoveForm.removeBooklet} 
+                    onChange={(e) => setBulkRemoveForm({ ...bulkRemoveForm, removeBooklet: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#ef4444' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>إلغاء دفع الملازم (Revert Booklet Payment)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="submit" disabled={submittingBulkAction || (!bulkRemoveForm.removeMonthly && !bulkRemoveForm.removeBooklet)} className="cp-btn" style={{ flex: 1, padding: '12px', fontWeight: 'bold', background: '#ef4444', color: '#fff', border: 'none' }}>
+                {submittingBulkAction ? 'جاري الإلغاء والحذف...' : 'تأكيد الحذف والإلغاء'}
+              </button>
+              <button type="button" onClick={() => setShowBulkRemoveModal(false)} className="cp-btn cp-btn-secondary" style={{ padding: '12px 24px' }}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {/* Bulk Pay Summary Modal */}
+      {bulkPaySummary && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '480px', width: '100%', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif', textAlign: 'center' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 20px' }}>
+              <i className="fas fa-check-double"></i>
+            </div>
+            
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px' }}>ملخص عملية تسجيل الدفعات</h3>
+            
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', padding: '20px', marginBottom: '24px', textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.94rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#94a3b8' }}>إجمالي الطلاب المحددين:</span>
+                <span style={{ fontWeight: 'bold' }}>{bulkPaySummary.totalSelected} طلاب</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#94a3b8' }}>تم التسجيل بنجاح:</span>
+                <span style={{ fontWeight: 'bold', color: '#10b981' }}>{bulkPaySummary.registeredCount} طلاب</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px' }}>
+                <span style={{ color: '#94a3b8' }}>تم التخطي (مسددين مسبقاً):</span>
+                <span style={{ fontWeight: 'bold', color: '#fca5a5' }}>{bulkPaySummary.skippedCount} طلاب</span>
+              </div>
+            </div>
+
+            {/* List of registered student names */}
+            {bulkPaySummary.registeredNames && bulkPaySummary.registeredNames.length > 0 && (
+              <div style={{ marginBottom: '16px', textAlign: 'right' }}>
+                <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '0 0 6px' }}>الطلاب الذين تم التسجيل لهم:</h4>
+                <div style={{ maxHeight: '80px', overflowY: 'auto', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '8px', padding: '8px 12px', fontSize: '0.82rem', color: '#a7f3d0', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {bulkPaySummary.registeredNames.map((name, i) => (
+                    <span key={i} style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>{name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* List of skipped student names */}
+            {bulkPaySummary.skippedNames && bulkPaySummary.skippedNames.length > 0 && (
+              <div style={{ marginBottom: '24px', textAlign: 'right' }}>
+                <h4 style={{ fontSize: '0.85rem', color: '#fca5a5', margin: '0 0 6px' }}>الطلاب الذين تم تخطيهم (مسددين مسبقاً):</h4>
+                <div style={{ maxHeight: '80px', overflowY: 'auto', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '8px', padding: '8px 12px', fontSize: '0.82rem', color: '#fca5a5', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {bulkPaySummary.skippedNames.map((name, i) => (
+                    <span key={i} style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>{name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button 
+              type="button" 
+              onClick={() => {
+                setBulkPaySummary(null)
+                softRefresh()
+              }} 
+              className="cp-btn cp-btn-success" 
+              style={{ width: '100%', padding: '12px', fontWeight: 'bold', fontSize: '1rem' }}
+            >
+              حسناً
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
   )
 }

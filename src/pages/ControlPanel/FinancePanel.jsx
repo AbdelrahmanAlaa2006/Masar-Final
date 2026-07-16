@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   listFinanceCategories, createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
   addFinanceTransaction, updateFinanceTransaction, deleteFinanceTransaction,
   updateLedgerEntry, getDailyLedger, getFinanceReport, getCashBalance, getOutstandingBalances,
 } from '@backend/financeApi'
-import { deletePayment } from '@backend/paymentsApi'
+import { deletePayment, removeBulkInitialPayments } from '@backend/paymentsApi'
+import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import DatePicker from '../../components/DatePicker'
@@ -27,6 +29,14 @@ export default function FinancePanel({ onBack, flash }) {
 
   const [activeTab, setActiveTab] = useState('ledger') // ledger | categories | reports | debts
   const [cashBalance, setCashBalance] = useState(null)
+
+  const [showRevertModal, setShowRevertModal] = useState(false)
+  const [revertForm, setRevertForm] = useState({
+    removeMonthly: false,
+    removeBooklet: false,
+    monthlyMonth: ''
+  })
+  const [submittingRevert, setSubmittingRevert] = useState(false)
 
   // Date range shared by ledger + reports
   const [fromDate, setFromDate] = useState(monthStartIso())
@@ -73,6 +83,136 @@ export default function FinancePanel({ onBack, flash }) {
   }
 
   useEffect(() => { refreshBalance(); reloadCategories() }, [])
+
+  const handleRevertSubmit = async (e) => {
+    e.preventDefault()
+    if (revertForm.removeMonthly && !revertForm.monthlyMonth) {
+      flash('يجب اختيار شهر الاشتراك لإزالة الدفعات', 'warning')
+      return
+    }
+    setSubmittingRevert(true)
+    try {
+      await removeBulkInitialPayments({
+        studentIds: null, // Revert globally for all students
+        removeMonthly: revertForm.removeMonthly,
+        removeBooklet: revertForm.removeBooklet,
+        monthlyMonth: revertForm.monthlyMonth
+      })
+      flash('تمت إزالة الدفعات لجميع طلاب المنصة وتحديث الحسابات بنجاح', 'success')
+      setShowRevertModal(false)
+      reloadLedger()
+      refreshBalance()
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء إزالة الدفعات: ' + (err.message || ''), 'error')
+    } finally {
+      setSubmittingRevert(false)
+    }
+  }
+
+  const handleWipeTestingData = async () => {
+    if (!window.confirm("⚠️ هل أنت متأكد من مسح جميع دفعات التجربة واسترجاعاتها؟ هذا الإجراء سيمسح جميع المعاملات التجريبية الخاصة بك فقط ولن يؤثر على أي بيانات أخرى.")) {
+      return
+    }
+    
+    setSubmittingRevert(true)
+    try {
+      const tenantId = currentUser.tenant_id
+      if (!tenantId) throw new Error("لم يتم العثور على معرّف المنصة")
+
+      // 1. Fetch test profiles to get their IDs
+      const testNames = [
+        'lolo', 
+        'test adding by the admin', 
+        'Test WhatsApp Student 3', 
+        'test not real number', 
+        'eyad atef', 
+        'Test Notification', 
+        'test not real number 2'
+      ]
+      
+      const { data: testStudents, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('name', testNames)
+      if (profilesError) throw profilesError
+      
+      const testStudentIds = (testStudents || []).map(s => s.id)
+
+      // 2. Delete entries from finance_transactions
+      if (testStudentIds.length > 0) {
+        const { error: deleteFtError } = await supabase
+          .from('finance_transactions')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .or(`student_id.in.(${testStudentIds.join(',')}),description.like.كتيب:%,description.like.%استرجاع%كتيب%`)
+        if (deleteFtError) throw deleteFtError
+      } else {
+        const { error: deleteFtError } = await supabase
+          .from('finance_transactions')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .or(`description.like.كتيب:%,description.like.%استرجاع%كتيب%`)
+        if (deleteFtError) throw deleteFtError
+      }
+
+      // 3. Delete entries from student_ledger
+      if (testStudentIds.length > 0) {
+        const { error: deleteSlError } = await supabase
+          .from('student_ledger')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .or(`student_id.in.(${testStudentIds.join(',')}),description.like.اشتراك شهر يوليو%,description.like.اشتراك شهر أغسطس%`)
+        if (deleteSlError) throw deleteSlError
+      } else {
+        const { error: deleteSlError } = await supabase
+          .from('student_ledger')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .or(`description.like.اشتراك شهر يوليو%,description.like.اشتراك شهر أغسطس%`)
+        if (deleteSlError) throw deleteSlError
+      }
+
+      // 4. Revert booklet status back to unpaid
+      if (testStudentIds.length > 0) {
+        const { error: sbError } = await supabase
+          .from('student_booklets')
+          .update({
+            payment_status: 'unpaid',
+            payment_date: null,
+            paid_by: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', tenantId)
+          .in('student_id', testStudentIds)
+        if (sbError) throw sbError
+
+        // Delete logs
+        await supabase
+          .from('booklet_payment_logs')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .in('student_id', testStudentIds)
+
+        // Delete attendance
+        await supabase
+          .from('attendance_records')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .in('student_id', testStudentIds)
+      }
+
+      flash('تم مسح جميع عمليات التجربة والمدفوعات الزائفة وتصفير الحسابات بنجاح', 'success')
+      reloadLedger()
+      refreshBalance()
+    } catch (err) {
+      console.error(err)
+      flash('حدث خطأ أثناء تنظيف البيانات: ' + (err.message || ''), 'error')
+    } finally {
+      setSubmittingRevert(false)
+    }
+  }
 
   const reloadLedger = async () => {
     setLedgerLoading(true)
@@ -360,8 +500,8 @@ export default function FinancePanel({ onBack, flash }) {
           ['categories', 'fa-tags', 'التصنيفات'],
           ['reports', 'fa-chart-pie', 'التقارير'],
           ['debts', 'fa-hand-holding-dollar', 'مديونيات الطلاب'],
-          ['booklets_manage', 'fa-book-open', 'إدارة الكتيبات'],
-          ['booklets_reports', 'fa-file-invoice-dollar', 'تقارير الكتيبات'],
+          ['booklets_manage', 'fa-book-open', 'إدارة الملازم'],
+          ['booklets_reports', 'fa-file-invoice-dollar', 'تقارير الملازم'],
         ].map(([key, icon, label]) => (
           <button
             key={key}
@@ -388,6 +528,15 @@ export default function FinancePanel({ onBack, flash }) {
           </div>
           {activeTab === 'ledger' && (
             <div style={{ display: 'flex', gap: '8px', marginInlineStart: 'auto' }}>
+              <button onClick={handleWipeTestingData} className="cp-btn" style={{ fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' }} title="حذف كافة المعاملات التجريبية والاشتراكات والكتب التي تم إنشاؤها أثناء التجربة">
+                <i className="fas fa-eraser" style={{ marginInlineEnd: 6 }} /> تنظيف بيانات التجربة
+              </button>
+              <button onClick={() => {
+                setRevertForm({ removeMonthly: false, removeBooklet: false, monthlyMonth: '' });
+                setShowRevertModal(true);
+              }} className="cp-btn" style={{ fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <i className="fas fa-trash-can" style={{ marginInlineEnd: 6 }} /> إلغاء دفعات الطلاب
+              </button>
               <button onClick={() => openEntryForm()} className="cp-btn cp-btn-success" style={{ fontWeight: 'bold' }}>
                 <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} /> تسجيل إيراد / مصروف
               </button>
@@ -668,7 +817,7 @@ export default function FinancePanel({ onBack, flash }) {
       )}
 
       {/* Edit student-ledger payment modal */}
-      {ledgerEditRow && (
+      {ledgerEditRow && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(6px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setLedgerEditRow(null)}>
           <div style={{ ...cardStyle, maxWidth: '420px', width: '100%' }} onClick={(e) => e.stopPropagation()}>
             <h4 style={{ margin: '0 0 6px', fontWeight: 'bold' }}>تعديل دفعة طالب</h4>
@@ -684,7 +833,8 @@ export default function FinancePanel({ onBack, flash }) {
               <button onClick={() => setLedgerEditRow(null)} className="cp-btn cp-btn-secondary">إلغاء</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {deleteTarget && (
@@ -699,6 +849,76 @@ export default function FinancePanel({ onBack, flash }) {
           onConfirm={handleConfirmedDelete}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+      {/* Revert student payments modal */}
+      {showRevertModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(6px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowRevertModal(false)}>
+          <form onSubmit={handleRevertSubmit} style={{ ...cardStyle, maxWidth: '440px', width: '100%', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px', color: '#ef4444' }}>
+              <i className="fas fa-trash-can" style={{ marginInlineEnd: 8, color: '#ef4444' }}></i>
+              إلغاء وحذف الدفعات لجميع طلاب المنصة
+            </h3>
+
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.88rem', color: '#fca5a5' }}>
+              <strong style={{ color: '#f87171' }}>⚠️ سيتم إلغاء وحذف الدفعات لجميع طلاب المنصة بالكامل!</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>سيقوم النظام بإلغاء المدفوعات المسجلة وإرجاعها لحالة غير مدفوع.</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--cp-text-main)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={revertForm.removeMonthly} 
+                    onChange={(e) => setRevertForm({ ...revertForm, removeMonthly: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#ef4444' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>إلغاء وحذف الاشتراك الشهري (Monthly Payment)</span>
+                </label>
+              </div>
+
+              {revertForm.removeMonthly && (
+                <div style={{ paddingInlineStart: '28px', marginBottom: '4px' }}>
+                  <label style={{ ...labelStyle, marginBottom: '4px' }}>الشهر المراد إلغاؤه *</label>
+                  <select 
+                    value={revertForm.monthlyMonth} 
+                    onChange={(e) => setRevertForm({ ...revertForm, monthlyMonth: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '200px', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                    required
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الشهر...</option>
+                    {['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس'].map(m => (
+                      <option key={m} style={{ background: '#0f172a', color: '#fff' }} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--cp-text-main)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={revertForm.removeBooklet} 
+                    onChange={(e) => setRevertForm({ ...revertForm, removeBooklet: e.target.checked })}
+                    style={{ width: 18, height: 18, accentColor: '#ef4444' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>إلغاء دفع الملازم (Revert Booklet Payment)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="submit" disabled={submittingRevert || (!revertForm.removeMonthly && !revertForm.removeBooklet)} className="cp-btn" style={{ flex: 1, padding: '12px', fontWeight: 'bold', background: '#ef4444', color: '#fff', border: 'none' }}>
+                {submittingRevert ? 'جاري الإلغاء والحذف...' : 'تأكيد الحذف والإلغاء'}
+              </button>
+              <button type="button" onClick={() => setShowRevertModal(false)} className="cp-btn cp-btn-secondary" style={{ padding: '12px 24px' }}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
       )}
     </div>
   )
