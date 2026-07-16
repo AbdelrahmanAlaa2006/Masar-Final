@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
+import { renderNotificationTemplate } from './whatsappTemplates'
 
 // Fetch all grades for a single student
 export async function getStudentGrades(studentId) {
@@ -62,35 +63,85 @@ export async function saveGradesBatch(records) {
   // Step 2: Queue parent notifications if parent phone is present
   const notifications = []
   
-  records.forEach(r => {
-    if (r.parent_phone && r.parent_phone.trim() !== '') {
-      let typeLabel = ''
-      if (r.type === 'homework') typeLabel = 'واجب'
-      else if (r.type === 'exam') typeLabel = 'امتحان'
-      else if (r.type === 'quiz') typeLabel = 'تسميع'
-      else if (r.type === 'participation') typeLabel = 'مشاركة وتفاعل'
-      else if (r.type === 'behavior') typeLabel = 'تقييم سلوكي'
+  let tenant = null
+  if (records.length > 0) {
+    try {
+      const firstStudentId = records[0].student_id
+      const { data: studentProfile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', firstStudentId)
+        .maybeSingle()
+        
+      if (studentProfile?.tenant_id) {
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', studentProfile.tenant_id)
+          .maybeSingle()
+        tenant = tenantData
+      }
+    } catch (err) {
+      console.error('Failed to fetch tenant configuration for grades template:', err)
+    }
+  }
 
-      const subjectLabel = r.subject ? ` في مادة ${r.subject}` : ''
-      const titleLabel = r.title ? ` (${r.title})` : ''
-      
-      let message = `نود إعلامكم بأنه تم إضافة تقييم ${typeLabel} جديد للطالب(ة) ${r.student_name}${subjectLabel}${titleLabel}: ${r.score} من ${r.max_score}.`
-      
-      if (r.notes && r.notes.trim() !== '') {
-        message += ` ملاحظة المعلم: ${r.notes}`
+  // Create notifications asynchronously
+  for (const r of records) {
+    if (r.parent_phone && r.parent_phone.trim() !== '') {
+      let notification_type = 'general'
+      if (r.type === 'homework') notification_type = 'homework'
+      else if (r.type === 'exam') notification_type = 'exam'
+      else if (r.type === 'quiz') notification_type = 'quiz'
+      else if (r.type === 'participation') notification_type = 'participation'
+      else if (r.type === 'behavior') notification_type = 'behavior'
+
+      // Find the database inserted row to get the grade ID
+      const insertedGrade = (data || []).find(dg => 
+        dg.student_id === r.student_id && 
+        dg.type === r.type && 
+        dg.score === r.score && 
+        dg.max_score === r.max_score
+      )
+      const gradeId = insertedGrade ? insertedGrade.id : null
+
+      // Construct placeholders payload
+      const payload = {
+        student_name: r.student_name,
+        grade: r.score,
+        total_grade: r.max_score,
+        quiz_name: r.type === 'quiz' ? r.title : '',
+        exam_name: r.type === 'exam' ? r.title : '',
+        homework_name: r.type === 'homework' ? r.title : '',
+        lesson_name: r.title || 'الدرس',
+        date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+        day_name: new Date().toLocaleDateString('ar-EG', { weekday: 'long' }),
+        course_name: r.subject || tenant?.config?.subject || ''
       }
 
-      notifications.push({
-        student_id: r.student_id,
-        title: 'تقييم جديد',
-        message,
-        type: 'grade_added',
-        channels: ['whatsapp', 'portal'],
-        status: { whatsapp: 'pending', portal: 'pending' },
-        created_by: r.created_by || null
-      })
+      try {
+        const renderedMessage = await renderNotificationTemplate({
+          tenant,
+          notification_type,
+          locale: 'ar-EG',
+          payload
+        })
+
+        notifications.push({
+          student_id: r.student_id,
+          title: 'تقييم جديد',
+          message: renderedMessage,
+          type: 'grade_added',
+          channels: ['whatsapp', 'portal'],
+          status: { whatsapp: 'pending', portal: 'pending' },
+          created_by: r.created_by || null,
+          grade_id: gradeId
+        })
+      } catch (renderErr) {
+        console.error('Failed to render grade template message:', renderErr)
+      }
     }
-  })
+  }
 
   if (notifications.length > 0) {
     const { error: notifError } = await supabase
@@ -354,5 +405,132 @@ export async function deleteEvaluation(type, title) {
   }
 
   return data
+}
+
+// Rebuild and send WhatsApp notifications for a past evaluation session
+export async function rebuildAndSendGradeNotifications(type, title, tenantId, createdBy = null) {
+  if (!type || !title || !tenantId) {
+    throw new Error('Type, title, and tenant ID are required')
+  }
+
+  // 1. Fetch all grades in this session
+  const grades = await listGradesForEvaluation(type, title)
+  if (grades.length === 0) return 0
+
+  const gradeIds = grades.map(g => g.id)
+  const studentIds = grades.map(g => g.student_id)
+
+  // 2. Fetch tenant config
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('*')
+    .eq('id', tenantId)
+    .single()
+
+  if (tenantError || !tenant) {
+    throw new Error('Failed to load tenant configuration: ' + (tenantError?.message || 'Tenant not found'))
+  }
+
+  // 3. Fetch all existing notifications for these students to identify sent, failed, or pending status
+  const { data: existingNotifs, error: notifFetchError } = await supabase
+    .from('unified_notifications')
+    .select('id, student_id, status, grade_id, message')
+    .eq('tenant_id', tenantId)
+    .eq('type', 'grade_added')
+    .in('student_id', studentIds)
+
+  if (notifFetchError) throw notifFetchError
+
+  const hasSentOrFailed = new Set()
+  const pendingNotifIdsToDelete = []
+
+  if (existingNotifs) {
+    existingNotifs.forEach(notif => {
+      // Match by grade_id relation OR by parsing the title inside message (for legacy rows)
+      const isMatch = (notif.grade_id && gradeIds.includes(notif.grade_id)) || 
+                      (!notif.grade_id && notif.message && notif.message.includes(title))
+      
+      if (isMatch) {
+        const whatsappStatus = notif.status?.whatsapp || 'pending'
+        if (whatsappStatus === 'sent' || whatsappStatus === 'failed') {
+          hasSentOrFailed.add(notif.student_id)
+        } else if (whatsappStatus === 'pending') {
+          pendingNotifIdsToDelete.push(notif.id)
+        }
+      }
+    })
+  }
+
+  // 4. Delete only the PENDING notifications related to this session
+  if (pendingNotifIdsToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('unified_notifications')
+      .delete()
+      .in('id', pendingNotifIdsToDelete)
+
+    if (deleteError) throw deleteError
+  }
+
+  // 5. Generate and insert new notifications for students who haven't received them yet
+  const notificationsToInsert = []
+
+  for (const g of grades) {
+    if (hasSentOrFailed.has(g.student_id)) {
+      continue // Keep sent and failed states untouched
+    }
+
+    const recipientPhone = g.profiles?.parent_phone || g.profiles?.phone
+    if (!recipientPhone || recipientPhone.trim() === '') {
+      continue
+    }
+
+    // Construct structured payload variables
+    const payload = {
+      student_name: g.profiles?.name || '',
+      grade: g.score,
+      total_grade: g.max_score,
+      quiz_name: g.type === 'quiz' ? g.title : '',
+      exam_name: g.type === 'exam' ? g.title : '',
+      homework_name: g.type === 'homework' ? g.title : '',
+      lesson_name: g.title || 'الدرس',
+      date: new Date(g.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+      day_name: new Date(g.created_at).toLocaleDateString('ar-EG', { weekday: 'long' }),
+      course_name: g.subject || tenant.config?.subject || ''
+    }
+
+    try {
+      const renderedMessage = await renderNotificationTemplate({
+        tenant,
+        notification_type: type,
+        locale: 'ar-EG',
+        payload
+      })
+
+      notificationsToInsert.push({
+        tenant_id: tenantId,
+        student_id: g.student_id,
+        title: 'تقييم جديد',
+        message: renderedMessage,
+        type: 'grade_added',
+        channels: ['whatsapp', 'portal'],
+        status: { whatsapp: 'pending', portal: 'pending' },
+        created_by: createdBy || null,
+        grade_id: g.id,
+        recipient_phone: recipientPhone
+      })
+    } catch (renderErr) {
+      console.error(`Failed to render template during rebuild for student ${g.student_id}:`, renderErr)
+    }
+  }
+
+  if (notificationsToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from('unified_notifications')
+      .insert(notificationsToInsert)
+
+    if (insertError) throw insertError
+  }
+
+  return notificationsToInsert.length
 }
 

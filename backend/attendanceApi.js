@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
 import { queueNotification } from './unifiedNotificationsApi'
+import { renderNotificationTemplate } from './whatsappTemplates'
 
 // Fetch sessions for a grade, optionally filtered by branch
 export async function listAttendanceSessions(grade, branchId = null) {
@@ -134,8 +135,43 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
   const activeRecords = updatedRecords || []
 
   // Step 2: Queue notifications for absent/late students using the unified queue (idempotent)
-  const dateLabel = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  
+  let tenant = null
+  let groupName = ''
+  if (records.length > 0) {
+    try {
+      const firstStudentId = records[0].student_id
+      const { data: studentProfile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', firstStudentId)
+        .maybeSingle()
+        
+      if (studentProfile?.tenant_id) {
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', studentProfile.tenant_id)
+          .maybeSingle()
+        tenant = tenantData
+      }
+    } catch (err) {
+      console.error('Failed to fetch tenant configuration for attendance template:', err)
+    }
+
+    try {
+      if (sessionIds.length > 0) {
+        const { data: sessionData } = await supabase
+          .from('attendance_sessions')
+          .select('group_id, groups(name)')
+          .eq('id', sessionIds[0])
+          .maybeSingle()
+        groupName = sessionData?.groups?.name || ''
+      }
+    } catch (err) {
+      console.error('Failed to fetch group details for attendance template:', err)
+    }
+  }
+
   const notifPromises = records.map(async (r) => {
     // Find the database record row
     const recordRow = activeRecords.find(ur => ur.student_id === r.student_id && ur.session_id === r.session_id)
@@ -160,17 +196,14 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
 
     // B. If student status is 'absent' or 'late':
     if (r.parent_phone && r.parent_phone.trim() !== '') {
-      let message = ''
       let type = ''
       if (r.status === 'absent') {
-        message = `نود إعلامكم بأن الطالب(ة) ${r.student_name} غاب اليوم ${dateLabel} عن حضور حصة ${sessionTitle || 'الدرس'}.`
         type = 'attendance_absent'
       } else if (r.status === 'late') {
-        message = `نود إعلامكم بأن الطالب(ة) ${r.student_name} حضر اليوم متأخراً عن حصة ${sessionTitle || 'الدرس'}.`
         type = 'attendance_makeup'
       }
 
-      if (message && type) {
+      if (type) {
         try {
           // Check if a notification already exists for this attendance record and type
           const { data: existing } = await supabase
@@ -195,11 +228,28 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
             .eq('type', otherType)
             .eq('status->>whatsapp', 'pending')
 
+          // Render template dynamically
+          const payload = {
+            student_name: r.student_name,
+            lesson_name: sessionTitle || 'الدرس',
+            group_name: groupName || '',
+            date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+            day_name: new Date().toLocaleDateString('ar-EG', { weekday: 'long' }),
+            attendance_status: r.status === 'absent' ? 'تغيب' : 'حضر متأخراً'
+          }
+
+          const renderedMessage = await renderNotificationTemplate({
+            tenant,
+            notification_type: type,
+            locale: 'ar-EG',
+            payload
+          })
+
           // Queue the new notification linked to this attendance record
           await queueNotification({
             studentId: r.student_id,
             title: 'تنبيه الحضور والغياب',
-            message,
+            message: renderedMessage,
             type,
             channels: ['whatsapp', 'portal'],
             createdBy: r.created_by,

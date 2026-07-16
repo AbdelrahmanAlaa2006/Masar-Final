@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const env = (typeof import.meta.env !== 'undefined' ? import.meta.env : (typeof process !== 'undefined' ? process.env : {})) || {}
+const SUPABASE_URL = env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error(

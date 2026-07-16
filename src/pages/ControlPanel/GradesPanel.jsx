@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
-import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation } from '@backend/gradesApi'
+import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation, rebuildAndSendGradeNotifications } from '@backend/gradesApi'
 import { listGroups } from '@backend/groupsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, LIST_TTL } from '../../utils/cache'
@@ -12,7 +12,7 @@ import DatePicker from '../../components/DatePicker'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList } = useTenant()
+  const { gradesList, tenantId } = useTenant()
   const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
   const [group, setGroup] = useState('')
   const [groupsList, setGroupsList] = useState([])
@@ -28,6 +28,7 @@ export default function GradesPanel({ onBack, flash }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingEvaluation, setDeletingEvaluation] = useState(false)
+  const [rebuildingNotifications, setRebuildingNotifications] = useState(false)
 
   // Scores sheet states: studentId -> { score: num, notes: string }
   const [sheetData, setSheetData] = useState({})
@@ -91,6 +92,35 @@ export default function GradesPanel({ onBack, flash }) {
       flash('فشل حذف كشف الدرجات: ' + err.message, 'error')
     } finally {
       setDeletingEvaluation(false)
+    }
+  }
+
+  // Rebuild and send notifications for the selected evaluation sheet
+  const handleRebuildSendNotifications = async () => {
+    if (!selectedEvaluation) return
+
+    const [type, title] = selectedEvaluation.split(':')
+    const typeLabels = {
+      'homework': 'واجب منزلي',
+      'exam': 'امتحان / اختبار',
+      'quiz': 'تسميع',
+      'participation': 'مشاركة وتفاعل',
+      'behavior': 'ملاحظة سلوكية'
+    }
+    const typeText = typeLabels[type] || type
+
+    const confirmMsg = `هل أنت متأكد من إعادة بناء وإرسال الإشعارات لكشف الدرجات "${title}" (${typeText}) بالكامل؟\nسيؤدي ذلك إلى حذف الإشعارات المعلقة (قيد الانتظار) فقط وإعادة توليدها وإرسالها بالصياغة والقوالب الحالية دون المساس بالإشعارات المرسسة أو الفاشلة سابقاً.`
+    if (!window.confirm(confirmMsg)) return
+
+    setRebuildingNotifications(true)
+    try {
+      const count = await rebuildAndSendGradeNotifications(type, title, tenantId, currentUser?.id)
+      flash(`تم إعادة بناء وجدولة عدد ${count} إشعارات بنجاح!`, 'success')
+    } catch (err) {
+      console.error(err)
+      flash('فشل إعادة بناء وإرسال الإشعارات: ' + err.message, 'error')
+    } finally {
+      setRebuildingNotifications(false)
     }
   }
 
@@ -656,6 +686,7 @@ export default function GradesPanel({ onBack, flash }) {
                 className="cp-input" 
                 style={{ width: '100%' }}
                 min="1"
+                onWheel={(e) => e.target.blur()}
               />
             </div>
           </div>
@@ -750,6 +781,7 @@ export default function GradesPanel({ onBack, flash }) {
                                 min="0"
                                 max={maxScore}
                                 step="0.5"
+                                onWheel={(e) => e.target.blur()}
                               />
                               <span style={{ fontSize: '0.85rem', color: 'var(--cp-text-muted)' }}>/ {maxScore}</span>
                             </div>
@@ -828,6 +860,18 @@ export default function GradesPanel({ onBack, flash }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
+              {selectedEvaluation && (
+                <button 
+                  onClick={handleRebuildSendNotifications} 
+                  disabled={rebuildingNotifications} 
+                  className="cp-btn"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.2)' }}
+                >
+                  {rebuildingNotifications ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                  إعادة بناء وإرسال الإشعارات
+                </button>
+              )}
+
               {selectedEvaluation && (
                 <button 
                   onClick={handleDeleteEvaluation} 
