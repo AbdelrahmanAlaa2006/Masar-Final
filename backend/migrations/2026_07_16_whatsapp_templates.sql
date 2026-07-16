@@ -50,3 +50,15 @@ ALTER TABLE public.unified_notifications
 
 CREATE INDEX IF NOT EXISTS idx_unified_notifications_grade_id
   ON public.unified_notifications(grade_id);
+
+-- 6. Add database-level check constraint to prevent unlinked notifications for grades and attendance going forward
+ALTER TABLE public.unified_notifications 
+  DROP CONSTRAINT IF EXISTS chk_notification_source_references;
+
+ALTER TABLE public.unified_notifications
+  ADD CONSTRAINT chk_notification_source_references
+  CHECK (
+    (type = 'grade_added' AND grade_id IS NOT NULL) OR
+    (type IN ('attendance_absent', 'attendance_makeup') AND attendance_record_id IS NOT NULL) OR
+    (type NOT IN ('grade_added', 'attendance_absent', 'attendance_makeup'))
+  ) NOT VALID;
