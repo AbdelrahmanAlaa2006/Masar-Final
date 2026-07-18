@@ -1046,3 +1046,52 @@ body.aa-power-theme,
   background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
 }
 
+
+/* ── Date & Month pickers (dpk) — premium navy-blue + gold, matching the
+      theme's button/accent system. Selected = navy→blue gradient; the
+      current day/month carries the gold ring accent. ── */
+.aa-power-theme .dpk {
+  --dpk-primary: #2563eb;
+  --dpk-secondary: #1e3a8a;
+}
+.aa-power-theme .dpk-trigger .dpk-tico { color: #d4af37 !important; }
+.aa-power-theme .dpk-trigger:hover { border-color: rgba(37, 99, 235, 0.55) !important; }
+.aa-power-theme .dpk-trigger.open {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+}
+.aa-power-theme .dpk-pop {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(37, 99, 235, 0.16), transparent 60%),
+    var(--dpk-card) !important;
+}
+.aa-power-theme .dpk-title span { color: #d4af37 !important; }
+.aa-power-theme .dpk-nav:hover {
+  border-color: #2563eb !important;
+  color: #3b82f6 !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+}
+.aa-power-theme .dpk-day:hover,
+.aa-power-theme .dpk-month:hover { background: rgba(37, 99, 235, 0.16) !important; }
+.aa-power-theme .dpk-day.today,
+.aa-power-theme .dpk-month.today {
+  box-shadow: inset 0 0 0 1.5px rgba(212, 175, 55, 0.75) !important;
+  color: #d4af37 !important;
+}
+.aa-power-theme .dpk-day.sel,
+.aa-power-theme .dpk-month.sel {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45) !important;
+}
+.aa-power-theme .dpk-day.sel.today,
+.aa-power-theme .dpk-month.sel.today {
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45), inset 0 0 0 1.5px rgba(212, 175, 55, 0.9) !important;
+  color: #ffd700 !important;
+}
+.aa-power-theme .dpk-foot-btn.primary {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+  color: #fff !important;
+}
+.aa-power-theme .dpk-foot-btn.primary:hover { filter: brightness(1.12) !important; }
+.aa-power-theme .dpk-foot-btn:not(.primary):hover { border-color: rgba(212, 175, 55, 0.5) !important; color: #d4af37 !important; }

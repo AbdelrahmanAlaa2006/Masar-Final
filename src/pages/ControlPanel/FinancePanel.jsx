@@ -10,6 +10,7 @@ import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import DatePicker from '../../components/DatePicker'
+import MonthPicker from '../../components/MonthPicker'
 import BookletsPanel from './BookletsPanel'
 import { GRADE_LABEL } from './shared'
 
@@ -18,8 +19,29 @@ const monthStartIso = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
-const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+// Arabic month/weekday names with WESTERN digits (1234567890) — matches the
+// financial report's numeral style.
+const AR_LATN = 'ar-EG-u-nu-latn'
+const fmtMoney = (n) => `${Number(n || 0).toLocaleString('en-US')} ج.م`
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString(AR_LATN, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+const fmtDayLong = (d) => d ? new Date(`${d}T00:00:00`).toLocaleDateString(AR_LATN, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+const fmtMonthLong = (m) => m ? new Date(`${m}-01T00:00:00`).toLocaleDateString(AR_LATN, { month: 'long', year: 'numeric' }) : '—'
+const addDaysIso = (iso, delta) => {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + delta)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const thisMonthIso = () => todayIso().slice(0, 7) // YYYY-MM
+const addMonthsIso = (ym, delta) => {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+const monthLastDayIso = (ym) => {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m, 0) // day 0 of next month = last day of this month
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const labelStyle = { display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }
 const cardStyle = { background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', padding: '20px', boxShadow: 'var(--cp-card-shadow)' }
@@ -38,7 +60,13 @@ export default function FinancePanel({ onBack, flash }) {
   })
   const [submittingRevert, setSubmittingRevert] = useState(false)
 
-  // Date range shared by ledger + reports
+  // The ledger shows one period at a time: a single day (default: today) or a
+  // whole month — the RPC's opening balance carries everything before it.
+  const [ledgerScope, setLedgerScope] = useState('day') // day | month
+  const [ledgerDate, setLedgerDate] = useState(todayIso())
+  const [ledgerMonth, setLedgerMonth] = useState(thisMonthIso())
+
+  // Date range for the reports tab
   const [fromDate, setFromDate] = useState(monthStartIso())
   const [toDate, setToDate] = useState(todayIso())
 
@@ -214,10 +242,17 @@ export default function FinancePanel({ onBack, flash }) {
     }
   }
 
+  // The from/to actually queried, depending on the day/month scope.
+  const ledgerPeriod = ledgerScope === 'day'
+    ? { from: ledgerDate, to: ledgerDate }
+    : { from: `${ledgerMonth}-01`, to: monthLastDayIso(ledgerMonth) }
+
   const reloadLedger = async () => {
+    // A cleared date picker yields '' — never send that to the date RPC.
+    if (!ledgerPeriod.from || !ledgerPeriod.to) return
     setLedgerLoading(true)
     try {
-      setLedger(await getDailyLedger(fromDate, toDate))
+      setLedger(await getDailyLedger(ledgerPeriod.from, ledgerPeriod.to))
     } catch (err) {
       console.error(err)
       flash('فشل تحميل الدفتر اليومي: ' + (err.message || ''), 'error')
@@ -226,10 +261,24 @@ export default function FinancePanel({ onBack, flash }) {
     }
   }
 
-  useEffect(() => { if (activeTab === 'ledger') reloadLedger() }, [activeTab, fromDate, toDate])
+  useEffect(() => { if (activeTab === 'ledger') reloadLedger() }, [activeTab, ledgerScope, ledgerDate, ledgerMonth])
+
+  // Show the period that contains a just-saved (possibly backdated) entry.
+  const jumpToDate = (dateIso) => {
+    if (!dateIso) { reloadLedger(); return }
+    if (ledgerScope === 'day') {
+      if (dateIso !== ledgerDate) setLedgerDate(dateIso)
+      else reloadLedger()
+    } else {
+      const ym = dateIso.slice(0, 7)
+      if (ym !== ledgerMonth) setLedgerMonth(ym)
+      else reloadLedger()
+    }
+  }
 
   useEffect(() => {
     if (activeTab !== 'reports') return
+    if (!fromDate || !toDate) return
     setReportLoading(true)
     getFinanceReport(fromDate, toDate)
       .then(setReport)
@@ -251,9 +300,24 @@ export default function FinancePanel({ onBack, flash }) {
     [categories, entryDirection]
   )
 
+  // Running balance is computed chronologically, then the list is reversed so
+  // the LAST operation of the day sits at the top of the table.
   const entriesWithRunning = useMemo(() => {
     const opening = Number(ledger.opening_balance || 0)
-    return (ledger.entries || []).map(e => ({ ...e, running: opening + Number(e.period_running || 0) }))
+    return (ledger.entries || [])
+      .map(e => ({ ...e, running: opening + Number(e.period_running || 0) }))
+      .reverse()
+  }, [ledger])
+
+  // Totals of the selected day (وارد/منصرف/رصيد نهاية اليوم).
+  const dayTotals = useMemo(() => {
+    let dayIn = 0, dayOut = 0
+    for (const e of ledger.entries || []) {
+      if (e.direction === 'in') dayIn += Number(e.amount || 0)
+      else dayOut += Number(e.amount || 0)
+    }
+    const opening = Number(ledger.opening_balance || 0)
+    return { dayIn, dayOut, closing: opening + dayIn - dayOut }
   }, [ledger])
 
   const openEntryForm = (row = null) => {
@@ -294,7 +358,9 @@ export default function FinancePanel({ onBack, flash }) {
       setShowEntryForm(false)
       setEntryEditing(null)
       refreshBalance()
-      reloadLedger()
+      // If the entry was recorded on another day (backdated), jump the ledger
+      // to the period containing it so the admin sees what was just saved.
+      jumpToDate(entryDate)
     } catch (err) {
       flash('فشل الحفظ: ' + (err.message || ''), 'error')
     } finally {
@@ -313,7 +379,7 @@ export default function FinancePanel({ onBack, flash }) {
       flash('تم تعديل الدفعة بنجاح', 'success')
       setLedgerEditRow(null)
       refreshBalance()
-      reloadLedger()
+      jumpToDate(ledgerEditDate)
     } catch (err) {
       flash('فشل التعديل: ' + (err.message || ''), 'error')
     }
@@ -363,7 +429,7 @@ export default function FinancePanel({ onBack, flash }) {
 
   const exportLedgerCsv = () => {
     downloadCsv(
-      `daily-ledger-${fromDate}-${toDate}.csv`,
+      `ledger-${ledgerScope === 'day' ? ledgerDate : ledgerMonth}.csv`,
       ['التاريخ', 'النوع', 'التصنيف', 'البيان', 'الطالب', 'وارد', 'منصرف', 'الرصيد'],
       entriesWithRunning.map(e => [
         e.transaction_date,
@@ -398,12 +464,12 @@ export default function FinancePanel({ onBack, flash }) {
         <td>${e.direction === 'in' ? 'إيراد' : 'مصروف'}</td>
         <td>${e.category || ''}</td>
         <td style="text-align:right">${e.description || ''}${e.student_name ? ` — ${e.student_name}` : ''}</td>
-        <td style="color:#10b981">${e.direction === 'in' ? Number(e.amount).toLocaleString('ar-EG') : ''}</td>
-        <td style="color:#ef4444">${e.direction === 'out' ? Number(e.amount).toLocaleString('ar-EG') : ''}</td>
-        <td style="font-weight:bold">${Number(e.running).toLocaleString('ar-EG')}</td>
+        <td style="color:#10b981">${e.direction === 'in' ? Number(e.amount).toLocaleString('en-US') : ''}</td>
+        <td style="color:#ef4444">${e.direction === 'out' ? Number(e.amount).toLocaleString('en-US') : ''}</td>
+        <td style="font-weight:bold">${Number(e.running).toLocaleString('en-US')}</td>
       </tr>`).join('')
     win.document.write(`
-      <html dir="rtl"><head><title>الدفتر اليومي ${fromDate} — ${toDate}</title>
+      <html dir="rtl"><head><title>الدفتر المالي ${ledgerScope === 'day' ? ledgerDate : ledgerMonth}</title>
       <style>
         body { font-family: 'Tajawal', Arial, sans-serif; padding: 24px; color: #1e293b; }
         h1 { font-size: 20px; text-align: center; margin: 0 0 4px; }
@@ -414,11 +480,13 @@ export default function FinancePanel({ onBack, flash }) {
         .totals { display:flex; justify-content: space-around; margin: 0 0 18px; padding: 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
       </style></head>
       <body onload="window.print(); window.close();">
-        <h1>الدفتر المالي اليومي</h1>
-        <h2>من ${fromDate} إلى ${toDate}</h2>
+        <h1>${ledgerScope === 'day' ? 'الدفتر المالي اليومي' : 'الدفتر المالي الشهري'}</h1>
+        <h2>${ledgerScope === 'day' ? fmtDayLong(ledgerDate) : `شهر ${fmtMonthLong(ledgerMonth)}`}</h2>
         <div class="totals">
-          <div>رصيد أول المدة<br/><strong>${Number(ledger.opening_balance).toLocaleString('ar-EG')} ج.م</strong></div>
-          <div>الرصيد الحالي<br/><strong>${Number(cashBalance || 0).toLocaleString('ar-EG')} ج.م</strong></div>
+          <div>رصيد بداية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}<br/><strong>${Number(ledger.opening_balance).toLocaleString('en-US')} ج.م</strong></div>
+          <div>إجمالي الوارد<br/><strong style="color:#10b981">${dayTotals.dayIn.toLocaleString('en-US')} ج.م</strong></div>
+          <div>إجمالي المنصرف<br/><strong style="color:#ef4444">${dayTotals.dayOut.toLocaleString('en-US')} ج.م</strong></div>
+          <div>رصيد نهاية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}<br/><strong>${dayTotals.closing.toLocaleString('en-US')} ج.م</strong></div>
           <div>عدد العمليات<br/><strong>${entriesWithRunning.length}</strong></div>
         </div>
         <table>
@@ -433,7 +501,7 @@ export default function FinancePanel({ onBack, flash }) {
     if (!report) return
     const win = window.open('', '_blank')
     if (!win) { flash('اسمح بالنوافذ المنبثقة لطباعة التقرير', 'warning'); return }
-    const catRows = (list) => (list || []).map(r => `<tr><td style="text-align:right">${r.category}</td><td>${Number(r.total).toLocaleString('ar-EG')} ج.م</td></tr>`).join('')
+    const catRows = (list) => (list || []).map(r => `<tr><td style="text-align:right">${r.category}</td><td>${Number(r.total).toLocaleString('en-US')} ج.م</td></tr>`).join('')
     win.document.write(`
       <html dir="rtl"><head><title>التقرير المالي ${fromDate} — ${toDate}</title>
       <style>
@@ -452,11 +520,11 @@ export default function FinancePanel({ onBack, flash }) {
         <h1>التقرير المالي</h1>
         <h2>من ${fromDate} إلى ${toDate}</h2>
         <div class="kpis">
-          <div class="kpi">إجمالي الإيرادات<strong style="color:#10b981">${Number(report.revenue_total).toLocaleString('ar-EG')} ج.م</strong></div>
-          <div class="kpi">اشتراكات الطلاب<strong>${Number(report.subscriptions_total).toLocaleString('ar-EG')} ج.م</strong></div>
-          <div class="kpi">إيرادات أخرى<strong>${Number(report.other_revenue_total).toLocaleString('ar-EG')} ج.م</strong></div>
-          <div class="kpi">المصروفات<strong style="color:#ef4444">${Number(report.expenses_total).toLocaleString('ar-EG')} ج.م</strong></div>
-          <div class="kpi">صافي الدخل<strong style="color:${Number(report.net_income) >= 0 ? '#10b981' : '#ef4444'}">${Number(report.net_income).toLocaleString('ar-EG')} ج.م</strong></div>
+          <div class="kpi">إجمالي الإيرادات<strong style="color:#10b981">${Number(report.revenue_total).toLocaleString('en-US')} ج.م</strong></div>
+          <div class="kpi">اشتراكات الطلاب<strong>${Number(report.subscriptions_total).toLocaleString('en-US')} ج.م</strong></div>
+          <div class="kpi">إيرادات أخرى<strong>${Number(report.other_revenue_total).toLocaleString('en-US')} ج.م</strong></div>
+          <div class="kpi">المصروفات<strong style="color:#ef4444">${Number(report.expenses_total).toLocaleString('en-US')} ج.م</strong></div>
+          <div class="kpi">صافي الدخل<strong style="color:${Number(report.net_income) >= 0 ? '#10b981' : '#ef4444'}">${Number(report.net_income).toLocaleString('en-US')} ج.م</strong></div>
         </div>
         <h3>الإيرادات الأخرى حسب التصنيف</h3>
         <table><thead><tr><th>التصنيف</th><th>الإجمالي</th></tr></thead><tbody>${catRows(report.other_revenue_by_category) || '<tr><td colspan="2">لا يوجد</td></tr>'}</tbody></table>
@@ -515,17 +583,79 @@ export default function FinancePanel({ onBack, flash }) {
         ))}
       </div>
 
-      {/* Date range (ledger + reports) */}
+      {/* Day navigator (ledger) / date range (reports) */}
       {(activeTab === 'ledger' || activeTab === 'reports') && (
         <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px' }}>
-          <div>
-            <label style={labelStyle}>من تاريخ</label>
-            <DatePicker value={fromDate} onChange={setFromDate} placeholder="من" />
-          </div>
-          <div>
-            <label style={labelStyle}>إلى تاريخ</label>
-            <DatePicker value={toDate} onChange={setToDate} placeholder="إلى" />
-          </div>
+          {activeTab === 'ledger' && (
+            <div>
+              <label style={labelStyle}>فترة الدفتر</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--cp-divider)' }}>
+                  <button
+                    onClick={() => setLedgerScope('day')}
+                    className={`cp-btn ${ledgerScope === 'day' ? 'cp-btn-info-active' : 'cp-btn-secondary'}`}
+                    style={{ padding: '8px 16px', fontWeight: 'bold', borderRadius: 0, border: 'none' }}
+                  >يوم</button>
+                  <button
+                    onClick={() => setLedgerScope('month')}
+                    className={`cp-btn ${ledgerScope === 'month' ? 'cp-btn-info-active' : 'cp-btn-secondary'}`}
+                    style={{ padding: '8px 16px', fontWeight: 'bold', borderRadius: 0, border: 'none' }}
+                  >شهر</button>
+                </div>
+                {ledgerScope === 'day' ? (
+                  <>
+                    <button
+                      onClick={() => setLedgerDate(d => addDaysIso(d || todayIso(), -1))}
+                      className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', fontWeight: 'bold' }}
+                      title="اليوم السابق"
+                    ><i className="fas fa-chevron-right" /></button>
+                    <DatePicker value={ledgerDate} onChange={(v) => setLedgerDate(v || todayIso())} placeholder="اليوم" />
+                    <button
+                      onClick={() => setLedgerDate(d => addDaysIso(d || todayIso(), 1))}
+                      className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', fontWeight: 'bold' }}
+                      title="اليوم التالي"
+                    ><i className="fas fa-chevron-left" /></button>
+                    {ledgerDate !== todayIso() && (
+                      <button onClick={() => setLedgerDate(todayIso())} className="cp-btn cp-btn-info" style={{ padding: '8px 14px', fontWeight: 'bold' }}>
+                        اليوم
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setLedgerMonth(m => addMonthsIso(m || thisMonthIso(), -1))}
+                      className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', fontWeight: 'bold' }}
+                      title="الشهر السابق"
+                    ><i className="fas fa-chevron-right" /></button>
+                    <MonthPicker value={ledgerMonth} onChange={(v) => setLedgerMonth(v || thisMonthIso())} placeholder="الشهر" />
+                    <button
+                      onClick={() => setLedgerMonth(m => addMonthsIso(m || thisMonthIso(), 1))}
+                      className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', fontWeight: 'bold' }}
+                      title="الشهر التالي"
+                    ><i className="fas fa-chevron-left" /></button>
+                    {ledgerMonth !== thisMonthIso() && (
+                      <button onClick={() => setLedgerMonth(thisMonthIso())} className="cp-btn cp-btn-info" style={{ padding: '8px 14px', fontWeight: 'bold' }}>
+                        الشهر الحالي
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          {activeTab === 'reports' && (
+            <>
+              <div>
+                <label style={labelStyle}>من تاريخ</label>
+                <DatePicker value={fromDate} onChange={setFromDate} placeholder="من" />
+              </div>
+              <div>
+                <label style={labelStyle}>إلى تاريخ</label>
+                <DatePicker value={toDate} onChange={setToDate} placeholder="إلى" />
+              </div>
+            </>
+          )}
           {activeTab === 'ledger' && (
             <div style={{ display: 'flex', gap: '8px', marginInlineStart: 'auto' }}>
               <button onClick={handleWipeTestingData} className="cp-btn" style={{ fontWeight: 'bold', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' }} title="حذف كافة المعاملات التجريبية والاشتراكات والكتب التي تم إنشاؤها أثناء التجربة">
@@ -600,13 +730,46 @@ export default function FinancePanel({ onBack, flash }) {
         ledgerLoading ? (
           <div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل الدفتر...</p></div>
         ) : (
+          <>
+          {/* Period totals — premium stat cards (same family as the cash-balance chip) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+            {[
+              [`رصيد بداية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, ledger.opening_balance, '#06b6d4', 'fa-wallet'],
+              [`إجمالي وارد ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.dayIn, '#10b981', 'fa-arrow-trend-up'],
+              [`إجمالي منصرف ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.dayOut, '#ef4444', 'fa-arrow-trend-down'],
+              [`رصيد نهاية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.closing, '#f59e0b', 'fa-sack-dollar'],
+            ].map(([label, value, color, icon]) => (
+              <div key={label} style={{
+                padding: '16px 20px', borderRadius: '14px',
+                background: `color-mix(in srgb, ${color} 9%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${color} 28%, transparent)`,
+                display: 'flex', alignItems: 'center', gap: '14px'
+              }}>
+                <div style={{
+                  width: '42px', height: '42px', borderRadius: '12px', flexShrink: 0,
+                  background: `color-mix(in srgb, ${color} 18%, transparent)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <i className={`fas ${icon}`} style={{ color, fontSize: '1.05rem' }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', display: 'block', fontWeight: 700 }}>{label}</span>
+                  <span style={{ color, fontSize: '1.3rem', fontWeight: 800 }}>{fmtMoney(value)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--cp-divider)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.86rem', fontWeight: 'bold' }}>
-              <span>رصيد أول المدة: <span style={{ color: '#06b6d4' }}>{fmtMoney(ledger.opening_balance)}</span></span>
-              <span>{entriesWithRunning.length} عملية في الفترة</span>
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--cp-divider)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', fontSize: '0.86rem', fontWeight: 'bold' }}>
+              <span style={{ color: 'var(--cp-text-muted)' }}>
+                <i className={`fas ${ledgerScope === 'day' ? 'fa-calendar-day' : 'fa-calendar-days'}`} style={{ marginInlineEnd: 6 }} />
+                {ledgerScope === 'day' ? fmtDayLong(ledgerDate) : `شهر ${fmtMonthLong(ledgerMonth)}`}
+              </span>
+              <span>{entriesWithRunning.length} عملية</span>
             </div>
             {entriesWithRunning.length === 0 ? (
-              <div className="cp-empty"><i className="fas fa-book-open" /><p>لا توجد عمليات مالية في هذه الفترة</p></div>
+              <div className="cp-empty"><i className="fas fa-book-open" /><p>{ledgerScope === 'day' ? 'لا توجد عمليات مالية في هذا اليوم' : 'لا توجد عمليات مالية في هذا الشهر'}</p></div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.88rem' }}>
@@ -663,6 +826,7 @@ export default function FinancePanel({ onBack, flash }) {
               </div>
             )}
           </div>
+          </>
         )
       )}
 
