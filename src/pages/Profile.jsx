@@ -468,7 +468,7 @@ export default function Profile() {
               </h2>
 
               <p style={{ fontSize: '0.88rem', color: 'var(--profile-row-label)', margin: '0 0 16px', lineHeight: '1.6' }}>
-                استخدم هذه البطاقة لتسجيل الحضور والانصراف تلقائياً عند الدخول إلى المركز التعليمي.
+                استخدم هذه البطاقة لتسجيل الحضور والانصراف تلقائياً عند الدخول إلى السنتر التعليمي.
               </p>
 
               <button

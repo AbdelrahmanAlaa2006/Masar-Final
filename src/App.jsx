@@ -30,6 +30,12 @@ const StudentChat = lazy(() => import('./pages/StudentChat'))
 const PublicReport = lazy(() => import('./pages/PublicReport'))
 const Shop = lazy(() => import('./pages/Shop'))
 const Packages = lazy(() => import('./pages/Packages'))
+const GradesReport = lazy(() => import('./pages/GradesReport'))
+const GradesGroupReport = lazy(() => import('./pages/GradesGroupReport'))
+const AttendanceReport = lazy(() => import('./pages/AttendanceReport'))
+const AttendanceGroupReport = lazy(() => import('./pages/AttendanceGroupReport'))
+const FinanceReport = lazy(() => import('./pages/FinanceReport'))
+const FinanceGroupReport = lazy(() => import('./pages/FinanceGroupReport'))
 // GitFekra company website — shown on the default tenant only.
 const GitFekraLanding = lazy(() => import('./pages/company/GitFekraLanding'))
 
@@ -613,6 +619,9 @@ function AppContent() {
             <Route path="/videos-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute>} />
             <Route path="/exams-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute>} />
             <Route path="/homework-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute>} />
+            <Route path="/grades-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute>} />
+            <Route path="/attendance-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><AttendanceReport /></PermissionRoute>} />
+            <Route path="/finance-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><FinanceReport /></PermissionRoute>} />
 
             {/* Admin only */}
             <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute>} />
@@ -621,6 +630,9 @@ function AppContent() {
             <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute>} />
             <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute>} />
             <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute>} />
+            <Route path="/grades-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute>} />
+            <Route path="/attendance-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute>} />
+            <Route path="/finance-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute>} />
             <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
             <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />

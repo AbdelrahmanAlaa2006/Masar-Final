@@ -464,3 +464,15 @@
   .egr-card-header { flex-direction: column; align-items: stretch; }
   .egr-print-btn { justify-content: center; }
 }
+
+@media print {
+  .hide-on-print {
+    display: none !important;
+  }
+  /* Explicitly force black color for text inside table cells when printing */
+  .cp-table td,
+  .cp-table td span,
+  .cp-table td div {
+    color: #000000 !important;
+  }
+}

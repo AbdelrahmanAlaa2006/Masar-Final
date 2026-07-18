@@ -756,6 +756,61 @@ body.dark .report-suggestion-sub {
   color: #94a3b8;
 }
 
+/* ── Segmented Toggle Control ── */
+.report-toggle-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.report-toggle {
+  display: flex;
+  background: var(--cp-back-bg, #f1f5f9);
+  border: 1px solid var(--cp-back-border, #e2e8f0);
+  border-radius: 30px;
+  padding: 4px;
+  position: relative;
+  gap: 4px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+}
+
+body.dark .report-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.report-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 10px 24px;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Tajawal', sans-serif;
+  color: var(--cp-text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  outline: none;
+}
+
+.report-toggle-btn:hover {
+  color: var(--cp-primary, #7c3aed);
+}
+
+.report-toggle-btn.is-active {
+  background: var(--cp-primary, #7c3aed);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+body.dark .report-toggle-btn.is-active {
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.25);
+}
+
 /* ── Public Report Mobile Viewport Adjustments ── */
 @media (max-width: 640px) {
   .cp-page {

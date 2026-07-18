@@ -105,13 +105,20 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
   if (!records || records.length === 0) return []
 
   // Step 1: Format for save_attendance_batch_v2 RPC
-  const payload = records.map(r => ({
-    student_id: r.student_id,
-    session_id: r.session_id,
-    status: r.status,
-    notes: r.notes || null,
-    created_by: r.created_by || null
-  }))
+  const payload = records.map(r => {
+    // If status is changed to absent or excused, clear any existing barcode/stale notes by passing ''
+    let resolvedNotes = r.notes
+    if ((r.status === 'absent' || r.status === 'excused') && !r.notes) {
+      resolvedNotes = ''
+    }
+    return {
+      student_id: r.student_id,
+      session_id: r.session_id,
+      status: r.status,
+      notes: resolvedNotes === '' ? '' : (resolvedNotes || null),
+      created_by: r.created_by || null
+    }
+  })
 
   const { error: rpcError } = await supabase.rpc('save_attendance_batch_v2', {
     p_records: payload

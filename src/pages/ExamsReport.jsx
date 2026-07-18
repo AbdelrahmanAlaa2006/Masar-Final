@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listAttemptsForStudent, listExams } from '@backend/examsApi'
 import { getProfile } from '@backend/profilesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
+import { listCenterAttemptsForStudent } from '@backend/reportsApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
 import './ExamsReport.css'
@@ -58,10 +59,15 @@ export default function ExamsReport() {
     return ''
   })
   const [currentFilter, setCurrentFilter] = useState('all')
+  const reportSource = searchParams.get('reportType') || 'online'
   const reportType = searchParams.get('type') || 'exam'
   const isQuiz = reportType === 'quiz'
-  const pageTitle = isQuiz ? 'تقرير التسميعات' : 'تقرير الامتحانات'
-  const pageDesc = isQuiz ? 'سجل التسميعات والنتائج التفصيلية للطلاب' : 'سجل الامتحانات والنتائج التفصيلية للطلاب'
+  const pageTitle = reportSource === 'center'
+    ? (isQuiz ? 'تقرير تسميعات السنتر' : 'تقرير امتحانات السنتر')
+    : (isQuiz ? 'تقرير التسميعات' : 'تقرير الامتحانات')
+  const pageDesc = reportSource === 'center'
+    ? (isQuiz ? 'سجل التسميعات الشفوية والمتابعة بالسنتر' : 'سجل الامتحانات الورقية والنتائج بالسنتر')
+    : (isQuiz ? 'سجل التسميعات والنتائج التفصيلية للطلاب' : 'سجل الامتحانات والنتائج التفصيلية للطلاب')
   const statLabel = isQuiz ? 'إجمالي التسميعات' : 'إجمالي الامتحانات'
   // Students never see the detailed table view — force cards.
   const initialViewMode = (() => {
@@ -112,17 +118,40 @@ export default function ExamsReport() {
           if (p?.phone) setStudentId(p.phone)
         }
 
-        // All exams the viewer can see, then filter to the target's grade and type.
-        const allExamsRaw = await cached('exams', LIST_TTL, listExams)
-        const allExams = allExamsRaw.filter((e) => {
-          const matchesGrade = targetGrade ? e.grade === targetGrade : true
-          const matchesType = (e.exam_type || 'exam') === reportType
-          return matchesGrade && matchesType
-        })
-        // The target student's attempts (admin can read any student via RLS).
-        // Per-student key — cached internally so admins can flip back to the same
-        // student without re-pulling the whole attempt history.
-        const attempts = await listAttemptsForStudent(targetId)
+        let allExams = []
+        let attempts = []
+
+        if (reportSource === 'center') {
+          attempts = await listCenterAttemptsForStudent(targetId, reportType)
+          const examMap = new Map()
+          for (const a of attempts) {
+            const ex = a.exams
+            if (!examMap.has(ex.id)) {
+              examMap.set(ex.id, {
+                id: ex.id,
+                title: ex.title,
+                grade: targetGrade,
+                exam_type: reportType,
+                total_points: ex.total_points,
+                duration_minutes: 0,
+                reveal_grades: true
+              })
+            }
+          }
+          allExams = Array.from(examMap.values())
+        } else {
+          // All exams the viewer can see, then filter to the target's grade and type.
+          const allExamsRaw = await cached('exams', LIST_TTL, listExams)
+          allExams = allExamsRaw.filter((e) => {
+            const matchesGrade = targetGrade ? e.grade === targetGrade : true
+            const matchesType = (e.exam_type || 'exam') === reportType
+            return matchesGrade && matchesType
+          })
+          // The target student's attempts (admin can read any student via RLS).
+          // Per-student key — cached internally so admins can flip back to the same
+          // student without re-pulling the whole attempt history.
+          attempts = await listAttemptsForStudent(targetId)
+        }
 
         // Per-student / per-grade reveal overrides. An allow=true override
         // reveals an exam's results for this student even when the exam's
@@ -204,6 +233,7 @@ export default function ExamsReport() {
                flag is on, OR a per-target override (student/grade scope)
                explicitly allows it for this student. */
             gradesRevealed:
+              reportSource === 'center' ||
               ex.reveal_grades === true ||
               (revealMap.get(ex.id)?.allowed === true),
             questions,

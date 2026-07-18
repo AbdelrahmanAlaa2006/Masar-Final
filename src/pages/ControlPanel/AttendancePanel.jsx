@@ -440,16 +440,22 @@ export default function AttendancePanel({ onBack, flash }) {
     }
     if (filteredStudentsList.length === 0) return
 
-    // Set saving for all filtered students
+    const changedStudents = filteredStudentsList.filter(s => (attendanceRecords[s.id] || 'absent') !== status)
+    if (changedStudents.length === 0) {
+      flash('No changes detected.', 'info')
+      return
+    }
+
+    // Set saving for changed students
     const savingMap = {}
-    filteredStudentsList.forEach(s => {
+    changedStudents.forEach(s => {
       savingMap[s.id] = true
     })
     setSavingStudents(prev => ({ ...prev, ...savingMap }))
 
     // Update local records state immediately
     const nextRecords = { ...attendanceRecords }
-    filteredStudentsList.forEach(s => {
+    changedStudents.forEach(s => {
       nextRecords[s.id] = status
     })
     setAttendanceRecords(nextRecords)
@@ -458,7 +464,7 @@ export default function AttendancePanel({ onBack, flash }) {
       const currentSession = sessions.find(s => s.id === selectedSessionId)
       const sessionTitle = currentSession ? currentSession.title : 'حصة دراسية'
 
-      const payload = filteredStudentsList.map(s => ({
+      const payload = changedStudents.map(s => ({
         student_id: s.id,
         student_name: s.name,
         parent_phone: s.parent_phone,
@@ -474,9 +480,9 @@ export default function AttendancePanel({ onBack, flash }) {
       console.error(err)
       flash('حدث خطأ أثناء حفظ الحضور الجماعي: ' + err.message, 'error')
     } finally {
-      // Clear saving for all filtered students
+      // Clear saving for changed students
       const clearedMap = {}
-      filteredStudentsList.forEach(s => {
+      changedStudents.forEach(s => {
         clearedMap[s.id] = false
       })
       setSavingStudents(prev => ({ ...prev, ...clearedMap }))
@@ -487,6 +493,12 @@ export default function AttendancePanel({ onBack, flash }) {
   const handleStatusChange = async (studentId, status) => {
     if (!selectedSessionId || selectedSessionId === 'new') {
       flash('يرجى إنشاء حصة أو اختيار حصة مسجلة لتسجيل الحضور', 'warning')
+      return
+    }
+
+    const oldStatus = attendanceRecords[studentId] || 'absent'
+    if (oldStatus === status) {
+      flash('No changes detected.', 'info')
       return
     }
 
@@ -1413,6 +1425,7 @@ export default function AttendancePanel({ onBack, flash }) {
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '120px' }}>المجموعة</th>
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '160px' }}>رقم الهاتف</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '150px', textAlign: 'center' }}>حالة الحضور</th>
+                      <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '100px', textAlign: 'center' }}>الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1447,6 +1460,16 @@ export default function AttendancePanel({ onBack, flash }) {
                             }}>
                               {statusLabels[status] || status}
                             </span>
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => setActiveSubTab('record')}
+                              className="cp-btn cp-btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <i className="fas fa-edit" />
+                              تعديل
+                            </button>
                           </td>
                         </tr>
                       )

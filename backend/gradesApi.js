@@ -548,3 +548,86 @@ export async function rebuildAndSendGradeNotifications(type, title, tenantId, cr
   return notificationsToInsert.length
 }
 
+// Send WhatsApp notification for a single modified grade record
+export async function sendUpdatedGradeNotification(gradeRecord, tenantId, createdBy = null) {
+  // Fetch student profile details
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('id, name, phone, parent_phone, grade, "group"')
+    .eq('id', gradeRecord.student_id)
+    .single()
+  
+  if (profileErr || !profile) return
+  
+  // Fetch tenant configuration
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('*')
+    .eq('id', tenantId)
+    .single()
+
+  const parentPhone = profile.parent_phone || profile.phone
+  if (!parentPhone || parentPhone.trim() === '') return
+
+  let notification_type = 'general'
+  if (gradeRecord.type === 'homework') notification_type = 'homework'
+  else if (gradeRecord.type === 'exam') notification_type = 'exam'
+  else if (gradeRecord.type === 'quiz') notification_type = 'quiz'
+  else if (gradeRecord.type === 'participation') notification_type = 'participation'
+  else if (gradeRecord.type === 'behavior') notification_type = 'behavior'
+
+  const gradeLabel = getGradeUiLabel(profile.grade)
+  const groupLabel = profile.group || ''
+  const lessonNameResolved = [gradeLabel, groupLabel].filter(Boolean).join(' - ') || 'الدرس'
+
+  // Construct placeholders payload
+  const payload = {
+    student_name: profile.name,
+    grade: gradeRecord.score,
+    total_grade: gradeRecord.max_score,
+    quiz_name: gradeRecord.type === 'quiz' ? gradeRecord.title : '',
+    exam_name: gradeRecord.type === 'exam' ? gradeRecord.title : '',
+    homework_name: gradeRecord.type === 'homework' ? gradeRecord.title : '',
+    lesson_name: lessonNameResolved,
+    date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+    day_name: new Date().toLocaleDateString('ar-EG', { weekday: 'long' }),
+    course_name: gradeRecord.subject || tenant?.config?.subject || ''
+  }
+
+  try {
+    const renderedMessage = await renderNotificationTemplate({
+      tenant,
+      notification_type,
+      locale: 'ar-EG',
+      payload
+    })
+
+    // Delete any existing pending whatsapp notification for this specific grade first
+    await supabase
+      .from('unified_notifications')
+      .delete()
+      .eq('grade_id', gradeRecord.id)
+      .eq('status->>whatsapp', 'pending')
+
+    const notification = {
+      tenant_id: tenantId,
+      student_id: gradeRecord.student_id,
+      title: 'تعديل تقييم',
+      message: renderedMessage,
+      type: 'grade_added',
+      channels: ['whatsapp', 'portal'],
+      status: { whatsapp: 'pending', portal: 'pending' },
+      created_by: createdBy || null,
+      grade_id: gradeRecord.id,
+      recipient_phone: parentPhone
+    }
+
+    await supabase
+      .from('unified_notifications')
+      .insert(notification)
+  } catch (err) {
+    console.error('Failed to send updated grade notification:', err)
+  }
+}
+
+

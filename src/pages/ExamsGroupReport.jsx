@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import './ExamsGroupReport.css'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listExams } from '@backend/examsApi'
 import { supabase } from '@backend/supabase'
+import { listCenterUniqueEvaluations, listCenterGradesForEvaluation } from '@backend/reportsApi'
+import { listBranches } from '@backend/branchesApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
 
@@ -12,6 +14,7 @@ import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 export default function ExamsGroupReport() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
 
   const [students, setStudents] = useState([])
   const [exams, setExams]       = useState([])
@@ -23,11 +26,32 @@ export default function ExamsGroupReport() {
   const [currentExam, setCurrentExam]   = useState('') // exam id
   const [currentFilter, setCurrentFilter] = useState('all')
 
-  const params = new URLSearchParams(location.search)
-  const reportType = params.get('type') || 'exam'
+  const [branches, setBranches] = useState([])
+  const [branchFilter, setBranchFilter] = useState('all')
+
+  // Load branches
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const list = await cached('branches-list', LIST_TTL, listBranches)
+        if (!cancelled) setBranches(list)
+      } catch (err) {
+        console.error('Failed to load branches:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const reportSource = searchParams.get('reportType') || 'online'
+  const reportType = searchParams.get('type') || 'exam'
   const isQuiz = reportType === 'quiz'
-  const pageTitle = isQuiz ? 'التقرير الجماعي للتسميعات' : 'التقرير الجماعي للامتحانات'
-  const pageDesc = isQuiz ? 'تحليل نتائج الطلاب وأداء كل صف دراسي في التسميعات الأسبوعية' : 'تحليل نتائج الطلاب المسجلين وأداء كل صف دراسي'
+  const pageTitle = reportSource === 'center'
+    ? (isQuiz ? 'التقرير الجماعي لتسميعات السنتر' : 'التقرير الجماعي لامتحانات السنتر')
+    : (isQuiz ? 'التقرير الجماعي للتسميعات' : 'التقرير الجماعي للامتحانات')
+  const pageDesc = reportSource === 'center'
+    ? (isQuiz ? 'تحليل نتائج الطلاب وأداء كل صف دراسي في التسميعات الشفوية والمتابعة بالسنتر' : 'تحليل نتائج الطلاب المسجلين بالسنتر وأداء كل صف دراسي')
+    : (isQuiz ? 'تحليل نتائج الطلاب وأداء كل صف دراسي في التسميعات الأسبوعية' : 'تحليل نتائج الطلاب المسجلين وأداء كل صف دراسي')
   const selectLabel = isQuiz ? 'اختر التسميع' : 'اختر الامتحان'
   const selectPlaceholder = isQuiz ? '-- اختر التسميع --' : '-- اختر الامتحان --'
 
@@ -39,26 +63,34 @@ export default function ExamsGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        // Load only the content list upfront (small). Students are loaded
-        // lazily, one grade at a time, after a grade is chosen.
-        const e = await cached('exams-lean', LIST_TTL, () => listExams({ lean: true }))
-        if (cancelled) return
-        setExams(e.filter(exam => (exam.exam_type || 'exam') === reportType))
+        if (reportSource === 'center') {
+          setExams([])
+          setLoading(false)
+        } else {
+          const e = await cached('exams-lean', LIST_TTL, () => listExams({ lean: true }))
+          if (cancelled) return
+          setExams(e.filter(exam => (exam.exam_type || 'exam') === reportType))
+        }
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل البيانات')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (reportSource !== 'center') {
+          if (!cancelled) setLoading(false)
+        }
       }
     })()
     return () => { cancelled = true }
-  }, [reportType])
+  }, [reportType, reportSource])
 
   // Grade chips come from the grades that actually have exams — you can only
   // report on a grade that has content anyway. Avoids scanning all students.
   const availableGrades = useMemo(() => {
+    if (reportSource === 'center') {
+      return GRADE_ORDER
+    }
     const set = new Set(exams.map(e => e.grade).filter(Boolean))
     return GRADE_ORDER.filter(g => set.has(g))
-  }, [exams])
+  }, [exams, reportSource])
 
   // Load this grade's students only (lazy, scoped) when a grade is selected.
   useEffect(() => {
@@ -68,12 +100,17 @@ export default function ExamsGroupReport() {
       try {
         const rows = await cached(`students:grade:${currentGrade}`, LIST_TTL, () => listStudentsByGrade(currentGrade))
         if (!cancelled) setStudents(rows)
+
+        if (reportSource === 'center') {
+          const evals = await listCenterUniqueEvaluations(currentGrade, reportType)
+          if (!cancelled) setExams(evals)
+        }
       } catch (err) {
         if (!cancelled) setLoadError(err.message || 'تعذر تحميل الطلاب')
       }
     })()
     return () => { cancelled = true }
-  }, [currentGrade])
+  }, [currentGrade, reportSource, reportType])
 
   const examsForGrade = useMemo(
     () => exams.filter(e => e.grade === currentGrade),
@@ -93,11 +130,17 @@ export default function ExamsGroupReport() {
     return [...set].sort((a, b) => a.localeCompare(b, 'ar'))
   }, [studentsInGrade])
 
-  // Students after the (optional) group filter is applied.
+  // Students after the (optional) group and branch filters are applied.
   const studentsForGrade = useMemo(() => {
-    if (!currentGroup) return studentsInGrade
-    return studentsInGrade.filter(s => (s.group || '').trim() === currentGroup)
-  }, [studentsInGrade, currentGroup])
+    let result = studentsInGrade
+    if (currentGroup) {
+      result = result.filter(s => (s.group || '').trim() === currentGroup)
+    }
+    if (reportSource === 'center' && branchFilter !== 'all') {
+      result = result.filter(s => s.branch_id === branchFilter)
+    }
+    return result
+  }, [studentsInGrade, currentGroup, branchFilter, reportSource])
 
   const selectGrade = (grade) => {
     setCurrentGrade(grade)
@@ -106,6 +149,7 @@ export default function ExamsGroupReport() {
     setAllStudentsData([])
     setDisplayedStudents([])
     setCurrentFilter('all')
+    setBranchFilter('all')
   }
 
   const selectGroup = (group) => {
@@ -115,6 +159,7 @@ export default function ExamsGroupReport() {
     setAllStudentsData([])
     setDisplayedStudents([])
     setCurrentFilter('all')
+    setBranchFilter('all')
   }
 
   const handleExamChange = (examId) => {
@@ -131,7 +176,7 @@ export default function ExamsGroupReport() {
     }
     // `students` is included so the report runs once this grade's students
     // finish loading lazily (they may arrive after the exam is selected).
-  }, [currentExam, currentGrade, currentGroup, students])
+  }, [currentExam, currentGrade, currentGroup, students, branchFilter])
 
   // Handle auto-preselection from router state (e.g. clicked notification)
   const initialLoadRef = useRef(false)
@@ -164,17 +209,30 @@ export default function ExamsGroupReport() {
       // Cache the attempts payload per exam+grade. Flipping the dropdown
       // back to a previously-viewed exam serves from memory; the 5min TTL
       // is fine because admins refresh the page if they need live numbers.
-      const cacheKey = `exam_attempts:${examId}:${currentGrade || 'all'}`
-      const attempts = await cached(cacheKey, LIST_TTL, async () => {
-        const { data, error } = await supabase
-          .from('exam_attempts')
-          .select('student_id, score, max_score, submitted_at')
-          .eq('exam_id', examId)
-          .in('student_id', ids)
-          .not('submitted_at', 'is', null)
-        if (error) throw error
-        return data || []
-      })
+      let attempts = []
+      if (reportSource === 'center') {
+        const gradesList = await listCenterGradesForEvaluation(reportType, examId)
+        attempts = gradesList.map(g => ({
+          student_id: g.student_id,
+          score: parseFloat(g.score) || 0,
+          max_score: parseFloat(g.max_score) || maxScore || 100,
+          submitted_at: g.created_at,
+          teacher: g.creator?.name || '—',
+          branch: g.profiles?.branches?.name || '—'
+        }))
+      } else {
+        const cacheKey = `exam_attempts:${examId}:${currentGrade || 'all'}`
+        attempts = await cached(cacheKey, LIST_TTL, async () => {
+          const { data, error } = await supabase
+            .from('exam_attempts')
+            .select('student_id, score, max_score, submitted_at')
+            .eq('exam_id', examId)
+            .in('student_id', ids)
+            .not('submitted_at', 'is', null)
+          if (error) throw error
+          return data || []
+        })
+      }
 
       // group attempts by student — keep best score + count
       const byStudent = {}
@@ -219,6 +277,8 @@ export default function ExamsGroupReport() {
           attempts: attemptsUsed,
           maxAttempts,
           status,
+          teacher: entry?.best?.teacher || '—',
+          branch: entry?.best?.branch || '—',
         }
       })
 
@@ -253,6 +313,48 @@ export default function ExamsGroupReport() {
     ? Math.round(tookExam.reduce((s, x) => s + x.score, 0) / tookExam.length)
     : 0
   const passRate = tookExam.length > 0 ? Math.round((passedCount / tookExam.length) * 100) : 0
+
+  const exportToCsv = () => {
+    const csvCell = (val) => `"${String(val == null ? '' : val).replace(/"/g, '""')}"`
+    const isCenter = reportSource === 'center'
+    const headers = [
+      '#',
+      'اسم الطالب',
+      'رقم الطالب',
+      'المجموعة',
+      ...(isCenter ? ['المعلم', 'الفرع'] : []),
+      isCenter ? 'التاريخ' : 'آخر تسليم',
+      'النتيجة',
+      'التقييم',
+      ...(isCenter ? [] : ['المحاولات']),
+      'الدرجة الفردية',
+      'الدرجة الكلية',
+      'النسبة المئوية'
+    ]
+    const rows = displayedStudents.map((s, idx) => [
+      idx + 1,
+      s.name,
+      s.id,
+      s.group,
+      ...(isCenter ? [s.teacher, s.branch] : []),
+      s.date,
+      s.result,
+      s.rating,
+      ...(isCenter ? [] : [`${s.attempts}/${s.maxAttempts}`]),
+      s.rawScore,
+      s.maxScore,
+      `${s.score}%`
+    ])
+
+    const content = '\uFEFF' + [headers.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\n')
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${isQuiz ? 'quizzes' : 'exams'}-group-report-${currentGrade}-${currentExam || 'all'}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   if (loading) {
     return (
@@ -395,45 +497,86 @@ export default function ExamsGroupReport() {
           </div>
         )}
 
-        {/* Exam */}
+        {/* Exam & Branch (For Center) */}
         {currentGrade && (
           <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className={`fas ${isQuiz ? 'fa-book-open' : 'fa-file-alt'}`} style={{ color: '#8b5cf6' }}></i> {selectLabel}
-            </h2>
-            {examsForGrade.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا توجد {isQuiz ? 'تسميعات' : 'امتحانات'} منشورة لهذا الصف.</p>
-            ) : (
-              <div style={{ position: 'relative', maxWidth: '400px' }}>
-                <i className="fas fa-clipboard-list" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', zIndex: 1 }}></i>
-                <select
-                  className="cp-select"
-                  value={currentExam}
-                  onChange={(e) => handleExamChange(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 42px 12px 16px',
-                    borderRadius: 12,
-                    background: 'var(--cp-card-bg)',
-                    border: '1px solid var(--cp-card-border)',
-                    color: 'var(--cp-text-main)',
-                    fontSize: '0.95rem',
-                    fontWeight: 600,
-                    appearance: 'none',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="">{selectPlaceholder}</option>
-                  {examsForGrade.map((exam) => (
-                    <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
-                      {exam.number ? `${exam.number} — ` : ''}{exam.title}
-                    </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
+            <div style={{ display: 'grid', gridTemplateColumns: reportSource === 'center' ? '1fr 1fr' : '1fr', gap: 20 }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className={`fas ${isQuiz ? 'fa-book-open' : 'fa-file-alt'}`} style={{ color: '#8b5cf6' }}></i> {selectLabel}
+                </h2>
+                {examsForGrade.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا توجد {isQuiz ? 'تسميعات' : 'امتحانات'} منشورة لهذا الصف.</p>
+                ) : (
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <i className="fas fa-clipboard-list" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', zIndex: 1 }}></i>
+                    <select
+                      className="cp-input"
+                      value={currentExam}
+                      onChange={(e) => handleExamChange(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 42px 12px 16px',
+                        borderRadius: 12,
+                        background: 'var(--cp-card-bg)',
+                        border: '1px solid var(--cp-card-border)',
+                        color: 'var(--cp-text-main)',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        height: 48
+                      }}
+                    >
+                      <option value="">{selectPlaceholder}</option>
+                      {examsForGrade.map((exam) => (
+                        <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
+                          {exam.number ? `${exam.number} — ` : ''}{exam.title}
+                        </option>
+                      ))}
+                    </select>
+                    <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
+                  </div>
+                )}
               </div>
-            )}
+
+              {reportSource === 'center' && (
+                <div>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fas fa-building" style={{ color: '#5bc2e7' }}></i> الفرع
+                  </h2>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <i className="fas fa-building" style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', zIndex: 1 }}></i>
+                    <select
+                      className="cp-input"
+                      value={branchFilter}
+                      onChange={(e) => setBranchFilter(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 42px 12px 16px',
+                        borderRadius: 12,
+                        background: 'var(--cp-card-bg)',
+                        border: '1px solid var(--cp-card-border)',
+                        color: 'var(--cp-text-main)',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        height: 48
+                      }}
+                    >
+                      <option value="all">جميع الفروع</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                    <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -522,94 +665,104 @@ export default function ExamsGroupReport() {
         {/* Report Table */}
         {displayedStudents.length > 0 && (
           <div className="cp-table-card" id="egr-reportTable">
-            <PrintReportHeader subtitle="التقرير الجماعي للامتحانات" />
-            <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--cp-text-main)' }}>
-                  <i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
-                  تقرير النتائج التفصيلي
-                </h2>
-                <span className="cp-badge cp-badge-neutral">{displayedStudents.length}</span>
-              </div>
-              <button onClick={() => window.print()} className="cp-crumbs-back" style={{ padding: '6px 12px', background: 'transparent' }}>
-                <i className="fas fa-print" style={{ marginLeft: 6 }}></i>
-                طباعة التقرير
-              </button>
-            </div>
-
-            <div className="cp-table-container">
-              <table className="cp-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>اسم الطالب</th>
-                    <th>رقم الطالب</th>
-                    <th>المجموعة</th>
-                    <th>آخر تسليم</th>
-                    <th>النتيجة</th>
-                    <th>التقييم</th>
-                    <th>المحاولات</th>
-                    <th>الدرجة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedStudents.map((student, index) => (
-                    <tr key={student.id + index}>
-                      <td>{index + 1}</td>
-                      <td style={{ fontWeight: 700 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div className="cp-avatar cp-avatar-purple" style={{ width: 32, height: 32, fontSize: '0.9rem' }}>
-                            <i className="fas fa-user"></i>
-                          </div>
-                          <span>{student.name}</span>
-                        </div>
-                      </td>
-                      <td><span className="cp-id-pill"><i className="fas fa-id-badge"></i> {student.id}</span></td>
-                      <td>{student.group}</td>
-                      <td>{student.date}</td>
-                      <td>
-                        <span className={`cp-badge ${
-                          student.status === 'passed' ? 'cp-badge-success' : 'cp-badge-danger'
-                        }`}>
-                          <i className={`fas ${
-                            student.status === 'passed' ? 'fa-check-circle' :
-                            student.status === 'failed' ? 'fa-times-circle' : 'fa-minus-circle'
-                          }`}></i>
-                          {student.result}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`cp-badge ${
-                          student.status === 'not_taken' ? 'cp-badge-danger' :
-                          student.score >= 80 ? 'cp-badge-success' :
-                          student.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'
-                        }`}>{student.rating}</span>
-                      </td>
-                      <td><span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>{student.attempts}/{student.maxAttempts}</span></td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ flex: 1, minWidth: 60, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${student.score}%`,
-                                height: '100%',
-                                background: student.score >= 80 ? '#10b981' : student.score >= 60 ? '#f59e0b' : '#ef4444',
-                                borderRadius: 3
-                              }}
-                            />
-                          </div>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                            {student.status === 'not_taken' ? '—' : `${student.rawScore}/${student.maxScore}`}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <PrintReportHeader subtitle={reportSource === 'center' ? (isQuiz ? 'التقرير الجماعي لتسميعات السنتر' : 'التقرير الجماعي لامتحانات السنتر') : 'التقرير الجماعي للامتحانات'} />
+        <div className="cp-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--cp-text-main)' }}>
+              <i className="fas fa-clipboard-list" style={{ color: '#5bc2e7', marginLeft: 8 }}></i>
+              تقرير النتائج التفصيلي
+            </h2>
+            <span className="cp-badge cp-badge-neutral">{displayedStudents.length}</span>
           </div>
-        )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={exportToCsv} className="cp-crumbs-back" style={{ padding: '6px 12px', background: 'transparent' }}>
+              <i className="fas fa-file-csv" style={{ marginLeft: 6 }}></i>
+              تصدير CSV
+            </button>
+            <button onClick={() => window.print()} className="cp-crumbs-back" style={{ padding: '6px 12px', background: 'transparent' }}>
+              <i className="fas fa-print" style={{ marginLeft: 6 }}></i>
+              طباعة التقرير
+            </button>
+          </div>
+        </div>
+
+        <div className="cp-table-container">
+          <table className="cp-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>اسم الطالب</th>
+                <th>رقم الطالب</th>
+                <th>المجموعة</th>
+                {reportSource === 'center' && <th>المعلم</th>}
+                {reportSource === 'center' && <th>الفرع</th>}
+                <th>{reportSource === 'center' ? 'التاريخ' : 'آخر تسليم'}</th>
+                <th>النتيجة</th>
+                <th>التقييم</th>
+                {reportSource !== 'center' && <th>المحاولات</th>}
+                <th>الدرجة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedStudents.map((student, index) => (
+                <tr key={student.id + index}>
+                  <td>{index + 1}</td>
+                  <td style={{ fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="cp-avatar cp-avatar-purple" style={{ width: 32, height: 32, fontSize: '0.9rem' }}>
+                        <i className="fas fa-user"></i>
+                      </div>
+                      <span>{student.name}</span>
+                    </div>
+                  </td>
+                  <td><span className="cp-id-pill"><i className="fas fa-id-badge"></i> {student.id}</span></td>
+                  <td>{student.group}</td>
+                  {reportSource === 'center' && <td>{student.teacher}</td>}
+                  {reportSource === 'center' && <td>{student.branch}</td>}
+                  <td>{student.date}</td>
+                  <td>
+                    <span className={`cp-badge ${
+                      student.status === 'passed' ? 'cp-badge-success' : 'cp-badge-danger'
+                    }`}>
+                      <i className={`fas ${
+                        student.status === 'passed' ? 'fa-check-circle' :
+                        student.status === 'failed' ? 'fa-times-circle' : 'fa-minus-circle'
+                      }`}></i>
+                      {student.result}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`cp-badge ${
+                      student.status === 'not_taken' ? 'cp-badge-danger' :
+                      student.score >= 80 ? 'cp-badge-success' :
+                      student.score >= 60 ? 'cp-badge-warning' : 'cp-badge-danger'
+                    }`}>{student.rating}</span>
+                  </td>
+                  {reportSource !== 'center' && <td><span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>{`${student.attempts}/${student.maxAttempts}`}</span></td>}
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="hide-on-print" style={{ flex: 1, minWidth: 60, height: 6, background: 'var(--cp-divider)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: `${student.score}%`,
+                            height: '100%',
+                            background: student.score >= 80 ? '#10b981' : student.score >= 60 ? '#f59e0b' : '#ef4444',
+                            borderRadius: 3
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                        {student.status === 'not_taken' ? '—' : `${student.rawScore}/${student.maxScore}`}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
       </div>
     </main>
   )

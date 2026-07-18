@@ -2283,12 +2283,10 @@ body.dark {
   }
 
   /* Progress meters in table rows */
-  .cp-table td div[style*="background"] {
-    background: #e2e8f0 !important;
-  }
-  .cp-table td div[style*="width"] {
-    background: #475569 !important; /* solid printable gray */
-    border: 1.5px solid #000000 !important;
+  .cp-table td div[style*="background"],
+  .cp-table td div[style*="width"],
+  .hide-on-print {
+    display: none !important;
   }
 
   /* Hide charts, analytical visual panels, dashboards, donut wrapper, insights */

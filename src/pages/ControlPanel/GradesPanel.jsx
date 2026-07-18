@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
-import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation, rebuildAndSendGradeNotifications } from '@backend/gradesApi'
+import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation, rebuildAndSendGradeNotifications, sendUpdatedGradeNotification } from '@backend/gradesApi'
 import { listGroups } from '@backend/groupsApi'
 import { useAuth } from '../../contexts/AuthContext'
 import { cached, LIST_TTL } from '../../utils/cache'
@@ -9,6 +9,7 @@ import { useTenant } from '../../contexts/TenantContext'
 import { dbToUiGrade } from '@backend/examsApi'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
+import { supabase } from '@backend/supabase'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
@@ -42,6 +43,7 @@ export default function GradesPanel({ onBack, flash }) {
   const [historyGrades, setHistoryGrades] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historySearchQuery, setHistorySearchQuery] = useState('')
+  const [editingEvaluation, setEditingEvaluation] = useState(null)
 
   // Linked session/date states
   const [homeworksList, setHomeworksList] = useState([])
@@ -244,6 +246,136 @@ export default function GradesPanel({ onBack, flash }) {
 
   // Save all scores
   const handleSaveGrades = async () => {
+    if (editingEvaluation) {
+      const toUpdate = []
+      const toInsert = []
+      const toDelete = []
+      let scoreValidationError = false
+
+      students.forEach(s => {
+        if (!isStudentInSelectedGroup(s)) return // Skip if filtered out
+
+        const inputVal = sheetData[s.id]?.score
+        const inputNotes = sheetData[s.id]?.notes || ''
+
+        // Find original record in database (from originalGrades)
+        const original = editingEvaluation.originalGrades.find(g => g.student_id === s.id)
+
+        // If the user input is empty/cleared:
+        if (inputVal === undefined || inputVal === '') {
+          // If there was an original record in the DB, we can delete it!
+          if (original) {
+            toDelete.push(original.id)
+          }
+          return
+        }
+
+        const parsedScore = parseFloat(inputVal)
+        if (isNaN(parsedScore) || parsedScore < 0 || parsedScore > maxScore) {
+          scoreValidationError = true
+          return
+        }
+
+        const notesClean = inputNotes.trim() || null
+
+        if (original) {
+          // Compare to see if score or notes changed
+          const scoreChanged = parseFloat(original.score) !== parsedScore
+          const notesChanged = (original.notes || '') !== (notesClean || '')
+
+          if (scoreChanged || notesChanged) {
+            toUpdate.push({
+              id: original.id,
+              student_id: s.id,
+              score: parsedScore,
+              notes: notesClean,
+              type: editingEvaluation.type,
+              title: editingEvaluation.title,
+              max_score: maxScore,
+              subject: evalSubject.trim() || null,
+              session_id: sessionId !== 'custom' ? sessionId : null
+            })
+          }
+        } else {
+          // Was a dummy row, now has a grade. This is a new insert!
+          toInsert.push({
+            student_id: s.id,
+            student_name: s.name,
+            parent_phone: s.parent_phone,
+            session_id: sessionId !== 'custom' ? sessionId : null,
+            type: editingEvaluation.type,
+            title: editingEvaluation.title,
+            subject: evalSubject.trim() || null,
+            score: parsedScore,
+            max_score: maxScore,
+            notes: notesClean,
+            created_by: currentUser?.id
+          })
+        }
+      })
+
+      if (scoreValidationError) {
+        flash(`يرجى التأكد من أن الدرجات أرقام صحيحة بين 0 و ${maxScore}`, 'error')
+        return
+      }
+
+      if (toUpdate.length === 0 && toInsert.length === 0 && toDelete.length === 0) {
+        flash('No changes detected.', 'info')
+        return
+      }
+
+      setSaving(true)
+      try {
+        if (toDelete.length > 0) {
+          await supabase.from('grades').delete().in('id', toDelete)
+        }
+
+        if (toUpdate.length > 0) {
+          for (const item of toUpdate) {
+            await supabase
+              .from('grades')
+              .update({
+                score: item.score,
+                notes: item.notes,
+                created_by: currentUser?.id
+              })
+              .eq('id', item.id)
+          }
+        }
+
+        if (toInsert.length > 0) {
+          await saveGradesBatch(toInsert)
+        }
+
+        if (toUpdate.length > 0) {
+          for (const item of toUpdate) {
+            try {
+              await sendUpdatedGradeNotification(item, tenantId, currentUser?.id)
+            } catch (notifErr) {
+              console.error('Failed to send updated grade notification:', notifErr)
+            }
+          }
+        }
+
+        flash(`تم تعديل الدرجات وحفظ التغييرات بنجاح.`, 'success')
+        setEditingEvaluation(null)
+        setCustomTitle('')
+
+        const cleared = {}
+        students.forEach(s => { cleared[s.id] = { score: '', notes: '' } })
+        setSheetData(cleared)
+
+        await loadUniqueEvaluationsList(grade)
+        setActiveSubTab('history')
+      } catch (err) {
+        console.error(err)
+        flash('فشل حفظ التعديلات: ' + err.message, 'error')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
     const finalTitle = getAutoTitle(evalType, sessionId, date, customTitle)
 
     const records = []
@@ -309,6 +441,42 @@ export default function GradesPanel({ onBack, flash }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Populate form with history record for editing
+  const handleEditHistoryRecord = (record) => {
+    const [type, title] = selectedEvaluation.split(':')
+    
+    // Find the original record's characteristics
+    const firstGraded = historyGrades.find(g => g.score !== null && g.score !== undefined)
+    const subj = firstGraded ? firstGraded.subject : ''
+    const maxSc = firstGraded ? firstGraded.max_score : 10
+    const sessId = firstGraded ? firstGraded.session_id : 'custom'
+    const recordDate = firstGraded?.created_at ? new Date(firstGraded.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+
+    setEvalType(type)
+    setSessionId(sessId || 'custom')
+    setDate(recordDate)
+    setEvalSubject(subj || '')
+    setMaxScore(maxSc || 10)
+
+    const nextSheetData = {}
+    students.forEach(s => {
+      const match = historyGrades.find(g => g.student_id === s.id)
+      nextSheetData[s.id] = {
+        score: match && match.score !== null ? String(match.score) : '',
+        notes: match && match.notes ? match.notes : ''
+      }
+    })
+    setSheetData(nextSheetData)
+
+    setEditingEvaluation({
+      type,
+      title,
+      originalGrades: historyGrades
+    })
+
+    setActiveSubTab('grade')
   }
 
   // Helper to check if a student belongs to the selected group
@@ -618,11 +786,44 @@ export default function GradesPanel({ onBack, flash }) {
 
       {activeSubTab === 'grade' ? (
         <>
+          {editingEvaluation && (
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              marginBottom: '20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              color: '#f59e0b',
+              animation: 'cpFadeUp 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-edit"></i>
+                <span><strong>أنت الآن في وضع تعديل الكشف: </strong> {editingEvaluation.title}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingEvaluation(null)
+                  const cleared = {}
+                  students.forEach(s => { cleared[s.id] = { score: '', notes: '' } })
+                  setSheetData(cleared)
+                  setCustomTitle('')
+                }}
+                className="cp-btn"
+                style={{ padding: '4px 10px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+              >
+                إلغاء التعديل
+              </button>
+            </div>
+          )}
+
           {/* Evaluation Configuration */}
           <div className="cp-home-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: 'var(--cp-card-shadow)' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>نوع التقييم</label>
-              <select value={evalType} onChange={(e) => setEvalType(e.target.value)} className="cp-input" style={{ width: '100%' }}>
+              <select value={evalType} onChange={(e) => setEvalType(e.target.value)} disabled={!!editingEvaluation} className="cp-input" style={{ width: '100%' }}>
                 <option value="homework">واجب منزلي</option>
                 <option value="exam">امتحان / اختبار</option>
                 <option value="quiz">تسميع</option>
@@ -633,7 +834,7 @@ export default function GradesPanel({ onBack, flash }) {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>الحصة / الدرس المرتبط</label>
-              <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
+              <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} disabled={!!editingEvaluation} className="cp-input" style={{ width: '100%' }}>
                 {homeworksList.map(h => (
                   <option key={h.id} value={h.id}>{h.title} ({h.week || 'درس'})</option>
                 ))}
@@ -648,6 +849,7 @@ export default function GradesPanel({ onBack, flash }) {
                 onChange={setDate} 
                 style={{ width: '100%' }}
                 placeholder="اختر تاريخاً"
+                disabled={!!editingEvaluation}
               />
             </div>
 
@@ -660,6 +862,7 @@ export default function GradesPanel({ onBack, flash }) {
                 placeholder="مثال: الباب الأول" 
                 className="cp-input" 
                 style={{ width: '100%' }} 
+                disabled={!!editingEvaluation}
               />
             </div>
 
@@ -920,6 +1123,7 @@ export default function GradesPanel({ onBack, flash }) {
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '160px' }}>رقم الهاتف</th>
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '150px', textAlign: 'center' }}>الدرجة المرصودة</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold' }}>ملاحظات التقييم</th>
+                      <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '100px', textAlign: 'center' }}>الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -937,6 +1141,16 @@ export default function GradesPanel({ onBack, flash }) {
                             {record.score !== null ? `${record.score} / ${record.max_score}` : '—'}
                           </td>
                           <td style={{ padding: '14px 20px', color: 'var(--cp-text-muted)' }}>{record.notes || '—'}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleEditHistoryRecord(record)}
+                              className="cp-btn cp-btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <i className="fas fa-edit" />
+                              تعديل
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
