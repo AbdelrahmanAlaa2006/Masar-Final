@@ -148,6 +148,16 @@ export function applyTenantTheme(tenant, themeConfig) {
     }
   }
 
+  // The inline vars above live on <html> — but the app's stylesheets redefine
+  // the same variables ON <body> (e.g. ControlPanel.css `body.dark {
+  // --cp-card-bg: #1e293b }`), and a variable defined on body always shadows
+  // one inherited from html. That's why DB theme tokens looked "not
+  // impactful": light mode half-worked, dark mode stayed navy everywhere.
+  // The real fix: a runtime stylesheet appended LAST in <head>, targeting
+  // body.dark / body:not(.dark) directly with !important — same element,
+  // later source order, higher importance → it wins over every bundled rule.
+  applyThemeTokenStylesheet(tokens)
+
   // Update browser window tab title
   document.title = tenant.name
 
@@ -172,6 +182,98 @@ export function applyTenantTheme(tenant, themeConfig) {
     favicon.setAttribute('href', dbLogo)
     favicon.removeAttribute('type')
   }
+}
+
+/**
+ * Generates the runtime override stylesheet from tenants.config.theme tokens.
+ *
+ * Why a stylesheet and not inline vars: the bundled CSS redefines the theme
+ * variables ON body (ControlPanel.css `body.dark { --cp-card-bg: #1e293b }`,
+ * page-level `.dark` blocks, theme-class rules with !important). A variable
+ * defined on body shadows anything set inline on <html>, so DB tokens never
+ * reached dark mode. This element is appended LAST in <head> and targets
+ * body.dark / body:not(.dark) directly with !important — same element,
+ * later source order, same importance → the tenant's tokens always win.
+ *
+ * From 4–6 tokens it derives the full family (hover/input/list/header
+ * shades, muted text, translucent header) so a tenant restyle needs no
+ * code and no exhaustive token list.
+ */
+function applyThemeTokenStylesheet(tokens) {
+  const existing = document.getElementById('tenant-theme-overrides')
+  const clean = (v) => (typeof v === 'string' ? v.trim().replace(/[;{}]/g, '') : '')
+  const bgL = clean(tokens.bg_light)
+  const cardL = clean(tokens.card_light)
+  const bgD = clean(tokens.bg_dark)
+  const cardD = clean(tokens.card_dark)
+  const txtD = clean(tokens.text_dark)
+  const borderA = clean(tokens.border_accent)
+
+  // No tokens → no overrides (tenant keeps the computed defaults).
+  if (!bgL && !cardL && !bgD && !cardD && !txtD && !borderA) {
+    if (existing) existing.remove()
+    return
+  }
+
+  const isHex = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)
+  const rgba = (hex, a) => {
+    const c = hexToRgb(hex)
+    return c ? `rgba(${c.r}, ${c.g}, ${c.b}, ${a})` : hex
+  }
+
+  let light = ''
+  if (bgL) {
+    light += `background:${bgL} !important;--bg-color:${bgL} !important;--background:${bgL} !important;--bg-secondary:${bgL} !important;--cp-bg:${bgL} !important;--cp-bg-image:none !important;`
+  }
+  if (cardL) {
+    light += `--card-bg:${cardL} !important;--cp-card-bg:${cardL} !important;--surface:${cardL} !important;--cp-select-bg:${cardL} !important;--cp-list-item-bg:${cardL} !important;--cp-input-bg:${cardL} !important;`
+    if (isHex(cardL)) {
+      light += `--cp-card-hover-bg:${darkenColor(cardL, 4)} !important;--cp-list-header-bg:${darkenColor(cardL, 3)} !important;`
+    }
+  }
+
+  let dark = ''
+  if (bgD) {
+    // background: accepts gradients too; the derived color vars need a hex.
+    dark += `background:${bgD} !important;--bg-dark:${bgD} !important;--cp-bg-image:none !important;`
+    if (isHex(bgD)) {
+      dark += `--background:${bgD} !important;--bg-secondary:${bgD} !important;--bg-color:${bgD} !important;--cp-bg:${bgD} !important;`
+        + `--dynamic-background:${bgD} !important;--dynamic-section-bg-1:${bgD} !important;`
+        + `--dynamic-section-bg-2:${darkenColor(bgD, 3)} !important;--dynamic-footer-bg:${darkenColor(bgD, 6)} !important;`
+    }
+  }
+  if (cardD) {
+    dark += `--card-bg:${cardD} !important;--cp-card-bg:${cardD} !important;--surface:${cardD} !important;`
+      + `--dynamic-card:${cardD} !important;--dynamic-surface:${cardD} !important;`
+      + `--cp-select-bg:${cardD} !important;--cp-list-item-bg:${cardD} !important;`
+    if (isHex(cardD)) {
+      dark += `--dynamic-card-bg:${rgba(cardD, 0.9)} !important;--cp-card-hover-bg:${darkenColor(cardD, 4)} !important;`
+        + `--cp-input-bg:${darkenColor(cardD, 5)} !important;--cp-list-header-bg:${darkenColor(cardD, 5)} !important;`
+        + `--mh-bg:${rgba(cardD, 0.8)} !important;--mh-bg-solid:${cardD} !important;`
+    }
+  }
+  if (txtD) {
+    dark += `--cp-text-main:${txtD} !important;--text-color:${txtD} !important;--dynamic-card-text:${txtD} !important;`
+      + `--cp-input-text:${txtD} !important;--cp-select-text:${txtD} !important;`
+    if (isHex(txtD)) {
+      dark += `--cp-text-muted:${rgba(txtD, 0.62)} !important;--dynamic-card-text-soft:${rgba(txtD, 0.8)} !important;--dynamic-card-muted:${rgba(txtD, 0.6)} !important;`
+    }
+  }
+  if (borderA) {
+    dark += `--cp-card-border:${borderA} !important;--cp-divider:${borderA} !important;`
+      + `--dynamic-border:${borderA} !important;--dynamic-card-border:${borderA} !important;--cp-input-border:${borderA} !important;`
+  }
+
+  let css = ''
+  if (light) css += `body:not(.dark){${light}}`
+  if (dark) css += `body.dark{${dark}}`
+
+  const el = existing || document.createElement('style')
+  el.id = 'tenant-theme-overrides'
+  el.textContent = css
+  // Append (or move) to the END of <head> so source order beats every
+  // bundled stylesheet, including theme-class !important rules.
+  document.head.appendChild(el)
 }
 
 /**

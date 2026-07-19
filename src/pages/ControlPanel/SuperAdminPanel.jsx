@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@backend/supabase'
 import { invalidateAll } from '../../utils/cache'
 import SeasonalThemePanel from './SeasonalThemePanel'
 import DevToolsViolationsPanel from './DevToolsViolationsPanel'
+
+// Company finance & business management — heavy module, super admin only,
+// lazy-loaded so it never weighs on the shared bundle.
+const BusinessPanel = lazy(() => import('./BusinessPanel'))
 import { GRADE_LABEL } from './shared'
 import { uploadAvatarImage } from '@backend/r2'
 import { DEFAULT_ANNOUNCEMENTS } from '../../utils/announcements'
@@ -668,6 +672,30 @@ export default function SuperAdminPanel({ onBack, flash }) {
     )
   }, [profiles, selectedTenantForManage, searchUserQuery])
 
+  if (activeSubSection === 'business') {
+    return (
+      <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-briefcase" style={{ color: '#10b981' }}></i>
+              <span>إدارة الأعمال والمالية</span>
+            </h2>
+            <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>حسابات الشركة: الإيرادات والمصروفات والعقود والاشتراكات ومؤشرات الأداء — منفصلة تماماً عن حسابات المدرسين</p>
+          </div>
+          <div>
+            <button onClick={() => setActiveSubSection(null)} className="cp-btn cp-btn-secondary">
+              رجوع للوحة السوبر أدمن
+            </button>
+          </div>
+        </div>
+        <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل لوحة الأعمال...</p></div>}>
+          <BusinessPanel flash={flash} />
+        </Suspense>
+      </div>
+    )
+  }
+
   if (activeSubSection === 'violations') {
     return (
       <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
@@ -1095,6 +1123,24 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   style={{ width: '100%', padding: '12px 14px', background: '#ef4444', color: '#fff', fontWeight: 'bold', justifyContent: 'center', borderRadius: 12, height: '44px', cursor: 'pointer' }}
                 >
                   تفريغ شامل لكافة المنصات (Global Wipe)
+                </button>
+              </div>
+
+              {/* Business Management Widget */}
+              <div className="cp-sa-sidebar-card">
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
+                  <i className="fas fa-briefcase"></i>
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--text-color)', margin: '0 0 8px' }}>إدارة الأعمال والمالية</h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.5' }}>
+                  حسابات الشركة الكاملة: الإيرادات والمصروفات والعقود والاشتراكات ومؤشرات الأداء والتقارير — منفصلة تماماً عن حسابات المدرسين.
+                </p>
+                <button
+                  onClick={() => setActiveSubSection('business')}
+                  className="cp-btn cp-btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', border: '1px solid #10b981', color: '#10b981', height: '44px', cursor: 'pointer' }}
+                >
+                  فتح لوحة الأعمال
                 </button>
               </div>
 

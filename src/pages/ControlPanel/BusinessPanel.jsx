@@ -457,6 +457,9 @@ export default function BusinessPanel({ flash }) {
               <StatCard label="صافي الربح" value={fmtMoney(dash.totals?.net)} color={Number(dash.totals?.net) >= 0 ? '#3b82f6' : '#ef4444'} icon="fa-scale-balanced" />
               <StatCard label="الرصيد النقدي" value={fmtMoney(cashTotal)} color="#f59e0b" icon="fa-sack-dollar" sub="من واقع السجل — كل الحسابات" />
               <StatCard label="مبالغ متوقعة" value={fmtMoney(dash.pending?.expected_in)} color="#8b5cf6" icon="fa-hourglass-half" sub="معاملات معلقة داخل الفترة" />
+              {Number(dash.loans?.outstanding_total || 0) !== 0 && (
+                <StatCard label="سلف مستحقة" value={fmtMoney(dash.loans?.outstanding_total)} color="#ec4899" icon="fa-hand-holding-hand" sub="خارج الأرباح والمصروفات — حتى السداد" />
+              )}
             </div>
 
             <div style={{ ...cardStyle }}>
@@ -481,6 +484,17 @@ export default function BusinessPanel({ flash }) {
                 <h3 style={{ margin: '0 0 14px', fontSize: '1rem', fontWeight: 800, color: '#f59e0b' }}>أرصدة الحسابات</h3>
                 <HBarList items={(dash.accounts || []).map(a => ({ name: a.name, total: a.balance }))} color="#f59e0b" empty="أضف حساباً من السجل المالي" />
               </div>
+              {(dash.loans?.by_person || []).length > 0 && (
+                <div style={cardStyle}>
+                  <h3 style={{ margin: '0 0 14px', fontSize: '1rem', fontWeight: 800, color: '#ec4899' }}>
+                    <i className="fas fa-hand-holding-hand" style={{ marginLeft: 8 }} />السلف المستحقة بالأشخاص
+                  </h3>
+                  <HBarList items={(dash.loans.by_person || []).map(p => ({ name: p.name, total: p.outstanding }))} color="#ec4899" />
+                  <p style={{ margin: '10px 0 0', fontSize: '0.72rem', color: 'var(--cp-text-muted)' }}>
+                    السداد يُسجَّل كمعاملة واردة بنفس تصنيف السلفة وباسم نفس الشخص.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )
@@ -512,7 +526,7 @@ export default function BusinessPanel({ flash }) {
               <label style={labelStyle}>التصنيف</label>
               <select className="cp-input" value={ledgerFilters.categoryId} onChange={(e) => { setLedgerPage(1); setLedgerFilters(f => ({ ...f, categoryId: e.target.value })) }} style={{ width: '100%' }}>
                 <option value="">الكل</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.kind === 'revenue' ? '↑ ' : '↓ '}{c.name}</option>)}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.kind === 'revenue' ? '↑ ' : c.kind === 'loan' ? '⇄ ' : '↓ '}{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -612,7 +626,12 @@ export default function BusinessPanel({ flash }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                       <div>
                         <strong style={{ fontSize: '1.02rem' }}>{c.tenant?.name || c.counterparty}</strong>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)' }}>{CONTRACT_TYPE_LABEL[c.contract_type] || c.contract_type} · منذ {fmtDate(c.start_date)}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)' }}>
+                          {CONTRACT_TYPE_LABEL[c.contract_type] || c.contract_type}
+                          {bill?.students_count > 0 && (c.terms?.monthly_per_student != null) ? ` · ${Number(bill.students_count).toLocaleString('en-US')} طالب نشط` : ''}
+                          {' · '}منذ {fmtDate(c.start_date)}
+                          {new Date(c.start_date) > new Date() ? ' (لم يبدأ بعد)' : ''}
+                        </div>
                       </div>
                       <span className={`cp-badge cp-badge-${c.status === 'active' ? 'success' : c.status === 'ended' ? 'danger' : 'warning'}`}>{CONTRACT_STATUS[c.status] || c.status}</span>
                     </div>
@@ -698,7 +717,12 @@ export default function BusinessPanel({ flash }) {
                       {billing.rows.map(r => (
                         <tr key={r.id}>
                           <td style={{ fontWeight: 700 }}>{r.tenant_name || r.counterparty}</td>
-                          <td><span className="cp-id-pill">{CONTRACT_TYPE_LABEL[r.contract_type] || r.contract_type}</span></td>
+                          <td>
+                            <span className="cp-id-pill">{CONTRACT_TYPE_LABEL[r.contract_type] || r.contract_type}</span>
+                            {r.students_count > 0 && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--cp-text-muted)', marginTop: 3 }}>{Number(r.students_count).toLocaleString('en-US')} طالب نشط</div>
+                            )}
+                          </td>
                           <td style={{ fontWeight: 700 }}>{fmtMoney(r.expected)}</td>
                           <td style={{ color: '#10b981', fontWeight: 700 }}>{fmtMoney(r.collected)}</td>
                           <td style={{ color: r.remaining > 0 ? '#ef4444' : 'var(--cp-text-muted)', fontWeight: 700 }}>{fmtMoney(r.remaining)}</td>
@@ -910,7 +934,11 @@ export default function BusinessPanel({ flash }) {
                 <label style={labelStyle}>التصنيف</label>
                 <select required className="cp-input" value={txForm.category_id || ''} onChange={(e) => setTxForm(f => ({ ...f, category_id: e.target.value }))} style={{ width: '100%' }}>
                   <option value="">اختر تصنيفاً…</option>
-                  {categories.filter(c => (txForm.direction === 'in' ? c.kind === 'revenue' : c.kind === 'expense')).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {/* Loan categories are valid in BOTH directions: out = giving
+                      the loan, in = repayment. They never touch P&L. */}
+                  {categories
+                    .filter(c => c.kind === 'loan' || (txForm.direction === 'in' ? c.kind === 'revenue' : c.kind === 'expense'))
+                    .map(c => <option key={c.id} value={c.id}>{c.kind === 'loan' ? '⇄ ' : ''}{c.name}</option>)}
                 </select>
               </div>
               <div>
@@ -920,12 +948,16 @@ export default function BusinessPanel({ flash }) {
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div>
                 <label style={labelStyle}>المعلم / المنصة (للإيرادات)</label>
                 <select className="cp-input" value={txForm.tenant_id || ''} onChange={(e) => setTxForm(f => ({ ...f, tenant_id: e.target.value }))} style={{ width: '100%' }}>
                   <option value="">—</option>
                   {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <label style={labelStyle}>الطرف (شخص / جهة) — مهم للسلف</label>
+                <input className="cp-input" value={txForm.counterparty || ''} onChange={(e) => setTxForm(f => ({ ...f, counterparty: e.target.value }))} style={{ width: '100%' }} placeholder="اسم الشخص أو الجهة" />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>البيان</label>
@@ -1003,8 +1035,8 @@ export default function BusinessPanel({ flash }) {
                     <input type="number" min="0" step="0.5" className="cp-input" value={contractForm.monthly_per_student || ''} onChange={(e) => setContractForm(f => ({ ...f, monthly_per_student: e.target.value }))} style={{ width: '100%' }} />
                   </div>
                   <div>
-                    <label style={labelStyle}>عدد الطلاب المتوقع</label>
-                    <input type="number" min="0" className="cp-input" value={contractForm.expected_students || ''} onChange={(e) => setContractForm(f => ({ ...f, expected_students: e.target.value }))} style={{ width: '100%' }} />
+                    <label style={labelStyle}>عدد الطلاب — تجاوز يدوي (فارغ = العدد الفعلي للطلاب النشطين تلقائياً)</label>
+                    <input type="number" min="0" className="cp-input" value={contractForm.expected_students || ''} onChange={(e) => setContractForm(f => ({ ...f, expected_students: e.target.value }))} style={{ width: '100%' }} placeholder="تلقائي من المنصة" />
                   </div>
                 </>
               )}
@@ -1085,7 +1117,7 @@ export default function BusinessPanel({ flash }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 <input className="cp-input" value={newCat.name} onChange={(e) => setNewCat(c => ({ ...c, name: e.target.value }))} placeholder="اسم التصنيف" style={{ flex: 1 }} />
                 <select className="cp-input" value={newCat.kind} onChange={(e) => setNewCat(c => ({ ...c, kind: e.target.value }))}>
-                  <option value="expense">مصروف</option><option value="revenue">إيراد</option>
+                  <option value="expense">مصروف</option><option value="revenue">إيراد</option><option value="loan">سلفة / مديونية</option>
                 </select>
                 <button className="cp-btn cp-btn-success" style={{ padding: '8px 16px' }} onClick={async () => {
                   if (!newCat.name.trim()) return
@@ -1095,8 +1127,8 @@ export default function BusinessPanel({ flash }) {
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
                 {categories.map(c => (
-                  <span key={c.id} className="cp-id-pill" style={{ borderColor: c.kind === 'revenue' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.35)' }}>
-                    {c.kind === 'revenue' ? '↑' : '↓'} {c.name}
+                  <span key={c.id} className="cp-id-pill" style={{ borderColor: c.kind === 'revenue' ? 'rgba(16,185,129,0.4)' : c.kind === 'loan' ? 'rgba(236,72,153,0.4)' : 'rgba(239,68,68,0.35)' }}>
+                    {c.kind === 'revenue' ? '↑' : c.kind === 'loan' ? '⇄' : '↓'} {c.name}
                   </span>
                 ))}
               </div>
