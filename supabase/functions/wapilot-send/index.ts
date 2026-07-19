@@ -20,8 +20,15 @@
 //   between sends. Statuses are written per row, so a crash loses nothing.
 // Output (batch):  { ok: true, results: [{id, status, error?}], remaining }
 //
+// Auto-resume: a pg_cron heartbeat (backend/migrations/
+// 2026_07_19_whatsapp_auto_resume_cron.sql) invokes batch mode every 10
+// minutes for tenants with pending rows, passing { batch, tenant_id } and
+// the x-cron-secret header — so a paused queue (daily cap / working hours)
+// resumes without anyone clicking "Send".
+//
 // Required secrets (auto-injected): SUPABASE_URL, SUPABASE_ANON_KEY,
 //                                   SUPABASE_SERVICE_ROLE_KEY
+// Additional secret (set via CLI):  WAPILOT_CRON_SECRET
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -190,35 +197,49 @@ serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, { status: 405 })
 
   try {
-    const { phone, message, batch, limit } = await req.json()
+    const { phone, message, batch, limit, tenant_id } = await req.json()
     if (!batch && (!phone || !message)) return json({ error: 'phone and message are required' }, { status: 400 })
 
     const url = Deno.env.get('SUPABASE_URL')!
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    // 1) Identify the caller from their JWT
-    const authHeader = req.headers.get('Authorization') || ''
-    const asCaller = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } })
-    const { data: { user }, error: userErr } = await asCaller.auth.getUser()
-    if (userErr || !user) return json({ error: 'unauthorized' }, { status: 401 })
-
-    // 2) Verify role + resolve the caller's tenant (service role)
     const admin = createClient(url, serviceKey)
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('role, tenant_id')
-      .eq('id', user.id)
-      .single()
-    if (!profile || !['admin', 'assistant', 'super_admin'].includes(profile.role)) {
-      return json({ error: 'forbidden' }, { status: 403 })
+
+    // 1) Authorize the caller.
+    //    a) Cron mode (auto-resume): the pg_cron heartbeat invokes batch mode
+    //       with an explicit tenant_id and the shared WAPILOT_CRON_SECRET
+    //       header — no user JWT exists on a scheduled call. Batch-only.
+    //    b) Normal mode: a logged-in admin/assistant; tenant derived from
+    //       their own profile, exactly as before.
+    const cronSecret = Deno.env.get('WAPILOT_CRON_SECRET') || ''
+    const isCron = Boolean(batch && tenant_id && cronSecret) &&
+      req.headers.get('x-cron-secret') === cronSecret
+
+    let tenantId: string
+    if (isCron) {
+      tenantId = String(tenant_id)
+    } else {
+      const authHeader = req.headers.get('Authorization') || ''
+      const asCaller = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } })
+      const { data: { user }, error: userErr } = await asCaller.auth.getUser()
+      if (userErr || !user) return json({ error: 'unauthorized' }, { status: 401 })
+
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role, tenant_id')
+        .eq('id', user.id)
+        .single()
+      if (!profile || !['admin', 'assistant', 'super_admin'].includes(profile.role)) {
+        return json({ error: 'forbidden' }, { status: 403 })
+      }
+      tenantId = profile.tenant_id
     }
 
     // 3) Load the tenant's gateway settings
     const { data: tenant } = await admin
       .from('tenants')
       .select('config')
-      .eq('id', profile.tenant_id)
+      .eq('id', tenantId)
       .single()
     const g = tenant?.config?.gateway
     if (!g || g.type !== 'wapilot' || !g.wapilot_instance_id || !g.wapilot_token) {
@@ -267,7 +288,7 @@ serve(async (req) => {
       const { data: firstSent } = await admin
         .from('unified_notifications')
         .select('created_at')
-        .eq('tenant_id', profile.tenant_id)
+        .eq('tenant_id', tenantId)
         .contains('channels', ['whatsapp'])
         .eq('status->>whatsapp', 'sent')
         .order('created_at', { ascending: true })
@@ -275,7 +296,7 @@ serve(async (req) => {
         .maybeSingle()
       anchorIso = firstSent?.created_at || new Date().toISOString()
       const newConfig = { ...(tenant?.config || {}), gateway: { ...g, warmup_started_at: anchorIso } }
-      await admin.from('tenants').update({ config: newConfig }).eq('id', profile.tenant_id)
+      await admin.from('tenants').update({ config: newConfig }).eq('id', tenantId)
     }
 
     const limits = resolveAutoLimits(g, anchorIso)
@@ -285,7 +306,7 @@ serve(async (req) => {
       const { count } = await admin
         .from('unified_notifications')
         .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', profile.tenant_id)
+        .eq('tenant_id', tenantId)
         .contains('channels', ['whatsapp'])
         .eq('status->>whatsapp', 'pending')
       return count || 0
@@ -296,7 +317,7 @@ serve(async (req) => {
     if (!win.open) {
       const queued = await pendingCount()
       console.log(
-        `Outside working hours. Tenant: ${profile.tenant_id} | ` +
+        `Outside working hours. Tenant: ${tenantId} | ` +
         `Remaining queue: ${queued} | Next execution: ${win.nextOpenIso} (${limits.timezone})`
       )
       return json({
@@ -316,7 +337,7 @@ serve(async (req) => {
     const { count: sentToday } = await admin
       .from('unified_notifications')
       .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', profile.tenant_id)
+      .eq('tenant_id', tenantId)
       .contains('channels', ['whatsapp'])
       .eq('status->>whatsapp', 'sent')
       .gte('status->>whatsapp_sent_at', dayStartIso)
@@ -327,7 +348,7 @@ serve(async (req) => {
       // first processing attempt in tomorrow's window.
       const queued = await pendingCount()
       console.log(
-        `Daily safety limit reached. Tenant: ${profile.tenant_id} | ` +
+        `Daily safety limit reached. Tenant: ${tenantId} | ` +
         `Sent today: ${sentToday} / ${limits.effective} | ` +
         `Remaining queue: ${queued} | Next execution: ${nextAllowedAt} (${limits.timezone})`
       )
@@ -344,7 +365,7 @@ serve(async (req) => {
     const { data: rows, error: qErr } = await admin
       .from('unified_notifications')
       .select('id, message, status, recipient_phone, profiles:student_id ( parent_phone )')
-      .eq('tenant_id', profile.tenant_id)
+      .eq('tenant_id', tenantId)
       .contains('channels', ['whatsapp'])
       .eq('status->>whatsapp', 'pending')
       .or(`status->>whatsapp_next_retry_at.is.null,status->>whatsapp_next_retry_at.lte.${nowIso}`)
@@ -415,7 +436,7 @@ serve(async (req) => {
     const { count: remaining } = await admin
       .from('unified_notifications')
       .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', profile.tenant_id)
+      .eq('tenant_id', tenantId)
       .contains('channels', ['whatsapp'])
       .eq('status->>whatsapp', 'pending')
 
@@ -425,7 +446,7 @@ serve(async (req) => {
     const limitReached = allowance <= 0
     if (limitReached) {
       console.log(
-        `Daily safety limit reached. Tenant: ${profile.tenant_id} | ` +
+        `Daily safety limit reached. Tenant: ${tenantId} | ` +
         `Sent today: ${sentTodayTotal} / ${limits.effective} | ` +
         `Remaining queue: ${remaining || 0} | Next execution: ${nextAllowedAt} (${limits.timezone})`
       )
