@@ -486,6 +486,7 @@ export default function FinancePanel({ onBack, flash }) {
           <div>رصيد بداية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}<br/><strong>${Number(ledger.opening_balance).toLocaleString('en-US')} ج.م</strong></div>
           <div>إجمالي الوارد<br/><strong style="color:#10b981">${dayTotals.dayIn.toLocaleString('en-US')} ج.م</strong></div>
           <div>إجمالي المنصرف<br/><strong style="color:#ef4444">${dayTotals.dayOut.toLocaleString('en-US')} ج.م</strong></div>
+          <div>صافي ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}<br/><strong style="color:${dayTotals.dayIn - dayTotals.dayOut >= 0 ? '#10b981' : '#ef4444'}">${(dayTotals.dayIn - dayTotals.dayOut).toLocaleString('en-US')} ج.م</strong></div>
           <div>رصيد نهاية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}<br/><strong>${dayTotals.closing.toLocaleString('en-US')} ج.م</strong></div>
           <div>عدد العمليات<br/><strong>${entriesWithRunning.length}</strong></div>
         </div>
@@ -737,6 +738,7 @@ export default function FinancePanel({ onBack, flash }) {
               [`رصيد بداية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, ledger.opening_balance, '#06b6d4', 'fa-wallet'],
               [`إجمالي وارد ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.dayIn, '#10b981', 'fa-arrow-trend-up'],
               [`إجمالي منصرف ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.dayOut, '#ef4444', 'fa-arrow-trend-down'],
+              [`صافي ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.dayIn - dayTotals.dayOut, (dayTotals.dayIn - dayTotals.dayOut) >= 0 ? '#10b981' : '#ef4444', 'fa-scale-balanced'],
               [`رصيد نهاية ${ledgerScope === 'day' ? 'اليوم' : 'الشهر'}`, dayTotals.closing, '#f59e0b', 'fa-sack-dollar'],
             ].map(([label, value, color, icon]) => (
               <div key={label} style={{
