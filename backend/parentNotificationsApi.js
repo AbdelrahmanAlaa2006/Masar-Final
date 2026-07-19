@@ -2,6 +2,25 @@ import { supabase } from './supabase'
 import { invalidate as invalidateCache } from '../src/utils/cache'
 import { updateNotificationStatus } from './unifiedNotificationsApi'
 
+// ── Anti-ban pacing (client-side fallback sender) ───────────────────────────
+// Mirrors the PACING config in supabase/functions/wapilot-send (the primary,
+// server-side sender). Human-shaped sending: a random 3–8s gap after every
+// message and a longer 20–45s breather after every 10–20 successful sends.
+// Tune here — never hardcode delays in the loops below.
+const PACING = {
+  MIN_DELAY_SECONDS: 3,
+  MAX_DELAY_SECONDS: 8,
+  MIN_BATCH_SIZE: 10,
+  MAX_BATCH_SIZE: 20,
+  MIN_BATCH_PAUSE: 20,
+  MAX_BATCH_PAUSE: 45,
+}
+const randBetween = (min, max) => min + Math.random() * (max - min)
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const randomSendDelay = () => sleep(randBetween(PACING.MIN_DELAY_SECONDS, PACING.MAX_DELAY_SECONDS) * 1000)
+const randomBatchPause = () => sleep(randBetween(PACING.MIN_BATCH_PAUSE, PACING.MAX_BATCH_PAUSE) * 1000)
+const rollBurstSize = () => Math.round(randBetween(PACING.MIN_BATCH_SIZE, PACING.MAX_BATCH_SIZE))
+
 // Get paginated parent notifications list.
 // statusFilter: 'all' | 'pending' | 'sent' | 'failed' — filtered in SQL so
 // pagination and counts stay correct per tab.
@@ -97,6 +116,8 @@ export async function retryNotification(id) {
   const updatedStatus = { ...(row?.status || {}) }
   updatedStatus.whatsapp = 'pending'
   updatedStatus.whatsapp_error = null
+  // An explicit admin retry must never wait out the automatic backoff.
+  delete updatedStatus.whatsapp_next_retry_at
 
   const { data, error } = await supabase
     .from('unified_notifications')
@@ -122,6 +143,8 @@ export async function retryAllFailed(tenantId) {
     const updatedStatus = { ...(row.status || {}) }
     updatedStatus.whatsapp = 'pending'
     updatedStatus.whatsapp_error = null
+    // An explicit admin retry must never wait out the automatic backoff.
+    delete updatedStatus.whatsapp_next_retry_at
 
     return supabase
       .from('unified_notifications')
@@ -401,8 +424,10 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
   // (~4× fewer requests), and the batch survives the admin closing the tab.
   if (gatewayConfig.type === 'wapilot') {
     let totalSent = 0
-    // Hard cap of 40 batches (1000 messages) per click as a runaway guard.
-    for (let i = 0; i < 40; i++) {
+    // Runaway guard. Batches are time-budgeted server-side (the function
+    // paces sends with randomized anti-ban delays and returns before its
+    // wall-clock limit), so one batch is ~15 messages — 80 covers ~1200.
+    for (let i = 0; i < 80; i++) {
       const { data, error } = await supabase.functions.invoke('wapilot-send', {
         body: { batch: true, limit: 25 },
       })
@@ -445,6 +470,8 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
   if (pendingWhatsapp.length === 0) return 0
 
   let processedCount = 0
+  // Successful sends until the next long "human" pause (re-rolled each time).
+  let burstLeft = rollBurstSize()
 
   for (const notif of pendingWhatsapp) {
     // Announcement rows carry the resolved phone snapshot (parent OR the
@@ -481,11 +508,17 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       processedCount++
       if (onProgress) onProgress(notif.id, 'sent', null)
 
-      // Rate limit: delay 1.5s between messages
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Anti-ban pacing: random gap after every send; longer breather after
+      // a randomized burst of successful sends.
+      if (--burstLeft <= 0) {
+        await randomBatchPause()
+        burstLeft = rollBurstSize()
+      } else {
+        await randomSendDelay()
+      }
     } catch (err) {
       console.error(`Failed to process notification ${notif.id}:`, err)
-      
+
       // 3. Mark as failed on error
       const statusMap = { ...(notif.status || {}) }
       statusMap.whatsapp = 'failed'
@@ -498,6 +531,9 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
         .eq('id', notif.id)
 
       if (onProgress) onProgress(notif.id, 'failed', err.message)
+
+      // The gateway was still hit — keep pacing, never hammer retries.
+      await randomSendDelay()
     }
   }
 

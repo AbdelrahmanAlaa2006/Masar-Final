@@ -32,6 +32,53 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
+
+// ── Anti-ban pacing configuration ───────────────────────────────────────────
+// Human-shaped sending: random gap after every send, and a longer breather
+// after a randomized number of successful sends. All tunable here — or per
+// tenant via config.gateway.pacing { min_delay_seconds, max_delay_seconds,
+// min_batch_size, max_batch_size, min_batch_pause, max_batch_pause } (the
+// same hook future per-tenant rate limits / working hours will use).
+const PACING = {
+  MIN_DELAY_SECONDS: 3,
+  MAX_DELAY_SECONDS: 8,
+  MIN_BATCH_SIZE: 10,     // successful sends before a long pause (randomized
+  MAX_BATCH_SIZE: 20,     // in this range, re-rolled after every pause)
+  MIN_BATCH_PAUSE: 20,    // seconds
+  MAX_BATCH_PAUSE: 45,
+  // Retry backoff for failed sends (seconds): base * 2^attempt ± jitter,
+  // capped. Rows wait this long before the batch query picks them up again.
+  RETRY_BASE_SECONDS: 60,
+  RETRY_CAP_SECONDS: 3600,
+  // Stop pulling new work after this much wall-clock time and hand the rest
+  // back to the caller loop — edge invocations must never die mid-batch.
+  TIME_BUDGET_MS: 110_000,
+}
+
+const randBetween = (min: number, max: number) => min + Math.random() * (max - min)
+const sleep = (ms: number) => new Promise((s) => setTimeout(s, ms))
+
+// Merge per-tenant overrides (config.gateway.pacing) over the defaults.
+function resolvePacing(gateway: Record<string, unknown> | null | undefined) {
+  const p = (gateway?.pacing || {}) as Record<string, number>
+  const num = (v: unknown, fallback: number) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : fallback)
+  return {
+    minDelayMs: num(p.min_delay_seconds, PACING.MIN_DELAY_SECONDS) * 1000,
+    maxDelayMs: num(p.max_delay_seconds, PACING.MAX_DELAY_SECONDS) * 1000,
+    minBatchSize: Math.max(1, num(p.min_batch_size, PACING.MIN_BATCH_SIZE)),
+    maxBatchSize: Math.max(1, num(p.max_batch_size, PACING.MAX_BATCH_SIZE)),
+    minBatchPauseMs: num(p.min_batch_pause, PACING.MIN_BATCH_PAUSE) * 1000,
+    maxBatchPauseMs: num(p.max_batch_pause, PACING.MAX_BATCH_PAUSE) * 1000,
+  }
+}
+
+// Randomized exponential backoff timestamp for a failed row.
+function nextRetryAt(attempts: number): string {
+  const base = PACING.RETRY_BASE_SECONDS * Math.pow(2, Math.max(0, attempts - 1))
+  const capped = Math.min(base, PACING.RETRY_CAP_SECONDS)
+  const jittered = capped * randBetween(0.8, 1.3)
+  return new Date(Date.now() + jittered * 1000).toISOString()
+}
 const json = (body: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(body), {
     ...init,
@@ -118,6 +165,13 @@ serve(async (req) => {
     }
 
     // ── Batch mode: drain up to `limit` pending rows for THIS tenant ──
+    // One sequential worker, human-shaped pacing, hard time budget. Rows whose
+    // retry backoff hasn't expired are skipped (whatsapp_next_retry_at).
+    const startedAt = Date.now()
+    const timeLeft = () => PACING.TIME_BUDGET_MS - (Date.now() - startedAt)
+    const pacing = resolvePacing(g)
+    const nowIso = new Date().toISOString()
+
     const batchLimit = Math.min(Math.max(Number(limit) || 25, 1), 25)
     const { data: rows, error: qErr } = await admin
       .from('unified_notifications')
@@ -125,33 +179,64 @@ serve(async (req) => {
       .eq('tenant_id', profile.tenant_id)
       .contains('channels', ['whatsapp'])
       .eq('status->>whatsapp', 'pending')
+      .or(`status->>whatsapp_next_retry_at.is.null,status->>whatsapp_next_retry_at.lte.${nowIso}`)
       .order('created_at', { ascending: true })
       .limit(batchLimit)
     if (qErr) return json({ error: qErr.message }, { status: 500 })
 
     const results: Array<{ id: string; status: string; error?: string }> = []
+    // Successful sends until the next long "human" pause (re-rolled each time).
+    let burstLeft = Math.round(randBetween(pacing.minBatchSize, pacing.maxBatchSize))
+
     for (const row of rows || []) {
+      // Out of time budget → hand the rest back to the caller loop.
+      if (timeLeft() < pacing.maxDelayMs + 15_000) break
+
       const statusMap = { ...(row.status || {}) } as Record<string, unknown>
       // recipient_phone is the phone snapshot resolved when the row was queued
       // (manual announcements can target the student's own number); legacy
       // rows fall back to the parent phone as before.
       const typed = row as { recipient_phone?: string; profiles?: { parent_phone?: string } }
       const targetPhone = typed.recipient_phone || typed.profiles?.parent_phone
+      let hitProvider = false
       try {
         if (!targetPhone) throw new Error('رقم الهاتف غير متوفر')
+        hitProvider = true
         await sendOne(normalizePhoneIntl(targetPhone, g.country_code || '20'), row.message)
         statusMap.whatsapp = 'sent'
         statusMap.whatsapp_sent_at = new Date().toISOString()
         delete statusMap.whatsapp_error
+        delete statusMap.whatsapp_next_retry_at
         results.push({ id: row.id, status: 'sent' })
       } catch (sendErr) {
         statusMap.whatsapp = 'failed'
         statusMap.whatsapp_error = (sendErr as Error).message.slice(0, 200)
+        const attempts = (Number(statusMap.whatsapp_attempts) || 0) + 1
+        statusMap.whatsapp_attempts = attempts
+        // Backoff only matters if the row gets retried (manually or later):
+        // it stops rapid re-hammering of a failing number/gateway.
+        if (hitProvider) statusMap.whatsapp_next_retry_at = nextRetryAt(attempts)
         results.push({ id: row.id, status: 'failed', error: statusMap.whatsapp_error as string })
       }
       await admin.from('unified_notifications').update({ status: statusMap }).eq('id', row.id)
-      // Anti-ban pacing between consecutive sends
-      await new Promise((s) => setTimeout(s, 600))
+
+      // Anti-ban pacing: random gap after anything that reached WAPilot.
+      if (hitProvider) {
+        if (statusMap.whatsapp === 'sent' && --burstLeft <= 0) {
+          // Natural longer breather after a burst of successful sends —
+          // only if the budget allows; otherwise ending the invocation
+          // provides the pause naturally.
+          const pauseMs = randBetween(pacing.minBatchPauseMs, pacing.maxBatchPauseMs)
+          if (timeLeft() > pauseMs + 20_000) {
+            await sleep(pauseMs)
+            burstLeft = Math.round(randBetween(pacing.minBatchSize, pacing.maxBatchSize))
+          } else {
+            break
+          }
+        } else {
+          await sleep(randBetween(pacing.minDelayMs, pacing.maxDelayMs))
+        }
+      }
     }
 
     // How many pending remain (so the client knows whether to loop)
