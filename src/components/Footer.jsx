@@ -55,7 +55,9 @@ export default function Footer() {
 
   const brandName = tenant?.name || 'GitFekra'
   const brandTag = tenant?.config?.branding?.tagline || 'طريقك إلى التفوق الدراسي'
-  const brandDesc = tenant?.config?.branding?.description || 'منصة تعليمية متكاملة تقدم محاضرات وامتحانات وفيديوهات تفاعلية للمرحلة الإعدادية، مع متابعة دقيقة لأداء كل طالب.'
+  // Stage-neutral fallback — tenants set their real stages via
+  // config.branding.description in the DB (e.g. the power tenant).
+  const brandDesc = tenant?.config?.branding?.description || 'منصة تعليمية متكاملة تقدم محاضرات وامتحانات وفيديوهات تفاعلية، مع متابعة دقيقة لأداء كل طالب.'
 
   // Tenant (teacher/platform) channels — students see these. No '#' dead links
   // and no developer fallback: icons/rows render only when actually configured.

@@ -3,8 +3,11 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="apple-touch-icon" href="/images/logo.white.png" />
+  <!-- Static icons carry the production brand (Power) — Google reads these
+       from the raw HTML. At runtime, theme.js swaps the favicon to each
+       tenant's own logo, so other tenants are unaffected in the browser. -->
+  <link rel="icon" type="image/png" sizes="512x512" href="/images/power-favicon.png" />
+  <link rel="apple-touch-icon" href="/images/power-favicon.png" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#d4af37" />
