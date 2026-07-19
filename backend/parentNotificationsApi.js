@@ -21,6 +21,97 @@ const randomSendDelay = () => sleep(randBetween(PACING.MIN_DELAY_SECONDS, PACING
 const randomBatchPause = () => sleep(randBetween(PACING.MIN_BATCH_PAUSE, PACING.MAX_BATCH_PAUSE) * 1000)
 const rollBurstSize = () => Math.round(randBetween(PACING.MIN_BATCH_SIZE, PACING.MAX_BATCH_SIZE))
 
+// ── Automatic safety engine (mirrors wapilot-send edge function) ────────────
+// Zero teacher configuration: warm-up progresses by days since the number's
+// first successful send, daily caps are backend constants with a safety
+// margin, and sending is confined to tenant-local working hours. Values are
+// conservative on purpose — account health over throughput.
+const DAILY_LIMITS = {
+  WARMUP_PHASES: [
+    { maxDay: 7, limit: 60 },   // Phase 1
+    { maxDay: 14, limit: 100 }, // Phase 2
+    { maxDay: 21, limit: 150 }, // Phase 3
+  ],
+  NORMAL_DAILY_LIMIT: 250,      // Normal Mode (day 22+) — never unlimited
+  SAFETY_MARGIN: [0.88, 0.92],  // stop at ~88–92% of the cap, never 100%
+  WORK_START_HOUR: 9,
+  WORK_END_HOUR: 22,
+  DEFAULT_TIMEZONE: 'Africa/Cairo',
+}
+
+function resolveAutoLimits(gateway, anchorIso) {
+  const g = gateway || {}
+  const tz = String(g.timezone || DAILY_LIMITS.DEFAULT_TIMEZONE)
+  let base = DAILY_LIMITS.NORMAL_DAILY_LIMIT
+  const anchorMs = anchorIso ? Date.parse(anchorIso) : NaN
+  if (Number.isFinite(anchorMs)) {
+    const day = Math.floor((Date.now() - anchorMs) / 86400000) + 1
+    for (const phase of DAILY_LIMITS.WARMUP_PHASES) {
+      if (day <= phase.maxDay) { base = Math.min(phase.limit, base); break }
+    }
+  }
+  const effective = Math.max(1, Math.floor(base * randBetween(DAILY_LIMITS.SAFETY_MARGIN[0], DAILY_LIMITS.SAFETY_MARGIN[1])))
+  return { base, effective, timezone: tz }
+}
+
+// Warm-up anchor for tenants the edge function hasn't stamped yet: the
+// oldest successful WhatsApp send (RLS-scoped, one query per run).
+async function resolveWarmupAnchor(gateway) {
+  if (typeof gateway?.warmup_started_at === 'string' && gateway.warmup_started_at) {
+    return gateway.warmup_started_at
+  }
+  const { data } = await supabase
+    .from('unified_notifications')
+    .select('created_at')
+    .contains('channels', ['whatsapp'])
+    .eq('status->>whatsapp', 'sent')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  return data?.created_at || new Date().toISOString()
+}
+
+// Tenant-local sending window; outside it rows simply stay pending.
+function isWithinWorkingHours(tz) {
+  try {
+    const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, hour: '2-digit' }).format(new Date()))
+    return hour >= DAILY_LIMITS.WORK_START_HOUR && hour < DAILY_LIMITS.WORK_END_HOUR
+  } catch {
+    return true
+  }
+}
+
+// Start of "today" in the tenant's timezone as a UTC ISO string — compared
+// as text against the ISO whatsapp_sent_at stamps.
+function startOfTodayUtcIso(tz) {
+  const now = new Date()
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    })
+    const p = Object.fromEntries(dtf.formatToParts(now).map((x) => [x.type, x.value]))
+    const offset = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - now.getTime()
+    const local = new Date(now.getTime() + offset)
+    return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offset).toISOString()
+  } catch {
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString()
+  }
+}
+
+// One head-count per processing run (never per message): today's successful
+// WhatsApp sends for the caller's tenant (RLS scopes the query).
+async function countSentToday(timezone) {
+  const { count } = await supabase
+    .from('unified_notifications')
+    .select('id', { count: 'exact', head: true })
+    .contains('channels', ['whatsapp'])
+    .eq('status->>whatsapp', 'sent')
+    .gte('status->>whatsapp_sent_at', startOfTodayUtcIso(timezone))
+  return count || 0
+}
+
 // Get paginated parent notifications list.
 // statusFilter: 'all' | 'pending' | 'sent' | 'failed' — filtered in SQL so
 // pagination and counts stay correct per tab.
@@ -438,9 +529,37 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
         if (r.status === 'sent') totalSent++
         onProgress?.(r.id, r.status, r.error || null)
       })
+      // Daily safety limit hit server-side: stop cleanly. The rest of the
+      // queue stays pending and resumes on the first run after tenant
+      // midnight — never retried on a timer.
+      if (data?.limit_reached) {
+        console.info(
+          `[WhatsApp] Sending paused (${data.reason || 'daily_limit'}). ` +
+          `Sent today: ${data.sent_today ?? '—'}/${data.daily_limit ?? '—'} | ` +
+          `Remaining queue: ${data.remaining || 0}.` +
+          (data.next_allowed_at ? ` Resumes after ${data.next_allowed_at}.` : '') +
+          (data.estimated_completion_at ? ` Estimated completion: ${data.estimated_completion_at}` : '')
+        )
+        break
+      }
       if (!data?.remaining || results.length === 0) break
     }
     return totalSent
+  }
+
+  // Automatic safety engine — working hours first (no query), then the daily
+  // cap: one count per run, cached as an allowance for the whole loop.
+  const anchorIso = await resolveWarmupAnchor(gatewayConfig)
+  const limits = resolveAutoLimits(gatewayConfig, anchorIso)
+  if (!isWithinWorkingHours(limits.timezone)) {
+    console.info(`[WhatsApp] Outside working hours (${DAILY_LIMITS.WORK_START_HOUR}:00–${DAILY_LIMITS.WORK_END_HOUR}:00 ${limits.timezone}). Queue left intact.`)
+    return 0
+  }
+  const sentToday = await countSentToday(limits.timezone)
+  let allowance = Math.max(0, limits.effective - sentToday)
+  if (allowance === 0) {
+    console.info(`[WhatsApp] Daily safety limit reached (${sentToday}/${limits.effective}). Queue left intact; resumes tomorrow (${limits.timezone}).`)
+    return 0
   }
 
   // Fetch pending unified notifications for whatsapp
@@ -507,6 +626,13 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
 
       processedCount++
       if (onProgress) onProgress(notif.id, 'sent', null)
+
+      // Daily allowance exhausted → stop; the rest stay pending until the
+      // tenant's next day.
+      if (--allowance <= 0) {
+        console.info(`[WhatsApp] Daily safety limit reached (${limits.effective}/${limits.effective}). Queue left intact; resumes tomorrow (${limits.timezone}).`)
+        break
+      }
 
       // Anti-ban pacing: random gap after every send; longer breather after
       // a randomized burst of successful sends.

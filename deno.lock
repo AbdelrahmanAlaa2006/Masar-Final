@@ -1,0 +1,34 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.110.7"
+  },
+  "remote": {
+    "https://deno.land/std@0.208.0/async/delay.ts": "a6142eb44cdd856b645086af2b811b1fcce08ec06bb7d50969e6a872ee9b8659",
+    "https://deno.land/std@0.208.0/http/server.ts": "f3cde6672e631d3e00785743cfa96bfed275618c0352c5ae84abbe5a2e0e4afc",
+    "https://esm.sh/@supabase/supabase-js@2.110.7": "271bd1acce2a284be1c9539bc960a705314a71a322a88705f0ffce88f9e7b97c"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@capacitor/android@^8.3.1",
+        "npm:@capacitor/cli@^8.3.1",
+        "npm:@capacitor/core@^8.3.1",
+        "npm:@capacitor/keyboard@^8.0.3",
+        "npm:@capacitor/splash-screen@^8.0.1",
+        "npm:@capacitor/status-bar@^8.0.2",
+        "npm:@supabase/supabase-js@^2.100.0",
+        "npm:@types/react-dom@^18.2.0",
+        "npm:@types/react@^18.2.0",
+        "npm:@vitejs/plugin-react@4",
+        "npm:dotenv@^17.4.2",
+        "npm:html5-qrcode@^2.3.8",
+        "npm:react-dom@^18.2.0",
+        "npm:react-router-dom@^6.20.0",
+        "npm:react@^18.2.0",
+        "npm:tus-js-client@^4.3.1",
+        "npm:vite@^4.5.0"
+      ]
+    }
+  }
+}
