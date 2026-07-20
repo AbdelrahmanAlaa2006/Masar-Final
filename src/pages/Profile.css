@@ -13,7 +13,7 @@
   --profile-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
   --profile-hero-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03);
   --profile-hero-bg: #e2e8f0;
-  --profile-hero-bg-gradient: radial-gradient(circle at 15% 25%, rgba(124, 92, 246, 0.1) 0%, transparent 55%), radial-gradient(circle at 85% 75%, rgba(91, 194, 231, 0.1) 0%, transparent 60%), linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%);
+  --profile-hero-bg-gradient: radial-gradient(circle at 15% 25%, rgba(168, 110, 40, 0.1) 0%, transparent 55%), radial-gradient(circle at 85% 75%, rgba(201, 162, 74, 0.1) 0%, transparent 60%), linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%);
   --profile-hero-bg-border: rgba(0, 0, 0, 0.05);
   --profile-hero-streak: rgba(255, 255, 255, 0.2);
   --profile-avatar-bg: #f1f5f9;
@@ -21,15 +21,15 @@
   --profile-avatar-border: #ffffff;
   --profile-avatar-shadow: 0 0 24px rgba(99, 102, 241, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
   --profile-avatar-pulse-1: 0 0 0 4px #ffffff, 0 0 16px rgba(99, 102, 241, 0.08), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
-  --profile-avatar-pulse-2: 0 0 0 4px #ffffff, 0 0 24px rgba(91, 194, 231, 0.18), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
+  --profile-avatar-pulse-2: 0 0 0 4px #ffffff, 0 0 24px rgba(201, 162, 74, 0.18), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
   --profile-fab-bg: rgba(255, 255, 255, 0.9);
   --profile-fab-border: rgba(0, 0, 0, 0.08);
   --profile-fab-color: #475569;
   --profile-fab-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   --profile-fab-hover-bg: #ffffff;
-  --profile-fab-hover-border: rgba(91, 194, 231, 0.4);
-  --profile-fab-hover-color: #7cc4e8;
-  --profile-fab-hover-shadow: 0 10px 24px rgba(91, 194, 231, 0.15);
+  --profile-fab-hover-border: rgba(201, 162, 74, 0.4);
+  --profile-fab-hover-color: var(--secondary, #7cc4e8);
+  --profile-fab-hover-shadow: 0 10px 24px rgba(201, 162, 74, 0.15);
   --profile-fab-remove-hover-shadow: 0 10px 24px rgba(239, 68, 68, 0.15);
   --profile-chip-admin-bg: rgba(217, 119, 6, 0.06);
   --profile-chip-admin-border: rgba(217, 119, 6, 0.15);
@@ -67,8 +67,8 @@
 
 body.dark .profile-page {
   /* Dark Mode Tokens */
-  --profile-bg: #0f1626;
-  --profile-bg-gradient: linear-gradient(180deg, #0f1626 0%, #161f33 100%);
+  --profile-bg: var(--dynamic-background, #0f1626);
+  --profile-bg-gradient: linear-gradient(180deg, var(--dynamic-background, #0f1626) 0%, var(--dynamic-surface, #161f33) 100%);
   --profile-text: #f1f5f9;
   --profile-dot-grid: rgba(255, 255, 255, 0.025);
   --profile-card-bg: rgba(21, 30, 46, 0.5);
@@ -76,23 +76,23 @@ body.dark .profile-page {
   --profile-card-shadow: 0 12px 36px -12px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --profile-hero-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --profile-hero-bg: #0a0f1d;
-  --profile-hero-bg-gradient: radial-gradient(circle at 15% 25%, rgba(124, 92, 246, 0.15) 0%, transparent 55%), radial-gradient(circle at 85% 75%, rgba(91, 194, 231, 0.15) 0%, transparent 60%), linear-gradient(180deg, #090e1a 0%, #151e2e 100%);
+  --profile-hero-bg-gradient: radial-gradient(circle at 15% 25%, rgba(168, 110, 40, 0.15) 0%, transparent 55%), radial-gradient(circle at 85% 75%, rgba(201, 162, 74, 0.15) 0%, transparent 60%), linear-gradient(180deg, var(--dynamic-background, #090e1a) 0%, var(--dynamic-surface, #151e2e) 100%);
   --profile-hero-bg-border: rgba(255, 255, 255, 0.05);
   --profile-hero-streak: rgba(255, 255, 255, 0.025);
   --profile-avatar-bg: #1a2333;
   --profile-avatar-text: #ffffff;
-  --profile-avatar-border: #151e2e;
+  --profile-avatar-border: var(--dynamic-surface, #151e2e);
   --profile-avatar-shadow: 0 0 24px rgba(99, 102, 241, 0.15), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
-  --profile-avatar-pulse-1: 0 0 0 4px #151e2e, 0 0 16px rgba(99, 102, 241, 0.12), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
-  --profile-avatar-pulse-2: 0 0 0 4px #151e2e, 0 0 28px rgba(91, 194, 231, 0.25), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  --profile-avatar-pulse-1: 0 0 0 4px var(--dynamic-surface, #151e2e), 0 0 16px rgba(99, 102, 241, 0.12), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  --profile-avatar-pulse-2: 0 0 0 4px var(--dynamic-surface, #151e2e), 0 0 28px rgba(201, 162, 74, 0.25), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
   --profile-fab-bg: rgba(15, 23, 42, 0.7);
   --profile-fab-border: rgba(255, 255, 255, 0.08);
   --profile-fab-color: #94a3b8;
   --profile-fab-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --profile-fab-hover-bg: rgba(255, 255, 255, 0.12);
-  --profile-fab-hover-border: rgba(91, 194, 231, 0.35);
-  --profile-fab-hover-color: #7cc4e8;
-  --profile-fab-hover-shadow: 0 10px 24px rgba(91, 194, 231, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --profile-fab-hover-border: rgba(201, 162, 74, 0.35);
+  --profile-fab-hover-color: var(--secondary, #7cc4e8);
+  --profile-fab-hover-shadow: 0 10px 24px rgba(201, 162, 74, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --profile-fab-remove-hover-shadow: 0 10px 24px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --profile-chip-admin-bg: rgba(245, 199, 106, 0.08);
   --profile-chip-admin-border: rgba(245, 199, 106, 0.2);
@@ -106,8 +106,8 @@ body.dark .profile-page {
   --profile-meta-sep: rgba(255, 255, 255, 0.1);
   --profile-meta-text: #64748b;
   --profile-meta-icon: #94a3b8;
-  --profile-toast-success-bg: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.12)), #151e2e;
-  --profile-toast-error-bg: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.12)), #151e2e;
+  --profile-toast-success-bg: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.12)), var(--dynamic-surface, #151e2e);
+  --profile-toast-error-bg: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.12)), var(--dynamic-surface, #151e2e);
   --profile-toast-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   --profile-row-border: rgba(255, 255, 255, 0.04);
   --profile-row-hover: rgba(255, 255, 255, 0.025);
@@ -115,17 +115,17 @@ body.dark .profile-page {
   --profile-row-label-icon: #64748b;
   --profile-row-value: #f1f5f9;
   --profile-row-value-hover: #ffffff;
-  --profile-badge-val-bg: rgba(91, 194, 231, 0.1);
-  --profile-badge-val-border: rgba(91, 194, 231, 0.15);
-  --profile-badge-val-color: #7cc4e8;
+  --profile-badge-val-bg: rgba(201, 162, 74, 0.1);
+  --profile-badge-val-border: rgba(201, 162, 74, 0.15);
+  --profile-badge-val-color: var(--secondary, #7cc4e8);
   --profile-coming-bg: rgba(99, 102, 241, 0.12);
   --profile-coming-border: rgba(99, 102, 241, 0.18);
   --profile-coming-color: var(--primary-hover, #a78bfa);
   --profile-copy-btn-color: #64748b;
   --profile-copy-btn-hover-bg: rgba(255, 255, 255, 0.05);
   --profile-blob-opacity: 0.12;
-  --profile-accent-icon: #7cc4e8;
-  --profile-accent-gradient: linear-gradient(180deg, #7cc4e8 0%, var(--primary, #6366f1) 100%);
+  --profile-accent-icon: var(--secondary, #7cc4e8);
+  --profile-accent-gradient: linear-gradient(180deg, var(--secondary, #7cc4e8) 0%, var(--primary, #6366f1) 100%);
 }
 
 .profile-page {
@@ -178,7 +178,7 @@ body.dark .profile-page {
 .profile-bg-blob--2 {
   width: 500px;
   height: 500px;
-  background: #7cc4e8;
+  background: var(--secondary, #7cc4e8);
   bottom: -5%;
   left: -5%;
   animation-delay: -5s;
@@ -348,7 +348,7 @@ body.dark .profile-page {
   inset: -2px;
   border-radius: 50%;
   padding: 2px;
-  background: conic-gradient(from 0deg, #7cc4e8, var(--primary, #6366f1), var(--primary-hover, #a78bfa), #7cc4e8) border-box;
+  background: conic-gradient(from 0deg, var(--secondary, #7cc4e8), var(--primary, #6366f1), var(--primary-hover, #a78bfa), var(--secondary, #7cc4e8)) border-box;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -385,7 +385,7 @@ body.dark .profile-page {
   width: 34px;
   height: 34px;
   border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #7cc4e8;
+  border-top-color: var(--secondary, #7cc4e8);
   border-radius: 50%;
   animation: profileSpin 0.7s linear infinite;
 }
@@ -437,8 +437,8 @@ body.dark .profile-page {
 .profile-avatar-fab:focus-visible {
   outline: none;
   box-shadow: 
-    0 0 0 2px #151e2e,
-    0 0 0 4px #7cc4e8;
+    0 0 0 2px var(--dynamic-surface, #151e2e),
+    0 0 0 4px var(--secondary, #7cc4e8);
 }
 
 .profile-avatar-fab--remove:hover {
@@ -747,7 +747,7 @@ body.dark .profile-page {
 .profile-copy-btn:focus-visible {
   opacity: 1;
   transform: scale(1);
-  box-shadow: 0 0 0 2px #7cc4e8;
+  box-shadow: 0 0 0 2px var(--secondary, #7cc4e8);
 }
 
 /* ── Responsive breakpoints ─────────────────────────────────── */
@@ -858,7 +858,7 @@ body.dark .profile-chip--assistant {
 }
 
 body.dark .parent-phone-edit-wrapper input:focus {
-  box-shadow: 0 0 0 2px rgba(91, 194, 231, 0.25) !important;
+  box-shadow: 0 0 0 2px rgba(201, 162, 74, 0.25) !important;
 }
 
 /* ── Digital Card Button ──────────────────────────────────── */

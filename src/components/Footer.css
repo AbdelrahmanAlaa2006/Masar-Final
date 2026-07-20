@@ -178,7 +178,7 @@
   background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
   font-size: 1.6rem;
   color: #fff;
-  box-shadow: 0 10px 25px rgba(79, 172, 254, 0.35);
+  box-shadow: 0 10px 25px color-mix(in srgb, var(--primary) 28%, transparent);
   position: relative;
   overflow: hidden;
 }
@@ -186,6 +186,17 @@
   content: '';
   position: absolute; inset: 0;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%);
+}
+/* A tenant with real artwork shows it bare — no colored chip/gloss behind. */
+.sf-brand-logo--bare {
+  background: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  overflow: visible;
+}
+.sf-brand-logo--bare::after { display: none; }
+.sf-brand-logo--bare .sf-brand-logo-img {
+  width: 100%; height: 100%; object-fit: contain;
 }
 
 /* Tenant logo artwork shows bare — no chip/gloss behind a finished mark. */
@@ -239,7 +250,7 @@
   color: #fff;
   background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
   border-color: transparent;
-  box-shadow: 0 8px 18px rgba(79, 172, 254, 0.35);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 /* Links */
@@ -268,7 +279,7 @@
 }
 .sf-links a:hover {
   color: #fff;
-  background: rgba(79, 172, 254, 0.08);
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
   padding-inline-start: 0.9rem;
 }
 .sf-links a:hover i {
@@ -397,8 +408,8 @@ body:not(.dark) .sf-stage-group-title {
   width: 36px; height: 36px;
   border-radius: 10px;
   display: grid; place-items: center;
-  background: rgba(79, 172, 254, 0.12);
-  border: 1px solid rgba(79, 172, 254, 0.25);
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   color: var(--primary, #4facfe);
   flex-shrink: 0;
 }
@@ -482,9 +493,9 @@ body:not(.dark) .sf-stage-group-title {
   gap: 14px;
   padding: 8px 8px 8px 18px;
   background: linear-gradient(135deg,
-    rgba(79, 172, 254, 0.10),
-    rgba(0, 242, 254, 0.05));
-  border: 1px solid rgba(79, 172, 254, 0.22);
+    color-mix(in srgb, var(--primary) 12%, transparent),
+    color-mix(in srgb, var(--secondary) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 999px;
   box-shadow: 0 6px 22px rgba(2, 6, 23, 0.25);
   backdrop-filter: blur(10px);
@@ -519,7 +530,7 @@ body:not(.dark) .sf-stage-group-title {
   align-items: center;
   padding: 7px 16px;
   background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(79, 172, 254, 0.25);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 999px;
   text-decoration: none;
   transition:
@@ -545,13 +556,13 @@ body:not(.dark) .sf-stage-group-title {
 }
 .sf-dev-pill:hover {
   transform: translateY(-2px);
-  border-color: rgba(79, 172, 254, 0.55);
-  box-shadow: 0 10px 24px rgba(79, 172, 254, 0.22);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 28%, transparent);
   background: rgba(15, 23, 42, 0.65);
 }
 .sf-dev-pill:hover::before { transform: translateX(120%); }
 .sf-dev-name {
-  background: linear-gradient(135deg, var(--primary, #4facfe), #00f2fe);
+  background: linear-gradient(135deg, var(--primary, #4facfe), var(--secondary, #00f2fe));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -565,7 +576,7 @@ body:not(.dark) .sf-stage-group-title {
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 800;
   font-size: 1.05rem;
-  color: rgba(79, 172, 254, 0.7);
+  color: color-mix(in srgb, var(--primary) 28%, transparent);
   margin: 0 2px;
   user-select: none;
 }
@@ -576,21 +587,21 @@ body:not(.dark) .sf-devs {
 }
 body:not(.dark) .sf-devs-card {
   background: linear-gradient(135deg,
-    rgba(79, 172, 254, 0.10),
-    rgba(0, 242, 254, 0.06));
-  border-color: rgba(79, 172, 254, 0.30);
+    color-mix(in srgb, var(--primary) 12%, transparent),
+    color-mix(in srgb, var(--secondary) 8%, transparent));
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
   box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
 }
 body:not(.dark) .sf-devs-tag { color: #475569; }
 body:not(.dark) .sf-dev-pill {
   background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(79, 172, 254, 0.30);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
 }
 body:not(.dark) .sf-dev-pill:hover {
   background: #fff;
-  border-color: rgba(79, 172, 254, 0.55);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
 }
-body:not(.dark) .sf-devs-amp { color: rgba(79, 172, 254, 0.85); }
+body:not(.dark) .sf-devs-amp { color: color-mix(in srgb, var(--primary) 28%, transparent); }
 
 @media (max-width: 520px) {
   .sf-devs-card {
@@ -651,7 +662,7 @@ body:not(.dark) .sf-social-btn {
 body:not(.dark) .sf-links a { color: #475569; }
 body:not(.dark) .sf-links a:hover {
   color: #0f172a;
-  background: rgba(79, 172, 254, 0.1);
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
 }
 body:not(.dark) .sf-badge {
   color: #475569;

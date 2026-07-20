@@ -133,7 +133,7 @@ export default function Footer() {
           {/* Brand column */}
           <div className="sf-col sf-brand-col">
             <div className="sf-brand">
-              <div className="sf-brand-logo">
+              <div className={`sf-brand-logo ${hasCustomLogo ? 'sf-brand-logo--bare' : ''}`}>
                 {hasCustomLogo ? (
                   <img src={brandLogo} alt="Logo" className="sf-brand-logo-img" />
                 ) : (
