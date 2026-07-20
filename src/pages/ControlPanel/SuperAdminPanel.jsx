@@ -96,13 +96,16 @@ const BRANCH_DEFS = [
   { key: 'hours_time', label: 'ساعات العمل (مثال: ٩ صباحًا – ٩ مساءً)' },
 ]
 
-/* Theme tokens (config.theme) applied as CSS variables in utils/theme.js. */
+/* Theme tokens (config.theme) applied as CSS variables in utils/theme.js.
+   These restyle the whole app (pages, cards, login) per tenant — no code. */
 const THEME_TOKEN_DEFS = [
-  { key: 'bg_light', label: 'خلفية الوضع الفاتح', type: 'color', fallback: '#f5f3ee' },
-  { key: 'card_light', label: 'لون الكروت (فاتح)', type: 'color', fallback: '#fdfbf6' },
-  { key: 'bg_dark', label: 'خلفية الوضع الداكن (لون أو gradient)', type: 'text', fallback: '' },
-  { key: 'card_dark', label: 'لون الكروت (داكن)', type: 'color', fallback: '#0d1527' },
-  { key: 'text_dark', label: 'لون النص (داكن)', type: 'color', fallback: '#f8fafc' },
+  { key: 'bg_light', label: 'خلفية الصفحات (الوضع الفاتح)', type: 'color', fallback: '#f5f3ee', hint: 'لون خلفية كل صفحات التطبيق في الوضع الفاتح' },
+  { key: 'card_light', label: 'لون الكروت (فاتح)', type: 'color', fallback: '#fdfbf6', hint: 'خلفية البطاقات والقوائم والحقول' },
+  { key: 'text_light', label: 'لون النص (فاتح)', type: 'color', fallback: '#0f172a', hint: 'لون الكتابة الأساسية على الخلفية الفاتحة' },
+  { key: 'bg_dark', label: 'خلفية الصفحات (الوضع الداكن)', type: 'text', fallback: '', hint: 'لون أو تدرّج (gradient) لخلفية الوضع الداكن' },
+  { key: 'card_dark', label: 'لون الكروت (داكن)', type: 'color', fallback: '#0d1527', hint: 'خلفية البطاقات في الوضع الداكن — يستبدل الأزرق الكحلي الافتراضي' },
+  { key: 'text_dark', label: 'لون النص (داكن)', type: 'color', fallback: '#f8fafc', hint: 'لون الكتابة الأساسية على الخلفية الداكنة' },
+  { key: 'border_accent', label: 'لون الحدود/الفواصل', type: 'text', fallback: '', hint: 'لون حدود البطاقات والفواصل — مثال rgba(168,110,40,0.28)' },
 ]
 
 export default function SuperAdminPanel({ onBack, flash }) {
@@ -154,7 +157,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editTeacherExtra, setEditTeacherExtra] = useState({})
   const [editLocation, setEditLocation] = useState({})
   const [editLocBranches, setEditLocBranches] = useState([])
-  const [editTheme, setEditTheme] = useState({ bg_light: '', card_light: '', bg_dark: '', card_dark: '', text_dark: '' })
+  const [editTheme, setEditTheme] = useState({ bg_light: '', card_light: '', text_light: '', bg_dark: '', card_dark: '', text_dark: '', border_accent: '' })
   const [editLoginSections, setEditLoginSections] = useState({})
   const [editStages, setEditStages] = useState([])
   const [editAnnouncements, setEditAnnouncements] = useState([])
@@ -506,9 +509,11 @@ export default function SuperAdminPanel({ onBack, flash }) {
     setEditTheme({
       bg_light: cfg.theme?.bg_light || cfg.bg_color || '',
       card_light: cfg.theme?.card_light || '',
+      text_light: cfg.theme?.text_light || '',
       bg_dark: cfg.theme?.bg_dark || '',
       card_dark: cfg.theme?.card_dark || '',
-      text_dark: cfg.theme?.text_dark || ''
+      text_dark: cfg.theme?.text_dark || '',
+      border_accent: cfg.theme?.border_accent || ''
     })
     const sections = {}
     LOGIN_SECTION_DEFS.forEach(s => { sections[s.key] = cfg.login_sections?.[s.key] !== false })
@@ -1731,6 +1736,15 @@ export default function SuperAdminPanel({ onBack, flash }) {
                 <i className="fas fa-palette" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
                 الشعار والمظهر المتقدم (خلفيات وكروت)
               </h5>
+              <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px', fontSize: '0.78rem', lineHeight: 1.7, color: 'var(--cp-text-muted)' }}>
+                <strong style={{ color: 'var(--cp-text-main)' }}><i className="fas fa-circle-info" style={{ marginInlineEnd: 6, color: '#3b82f6' }} />كيف تلوّن المنصة بالكامل؟</strong>
+                <div style={{ marginTop: 6 }}>
+                  الألوان هنا تغيّر شكل التطبيق كله لهذه المنصة فقط: الصفحات، البطاقات، النصوص، وصفحة تسجيل الدخول — بدون أي برمجة.
+                  استخدم <strong>«اللون الأساسي/الثانوي»</strong> بالأعلى للأزرار والعناصر المميّزة، وحقول <strong>«المظهر المتقدم»</strong> بالأسفل للخلفيات والكروت والنصوص.
+                  <br />• لكل وضع (فاتح/داكن) خلفية + كرت + نص منفصل — اختر ألواناً متباينة (خلفية داكنة ↔ نص فاتح) لتظل الكتابة واضحة.
+                  <br />• أي حقل تتركه فارغاً يعود للافتراضي المحسوب تلقائياً من اللون الأساسي.
+                </div>
+              </div>
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>شعار المنصة (Logo)</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1749,7 +1763,8 @@ export default function SuperAdminPanel({ onBack, flash }) {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
                 {THEME_TOKEN_DEFS.map(tk => (
                   <div key={tk.key}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{tk.label}</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '2px' }}>{tk.label}</label>
+                    {tk.hint && <div style={{ fontSize: '0.68rem', color: 'var(--cp-text-muted)', marginBottom: '6px', lineHeight: 1.4 }}>{tk.hint}</div>}
                     {tk.type === 'color' ? (
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <input type="color" value={editTheme[tk.key] || tk.fallback}
@@ -1826,10 +1841,13 @@ export default function SuperAdminPanel({ onBack, flash }) {
               </div>
 
               {/* Feature toggles */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 6px' }}>
                 <i className="fas fa-toggle-on" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
                 ميزات المنصة المفعّلة
               </h5>
+              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
+                إلغاء تفعيل أي ميزة <strong>يُخفيها تماماً</strong> من المنصة (القائمة، الصفحة الرئيسية، والروابط) — لا يظهر الطالب أنها ممنوعة، بل تختفي كأنها غير موجودة.
+              </p>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
                 {FEATURE_DEFS.map(f => (
                   <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editFeatures[f.key] ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>

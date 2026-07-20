@@ -5,8 +5,8 @@
 }
 
 .dark .aa-page.aa-phys-theme {
-  --background: oklch(0.14 0.02 150);
-  --surface: oklch(0.18 0.025 150);
-  --card: oklch(0.20 0.03 150);
+  --background: var(--dynamic-background, oklch(0.14 0.02 150));
+  --surface: var(--dynamic-surface, oklch(0.18 0.025 150));
+  --card: var(--dynamic-card, oklch(0.20 0.03 150));
   --border: oklch(1 0 0 / 8%);
 }

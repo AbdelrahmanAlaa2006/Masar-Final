@@ -14,8 +14,11 @@
   --card-text: var(--primary, #573b8a);
   --card-text-soft: var(--primary-soft, #6b5d8c);
   --card-muted: var(--primary-soft, #9590a8);
+  /* Monochromatic on purpose: a primary→secondary gradient turns garish when
+     the two brand colors are far apart (e.g. gold + teal). Same-hue gradient
+     (primary → its darker hover) reads premium for every tenant. */
   --card-title-from: var(--primary, #573b8a);
-  --card-title-to: var(--secondary, var(--primary));
+  --card-title-to: var(--primary-hover, var(--primary, #573b8a));
 
   --tab-track: var(--primary-soft, rgba(87, 59, 138, 0.07));
   --tab-inactive: var(--primary-soft, #8a80a8);
@@ -32,7 +35,7 @@
   --input-glow: var(--primary-soft, rgba(118, 75, 162, 0.12));
 
   --btn-from: var(--primary, var(--primary));
-  --btn-to: var(--secondary, var(--secondary));
+  --btn-to: var(--primary-hover, var(--primary));
   --btn-shadow: 0 10px 24px var(--primary-glow, rgba(13, 148, 136, 0.35));
   --btn-shadow-hover: 0 14px 30px var(--primary-glow, rgba(13, 148, 136, 0.45));
 
@@ -67,7 +70,7 @@ body.dark {
   --card-text-soft: var(--dynamic-card-text-soft, #b8b0d4);
   --card-muted: var(--dynamic-card-muted, #8a82a8);
   --card-title-from: var(--primary, var(--primary-hover));
-  --card-title-to: var(--secondary, var(--primary-hover));
+  --card-title-to: var(--primary-hover, var(--primary));
 
   --tab-track: rgba(255, 255, 255, 0.06);
   --tab-inactive: var(--dynamic-tab-inactive, #9e98b8);
@@ -84,7 +87,7 @@ body.dark {
   --input-glow: var(--primary-soft, var(--primary-soft));
 
   --btn-from: var(--primary, var(--primary));
-  --btn-to: var(--secondary, var(--secondary));
+  --btn-to: var(--primary-hover, var(--primary));
   --btn-shadow: 0 10px 24px var(--primary-glow, var(--primary-glow));
   --btn-shadow-hover: 0 14px 30px var(--primary-glow, var(--primary-glow));
 

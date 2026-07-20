@@ -947,7 +947,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
 .aa-page .loc-title {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
-  background: linear-gradient(135deg, var(--ink) 0%, var(--primary) 60%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--ink) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1353,7 +1353,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
 }
 
 .dark .aa-page .loc-title {
-  background: linear-gradient(135deg, var(--foreground) 0%, var(--primary-hover) 50%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--primary-hover) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

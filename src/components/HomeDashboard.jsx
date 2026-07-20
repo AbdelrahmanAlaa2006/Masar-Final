@@ -4,6 +4,7 @@ import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from '../contexts/TenantContext'
 import { cached, LIST_TTL } from '../utils/cache'
 import { getStudentCount } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
@@ -149,6 +150,7 @@ const TYPE_LABEL = {
 /* ─────────── Student ─────────── */
 
 function StudentDashboard() {
+  const { isFeatureEnabled } = useTenant()
   const navigate = useNavigate()
   const [recentNav, setRecentNav] = useState(() => safeParse('masar-recent', []))
   
@@ -351,9 +353,9 @@ function StudentDashboard() {
       {/* Live grade-scoped overview — RLS shows only this student's grade. */}
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
-          <StatCell icon="fa-clipboard-list" label="الواجبات"   value={stats.homeworks} />
-          <StatCell icon="fa-video"    label="الفيديوهات"   value={stats.videos} />
-          <StatCell icon="fa-file-alt" label="الامتحانات"    value={stats.exams} />
+          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات"   value={stats.homeworks} />}
+          {isFeatureEnabled('videos') && <StatCell icon="fa-video"    label="الفيديوهات"   value={stats.videos} />}
+          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt" label="الامتحانات"    value={stats.exams} />}
         </div>
       </WidgetCard>
 
@@ -383,9 +385,9 @@ function StudentDashboard() {
         title="تقدمك"
         accent="cyan"
       >
-        <ProgressRow label="الواجبات" data={progress.homeworks} accent="var(--primary, #8b5cf6)" />
-        <ProgressRow label="الفيديوهات" data={progress.videos}   accent="var(--secondary, #06b6d4)" />
-        <ProgressRow label="الامتحانات" data={progress.exams}    accent="var(--season-accent-soft, var(--primary, #f59e0b))" />
+        {isFeatureEnabled('homework') && <ProgressRow label="الواجبات" data={progress.homeworks} accent="var(--primary, #8b5cf6)" />}
+        {isFeatureEnabled('videos') && <ProgressRow label="الفيديوهات" data={progress.videos}   accent="var(--secondary, #06b6d4)" />}
+        {isFeatureEnabled('exams') && <ProgressRow label="الامتحانات" data={progress.exams}    accent="var(--season-accent-soft, var(--primary, #f59e0b))" />}
       </WidgetCard>
 
       <WidgetCard
@@ -448,21 +450,24 @@ function CountCell({ value, label }) {
 function AdminDashboard({ role }) {
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
+  const { isFeatureEnabled } = useTenant()
   // Pulled live from Supabase — totals across all grades.
   const { stats, loading, error, refresh } = useContentStats({ role })
 
-  const allowedExams = role === 'admin' || hasPermission('exams')
-  const allowedVideos = role === 'admin' || hasPermission('videos')
-  const allowedReports = role === 'admin' || hasPermission('reports')
+  // A disabled feature disappears entirely (feature flag) — even before the
+  // per-assistant permission check.
+  const allowedExams = isFeatureEnabled('exams') && (role === 'admin' || hasPermission('exams'))
+  const allowedVideos = isFeatureEnabled('videos') && (role === 'admin' || hasPermission('videos'))
+  const allowedReports = isFeatureEnabled('reports') && (role === 'admin' || hasPermission('reports'))
 
   return (
     <section className="hdash hdash-admin">
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
           <StatCell icon="fa-user-graduate" label="الطلاب" value={stats.students} />
-          <StatCell icon="fa-clipboard-list" label="الواجبات"  value={stats.homeworks} />
-          <StatCell icon="fa-video"         label="الفيديوهات"   value={stats.videos} />
-          <StatCell icon="fa-file-alt"      label="الامتحانات"    value={stats.exams} />
+          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات"  value={stats.homeworks} />}
+          {isFeatureEnabled('videos') && <StatCell icon="fa-video"         label="الفيديوهات"   value={stats.videos} />}
+          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt"      label="الامتحانات"    value={stats.exams} />}
         </div>
         {error && (
           <div style={{

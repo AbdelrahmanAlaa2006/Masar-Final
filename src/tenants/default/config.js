@@ -1,14 +1,16 @@
 export const themeConfig = {
   themeClass: 'aa-default-theme',
   canvasFont: '"Aref Ruqaa", serif',
-  primaryColor: '#764ba2',
-  secondaryColor: '#667eea',
-  particleColors: ['#764ba2', '#667eea', '#06b6d4', '#ec4899', '#f59e0b', '#10b981'],
+  // No hardcoded primaryColor/secondaryColor: this shared folder lets each
+  // tenant's DB colors drive the theme (applyTenantTheme falls back to
+  // tenant.primary_color when themeConfig has none). Subject-specific folders
+  // still define their own brand colors.
+  particleColors: ['#a86e28', '#c9a24a', '#d8b898', '#8a5e2a', '#b8863b', '#175e54'],
   formulas: ['ض', 'الضاد', 'لغة الضاد', 'أ', 'ب', 'ت', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي', 'ـَ', 'ـُ', 'ـِ', 'ـّ'],
   getLineColor: (theme, alpha) => {
     return theme === 'dark'
-      ? `rgba(102, 126, 234, ${alpha * 0.35})`
-      : `rgba(118, 75, 162, ${alpha * 0.25})`
+      ? `rgba(201, 162, 74, ${alpha * 0.30})`
+      : `rgba(168, 110, 40, ${alpha * 0.22})`
   },
   drawCustomShape: (ctx, p, size) => {
     const type = p.type || p.shapeType

@@ -5,8 +5,11 @@
 }
 
 .dark .aa-page.aa-default-theme {
-  --background: oklch(0.16 0.025 240);
-  --surface: oklch(0.20 0.03 240);
-  --card: oklch(0.22 0.03 240);
-  --border: oklch(1 0 0 / 10%);
+  /* Drive dark-mode surfaces from the tenant's DB theme tokens (bg_dark /
+     card_dark / border_accent via the --dynamic-* vars) instead of a
+     hardcoded navy — falls back to a warm charcoal, never blue. */
+  --background: var(--dynamic-background, #14110e);
+  --surface: var(--dynamic-surface, #1b1815);
+  --card: var(--dynamic-card, #1e1a15);
+  --border: var(--dynamic-border, rgba(236, 231, 221, 0.13));
 }

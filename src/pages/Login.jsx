@@ -149,26 +149,20 @@ export default function Login() {
   )
   const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
   const teacherImageHover = themeConfig.teacher?.image_hover || tenant?.config?.teacher?.image_hover || "/images/me.png"
-  const teacherExp = getLocalized(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience, '+10', '+10')
-  const teacherStudents = (themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
-    ? getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, null, null)
-    : null
-  const teacherSatisfaction = getLocalized(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction, '98%', '98%')
-  const teacherTargetStage = getLocalized(
-    themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage,
-    'البرمجة والذكاء الاصطناعي',
-    'Programming & AI'
-  )
+  // Optional stat/identity fields: when the tenant leaves them empty they must
+  // DISAPPEAR from the UI (no hardcoded default). Each resolves to null unless
+  // set, and every render site is guarded so nothing hollow shows.
+  const optField = (val) => (val ? getLocalized(val, null, null) : null)
+  const teacherExp = optField(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience)
+  const teacherStudents = optField(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
+  const teacherSatisfaction = optField(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction)
+  const teacherTargetStage = optField(themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage)
   const teacherTargetStageLabel = getLocalized(
     themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
     'التخصص',
     'Specialty'
   )
-  const teacherLearningSystem = getLocalized(
-    themeConfig.teacher?.learning_system || tenant?.config?.teacher?.learning_system,
-    'أونلاين تفاعلي',
-    'Online Interactive'
-  )
+  const teacherLearningSystem = optField(themeConfig.teacher?.learning_system || tenant?.config?.teacher?.learning_system)
 
   const socials = {
     facebook: themeConfig.socials?.facebook || tenant?.config?.socials?.facebook || 'https://www.facebook.com',
@@ -613,7 +607,7 @@ export default function Login() {
                 <div className="aa-portrait-vignette" />
                 <div className="aa-portrait-chips">
                   <div className="aa-chip aa-chip-accent">{lang === 'ar' ? 'اعتماد أكاديمي' : 'Certified Lecturer'}</div>
-                  <div className="aa-chip">{teacherExp} {lang === 'ar' ? 'سنوات خبرة' : 'years experience'}</div>
+                  {teacherExp && <div className="aa-chip">{teacherExp} {lang === 'ar' ? 'سنوات خبرة' : 'years experience'}</div>}
                 </div>
               </div>
               <div className="aa-nameplate">
@@ -625,16 +619,22 @@ export default function Login() {
                   </div>
                   <div className="aa-grad-icon"><i className="fas fa-graduation-cap"></i></div>
                 </div>
+                {(teacherTargetStage || teacherLearningSystem) && (
                 <div className="aa-metrics">
+                  {teacherTargetStage && (
                   <div>
                     <div className="aa-metric-label">{teacherTargetStageLabel}</div>
                     <div className="aa-metric-value">{teacherTargetStage}</div>
                   </div>
+                  )}
+                  {teacherLearningSystem && (
                   <div>
                     <div className="aa-metric-label">{lang === 'ar' ? 'نظام التعلم' : 'Learning System'}</div>
                     <div className="aa-metric-value"><span className="aa-pulse" /> {teacherLearningSystem}</div>
                   </div>
+                  )}
                 </div>
+                )}
               </div>
             </div>
           </div>
@@ -660,7 +660,9 @@ export default function Login() {
               {teacherBio}
             </p>
 
+            {(teacherExp || teacherStudents || teacherSatisfaction) && (
             <div className="about-stats">
+              {teacherExp && (
               <div className="about-stat">
                 <i className="fas fa-award"></i>
                 <div className="about-stat-value">{teacherExp}</div>
@@ -668,6 +670,7 @@ export default function Login() {
                   {lang === 'ar' ? 'سنوات خبرة' : 'Years of experience'}
                 </div>
               </div>
+              )}
 
               {teacherStudents && (
                 <div className="about-stat">
@@ -679,6 +682,7 @@ export default function Login() {
                 </div>
               )}
 
+              {teacherSatisfaction && (
               <div className="about-stat">
                 <i className="fas fa-book-open"></i>
                 <div className="about-stat-value">{teacherSatisfaction}</div>
@@ -686,7 +690,9 @@ export default function Login() {
                   {lang === 'ar' ? 'رضا الطلاب' : 'Student satisfaction'}
                 </div>
               </div>
+              )}
             </div>
+            )}
           </div>
 
           <aside className="about-quote">

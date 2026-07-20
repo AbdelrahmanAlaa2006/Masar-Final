@@ -5,8 +5,8 @@
 }
 
 .dark .aa-page.aa-math-theme {
-  --background: oklch(0.14 0.02 230);
-  --surface: oklch(0.18 0.025 230);
-  --card: oklch(0.20 0.03 230);
+  --background: var(--dynamic-background, oklch(0.14 0.02 230));
+  --surface: var(--dynamic-surface, oklch(0.18 0.025 230));
+  --card: var(--dynamic-card, oklch(0.20 0.03 230));
   --border: oklch(1 0 0 / 8%);
 }

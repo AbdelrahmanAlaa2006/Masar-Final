@@ -204,13 +204,14 @@ function applyThemeTokenStylesheet(tokens) {
   const clean = (v) => (typeof v === 'string' ? v.trim().replace(/[;{}]/g, '') : '')
   const bgL = clean(tokens.bg_light)
   const cardL = clean(tokens.card_light)
+  const txtL = clean(tokens.text_light)
   const bgD = clean(tokens.bg_dark)
   const cardD = clean(tokens.card_dark)
   const txtD = clean(tokens.text_dark)
   const borderA = clean(tokens.border_accent)
 
   // No tokens → no overrides (tenant keeps the computed defaults).
-  if (!bgL && !cardL && !bgD && !cardD && !txtD && !borderA) {
+  if (!bgL && !cardL && !txtL && !bgD && !cardD && !txtD && !borderA) {
     if (existing) existing.remove()
     return
   }
@@ -226,9 +227,17 @@ function applyThemeTokenStylesheet(tokens) {
     light += `background:${bgL} !important;--bg-color:${bgL} !important;--background:${bgL} !important;--bg-secondary:${bgL} !important;--cp-bg:${bgL} !important;--cp-bg-image:none !important;`
   }
   if (cardL) {
-    light += `--card-bg:${cardL} !important;--cp-card-bg:${cardL} !important;--surface:${cardL} !important;--cp-select-bg:${cardL} !important;--cp-list-item-bg:${cardL} !important;--cp-input-bg:${cardL} !important;`
+    // --section-card-bg is the login page's own card variable.
+    light += `--card-bg:${cardL} !important;--cp-card-bg:${cardL} !important;--surface:${cardL} !important;--cp-select-bg:${cardL} !important;--cp-list-item-bg:${cardL} !important;--cp-input-bg:${cardL} !important;--section-card-bg:${cardL} !important;`
     if (isHex(cardL)) {
       light += `--cp-card-hover-bg:${darkenColor(cardL, 4)} !important;--cp-list-header-bg:${darkenColor(cardL, 3)} !important;`
+    }
+  }
+  if (txtL) {
+    // --section-text / --card-text are the login page's own text variables.
+    light += `--cp-text-main:${txtL} !important;--text-color:${txtL} !important;--cp-input-text:${txtL} !important;--cp-select-text:${txtL} !important;--section-text:${txtL} !important;`
+    if (isHex(txtL)) {
+      light += `--cp-text-muted:${rgba(txtL, 0.6)} !important;`
     }
   }
 
@@ -249,12 +258,12 @@ function applyThemeTokenStylesheet(tokens) {
     if (isHex(cardD)) {
       dark += `--dynamic-card-bg:${rgba(cardD, 0.9)} !important;--cp-card-hover-bg:${darkenColor(cardD, 4)} !important;`
         + `--cp-input-bg:${darkenColor(cardD, 5)} !important;--cp-list-header-bg:${darkenColor(cardD, 5)} !important;`
-        + `--mh-bg:${rgba(cardD, 0.8)} !important;--mh-bg-solid:${cardD} !important;`
+        + `--mh-bg:${rgba(cardD, 0.8)} !important;--mh-bg-solid:${cardD} !important;--section-card-bg:${rgba(cardD, 0.5)} !important;`
     }
   }
   if (txtD) {
     dark += `--cp-text-main:${txtD} !important;--text-color:${txtD} !important;--dynamic-card-text:${txtD} !important;`
-      + `--cp-input-text:${txtD} !important;--cp-select-text:${txtD} !important;`
+      + `--cp-input-text:${txtD} !important;--cp-select-text:${txtD} !important;--section-text:${txtD} !important;`
     if (isHex(txtD)) {
       dark += `--cp-text-muted:${rgba(txtD, 0.62)} !important;--dynamic-card-text-soft:${rgba(txtD, 0.8)} !important;--dynamic-card-muted:${rgba(txtD, 0.6)} !important;`
     }
