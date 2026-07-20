@@ -682,7 +682,7 @@ body.dark .et-sidepanel-legend { color: #94a3b8; border-top-color: rgba(255, 255
 .et-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.6));
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;

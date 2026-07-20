@@ -430,7 +430,7 @@ body:not(.dark) .sf-stage-group-title {
 /* Bottom bar */
 .sf-bottom {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(2, 6, 23, 0.6);
+  background: var(--dynamic-card, rgba(2, 6, 23, 0.6));
   padding: 1.1rem 0;
   position: relative;
   z-index: 2;
@@ -497,7 +497,7 @@ body:not(.dark) .sf-stage-group-title {
     color-mix(in srgb, var(--secondary) 8%, transparent));
   border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 999px;
-  box-shadow: 0 6px 22px rgba(2, 6, 23, 0.25);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   flex-wrap: wrap;
@@ -529,7 +529,7 @@ body:not(.dark) .sf-stage-group-title {
   display: inline-flex;
   align-items: center;
   padding: 7px 16px;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.45));
   border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 999px;
   text-decoration: none;
@@ -558,7 +558,7 @@ body:not(.dark) .sf-stage-group-title {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--primary) 28%, transparent);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 28%, transparent);
-  background: rgba(15, 23, 42, 0.65);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.65));
 }
 .sf-dev-pill:hover::before { transform: translateX(120%); }
 .sf-dev-name {
@@ -590,7 +590,7 @@ body:not(.dark) .sf-devs-card {
     color-mix(in srgb, var(--primary) 12%, transparent),
     color-mix(in srgb, var(--secondary) 8%, transparent));
   border-color: color-mix(in srgb, var(--primary) 28%, transparent);
-  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06);
 }
 body:not(.dark) .sf-devs-tag { color: #475569; }
 body:not(.dark) .sf-dev-pill {
@@ -656,7 +656,7 @@ body:not(.dark) .sf-mini a { color: #64748b; }
 body:not(.dark) .sf-copy strong { color: #0f172a; }
 body:not(.dark) .sf-social-btn {
   color: #475569;
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.04));
   border-color: rgba(15, 23, 42, 0.08);
 }
 body:not(.dark) .sf-links a { color: #475569; }
@@ -666,7 +666,7 @@ body:not(.dark) .sf-links a:hover {
 }
 body:not(.dark) .sf-badge {
   color: #475569;
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.04));
   border-color: rgba(15, 23, 42, 0.08);
 }
 body:not(.dark) .sf-cv { color: #0f172a; }

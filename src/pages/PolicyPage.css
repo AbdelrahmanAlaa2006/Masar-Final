@@ -96,7 +96,7 @@
   border-radius: 16px;
   padding: 24px 26px;
   margin-bottom: 18px;
-  box-shadow: 0 4px 18px -10px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 18px -10px rgba(0, 0, 0, 0.12);
 }
 
 .pp-card h2 {

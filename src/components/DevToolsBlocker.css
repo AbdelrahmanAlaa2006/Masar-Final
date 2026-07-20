@@ -46,7 +46,7 @@ body.dark .devtools-blocked-wrapper {
 }
 
 body.dark .devtools-blocked-card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }

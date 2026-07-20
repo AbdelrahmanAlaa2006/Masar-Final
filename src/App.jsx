@@ -58,24 +58,9 @@ const ENABLE_DEVTOOLS_BLOCKER = true;
 // Page loader component for Suspense fallback
 function PageLoader() {
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: 'var(--section-bg-1, #0f172a)',
-      color: '#fff'
-    }}>
+    <div className="app-page-loader">
       <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(255,255,255,0.2)',
-          borderTop: '3px solid #a78bfa',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-          margin: '0 auto 16px'
-        }}></div>
+        <div className="app-page-loader-spinner"></div>
         <p>Loading...</p>
       </div>
     </div>

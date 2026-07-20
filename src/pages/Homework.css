@@ -120,7 +120,7 @@
 }
 
 body.dark .hw-page .prep-card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
@@ -438,7 +438,7 @@ body:not(.dark) .hw-card {
 }
 
 body.dark .hw-card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
@@ -536,7 +536,7 @@ body.dark .hw-card-cover {
 }
 
 body.dark .hw-card-id {
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.55));
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -563,7 +563,7 @@ body.dark .hw-card-id {
 }
 
 body.dark .hw-card-title-pill {
-  background: rgba(15, 23, 42, 0.75);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.75));
   color: #f1f5f9;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -765,7 +765,7 @@ body.dark .hw-btn-ghost {
 .hw-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.55));
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 99999;
@@ -1654,7 +1654,7 @@ body.dark .hw-page::before {
 }
 
 body.dark .hw-search-wrap input {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   color: #f1f5f9;
 }
@@ -1686,7 +1686,7 @@ body.dark .hw-search-wrap input:focus {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12), 0 0 18px rgba(124, 58, 237, 0.15) !important;
 }
 body.dark .hw-card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(20px);

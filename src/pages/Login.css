@@ -212,7 +212,7 @@ body.dark {
 body:not(.dark) .login-navbar {
   background: rgba(255, 255, 255, 0.75);
   border-bottom-color: rgba(15, 23, 42, 0.08);
-  box-shadow: 0 2px 16px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
 }
 
 .navbar-brand {
@@ -355,7 +355,7 @@ body:not(.dark) .navbar-title {
   right: 0;
   bottom: 0;
   left: 0;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(88, 28, 135, 0.45));
+  background: linear-gradient(135deg, var(--dynamic-card, rgba(15, 23, 42, 0.55)), rgba(88, 28, 135, 0.45));
   backdrop-filter: blur(2px);
   z-index: 1;
 }
@@ -649,7 +649,7 @@ body.dark .login .input-wrapper option,
 body.dark .auth-modal .input-wrapper option,
 body.dark .login .input-wrapper optgroup,
 body.dark .auth-modal .input-wrapper optgroup {
-  background-color: #161628;
+  background-color: var(--dynamic-card, #161628);
   color: #f4f1ff;
 }
 
@@ -1411,7 +1411,7 @@ body:not(.dark) .scroll-down-btn:hover {
 }
 
 .feature-card {
-  background: rgba(30, 41, 59, 0.35);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.35));
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1447,7 +1447,7 @@ body:not(.dark) .feature-card::before {
 
 .feature-card:hover {
   transform: translateY(-10px) scale(1.02);
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.5));
   border-color: var(--primary-glow);
   box-shadow: 
     0 24px 60px -15px var(--primary-glow),
@@ -1548,7 +1548,7 @@ body:not(.dark) .feature-card:hover h3 {
 }
 
 .step-card {
-  background: rgba(30, 41, 59, 0.35);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.35));
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1584,7 +1584,7 @@ body:not(.dark) .step-card::before {
 
 .step-card:hover {
   transform: translateY(-10px) scale(1.02);
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.5));
   border-color: var(--primary-glow);
   box-shadow: 
     0 24px 60px -15px var(--primary-glow),
@@ -1740,14 +1740,14 @@ body:not(.dark) .step-card:hover h3 {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.25);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.25));
   pointer-events: none;
   transition: background 0.5s ease;
   z-index: 1;
 }
 
 .location-map-wrapper:hover::after {
-  background: rgba(15, 23, 42, 0);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0));
 }
 
 .location-map {
@@ -1782,7 +1782,7 @@ body.dark .location-map-wrapper:hover .location-map {
   gap: 18px;
   padding: 22px 24px;
   border-radius: 20px;
-  background: rgba(30, 41, 59, 0.35);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.35));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1812,7 +1812,7 @@ body:not(.dark) .location-info-card {
 
 .location-info-card:hover {
   transform: translateX(-6px);
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.5));
   border-color: var(--primary-glow);
   box-shadow: 
     0 16px 32px -12px var(--primary-glow),
@@ -2132,7 +2132,7 @@ body:not(.dark) .right-section {
 }
 
 /* Dark mode ΓÇö single dark background for EVERYTHING */
-body.dark .login-page-wrapper { background: #0D0D20; }
+body.dark .login-page-wrapper { background: var(--dynamic-background, #0D0D20); }
 body.dark .login-container {
   background: transparent !important;
   animation: none !important;
@@ -2152,9 +2152,9 @@ body.dark .right-section { background-color: transparent !important; }
 }
 
 body:not(.dark) .lang-toggle {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.06));
   border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 body:not(.dark) .lang-toggle .lang-btn { color: #475569; }
 body:not(.dark) .lang-toggle .lang-btn.active { color: #fff; }
@@ -2170,7 +2170,7 @@ body:not(.dark) {
 }
 body:not(.dark) .feature-card,
 body:not(.dark) .step-card {
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
 }
 
 /* Footer blends with the page */
@@ -2303,7 +2303,7 @@ body:not(.dark) .footer-logo {
 body:not(.dark) .social-link {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* Divider */
@@ -2315,7 +2315,7 @@ body:not(.dark) .social-link {
 }
 
 body:not(.dark) .footer-divider {
-  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.12), transparent);
+  background: linear-gradient(90deg, transparent, var(--dynamic-card, rgba(15, 23, 42, 0.12)), transparent);
 }
 
 /* Copyright text */
@@ -2376,7 +2376,7 @@ body:not(.dark) .footer-divider {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.7));
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -2672,7 +2672,7 @@ body.dark .landing-package-card:hover {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(15, 23, 42, 0.75);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.75));
   backdrop-filter: blur(8px);
   color: #ffffff;
   padding: 6px 14px;

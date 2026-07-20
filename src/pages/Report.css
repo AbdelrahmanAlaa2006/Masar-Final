@@ -481,7 +481,7 @@
 .rp-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.55));
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 99999;
@@ -729,7 +729,7 @@
 
 /* ── Premium Glassmorphic suggestion dropdown overrides ── */
 body.dark .report-suggestions-wrap {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(20px);

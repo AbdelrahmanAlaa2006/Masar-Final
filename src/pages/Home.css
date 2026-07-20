@@ -228,7 +228,7 @@ body.dark .hero p {
 }
 
 body.dark .card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
@@ -1227,7 +1227,7 @@ body.dark .home-search-box {
   background: var(--card-bg, #fdfbf6);
   border: 1px solid rgba(102, 126, 234, 0.2);
   border-radius: 16px;
-  box-shadow: 0 20px 48px rgba(30, 41, 59, 0.18);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
   padding: 6px;
   z-index: 1000;
 }

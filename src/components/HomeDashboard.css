@@ -47,7 +47,7 @@
 }
 
 body.dark .hdash-card {
-  background: var(--card-bg, rgba(30, 41, 59, 0.45));
+  background: var(--card-bg, var(--dynamic-card, rgba(30, 41, 59, 0.45)));
   border-color: var(--border-color, rgba(255, 255, 255, 0.08));
   box-shadow: var(--shadow);
 }
@@ -370,7 +370,7 @@ body.dark .hdash-countdown-cta {
 }
 
 body.dark .hdash-stat {
-  background: rgba(30, 41, 59, 0.4);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.4));
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -381,7 +381,7 @@ body.dark .hdash-stat {
 }
 
 body.dark .hdash-stat:hover {
-  background: rgba(30, 41, 59, 0.6);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.6));
   border-color: rgba(167, 139, 250, 0.25);
 }
 
@@ -506,7 +506,7 @@ body.dark .hdash-quick-primary {
 }
 
 body.dark .hdash-quick-ghost {
-  background: linear-gradient(rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.35)) padding-box,
+  background: linear-gradient(var(--dynamic-card, rgba(15, 23, 42, 0.35)), var(--dynamic-card, rgba(15, 23, 42, 0.35))) padding-box,
               linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)) border-box;
   border-color: transparent;
   color: #e2e8f0 !important;
@@ -571,7 +571,7 @@ body.dark .hdash-quick-ghost .hdash-quick-icon-chip {
 body.dark .hdash-quick-ghost:hover {
   color: #ffffff !important;
   box-shadow: 0 8px 25px rgba(167, 139, 250, 0.08);
-  background: linear-gradient(rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.55)) padding-box,
+  background: linear-gradient(var(--dynamic-card, rgba(15, 23, 42, 0.55)), var(--dynamic-card, rgba(15, 23, 42, 0.55))) padding-box,
               linear-gradient(135deg, rgba(167, 139, 250, 0.3), rgba(99, 102, 241, 0.2)) border-box;
   border-color: transparent;
 }

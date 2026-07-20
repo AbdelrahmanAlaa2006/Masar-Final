@@ -440,7 +440,7 @@
 .checkout-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.6));
   backdrop-filter: blur(10px);
   z-index: 99999;
   display: flex;
@@ -775,7 +775,7 @@
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.6));
   backdrop-filter: blur(4px);
   z-index: 999999;
   display: flex;
@@ -840,7 +840,7 @@
 
 /* ─────────── Dark Mode Overrides ─────────── */
 body.dark .shop-page {
-  background: var(--bg-main, #09091a);
+  background: var(--bg-main, var(--dynamic-background, #09091a));
   color: var(--text-color, #f1f5f9);
 }
 
@@ -851,7 +851,7 @@ body.dark .shop-divider {
 body.dark .shop-loader,
 body.dark .shop-empty-state,
 body.dark .history-empty {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
@@ -869,7 +869,7 @@ body.dark .shop-empty-state p {
 }
 
 body.dark .pkg-card {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
@@ -910,13 +910,13 @@ body.dark .pkg-footer {
 }
 
 body.dark .shop-history-section {
-  background: rgba(30, 41, 59, 0.45);
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 body.dark .history-item {
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.35));
   border-color: rgba(255, 255, 255, 0.06);
 }
 

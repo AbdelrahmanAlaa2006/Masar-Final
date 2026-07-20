@@ -486,7 +486,7 @@ body:not(.dark) .register-form-col {
 }
 
 body:not(.dark) .register-form-col h2 {
-  background: linear-gradient(135deg, #0f172a, #475569) !important;
+  background: linear-gradient(135deg, var(--dynamic-background, #0f172a), #475569) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }

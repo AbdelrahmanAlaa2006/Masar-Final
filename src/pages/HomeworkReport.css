@@ -201,7 +201,7 @@
 }
 .hr-ring-inner {
   width: 64px; height: 64px; border-radius: 50%;
-  background: var(--section-bg-1, #1e293b);
+  background: var(--section-bg-1, var(--dynamic-card, #1e293b));
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .hr-ring-num { font-size: 1.3rem; font-weight: 800; line-height: 1; }
@@ -231,7 +231,7 @@
   z-index: 9999; padding: 20px; backdrop-filter: blur(4px);
 }
 .hr-modal {
-  background: var(--section-bg-1, #1e293b); border: 1px solid rgba(255,255,255,.1);
+  background: var(--section-bg-1, var(--dynamic-card, #1e293b)); border: 1px solid rgba(255,255,255,.1);
   border-radius: 20px; width: 100%; max-width: 560px;
   max-height: 85vh; overflow-y: auto; padding: 28px;
   box-shadow: 0 20px 60px rgba(0,0,0,.4);
@@ -272,7 +272,7 @@
 }
 .hr-ring-inner-lg {
   width: 80px; height: 80px; border-radius: 50%;
-  background: var(--section-bg-1, #1e293b);
+  background: var(--section-bg-1, var(--dynamic-card, #1e293b));
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .hr-ring-num-lg { font-size: 1.8rem; font-weight: 800; line-height: 1; }
@@ -699,7 +699,7 @@ body:not(.dark) .hr-opt-wrong {
   margin-bottom: 8px;
 }
 .hr-svg-chart-container {
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.3));
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   padding: 16px 12px 6px;

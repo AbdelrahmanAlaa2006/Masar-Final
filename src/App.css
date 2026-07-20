@@ -73,9 +73,9 @@
   transition: transform 0.35s cubic-bezier(.2,.9,.25,1.15), opacity 0.35s ease;
 }
 body.dark .auth-toast {
-  background: linear-gradient(145deg, rgba(30,32,48,0.96), rgba(24,26,40,0.92));
-  border-color: rgba(168, 85, 247, 0.3);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(124, 58, 237, 0.25);
+  background: var(--dynamic-card, linear-gradient(145deg, rgba(30,32,48,0.96), rgba(24,26,40,0.92)));
+  border-color: color-mix(in srgb, var(--primary, #a855f7) 30%, transparent);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px color-mix(in srgb, var(--primary, #7c3aed) 25%, transparent);
 }
 .auth-overlay.open .auth-toast { transform: translateY(0) scale(1); opacity: 1; }
 .auth-overlay.closing .auth-toast { transform: translateY(-8px) scale(0.96); opacity: 0; }
@@ -84,14 +84,14 @@ body.dark .auth-toast {
   height: 64px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  background: linear-gradient(135deg, var(--primary, #7c3aed), var(--primary-hover, #6366f1));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary, #7c3aed) 35%, transparent);
 }
 .auth-toast-check.success {
-  background: linear-gradient(135deg, #10b981, #06b6d4);
+  background: linear-gradient(135deg, #10b981, #059669);
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
 }
 .auth-toast-check svg { width: 36px; height: 36px; }
@@ -162,3 +162,27 @@ body.is-watching-video footer {
   display: none !important;
 }
 */
+
+/* Full-screen route loader — follows the tenant theme in both modes (was a
+   hardcoded navy #0f172a in every tenant/light mode). */
+.app-page-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-color, #f5f3ee);
+  color: var(--cp-text-main, #0f172a);
+}
+body.dark .app-page-loader {
+  background: var(--dynamic-background, #14110e);
+  color: var(--dynamic-card-text, #f3e9d6);
+}
+.app-page-loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid color-mix(in srgb, var(--primary, #a78bfa) 22%, transparent);
+  border-top: 3px solid var(--primary, #a78bfa);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}

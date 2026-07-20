@@ -3,7 +3,7 @@
    ===================================================================== */
 
 .video-comments-section {
-  background: var(--card-bg, rgba(30, 41, 59, 0.45));
+  background: var(--card-bg, var(--dynamic-card, rgba(30, 41, 59, 0.45)));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
@@ -47,7 +47,7 @@
 
 .comment-textarea {
   width: 100%;
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.4));
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   color: var(--text-primary, #ffffff);
@@ -63,7 +63,7 @@
   outline: none;
   border-color: var(--primary-color, var(--primary, #7c3aed));
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.6));
 }
 
 .comment-form-actions {
@@ -206,7 +206,7 @@
 .comment-reply-form {
   margin-top: 12px;
   padding: 12px;
-  background: rgba(15, 23, 42, 0.2);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 10px;
 }

@@ -840,10 +840,10 @@ body.dark .cp-page::before {
   transition: all 0.2s ease;
 }
 .cp-btn-success { background: rgba(16, 185, 129, 0.12); color: #10b981; }
-.cp-btn-success:hover { background: #10b981; color: #0b1220; }
+.cp-btn-success:hover { background: #10b981; color: var(--dynamic-background, #0b1220); }
 
 .cp-btn-danger { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
-.cp-btn-danger:hover { background: #ef4444; color: #0b1220; }
+.cp-btn-danger:hover { background: #ef4444; color: var(--dynamic-background, #0b1220); }
 
 /* Primary action button — was missing, so buttons using it fell back to the
    bare base style (appeared dark/black). Uses the tenant's --primary brand
@@ -863,7 +863,7 @@ body.dark .cp-page::before {
   background: rgba(59, 130, 246, 0.12);
   color: #3b82f6;
 }
-.cp-btn-info:hover { background: #3b82f6; color: #0b1220; }
+.cp-btn-info:hover { background: #3b82f6; color: var(--dynamic-background, #0b1220); }
 
 .cp-btn-info-active {
   background: #3b82f6;
@@ -1018,7 +1018,7 @@ body.dark .cp-page::before {
   font-size: 0.75rem;
   transition: all 0.2s ease;
 }
-.cp-stepper-btn:hover { background: #5bc2e7; color: #0b1220; }
+.cp-stepper-btn:hover { background: #5bc2e7; color: var(--dynamic-background, #0b1220); }
 .cp-stepper-input {
   width: 40px;
   border: none;
@@ -1165,7 +1165,7 @@ body.dark .cp-page::before {
   border-radius: 18px;
   padding: 1.1rem 1.3rem 1.2rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
 }
 .sync-format-head {
   display: flex;
@@ -1207,7 +1207,7 @@ body.dark .cp-page::before {
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: 12px;
   overflow-x: auto;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .sync-format-sheet {
   width: 100%;
@@ -1271,7 +1271,7 @@ body.dark .cp-page::before {
 .sync-format-legend-item:hover {
   border-color: rgba(99, 102, 241, 0.4);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 .sync-format-legend-item > i {
   width: 32px;
@@ -1323,7 +1323,7 @@ body.dark .cp-page::before {
   font-size: 1rem;
 }
 .sync-format-foot code {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.06));
   padding: 2px 8px;
   border-radius: 6px;
   margin: 0 2px;
@@ -1693,7 +1693,7 @@ body.dark .cp-page::before {
 .sync-tech-table th {
   position: sticky;
   top: 0;
-  background: var(--cp-list-header-bg, #1e293b);
+  background: var(--cp-list-header-bg, var(--dynamic-card, #1e293b));
   color: var(--cp-text-main, var(--cp-text-muted));
   padding: 0.75rem 1rem;
   font-weight: 700;
@@ -1741,7 +1741,7 @@ body.dark .cp-page::before {
 .sync-confirm-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.7));
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;

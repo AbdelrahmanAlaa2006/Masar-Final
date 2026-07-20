@@ -524,11 +524,29 @@ export default function SuperAdminPanel({ onBack, flash }) {
         ? cfg.announcements.map(a => ({ icon: a?.icon || '', text: a?.text || '' }))
         : DEFAULT_ANNOUNCEMENTS.map(a => ({ ...a }))
     )
-    // Stages: use the tenant's configured tree, otherwise the standard template
+    // Stages: ALWAYS show the full 4-stage template in the editor so the admin
+    // can enable any stage later — even a tenant currently limited to one stage
+    // (e.g. البكالوريا only). The tenant's saved enabled-state and custom grades
+    // are merged in; a stage the tenant never configured appears OFF. Saving is
+    // non-destructive: a disabled stage isn't shown to students, so existing
+    // tenants keep behaving exactly as before.
+    const saved = Array.isArray(cfg.stages) ? cfg.stages : []
+    const savedById = new Map(saved.map(st => [st.id, st]))
     setEditStages(
-      Array.isArray(cfg.stages) && cfg.stages.length > 0
-        ? cfg.stages.map(st => ({ ...st, grades: (st.grades || []).map(g => ({ ...g })) }))
-        : buildStagesTemplate()
+      buildStagesTemplate().map(tpl => {
+        const s = savedById.get(tpl.id)
+        if (!s) return { ...tpl, enabled: false } // never offered → off by default
+        // Merge saved grades onto the template so newly-added grades still show.
+        const savedGradeById = new Map((s.grades || []).map(g => [g.id, g]))
+        return {
+          ...tpl,
+          enabled: s.enabled !== false,
+          grades: (tpl.grades || []).map(g => {
+            const sg = savedGradeById.get(g.id)
+            return sg ? { ...g, enabled: sg.enabled !== false } : g
+          }),
+        }
+      })
     )
   }
 

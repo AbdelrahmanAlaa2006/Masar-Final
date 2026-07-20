@@ -1051,7 +1051,7 @@ body.dark .er-donut-bg {
   stroke: rgba(255, 255, 255, 0.06);
 }
 body.dark .er-svg-chart-container {
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.3));
   border-color: rgba(255, 255, 255, 0.05);
 }
 body.dark .er-chart-gridline {

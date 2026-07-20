@@ -248,7 +248,7 @@ body.dark .form-group select {
 }
 
 body.dark .video-add-page select option {
-  background-color: #1e293b !important;
+  background-color: var(--dynamic-card, #1e293b) !important;
   color: #f1f5f9 !important;
 }
 
