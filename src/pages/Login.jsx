@@ -3,14 +3,15 @@
 // Renders the new teacher landing page layout for all tenants,
 // with chemistry assets for mona-chem and standard assets for default.
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { listPackages } from '@backend/packagesApi'
 import { useTenant } from '../contexts/TenantContext'
-import { toMapEmbed } from '../utils/mapEmbed'
+import { toMapEmbed, toLatLng } from '../utils/mapEmbed'
+const LocationMap = React.lazy(() => import('../components/LocationMap'))
 import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
 import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
@@ -85,6 +86,7 @@ export default function Login() {
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
+  const [selectedBranch, setSelectedBranch] = useState(0) // active branch in the location section
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [phone, setPhone] = useState('')
   const [parentPhone, setParentPhone] = useState('')
@@ -197,6 +199,35 @@ export default function Login() {
   const branchesList = themeConfig.location?.branches || tenant?.config?.location?.branches || null
   // The section renders only when it has something real to show
   const hasLocationData = (branchesList && branchesList.length > 0) || !!(locationAddress || locationMapUrl || locationPhone)
+
+  // Normalize branches into one array the interactive location UI iterates —
+  // whether the tenant defined branches[] or only the top-level location.
+  const locBranches = useMemo(() => {
+    const raw = (branchesList && branchesList.length > 0)
+      ? branchesList
+      : [{
+          name: locationTitle,
+          address: locationAddress,
+          phone: locationPhone,
+          map_iframe_url: (themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url),
+          directions_link: locationDirectionsLink,
+          hours_days: (themeConfig.location?.hours_days || tenant?.config?.location?.hours_days),
+          hours_time: (themeConfig.location?.hours_time || tenant?.config?.location?.hours_time),
+        }]
+    return raw
+      .map((b, i) => ({
+        name: getLocalized(b.name, lang === 'ar' ? `الفرع ${i + 1}` : `Branch ${i + 1}`, lang === 'ar' ? `الفرع ${i + 1}` : `Branch ${i + 1}`),
+        address: b.address ? getLocalized(b.address, '', '') : '',
+        phone: b.phone ? getLocalized(b.phone, '', '') : (locationPhone || ''),
+        mapUrl: toMapEmbed(b.map_iframe_url) || locationMapUrl,
+        ...(toLatLng(b.map_iframe_url) || toLatLng(themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url) || {}),
+        directions: b.directions_link || locationDirectionsLink,
+        hoursDays: b.hours_days ? getLocalized(b.hours_days, '', '') : locationHoursDays,
+        hoursTime: b.hours_time ? getLocalized(b.hours_time, '', '') : locationHoursTime,
+      }))
+      // drop entirely empty branches
+      .filter(b => b.address || b.mapUrl || b.phone)
+  }, [branchesList, locationTitle, locationAddress, locationPhone, locationMapUrl, locationDirectionsLink, locationHoursDays, locationHoursTime, lang])
 
   const features = lang === 'ar' ? [
     { icon: 'fa-book-open', title: 'محاضرات تفاعلية', desc: 'شرح تفصيلي ومبسط لكافة أجزاء المنهج الدراسي باستخدام أحدث الوسائل البصرية.' },
@@ -831,230 +862,125 @@ export default function Login() {
             </p>
           </div>
 
-          {branchesList && branchesList.length > 0 ? (
-            branchesList.map((branch, index) => {
-              const bName = getLocalized(branch.name, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`, lang === 'ar' ? `الفرع ${index + 1}` : `Branch ${index + 1}`)
-              const bAddress = getLocalized(branch.address, '', '')
-              const bPhone = branch.phone ? getLocalized(branch.phone, '', '') : null
-              const bMapUrl = toMapEmbed(branch.map_iframe_url) || locationMapUrl
-              const bDirections = branch.directions_link || locationDirectionsLink
-              const bHoursDays = branch.hours_days ? getLocalized(branch.hours_days, '', '') : locationHoursDays
-              const bHoursTime = branch.hours_time ? getLocalized(branch.hours_time, '', '') : locationHoursTime
-
-              // A branch with no real data renders nothing at all
-              if (!bAddress && !bMapUrl && !bPhone && !locationPhone) return null
-
-              return (
-                <div className="location-grid" key={index} style={{ marginTop: index > 0 ? '50px' : '0px', borderTop: index > 0 ? '1px dashed rgba(255, 255, 255, 0.15)' : 'none', paddingTop: index > 0 ? '50px' : '0px', gridTemplateColumns: bMapUrl ? undefined : '1fr' }}>
-                  {bMapUrl && (
-                  <div className="location-map-wrapper">
-                    <div className="map-shell">
-                      <iframe
-                        title={`Location Map - ${bName}`}
-                        src={bMapUrl}
-                        className="location-map"
-                        allowFullScreen=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      ></iframe>
-
-                      <div className="map-pin" aria-hidden="true">
-                        <span className="map-pin__pulse"></span>
-                        <span className="map-pin__pulse map-pin__pulse--2"></span>
-                        <span className="map-pin__dot">
-                          <i className="fas fa-graduation-cap"></i>
+          {(() => {
+            const sel = locBranches[Math.min(selectedBranch, locBranches.length - 1)] || locBranches[0]
+            if (!sel) return null
+            const anyGeo = locBranches.some(b => b.lat != null && b.lng != null)
+            const anyMap = anyGeo || locBranches.some(b => b.mapUrl)
+            return (
+              <div className={`loc-v2 ${anyMap ? '' : 'loc-v2--nomap'} ${locBranches.length === 1 ? 'loc-v2--single' : ''}`}>
+                {/* Branch selector list — click to reveal that branch on the map */}
+                <div className="loc-v2-list">
+                  {locBranches.map((b, i) => {
+                    const active = b === sel
+                    return (
+                      <button
+                        type="button"
+                        key={i}
+                        className={`loc-v2-branch ${active ? 'is-active' : ''}`}
+                        onClick={() => setSelectedBranch(i)}
+                        aria-pressed={active}
+                      >
+                        <span className="loc-v2-chip"><i className="fas fa-location-dot"></i></span>
+                        <span className="loc-v2-branch-body">
+                          <span className="loc-v2-branch-head">
+                            <span className="loc-v2-branch-name">{b.name}</span>
+                            {active && locBranches.length > 1 && (
+                              <span className="loc-v2-branch-badge">{lang === 'ar' ? 'مُحدد' : 'Selected'}</span>
+                            )}
+                          </span>
+                          {b.address && <span className="loc-v2-branch-addr">{b.address}</span>}
+                          {b.phone && (
+                            <span className="loc-v2-branch-contact">
+                              <i className="fas fa-phone"></i>
+                              <span className="loc-v2-branch-phone" dir="ltr">{b.phone}</span>
+                            </span>
+                          )}
+                          {(b.hoursDays || b.hoursTime) && (
+                            <span className="loc-v2-branch-meta">
+                              <span className="loc-v2-meta">
+                                <i className="fas fa-clock"></i>{[b.hoursDays, b.hoursTime].filter(Boolean).join(' · ')}
+                              </span>
+                            </span>
+                          )}
                         </span>
+                        <i className="fas fa-chevron-left loc-v2-branch-arrow"></i>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Stage: the selected branch's map + directions */}
+                {anyMap && (
+                  <div className="loc-v2-stage">
+                    {anyGeo ? (
+                      /* Interactive Leaflet map — all branches as markers,
+                         flies to the selected one; renders everywhere (no
+                         Google-embed blank-off-domain issue). */
+                      <div className="map-shell loc-v2-map loc-v2-map--leaflet">
+                        <React.Suspense fallback={<div className="loc-v2-map-empty"><i className="fas fa-spinner fa-spin"></i></div>}>
+                          <LocationMap branches={locBranches} selected={selectedBranch} onSelect={setSelectedBranch} />
+                        </React.Suspense>
                       </div>
-
-                      <div className="map-badge">
-                        <span className="map-badge__dot"></span>
-                        {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
-                      </div>
-
-                      <div className="map-frame" aria-hidden="true"></div>
-                    </div>
-                  </div>
-                  )}
-
-                  <div className="location-info">
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '16px', color: 'var(--primary)' }}>
-                      {bName}
-                    </h3>
-
-                    {bAddress && (
-                      <div className="location-info-card">
-                        <div className="location-info-icon">
-                          <i className="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div className="loc-card-body">
-                          <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
-                          <h4 style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>{bAddress}</h4>
-                          {locationCountry && <p>{locationCountry}</p>}
-                        </div>
-                      </div>
-                    )}
-
-                    {(bPhone || locationPhone) && (
-                      <div className="location-info-card">
-                        <div className="location-info-icon">
-                          <i className="fas fa-phone-alt"></i>
-                        </div>
-                        <div className="loc-card-body">
-                          <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                          <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{bPhone || locationPhone}</h4>
-                          <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {(bHoursDays || bHoursTime) && (
-                      <div className="location-info-card">
-                        <div className="location-info-icon">
-                          <i className="fas fa-clock"></i>
-                        </div>
-                        <div className="loc-card-body">
-                          <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
-                          {bHoursDays && <h4>{bHoursDays}</h4>}
-                          {bHoursTime && <p>{bHoursTime}</p>}
-                        </div>
-                      </div>
-                    )}
-
-                    {(bDirections || locationWhatsappLink) && (
-                      <div className="loc-actions">
-                        {bDirections && (
-                          <a
-                            href={bDirections}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="location-directions-btn"
-                          >
-                            <i className="fas fa-directions"></i>
-                            {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
-                            <span className="loc-btn-shine" aria-hidden="true"></span>
-                          </a>
+                    ) : (
+                      <div className="map-shell loc-v2-map">
+                        {sel.mapUrl ? (
+                          <iframe
+                            title={`Location Map - ${sel.name}`}
+                            key={sel.mapUrl}
+                            src={sel.mapUrl}
+                            className="location-map"
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                        ) : (
+                          <div className="loc-v2-map-empty">
+                            <i className="fas fa-map-location-dot"></i>
+                            <span>{sel.name}</span>
+                          </div>
                         )}
-
-                        {locationWhatsappLink && (
-                          <a
-                            href={locationWhatsappLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="location-directions-btn location-directions-btn--ghost"
-                          >
-                            <i className="fab fa-whatsapp"></i>
-                            {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
-                          </a>
-                        )}
+                        <div className="map-pin" aria-hidden="true">
+                          <span className="map-pin__pulse"></span>
+                          <span className="map-pin__pulse map-pin__pulse--2"></span>
+                          <span className="map-pin__dot"><i className="fas fa-graduation-cap"></i></span>
+                        </div>
+                        <div className="map-badge">
+                          <span className="map-badge__dot"></span>
+                          {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
+                        </div>
+                        <div className="map-frame" aria-hidden="true"></div>
                       </div>
                     )}
-                  </div>
-                </div>
-              )
-            })
-          ) : (
-            <div className="location-grid" style={{ gridTemplateColumns: locationMapUrl ? undefined : '1fr' }}>
-              {locationMapUrl && (
-              <div className="location-map-wrapper">
-                <div className="map-shell">
-                  <iframe
-                    title="Location Map"
-                    src={locationMapUrl}
-                    className="location-map"
-                    allowFullScreen=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  ></iframe>
 
-                  <div className="map-pin" aria-hidden="true">
-                    <span className="map-pin__pulse"></span>
-                    <span className="map-pin__pulse map-pin__pulse--2"></span>
-                    <span className="map-pin__dot">
-                      <i className="fas fa-graduation-cap"></i>
-                    </span>
-                  </div>
-
-                  <div className="map-badge">
-                    <span className="map-badge__dot"></span>
-                    {lang === 'ar' ? 'مفتوح الآن' : 'Open now'}
-                  </div>
-
-                  <div className="map-frame" aria-hidden="true"></div>
-                </div>
-              </div>
-              )}
-
-              <div className="location-info">
-                {locationAddress && (
-                <div className="location-info-card">
-                  <div className="location-info-icon">
-                    <i className="fas fa-map-marker-alt"></i>
-                  </div>
-                  <div className="loc-card-body">
-                    <span className="loc-card-label">{lang === 'ar' ? 'العنوان' : 'Address'}</span>
-                    <h4 style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>{locationAddress}</h4>
-                    {locationCountry && <p>{locationCountry}</p>}
-                  </div>
-                </div>
-                )}
-
-                {locationPhone && (
-                  <div className="location-info-card">
-                    <div className="location-info-icon">
-                      <i className="fas fa-phone-alt"></i>
-                    </div>
-                    <div className="loc-card-body">
-                      <span className="loc-card-label">{lang === 'ar' ? 'للتواصل' : 'Contact'}</span>
-                      <h4 dir="ltr" style={{ whiteSpace: 'pre-line' }}>{locationPhone}</h4>
-                      <p>{lang === 'ar' ? 'متاحين للرد طوال اليوم' : 'Available all day'}</p>
+                    <div className="loc-v2-stage-foot">
+                      <div className="loc-v2-stage-info">
+                        <span className="loc-v2-stage-name">{sel.name}</span>
+                        {sel.address && <span className="loc-v2-stage-addr">{sel.address}</span>}
+                      </div>
+                      {(sel.directions || locationWhatsappLink) && (
+                        <div className="loc-actions">
+                          {sel.directions && (
+                            <a href={sel.directions} target="_blank" rel="noopener noreferrer" className="location-directions-btn">
+                              <i className="fas fa-directions"></i>
+                              {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
+                              <span className="loc-btn-shine" aria-hidden="true"></span>
+                            </a>
+                          )}
+                          {locationWhatsappLink && (
+                            <a href={locationWhatsappLink} target="_blank" rel="noopener noreferrer" className="location-directions-btn location-directions-btn--ghost">
+                              <i className="fab fa-whatsapp"></i>
+                              {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-
-                {(locationHoursDays || locationHoursTime) && (
-                <div className="location-info-card">
-                  <div className="location-info-icon">
-                    <i className="fas fa-clock"></i>
-                  </div>
-                  <div className="loc-card-body">
-                    <span className="loc-card-label">{lang === 'ar' ? 'مواعيد العمل' : 'Working Hours'}</span>
-                    {locationHoursDays && <h4>{locationHoursDays}</h4>}
-                    {locationHoursTime && <p>{locationHoursTime}</p>}
-                  </div>
-                </div>
-                )}
-
-                {(locationDirectionsLink || locationWhatsappLink) && (
-                <div className="loc-actions">
-                  {locationDirectionsLink && (
-                  <a
-                    href={locationDirectionsLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="location-directions-btn"
-                  >
-                    <i className="fas fa-directions"></i>
-                    {lang === 'ar' ? 'احصل على الاتجاهات' : 'Get Directions'}
-                    <span className="loc-btn-shine" aria-hidden="true"></span>
-                  </a>
-                  )}
-
-                  {locationWhatsappLink && (
-                  <a
-                    href={locationWhatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="location-directions-btn location-directions-btn--ghost"
-                  >
-                    <i className="fab fa-whatsapp"></i>
-                    {lang === 'ar' ? 'راسلنا واتساب' : 'WhatsApp Us'}
-                  </a>
-                  )}
-                </div>
                 )}
               </div>
-            </div>
-          )}
+            )
+          })()}
         </div>
       </section>
       )}

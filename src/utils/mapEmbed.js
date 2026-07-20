@@ -28,3 +28,22 @@ export function toMapEmbed(url) {
 
   return null
 }
+
+/* Extract { lat, lng } from whatever Google Maps link an admin pasted, for
+   plotting a Leaflet marker. Handles the common forms:
+     .../@31.0482,30.4649,17z/...        (map center)
+     ...!3d31.0398!4d30.4540...          (place pin — preferred, most precise)
+     ?q=31.0482,30.4649  /  &query=..    (coordinate query)
+   Returns null when no coordinates are present (e.g. short goo.gl links). */
+export function toLatLng(url) {
+  const u = String(url || '').trim()
+  if (!u) return null
+  // Place pin (…!3dLAT!4dLNG…) is the actual marker Google placed — prefer it.
+  const pin = u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  if (pin) return { lat: parseFloat(pin[1]), lng: parseFloat(pin[2]) }
+  const at = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+  if (at) return { lat: parseFloat(at[1]), lng: parseFloat(at[2]) }
+  const q = u.match(/[?&](?:q|query)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+  if (q) return { lat: parseFloat(q[1]), lng: parseFloat(q[2]) }
+  return null
+}

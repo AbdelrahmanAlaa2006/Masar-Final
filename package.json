@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.100.0",
     "dotenv": "^17.4.2",
     "html5-qrcode": "^2.3.8",
+    "leaflet": "^1.9.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
