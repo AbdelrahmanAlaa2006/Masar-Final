@@ -332,7 +332,7 @@
 }
 
 .vgr-table thead tr {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
 }
 
 .vgr-table th {

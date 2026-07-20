@@ -127,16 +127,14 @@ export default function Register() {
   const teacherName = getLocalized(themeConfig.teacher?.name || tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
   const teacherRole = getLocalized(themeConfig.teacher?.role || tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
   const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
-  const teacherExp = getLocalized(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience, '+10', '+10')
-  const teacherStudents = (themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
-    ? getLocalized(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count, null, null)
-    : null
-  const teacherSatisfaction = getLocalized(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction, '98%', '98%')
-  const teacherTargetStage = getLocalized(
-    themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage,
-    'البرمجة والذكاء الاصطناعي',
-    'Programming & AI'
-  )
+  // Optional stat fields must DISAPPEAR when the tenant leaves them empty —
+  // never fall back to another tenant's numbers/specialty (this card used to
+  // show "+10" years and "البرمجة والذكاء الاصطناعي" for every teacher).
+  const optField = (val) => (val ? getLocalized(val, null, null) : null)
+  const teacherExp = optField(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience)
+  const teacherStudents = optField(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
+  const teacherSatisfaction = optField(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction)
+  const teacherTargetStage = optField(themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage)
   const teacherTargetStageLabel = getLocalized(
     themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
     'التخصص',
@@ -461,11 +459,14 @@ export default function Register() {
             <h3 className="register-teacher-name">{teacherName}</h3>
             <p className="register-teacher-role">{teacherRole}</p>
 
+            {(teacherExp || teacherStudents || teacherTargetStage) && (
             <div className="register-teacher-stats">
+              {teacherExp && (
               <div className="register-stat-item">
                 <div className="register-stat-label">{lang === 'ar' ? 'الخبرة' : 'Experience'}</div>
                 <div className="register-stat-value">{teacherExp}</div>
               </div>
+              )}
 
               {teacherStudents && (
                 <div className="register-stat-item">
@@ -474,11 +475,14 @@ export default function Register() {
                 </div>
               )}
 
+              {teacherTargetStage && (
               <div className="register-stat-item">
                 <div className="register-stat-label">{teacherTargetStageLabel}</div>
                 <div className="register-stat-value">{teacherTargetStage}</div>
               </div>
+              )}
             </div>
+            )}
           </div>
         </section>
 

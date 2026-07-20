@@ -15,9 +15,12 @@
 /* ── animated gradient strip ── */
 .sf-strip {
   height: 4px;
+  /* Brand strip — was a fixed rainbow that clashed with every tenant palette.
+     Now it cycles the tenant's own primary/secondary. */
   background: linear-gradient(
     90deg,
-    #43e97b, #38f9d7, #4facfe, #667eea, #f093fb, #f6ad55, #43e97b
+    var(--primary, #667eea), var(--primary-hover, #764ba2), var(--secondary, #06b6d4),
+    var(--primary-hover, #764ba2), var(--primary, #667eea)
   );
   background-size: 300% 100%;
   animation: sfStrip 9s linear infinite;
@@ -29,7 +32,7 @@
 
 /* ── marquee ticker ── */
 .sf-marquee {
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.95));
   border-block: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
   padding: 0.7rem 0;
@@ -60,7 +63,7 @@
   color: #cbd5e0;
 }
 .sf-marquee-item i {
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   font-size: 1rem;
 }
 .sf-marquee-dot {
@@ -71,8 +74,12 @@
 /* ── main body ── */
 .sf-main {
   position: relative;
+  /* Tenant surface → page → deep shade, instead of a fixed slate-navy wash. */
   background:
-    radial-gradient(ellipse at top, #1e293b 0%, #0f172a 60%, #020617 100%);
+    radial-gradient(ellipse at top,
+      var(--dynamic-surface, #1e293b) 0%,
+      var(--dynamic-background, #0f172a) 60%,
+      var(--dynamic-footer-bg, #020617) 100%);
   padding: 3.2rem 0 0;
   overflow: hidden;
 }
@@ -103,19 +110,19 @@
 }
 .sf-blob-1 {
   width: 260px; height: 260px;
-  background: #4facfe;
+  background: var(--primary, #4facfe);
   top: -80px; right: -60px;
   animation: sfBlob1 14s ease-in-out infinite;
 }
 .sf-blob-2 {
   width: 220px; height: 220px;
-  background: #667eea;
+  background: var(--primary, #667eea);
   bottom: -60px; left: 15%;
   animation: sfBlob2 17s ease-in-out infinite;
 }
 .sf-blob-3 {
   width: 180px; height: 180px;
-  background: #43e97b;
+  background: var(--secondary, #43e97b);
   top: 40%; left: -40px;
   animation: sfBlob3 20s ease-in-out infinite;
 }
@@ -152,10 +159,10 @@
   right: 0;
   width: 50px;
   height: 2px;
-  background: linear-gradient(90deg, #4facfe, #43e97b);
+  background: linear-gradient(90deg, var(--primary, #4facfe), var(--primary-hover, #43e97b));
   border-radius: 2px;
 }
-.sf-col-title i { color: #4facfe; font-size: 1rem; }
+.sf-col-title i { color: var(--primary, #4facfe); font-size: 1rem; }
 
 /* Brand */
 .sf-brand {
@@ -168,7 +175,7 @@
   width: 56px; height: 56px;
   border-radius: 16px;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, #4facfe 0%, #667eea 100%);
+  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
   font-size: 1.6rem;
   color: #fff;
   box-shadow: 0 10px 25px rgba(79, 172, 254, 0.35);
@@ -179,6 +186,20 @@
   content: '';
   position: absolute; inset: 0;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%);
+}
+
+/* Tenant logo artwork shows bare — no chip/gloss behind a finished mark. */
+.sf-brand-logo:has(.sf-brand-logo-img) {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.sf-brand-logo:has(.sf-brand-logo-img)::after { display: none; }
+.sf-brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .sf-brand-name {
   margin: 0;
@@ -216,7 +237,7 @@
 .sf-social-btn:hover {
   transform: translateY(-3px);
   color: #fff;
-  background: linear-gradient(135deg, #4facfe 0%, #667eea 100%);
+  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
   border-color: transparent;
   box-shadow: 0 8px 18px rgba(79, 172, 254, 0.35);
 }
@@ -241,7 +262,7 @@
 .sf-links a i {
   width: 16px;
   text-align: center;
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   font-size: 0.85rem;
   transition: transform 0.25s ease;
 }
@@ -252,7 +273,7 @@
 }
 .sf-links a:hover i {
   transform: translateX(-3px);
-  color: #43e97b;
+  color: var(--secondary, #43e97b);
 }
 
 /* Text-only variant: same row layout, no pill/background, hover only
@@ -270,7 +291,7 @@
 .sf-links--text li > span i {
   width: 16px;
   text-align: center;
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   font-size: 0.85rem;
   transition: filter 0.2s ease;
 }
@@ -300,7 +321,7 @@
   font-weight: 600;
   color: #cbd5e0;
 }
-.sf-badge i { color: #43e97b; font-size: 0.8rem; }
+.sf-badge i { color: var(--secondary, #43e97b); font-size: 0.8rem; }
 
 /* Text-only variant: no pill, no border, plain text with icon. Hover
    subtly tints the colour so the row still feels alive. */
@@ -330,7 +351,7 @@
   width: 16px;
   text-align: center;
   font-size: 0.85rem;
-  color: #43e97b;
+  color: var(--secondary, #43e97b);
 }
 body:not(.dark) .sf-links--static li > span { color: #475569; }
 
@@ -353,7 +374,7 @@ body:not(.dark) .sf-links--static li > span { color: #475569; }
   padding-bottom: 0.4rem;
 }
 .sf-stage-group-title i {
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   font-size: 0.9rem;
 }
 body:not(.dark) .sf-stage-group-title {
@@ -378,7 +399,7 @@ body:not(.dark) .sf-stage-group-title {
   display: grid; place-items: center;
   background: rgba(79, 172, 254, 0.12);
   border: 1px solid rgba(79, 172, 254, 0.25);
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   flex-shrink: 0;
 }
 .sf-contact div {
@@ -440,7 +461,7 @@ body:not(.dark) .sf-stage-group-title {
   text-decoration: none;
   transition: color 0.2s ease;
 }
-.sf-mini a:hover { color: #4facfe; }
+.sf-mini a:hover { color: var(--primary, #4facfe); }
 
 /* ── developer credit row ───────────────────────────────────
    Centered glassy card with pill-shaped chips per developer:
@@ -483,7 +504,7 @@ body:not(.dark) .sf-stage-group-title {
   font-family: 'Inter', system-ui, sans-serif;
 }
 .sf-devs-tag i {
-  color: #4facfe;
+  color: var(--primary, #4facfe);
   font-size: 0.78rem;
 }
 .sf-devs-people {
@@ -530,7 +551,7 @@ body:not(.dark) .sf-stage-group-title {
 }
 .sf-dev-pill:hover::before { transform: translateX(120%); }
 .sf-dev-name {
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  background: linear-gradient(135deg, var(--primary, #4facfe), #00f2fe);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

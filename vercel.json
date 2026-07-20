@@ -1,5 +1,30 @@
 {
   "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
+      "destination": "/sitemap-eldad.xml"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedabdella\\.com" }],
+      "destination": "/sitemap-mohamed-abdella.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
+      "destination": "/robots-eldad.txt"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
+      "destination": "/eldad.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedabdella\\.com" }],
+      "destination": "/mohamed-abdella.html"
+    },
     { "source": "/(.*)", "destination": "/" }
   ],
   "headers": [

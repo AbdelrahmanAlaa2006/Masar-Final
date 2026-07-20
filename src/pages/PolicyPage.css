@@ -35,7 +35,7 @@
 
 .pp-hero {
   position: relative;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--primary, #667eea) 0%, var(--primary-hover, #764ba2) 100%);
   border-radius: 20px;
   padding: 36px 28px;
   color: #fff;
@@ -116,7 +116,7 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-  color: #4f46e5;
+  color: var(--primary, #4f46e5);
   font-size: 14px;
   flex: 0 0 auto;
 }
@@ -149,7 +149,7 @@ body.dark .pp-card h2 .pp-num { color: #c7d2fe; }
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--primary-hover, #764ba2));
 }
 
 /* FAQ accordion (Help page) */
@@ -218,4 +218,4 @@ body.dark .pp-card h2 .pp-num { color: #c7d2fe; }
   transition: transform 0.2s;
 }
 .pp-contact-row a:hover { transform: translateY(-1px); }
-.pp-contact-row a i { color: #4f46e5; }
+.pp-contact-row a i { color: var(--primary, #4f46e5); }

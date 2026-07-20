@@ -13,7 +13,7 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, #764ba2));
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, var(--primary-hover, #764ba2)));
   color: white;
   border: none;
   cursor: pointer;
@@ -81,7 +81,7 @@
 
 /* Header */
 .sc-header {
-  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, #764ba2));
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, var(--primary-hover, #764ba2)));
   padding: 14px 18px;
   display: flex;
   align-items: center;
@@ -223,7 +223,7 @@
 .sc-msg-author {
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--secondary, #818cf8);
+  color: var(--secondary, var(--primary-hover, #818cf8));
   margin-bottom: 2px;
 }
 
@@ -365,7 +365,7 @@
   transition: background 0.2s;
 }
 .sc-send-btn:hover {
-  background: var(--secondary, #764ba2);
+  background: var(--secondary, var(--primary-hover, #764ba2));
 }
 
 /* Audio Recording Overlay */

@@ -725,7 +725,7 @@
 .er-q-num {
   font-size: 0.8rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: white;
   padding: 0.15rem 0.55rem;
   border-radius: 6px;
@@ -801,7 +801,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: white;
   border: none;
   padding: 0.7rem;
@@ -904,7 +904,7 @@
   border-radius: 50%;
   margin-inline-end: 6px;
 }
-.legend-passed { background: #818cf8; }
+.legend-passed { background: var(--primary-hover, #818cf8); }
 .legend-failed { background: #ef4444; }
 
 /* Line Chart */
@@ -958,7 +958,7 @@
 }
 .er-chart-line-path {
   fill: none;
-  stroke: #818cf8;
+  stroke: var(--primary-hover, #818cf8);
   stroke-width: 1.2;
   stroke-linecap: round;
   stroke-linejoin: round;

@@ -5,7 +5,7 @@
 .hgr-page {
   min-height: 100vh;
   padding: 32px 16px 80px;
-  background: var(--section-bg-1, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
+  background: var(--section-bg-1, linear-gradient(135deg, var(--dynamic-card, #0f172a) 0%, var(--dynamic-card, #1e293b) 100%));
   direction: rtl;
 }
 .hgr-container {
@@ -98,7 +98,7 @@
 }
 .hgr-select:focus { outline: none; border-color: #10b981; }
 .hgr-select option {
-  background: #1e293b;
+  background: var(--dynamic-card, #1e293b);
   color: #e2e8f0;
 }
 .hgr-select-arrow {

@@ -305,7 +305,7 @@ body.dark .cp-page::before {
   --card-accent-rgb: 36, 158, 117;
 }
 .cp-accent-indigo {
-  --card-accent-color: #6366f1;
+  --card-accent-color: var(--primary, #6366f1);
   --card-accent-rgb: 99, 102, 241;
 }
 .cp-accent-violet {
@@ -512,7 +512,7 @@ body.dark .cp-page::before {
   font-size: 1.2rem;
   margin-bottom: 0.4rem;
 }
-.cp-color-purple .cp-scope-icon { background: linear-gradient(135deg, #8c72db, #6366f1); }
+.cp-color-purple .cp-scope-icon { background: linear-gradient(135deg, #8c72db, var(--primary, #6366f1)); }
 .cp-color-green  .cp-scope-icon { background: linear-gradient(135deg, #249e75, #10b981); }
 .cp-color-orange .cp-scope-icon { background: linear-gradient(135deg, #e2873d, #f97316); }
 
@@ -683,7 +683,7 @@ body.dark .cp-page::before {
   font-size: 0.85rem;
   flex-shrink: 0;
 }
-.cp-avatar-purple { background: linear-gradient(135deg, #8c72db, #6366f1); }
+.cp-avatar-purple { background: linear-gradient(135deg, #8c72db, var(--primary, #6366f1)); }
 .cp-avatar-green  { background: linear-gradient(135deg, #249e75, #10b981); }
 .cp-avatar-orange { background: linear-gradient(135deg, #e2873d, #f97316); }
 
@@ -902,7 +902,7 @@ body.dark .cp-page::before {
   width: 44px;
   height: 44px;
   border-radius: 11px;
-  background: linear-gradient(135deg, #5bc2e7, #8b5cf6);
+  background: linear-gradient(135deg, #5bc2e7, var(--primary, #8b5cf6));
   color: #fff;
   display: flex;
   align-items: center;
@@ -1455,7 +1455,7 @@ body.dark .cp-page::before {
   box-shadow: none !important;
 }
 .sync-btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: white;
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
@@ -1636,7 +1636,7 @@ body.dark .cp-page::before {
 }
 .sync-tech summary {
   padding: 1rem 1.5rem;
-  background: #1e293b;
+  background: var(--dynamic-card, #1e293b);
   color: var(--cp-text-main);
   font-weight: 700;
   cursor: pointer;
@@ -1861,7 +1861,7 @@ body.dark .reset-guide-header:hover {
 }
 
 .reset-guide-header span i {
-  color: var(--season-accent, #6366f1);
+  color: var(--season-accent, var(--primary, #6366f1));
   font-size: 18px;
 }
 
@@ -1896,7 +1896,7 @@ body.dark .reset-guide-body {
 
 .reset-guide-body li code {
   background: rgba(99, 102, 241, 0.08);
-  color: var(--season-accent, #6366f1);
+  color: var(--season-accent, var(--primary, #6366f1));
   padding: 2px 6px;
   border-radius: 6px;
   font-family: monospace;
@@ -1922,7 +1922,7 @@ body.dark .reset-guide-body li code {
 body.dark {
   /* Dark mode variable tokens */
   --cp-bg: #0b1220;
-  --cp-bg-image: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+  --cp-bg-image: linear-gradient(180deg, var(--dynamic-background, #0b1220) 0%, var(--dynamic-card, #0f172a) 100%);
   --cp-text-main: #f1f5f9;
   --cp-text-muted: #94a3b8;
   --cp-card-bg: #1e293b;
@@ -2600,7 +2600,7 @@ input[type="date"].cp-input {
 
 /* Metric Colors */
 .cp-sa-violet {
-  --stat-accent-color: #7c3aed;
+  --stat-accent-color: var(--primary, #7c3aed);
   --stat-accent-rgb: 124, 58, 237;
 }
 .cp-sa-emerald {

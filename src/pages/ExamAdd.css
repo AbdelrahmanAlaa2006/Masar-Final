@@ -41,7 +41,7 @@ body.dark .exam-add-container {
   text-align: center;
   font-size: 2.2rem;
   font-weight: 700;
-  background: linear-gradient(45deg, #6366f1, #8b5cf6, #06b6d4);
+  background: linear-gradient(45deg, var(--primary, #6366f1), var(--primary, #8b5cf6), var(--primary-hover, #06b6d4));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -55,8 +55,8 @@ body.dark .exam-add-container {
 }
 
 body.dark .exam-add-page .btn-outline {
-  color: #a78bfa !important;
-  border-color: #a78bfa !important;
+  color: var(--primary-hover, #a78bfa) !important;
+  border-color: var(--primary-hover, #a78bfa) !important;
 }
 
 .exam-add-page .btn-outline:hover {
@@ -67,8 +67,8 @@ body.dark .exam-add-page .btn-outline {
 
 body.dark .exam-add-page .btn-outline:hover {
   background: rgba(167, 139, 250, 0.1) !important;
-  color: #a78bfa !important;
-  border-color: #a78bfa !important;
+  color: var(--primary-hover, #a78bfa) !important;
+  border-color: var(--primary-hover, #a78bfa) !important;
 }
 
 .exam-add-page .page-header-back {
@@ -169,7 +169,7 @@ body.dark .exam-add-container input[type="text"],
 body.dark .exam-add-container input[type="number"],
 body.dark .exam-add-container textarea,
 body.dark .exam-add-container select {
-  background: #0f172a;
+  background: var(--dynamic-card, #0f172a);
   border-color: rgba(167, 139, 250, 0.22);
   color: #e2e8f0;
 }
@@ -188,7 +188,7 @@ body.dark .exam-add-container input[type="text"]:focus,
 body.dark .exam-add-container input[type="number"]:focus,
 body.dark .exam-add-container textarea:focus,
 body.dark .exam-add-container select:focus {
-  background: #0f172a;
+  background: var(--dynamic-card, #0f172a);
 }
 
 textarea {
@@ -364,7 +364,7 @@ textarea {
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  background: linear-gradient(45deg, var(--primary), var(--primary-hover));
   color: white;
   border: none;
   border-radius: 12px;
@@ -511,7 +511,7 @@ body.dark .exam-add-page {
 }
 
 body.dark .question-block {
-  background: #2d3748;
+  background: var(--dynamic-card, #2d3748);
   border-color: rgba(102, 126, 234, 0.3);
 }
 
@@ -548,7 +548,7 @@ body.dark .btn-icon:hover {
 }
 
 body.dark .preview {
-  background: #2d3748;
+  background: var(--dynamic-card, #2d3748);
   border-color: rgba(102, 126, 234, 0.3);
 }
 
@@ -692,7 +692,7 @@ body.dark .restore-exam {
   border-radius: 10px;
   border: 2px dashed rgba(102, 126, 234, 0.4);
   background: rgba(102, 126, 234, 0.06);
-  color: #667eea;
+  color: var(--primary, #667eea);
   font-family: inherit;
   font-size: 14px;
   font-weight: 800;

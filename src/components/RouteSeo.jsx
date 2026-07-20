@@ -23,7 +23,13 @@ import { useTenant } from '../contexts/TenantContext'
      toggle), as does the company landing on the default tenant.
    --------------------------------------------------------------------------- */
 
-const PRODUCTION_HOST = 'mrmohamedabdella.com'
+/* Every real customer domain (www. is stripped before matching). The canonical
+   is kept — and pointed at the CURRENT host — on any of these; on preview
+   hosts (localhost, *.vercel.app) it is removed so a preview never claims to
+   be production. Keep in sync with seo/domains.mjs + vercel.json.
+   NOTE: a single hardcoded host here used to delete the canonical on every
+   OTHER custom domain, which would have de-indexed each new teacher site. */
+const PRODUCTION_HOSTS = ['mrmohamedabdella.com', 'mrkhalidelsharif.com']
 const PUBLIC_PATHS = ['/', '/login', '/register']
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1'
 
@@ -51,21 +57,22 @@ export default function RouteSeo() {
     const isPublic = PUBLIC_PATHS.includes(path)
     // Brand overrides normalize the power tenant's visible slug.
     const isPower = tenant.slug === 'power-platform'
+    const isEldad = tenant.slug === 'eldad'
     const host = window.location.hostname.replace(/^www\./, '')
 
     // 1. Robots: public pages indexable, app pages not.
     upsertMeta('robots', isPublic ? DEFAULT_ROBOTS : 'noindex, nofollow')
 
-    // 2. Canonical: production host only, per-route.
+    // 2. Canonical: any real customer domain, pointed at THAT host, per-route.
     const existingCanonical = document.querySelector('link[rel="canonical"]')
-    if (host === PRODUCTION_HOST && isPublic) {
+    if (PRODUCTION_HOSTS.includes(host) && isPublic) {
       let el = existingCanonical
       if (!el) {
         el = document.createElement('link')
         el.setAttribute('rel', 'canonical')
         document.head.appendChild(el)
       }
-      el.setAttribute('href', `https://${PRODUCTION_HOST}${path === '/' ? '/' : path}`)
+      el.setAttribute('href', `https://${host}${path === '/' ? '/' : path}`)
     } else if (existingCanonical) {
       existingCanonical.remove()
     }
@@ -86,6 +93,22 @@ export default function RouteSeo() {
               title: 'إنشاء حساب — منصة باور | مستر محمد عبداللاه',
               description:
                 'أنشئ حسابك في منصة باور لمستر محمد عبداللاه وابدأ تعلم البرمجة والذكاء الاصطناعي أونلاين — Join Mr Mohamed Abdella’s programming & AI platform.'
+            }
+          }
+        : isEldad
+        ? {
+            '/': {
+              description:
+                'منصة الضاد للأستاذ خالد الشريف — شرح اللغة العربية لطلاب نظام البكالوريا المصرية الجديد: النحو والبلاغة والأدب والنصوص وفق مواصفات البكالوريا، مع امتحانات إلكترونية ومتابعة دقيقة لأداء كل طالب.'
+            },
+            '/login': {
+              description:
+                'تسجيل الدخول إلى منصة الضاد — منصة أ. خالد الشريف للغة العربية لطلاب البكالوريا المصرية. تابع محاضراتك وواجباتك وامتحاناتك.'
+            },
+            '/register': {
+              title: 'إنشاء حساب — الضاد | لغة عربية البكالوريا المصرية',
+              description:
+                'أنشئ حسابك في منصة الضاد للأستاذ خالد الشريف وابدأ رحلتك في لغة عربية البكالوريا المصرية — نحو وبلاغة وأدب ونصوص بأسلوب مبسّط.'
             }
           }
         : {

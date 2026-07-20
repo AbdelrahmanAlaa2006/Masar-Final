@@ -38,6 +38,9 @@ export default function Header() {
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
   const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  // A tenant with its own artwork shows the logo bare — no colored chip behind
+  // it. The shared fallback logo is white, so it keeps the chip to stay visible.
+  const hasOwnLogo = Boolean(themeConfig.logoUrl || dbLogo)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -194,7 +197,7 @@ export default function Header() {
         <div className="mh__inner">
           {/* ─── Brand ─── */}
           <Link to="/" className="mh__brand" aria-label={`${brandName} - الصفحة الرئيسية`} title={brandName}>
-            <span className="mh__mark">
+            <span className={`mh__mark ${hasOwnLogo ? "mh__mark--bare" : ""}`}>
               <img src={brandLogo} alt="" className="mh__mark-img" />
             </span>
             <span className="mh__wordmark">
@@ -296,7 +299,7 @@ export default function Header() {
         >
           <header className="mh-drawer__head">
             <div className="mh__brand" title={brandName}>
-              <span className="mh__mark">
+              <span className={`mh__mark ${hasOwnLogo ? "mh__mark--bare" : ""}`}>
                 <img src={brandLogo} alt="" className="mh__mark-img" />
               </span>
               <span className="mh__wordmark">

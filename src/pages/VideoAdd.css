@@ -2,8 +2,8 @@
 
 :root {
   /* HSL-based harmonious branding variables */
-  --educational-primary: #7c3aed;
-  --educational-secondary: #a855f7;
+  --educational-primary: var(--primary, #7c3aed);
+  --educational-secondary: var(--primary-hover, #a855f7);
   --educational-accent: #06b6d4;
   --educational-success: #10b981;
   --educational-warning: #f59e0b;
@@ -24,8 +24,8 @@
   --shadow-elevated: 0 20px 25px -5px rgba(124, 58, 237, 0.1), 0 10px 10px -6px rgba(124, 58, 237, 0.1);
   --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.2);
   
-  --gradient-primary: linear-gradient(135deg, #764ba2, #667eea);
-  --gradient-accent: linear-gradient(90deg, #06b6d4, #764ba2);
+  --gradient-primary: linear-gradient(135deg, var(--primary-hover, #764ba2), var(--primary, #667eea));
+  --gradient-accent: linear-gradient(90deg, var(--primary-hover, #06b6d4), var(--primary-hover, #764ba2));
   --gradient-card: linear-gradient(145deg, rgba(124, 58, 237, 0.04), rgba(168, 85, 247, 0.02));
 }
 
@@ -109,8 +109,8 @@ body.dark .video-add-page::before {
 }
 
 body.dark .video-add-page .btn-outline {
-  color: #a78bfa !important;
-  border-color: #a78bfa !important;
+  color: var(--primary-hover, #a78bfa) !important;
+  border-color: var(--primary-hover, #a78bfa) !important;
 }
 
 .video-add-page .btn-outline:hover {
@@ -121,8 +121,8 @@ body.dark .video-add-page .btn-outline {
 
 body.dark .video-add-page .btn-outline:hover {
   background: rgba(167, 139, 250, 0.1) !important;
-  color: #a78bfa !important;
-  border-color: #a78bfa !important;
+  color: var(--primary-hover, #a78bfa) !important;
+  border-color: var(--primary-hover, #a78bfa) !important;
 }
 
 .page-header-back {
@@ -156,7 +156,7 @@ body.dark .video-add-page .btn-outline:hover {
   font-size: 2.5rem;
   font-weight: 800;
   margin-bottom: 10px;
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: linear-gradient(135deg, var(--primary-hover, #764ba2), var(--primary, #667eea));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -164,7 +164,7 @@ body.dark .video-add-page .btn-outline:hover {
 }
 
 body.dark .page-title {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  background: linear-gradient(135deg, var(--primary-hover, #a78bfa), var(--primary, #6366f1));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -397,7 +397,7 @@ body.dark .parts-section {
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--primary-hover, #764ba2));
   color: white;
   box-shadow: 0 4px 15px rgba(118, 75, 162, 0.2);
 }
@@ -668,12 +668,12 @@ body.dark .quizzes-section {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: linear-gradient(135deg, var(--primary-hover, #764ba2), var(--primary, #667eea));
   display: inline-block;
 }
 
 body.dark .quiz-block-num::before {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  background: linear-gradient(135deg, var(--primary-hover, #a78bfa), var(--primary, #6366f1));
 }
 
 .quiz-remove {
@@ -885,7 +885,7 @@ body.dark .qb-questions {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: linear-gradient(135deg, var(--primary-hover, #764ba2), var(--primary, #667eea));
   color: #fff;
   font-weight: 800;
   font-size: 0.8rem;
@@ -896,7 +896,7 @@ body.dark .qb-questions {
 }
 
 body.dark .qb-q-num {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  background: linear-gradient(135deg, var(--primary-hover, #a78bfa), var(--primary, #6366f1));
 }
 
 .qb-q-text {

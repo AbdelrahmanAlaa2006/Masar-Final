@@ -88,7 +88,7 @@ body.dark .hdash-card:hover::before {
 }
 
 .hdash-accent-cyan::before {
-  background: var(--secondary, #667eea);
+  background: var(--secondary, var(--primary, #667eea));
 }
 
 .hdash-accent-amber::before {
@@ -133,29 +133,29 @@ body.dark .hdash-card-head h3 {
 }
 
 .hdash-accent-violet .hdash-card-icon {
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: linear-gradient(135deg, var(--primary-hover, #764ba2), var(--primary, #667eea));
 }
 
 body.dark .hdash-accent-violet .hdash-card-icon {
-  background: linear-gradient(135deg, #a78bfa, #6366f1);
+  background: linear-gradient(135deg, var(--primary-hover, #a78bfa), var(--primary, #6366f1));
   box-shadow: 0 4px 12px rgba(167, 139, 250, 0.25);
 }
 
 .hdash-accent-cyan .hdash-card-icon {
-  background: linear-gradient(135deg, #06b6d4, #764ba2);
+  background: linear-gradient(135deg, var(--primary-hover, #06b6d4), var(--primary-hover, #764ba2));
 }
 
 body.dark .hdash-accent-cyan .hdash-card-icon {
-  background: linear-gradient(135deg, #06b6d4, #a78bfa);
+  background: linear-gradient(135deg, var(--primary-hover, #06b6d4), var(--primary-hover, #a78bfa));
   box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);
 }
 
 .hdash-accent-amber .hdash-card-icon {
-  background: linear-gradient(135deg, #f59e0b, #06b6d4);
+  background: linear-gradient(135deg, #f59e0b, var(--primary-hover, #06b6d4));
 }
 
 body.dark .hdash-accent-amber .hdash-card-icon {
-  background: linear-gradient(135deg, #f59e0b, #06b6d4);
+  background: linear-gradient(135deg, #f59e0b, var(--primary-hover, #06b6d4));
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
 }
 
@@ -393,7 +393,7 @@ body.dark .hdash-stat:hover {
   width: 3px;
   height: 20px;
   border-radius: 3px 0 0 3px;
-  background: linear-gradient(to bottom, #06b6d4, #6366f1);
+  background: linear-gradient(to bottom, var(--primary-hover, #06b6d4), var(--primary, #6366f1));
 }
 
 .hdash-stat-icon {
@@ -414,7 +414,7 @@ body.dark .hdash-stat:hover {
 body.dark .hdash-stat-icon {
   background: rgba(167, 139, 250, 0.1);
   border-color: rgba(167, 139, 250, 0.15);
-  color: #a78bfa;
+  color: var(--primary-hover, #a78bfa);
 }
 
 .hdash-stat:hover .hdash-stat-icon {
@@ -439,7 +439,7 @@ body.dark .hdash-stat:hover .hdash-stat-icon {
   font-weight: 700;
   font-size: 26px;
   line-height: 1.1;
-  background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
+  background: linear-gradient(135deg, var(--primary-hover, #06b6d4) 0%, var(--primary, #6366f1) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -502,7 +502,7 @@ body.dark .hdash-quick-primary {
 .hdash-quick-ghost {
   background: #f5f3ff;
   border: 1px solid rgba(124, 58, 237, 0.2);
-  color: #7c3aed !important;
+  color: var(--primary, #7c3aed) !important;
 }
 
 body.dark .hdash-quick-ghost {
@@ -547,7 +547,7 @@ body.dark .hdash-quick-icon-chip {
 body.dark .hdash-quick-ghost .hdash-quick-icon-chip {
   background: rgba(167, 139, 250, 0.1);
   border-color: rgba(167, 139, 250, 0.15);
-  color: #a78bfa;
+  color: var(--primary-hover, #a78bfa);
 }
 
 .hdash-quick-card-btn:hover {
@@ -557,14 +557,14 @@ body.dark .hdash-quick-ghost .hdash-quick-icon-chip {
 .hdash-quick-primary:hover {
   color: #ffffff !important;
   box-shadow: 0 8px 25px rgba(6, 182, 212, 0.15);
-  background: linear-gradient(135deg, #06b6d4, #6366f1);
+  background: linear-gradient(135deg, var(--primary-hover, #06b6d4), var(--primary, #6366f1));
   border-color: transparent;
 }
 
 .hdash-quick-ghost:hover {
   color: #ffffff !important;
   box-shadow: 0 8px 25px rgba(124, 58, 237, 0.15);
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  background: linear-gradient(135deg, var(--primary, #8b5cf6), var(--primary, #6366f1));
   border-color: transparent;
 }
 

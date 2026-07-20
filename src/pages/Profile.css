@@ -57,12 +57,12 @@
   --profile-badge-val-color: #0e7490;
   --profile-coming-bg: rgba(79, 70, 229, 0.06);
   --profile-coming-border: rgba(79, 70, 229, 0.15);
-  --profile-coming-color: #4f46e5;
+  --profile-coming-color: var(--primary, #4f46e5);
   --profile-copy-btn-color: #64748b;
   --profile-copy-btn-hover-bg: rgba(0, 0, 0, 0.04);
   --profile-blob-opacity: 0.08;
-  --profile-accent-icon: #7c3aed;
-  --profile-accent-gradient: linear-gradient(180deg, #06b6d4 0%, #7c3aed 100%);
+  --profile-accent-icon: var(--primary, #7c3aed);
+  --profile-accent-gradient: linear-gradient(180deg, var(--primary-hover, #06b6d4) 0%, var(--primary, #7c3aed) 100%);
 }
 
 body.dark .profile-page {
@@ -99,7 +99,7 @@ body.dark .profile-page {
   --profile-chip-admin-color: #f5c76a;
   --profile-chip-student-bg: rgba(167, 139, 250, 0.08);
   --profile-chip-student-border: rgba(167, 139, 250, 0.2);
-  --profile-chip-student-color: #a78bfa;
+  --profile-chip-student-color: var(--primary-hover, #a78bfa);
   --profile-chip-active-bg: rgba(16, 185, 129, 0.08);
   --profile-chip-active-border: rgba(16, 185, 129, 0.2);
   --profile-chip-active-color: #10b981;
@@ -120,12 +120,12 @@ body.dark .profile-page {
   --profile-badge-val-color: #7cc4e8;
   --profile-coming-bg: rgba(99, 102, 241, 0.12);
   --profile-coming-border: rgba(99, 102, 241, 0.18);
-  --profile-coming-color: #a78bfa;
+  --profile-coming-color: var(--primary-hover, #a78bfa);
   --profile-copy-btn-color: #64748b;
   --profile-copy-btn-hover-bg: rgba(255, 255, 255, 0.05);
   --profile-blob-opacity: 0.12;
   --profile-accent-icon: #7cc4e8;
-  --profile-accent-gradient: linear-gradient(180deg, #7cc4e8 0%, #6366f1 100%);
+  --profile-accent-gradient: linear-gradient(180deg, #7cc4e8 0%, var(--primary, #6366f1) 100%);
 }
 
 .profile-page {
@@ -170,7 +170,7 @@ body.dark .profile-page {
 .profile-bg-blob--1 {
   width: 600px;
   height: 600px;
-  background: #6366f1;
+  background: var(--primary, #6366f1);
   top: -10%;
   right: -5%;
   animation-delay: 0s;
@@ -186,7 +186,7 @@ body.dark .profile-page {
 .profile-bg-blob--3 {
   width: 400px;
   height: 400px;
-  background: #a78bfa;
+  background: var(--primary-hover, #a78bfa);
   top: 35%;
   left: 40%;
   animation-delay: -10s;
@@ -348,7 +348,7 @@ body.dark .profile-page {
   inset: -2px;
   border-radius: 50%;
   padding: 2px;
-  background: conic-gradient(from 0deg, #7cc4e8, #6366f1, #a78bfa, #7cc4e8) border-box;
+  background: conic-gradient(from 0deg, #7cc4e8, var(--primary, #6366f1), var(--primary-hover, #a78bfa), #7cc4e8) border-box;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);

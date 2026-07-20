@@ -91,13 +91,14 @@ body:not(.dark) .aa-page {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(9, 9, 26, 0.8);
+  /* Tenant-driven surface (was a hardcoded near-black navy). */
+  background: var(--dynamic-card-bg, rgba(9, 9, 26, 0.8));
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--dynamic-border, rgba(255, 255, 255, 0.08));
 }
 
 body:not(.dark) .aa-nav {
-  background: rgba(248, 250, 252, 0.85);
+  background: var(--card-bg, rgba(248, 250, 252, 0.85));
   border-color: rgba(0, 0, 0, 0.08);
 }
 
@@ -313,10 +314,10 @@ body:not(.dark) .aa-btn-outline {
   opacity: 0.5;
   background-image:
     radial-gradient(circle at 12% 18%, var(--primary-soft, var(--primary-glow)) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 22%, var(--secondary-soft, rgba(129, 140, 248, 0.4)) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 22%, var(--primary-soft, rgba(129, 140, 248, 0.4)) 0 2px, transparent 3px),
     radial-gradient(circle at 30% 70%, var(--primary-soft, var(--primary-glow)) 0 1.5px, transparent 3px),
     radial-gradient(circle at 65% 80%, var(--primary-soft, var(--primary-glow)) 0 2px, transparent 3px),
-    radial-gradient(circle at 88% 60%, var(--secondary-soft, rgba(129, 140, 248, 0.3)) 0 1.5px, transparent 3px);
+    radial-gradient(circle at 88% 60%, var(--primary-soft, rgba(129, 140, 248, 0.3)) 0 1.5px, transparent 3px);
 }
 
 .aa-hero-glow {
@@ -784,7 +785,9 @@ body:not(.dark) .aa-footer {
 
 .aa-page .about-quote {
   position: relative;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  /* Monochromatic: primary→its darker hover. A primary→secondary gradient
+     turned garish whenever the two brand colors were far apart. */
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover, var(--primary)));
   color: #fff;
   border-radius: 28px;
   padding: 36px;
@@ -871,7 +874,7 @@ body:not(.dark) .aa-footer {
   overflow: hidden;
   background:
     radial-gradient(1200px 600px at 80% -10%, var(--primary-soft), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, var(--secondary-soft), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, var(--primary-soft), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%);
 }
 
@@ -1003,7 +1006,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   inset: 0;
   border-radius: 24px;
   padding: 2px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary), var(--primary-hover));
+  background: linear-gradient(135deg, var(--primary), var(--primary), var(--primary-hover));
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -1032,7 +1035,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   height: 56px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: #fff;
   font-size: 1.1rem;
   box-shadow: 0 10px 25px -5px var(--primary-glow);
@@ -1153,7 +1156,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--primary-soft), var(--secondary-soft));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -1178,17 +1181,17 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   border-radius: 14px;
   color: #fff;
   font-size: 1.05rem;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   box-shadow: 0 10px 20px -8px var(--primary-glow);
 }
 
 .aa-page .location-info-card:nth-child(2) .location-info-icon {
-  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
   box-shadow: 0 10px 20px -8px var(--secondary-soft);
 }
 
 .aa-page .location-info-card:nth-child(3) .location-info-icon {
-  background: linear-gradient(135deg, var(--secondary), var(--primary-hover));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   box-shadow: 0 10px 20px -8px var(--primary-glow);
 }
 
@@ -1212,7 +1215,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   margin: 0 0 2px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1e1b4b;
+  color: var(--dynamic-card, #1e1b4b);
 }
 
 .aa-page .location-info-card p {
@@ -1241,7 +1244,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   font-size: 0.95rem;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   box-shadow: 0 12px 28px -10px var(--primary-glow);
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -1325,7 +1328,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
 .dark .aa-page .login-location {
   background:
     radial-gradient(1200px 600px at 80% -10%, var(--primary-soft), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, var(--secondary-soft), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, var(--primary-soft), transparent 60%),
     linear-gradient(180deg, var(--background) 0%, var(--surface) 100%);
 }
 
@@ -1389,7 +1392,7 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
 }
 
 .dark .aa-page .location-info-card::before {
-  background: linear-gradient(135deg, var(--primary-soft), var(--secondary-soft));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
 }
 
 .dark .aa-page .location-info-card:hover {

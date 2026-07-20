@@ -23,7 +23,7 @@
 }
 
 body.dark .devtools-blocked-wrapper {
-  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  background: radial-gradient(circle at center, var(--dynamic-card, #1e293b) 0%, var(--dynamic-card, #0f172a) 100%);
   color: #f8fafc;
 }
 
@@ -97,7 +97,7 @@ body.dark .blocked-title {
 .blocked-subtitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #6366f1;
+  color: var(--primary, #6366f1);
   margin: 0 0 20px 0;
 }
 
@@ -228,12 +228,12 @@ body.dark .info-value {
 }
 
 .btn-back {
-  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  background: linear-gradient(135deg, var(--primary, #4f46e5) 0%, #3730a3 100%);
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
 }
 
 .btn-back:hover {
-  background: linear-gradient(135deg, #4338ca 0%, #2e2882 100%);
+  background: linear-gradient(135deg, var(--primary-hover, #4338ca) 0%, #2e2882 100%);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
 }

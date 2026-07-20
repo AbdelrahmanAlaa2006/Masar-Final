@@ -2,7 +2,7 @@
    Design tokens (used across the app — keep names stable)
    ────────────────────────────────────────────────────────────── */
 :root {
-  --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-color: linear-gradient(135deg, var(--primary, #667eea) 0%, var(--primary-hover, #764ba2) 100%);
   --bg-secondary: #f0f2f8;
   --text-color: #1a202c;
   --card-bg: #ffffff;
@@ -32,7 +32,7 @@
   --mh-muted: #64748b;
   --mh-hover: rgba(102, 126, 234, 0.09);
   --mh-active-bg: linear-gradient(135deg, rgba(102, 126, 234, 0.13), rgba(118, 75, 162, 0.13));
-  --mh-active-fg: #4f46e5;
+  --mh-active-fg: var(--primary, #4f46e5);
   --mh-ring: rgba(102, 126, 234, 0.40);
   --mh-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
   --mh-shadow-elev:
@@ -42,28 +42,31 @@
 }
 
 body.dark {
-  --bg-color: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  --bg-secondary: #0f0f23;
-  --text-color: #f7fafc;
-  --card-bg: #2d3748;
+  /* All dark surfaces come from the tenant's theme tokens (--dynamic-*) so a
+     tenant can be warm brown, deep green, etc. The literals are only
+     fallbacks for tenants that set no tokens. */
+  --bg-color: var(--dynamic-background, #1a1a2e);
+  --bg-secondary: var(--dynamic-background, #0f0f23);
+  --text-color: var(--dynamic-card-text, #f7fafc);
+  --card-bg: var(--dynamic-card, #2d3748);
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
 
-  --page-bg: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
-  --page-bg-secondary: #2d3748;
+  --page-bg: var(--dynamic-background, #0f0f23);
+  --page-bg-secondary: var(--dynamic-surface, #2d3748);
   --text-primary: #f7fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #a0aec0;
   --border-light: rgba(255, 255, 255, 0.08);
   --hover-bg: rgba(255, 255, 255, 0.08);
 
-  --mh-bg: rgba(17, 24, 39, 0.78);
-  --mh-bg-solid: #0f172a;
+  --mh-bg: var(--dynamic-card-bg, rgba(17, 24, 39, 0.78));
+  --mh-bg-solid: var(--dynamic-card, #0f172a);
   --mh-border: rgba(255, 255, 255, 0.08);
   --mh-text: #e5e7eb;
   --mh-muted: #94a3b8;
   --mh-hover: rgba(255, 255, 255, 0.08);
-  --mh-active-bg: linear-gradient(135deg, var(--primary-soft, rgba(129, 140, 248, 0.20)), var(--secondary-soft, rgba(167, 139, 250, 0.18)));
+  --mh-active-bg: linear-gradient(135deg, var(--primary-soft, rgba(129, 140, 248, 0.20)), var(--primary-soft, rgba(167, 139, 250, 0.18)));
   --mh-active-fg: var(--primary);
   --mh-ring: var(--primary-glow, rgba(129, 140, 248, 0.50));
   --mh-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
@@ -105,30 +108,33 @@ body.dark {
   z-index: -1;
 }
 
+/* Brand-tinted glow (was a hardcoded indigo/violet wash that made every
+   tenant's header read navy). Uses the tenant's own primary so the header
+   matches its palette — monochromatic, never a two-hue gradient. */
 .mh::before {
   background:
-    radial-gradient(600px 100px at 12% 0%, rgba(102, 126, 234, 0.18), transparent 70%),
-    radial-gradient(500px 120px at 88% 100%, rgba(118, 75, 162, 0.16), transparent 70%);
+    radial-gradient(600px 100px at 12% 0%, var(--primary-soft, rgba(102, 126, 234, 0.18)), transparent 70%),
+    radial-gradient(500px 120px at 88% 100%, var(--primary-soft, rgba(118, 75, 162, 0.16)), transparent 70%);
   opacity: .9;
 }
 
 .mh::after {
-  /* hairline gradient under the bottom border */
+  /* hairline under the bottom border */
   bottom: -1px;
   top: auto;
   height: 1px;
   background: linear-gradient(90deg,
       transparent 0%,
-      rgba(102, 126, 234, 0.45) 25%,
-      rgba(118, 75, 162, 0.45) 75%,
+      var(--primary-glow, rgba(102, 126, 234, 0.45)) 25%,
+      var(--primary-glow, rgba(118, 75, 162, 0.45)) 75%,
       transparent 100%);
   opacity: .5;
 }
 
 body.dark .mh::before {
   background:
-    radial-gradient(600px 110px at 12% 0%, rgba(129, 140, 248, 0.16), transparent 70%),
-    radial-gradient(520px 130px at 88% 100%, rgba(167, 139, 250, 0.14), transparent 70%);
+    radial-gradient(600px 110px at 12% 0%, var(--primary-soft, rgba(129, 140, 248, 0.16)), transparent 70%),
+    radial-gradient(520px 130px at 88% 100%, var(--primary-soft, rgba(167, 139, 250, 0.14)), transparent 70%);
 }
 
 .mh--scrolled {
@@ -175,7 +181,8 @@ body.dark .mh::before {
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Brand-driven, not a hardcoded indigo→violet chip. */
+  background: linear-gradient(135deg, var(--primary, #667eea) 0%, var(--primary-hover, #764ba2) 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,6 +195,25 @@ body.dark .mh::before {
     0 -8px 16px -8px rgba(0, 0, 0, 0.18) inset;
   transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s ease;
 }
+
+/* Tenant with its own logo artwork: show it bare — no colored chip, gloss or
+   glow behind it (the logo is already a finished mark). */
+.mh__mark--bare {
+  background: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  overflow: visible;
+  width: 52px;
+  height: 52px;
+}
+.mh__mark--bare::before,
+.mh__mark--bare::after { display: none !important; }
+.mh__mark--bare .mh__mark-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.mh__brand:hover .mh__mark--bare { transform: none; box-shadow: none !important; }
 
 .mh__mark::before {
   /* spinning conic ring */
@@ -265,7 +291,7 @@ body.dark .mh::before {
   font-size: clamp(14px, 1.15vw, 17px);
   font-weight: 800;
   letter-spacing: 0.2px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -373,7 +399,7 @@ body.dark .mh__nav {
   width: 18px;
   height: 3px;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
   transform: translate(-50%, 100%);
   box-shadow: 0 4px 10px -2px rgba(124, 58, 237, 0.5);
 }
@@ -479,7 +505,7 @@ body.dark .mh__user {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   color: #fff;
   font-weight: 800;
   font-size: 15px;
@@ -572,7 +598,7 @@ body.dark .mh__user {
 .mh__user-name {
   font-size: 13.5px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--mh-text), var(--mh-text) 40%, #7c3aed);
+  background: linear-gradient(135deg, var(--mh-text), var(--mh-text) 40%, var(--primary, #7c3aed));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -855,7 +881,7 @@ body.dark .mh__user {
 }
 
 .mh-drawer__link:hover>i:first-child {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--primary-hover, #764ba2));
   color: #fff;
   transform: scale(1.06);
 }
@@ -873,7 +899,7 @@ body.dark .mh__user {
 }
 
 .mh-drawer__link.is-active>i:first-child {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--primary, #667eea), var(--primary-hover, #764ba2));
   color: #fff;
 }
 
@@ -1336,7 +1362,7 @@ body.dark .mh-drawer {
 
 body.dark .mh-drawer__panel {
   box-shadow: -30px 0 70px -28px rgba(0, 0, 0, 0.85);
-  background: linear-gradient(180deg, #0f172a 0%, #0b1224 100%);
+  background: linear-gradient(180deg, var(--dynamic-card, #0f172a) 0%, #0b1224 100%);
 }
 
 /* Drawer link arrow alignment polish */

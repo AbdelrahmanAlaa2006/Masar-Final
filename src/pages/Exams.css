@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
 
 :root {
-  --bg-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-color: linear-gradient(135deg, var(--primary, #667eea) 0%, var(--primary-hover, #764ba2) 100%);
   --bg-secondary: #f0f2f8;
   --text-color: #1a202c;
   --text-secondary: #64748b;
@@ -9,15 +9,15 @@
   --shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
   --shadow-hover: 0 12px 36px rgba(102, 126, 234, 0.18);
   --primary: var(--primary, #667eea);
-  --secondary: var(--secondary, #764ba2);
-  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  --secondary: var(--secondary, var(--primary-hover, #764ba2));
+  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   --success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   --border-radius: 16px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.dark {
-  --bg-color: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  --bg-color: linear-gradient(135deg, #1a202c 0%, var(--dynamic-card, #2d3748) 100%);
   --bg-secondary: #1a202c;
   --text-color: #f7fafc;
   --text-secondary: #a0aec0;
@@ -740,7 +740,7 @@ body.dark .exam-count {
   font-size: 1.8rem;
   font-weight: 700;
   font-family: 'Tajawal', sans-serif;
-  background: linear-gradient(45deg, #6366f1, #8b5cf6, #06b6d4);
+  background: linear-gradient(45deg, var(--primary, #6366f1), var(--primary, #8b5cf6), var(--primary-hover, #06b6d4));
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -807,14 +807,14 @@ body.dark .exams-container .prep-card:hover {
 }
 
 .exams-container .prep-green  .prep-cover { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-.exams-container .prep-blue   .prep-cover { background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); }
+.exams-container .prep-blue   .prep-cover { background: linear-gradient(135deg, var(--primary, #6366f1) 0%, var(--primary-hover, #4338ca) 100%); }
 .exams-container .prep-orange .prep-cover { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.exams-container .prep-purple .prep-cover { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
-.exams-container .prep-violet .prep-cover { background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); }
+.exams-container .prep-purple .prep-cover { background: linear-gradient(135deg, var(--primary, #8b5cf6) 0%, #6d28d9 100%); }
+.exams-container .prep-violet .prep-cover { background: linear-gradient(135deg, var(--primary, #7c3aed) 0%, var(--primary-hover, #5b21b6) 100%); }
 .exams-container .prep-teal   .prep-cover { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); }
-.exams-container .prep-pink   .prep-cover { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
+.exams-container .prep-pink   .prep-cover { background: linear-gradient(135deg, var(--primary-hover, #ec4899) 0%, #be185d 100%); }
 .exams-container .prep-red    .prep-cover { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
-.exams-container .prep-black  .prep-cover { background: linear-gradient(135deg, #374151 0%, #111827 100%); }
+.exams-container .prep-black  .prep-cover { background: linear-gradient(135deg, #374151 0%, var(--dynamic-card, #111827) 100%); }
 
 .exams-container .prep-green:hover  { border-color: rgba(16, 185, 129, 0.4); }
 .exams-container .prep-blue:hover   { border-color: rgba(99, 102, 241, 0.4); }
@@ -939,7 +939,7 @@ body.dark .exams-container .prep-foot {
 }
 
 body.dark .exams-container .prep-count i {
-  color: #a78bfa;
+  color: var(--primary-hover, #a78bfa);
 }
 
 .exams-container .prep-cta {
@@ -953,7 +953,7 @@ body.dark .exams-container .prep-count i {
 }
 
 body.dark .exams-container .prep-cta {
-  color: #a78bfa;
+  color: var(--primary-hover, #a78bfa);
 }
 
 .exams-container .prep-card:hover .prep-cta {
