@@ -68,11 +68,27 @@ async function drain() {
   running = true
   emit({ type: 'running', running: true })
   try {
-    const sent = await processNotificationQueue(tenant, (id, status, error) => {
-      refreshLock() // heartbeat the lock as batches report progress
-      emit({ type: 'progress', id, status, error })
-    })
-    emit({ type: 'done', sent })
+    let keepGoing = true
+    let totalSent = 0
+
+    while (keepGoing) {
+      if (!acquireLock()) break // ensure we still own the lock in case of extreme slowness
+
+      const { processedCount, continueProcessing, pauseReason } = await processNotificationQueue(tenant, (id, status, error) => {
+        refreshLock() // heartbeat the lock as batches report progress
+        emit({ type: 'progress', id, status, error })
+      })
+
+      totalSent += processedCount
+      keepGoing = continueProcessing
+
+      // Optional: you can log or handle pauseReason here if needed in the future
+      if (!keepGoing && pauseReason) {
+         // console.debug(`Worker loop paused: ${pauseReason}`)
+      }
+    }
+    
+    emit({ type: 'done', sent: totalSent })
   } catch (e) {
     emit({ type: 'error', error: e?.message || String(e) })
   } finally {
@@ -116,12 +132,10 @@ export function ensureAutoRun(t) {
   if (!isAutoCapable(tenant)) return
   let active = false
   try { active = sessionStorage.getItem(ACTIVE_KEY) === '1' } catch {}
-  try { sessionStorage.setItem(ACTIVE_KEY, '1') } catch {}
-  if (active) drain()       // was active before refresh → resume now
-  else scheduleIdle()       // fresh session → watch for pending work
-  // Kick once so anything already queued starts promptly (running guard makes
-  // this a no-op if a loop is already going).
-  drain()
+  
+  // Only resume if the worker was explicitly started in a previous session
+  // or before a page refresh. We NO LONGER force it to start automatically.
+  if (active) drain()
 }
 
 /* Stop watching (e.g., the admin cleared the queue or logged out). Does not

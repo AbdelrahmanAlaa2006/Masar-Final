@@ -503,7 +503,6 @@ export async function sendGatewayMessage(gatewayConfig, notification) {
   throw new Error('بوابة غير مدعومة — افتح إعدادات البوابة واختر وضع الإرسال ثم احفظ')
 }
 
-// Queue processor loop (processes pending notifications with rate limiting client-side)
 export async function processNotificationQueue(tenantConfig, onProgress) {
   const gatewayConfig = tenantConfig?.config?.gateway
   if (!gatewayConfig) {
@@ -515,6 +514,9 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
   // (~4× fewer requests), and the batch survives the admin closing the tab.
   if (gatewayConfig.type === 'wapilot') {
     let totalSent = 0
+    let pauseReason = null
+    let continueProcessing = false
+
     // Runaway guard. Batches are time-budgeted server-side (the function
     // paces sends with randomized anti-ban delays and returns before its
     // wall-clock limit), so one batch is ~15 messages — 80 covers ~1200.
@@ -533,8 +535,9 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       // queue stays pending and resumes on the first run after tenant
       // midnight — never retried on a timer.
       if (data?.limit_reached) {
+        pauseReason = data.reason || 'daily_limit'
         console.info(
-          `[WhatsApp] Sending paused (${data.reason || 'daily_limit'}). ` +
+          `[WhatsApp] Sending paused (${pauseReason}). ` +
           `Sent today: ${data.sent_today ?? '—'}/${data.daily_limit ?? '—'} | ` +
           `Remaining queue: ${data.remaining || 0}.` +
           (data.next_allowed_at ? ` Resumes after ${data.next_allowed_at}.` : '') +
@@ -542,9 +545,17 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
         )
         break
       }
-      if (!data?.remaining || results.length === 0) break
+      if (!data?.remaining || results.length === 0) {
+        pauseReason = 'empty_queue'
+        break
+      }
     }
-    return totalSent
+    
+    // If the loop finished all 80 iterations without breaking, it means
+    // there's probably more work left, so we instruct the caller to continue.
+    if (!pauseReason) continueProcessing = true
+
+    return { processedCount: totalSent, continueProcessing, pauseReason }
   }
 
   // Automatic safety engine — working hours first (no query), then the daily
@@ -553,13 +564,13 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
   const limits = resolveAutoLimits(gatewayConfig, anchorIso)
   if (!isWithinWorkingHours(limits.timezone)) {
     console.info(`[WhatsApp] Outside working hours (${DAILY_LIMITS.WORK_START_HOUR}:00–${DAILY_LIMITS.WORK_END_HOUR}:00 ${limits.timezone}). Queue left intact.`)
-    return 0
+    return { processedCount: 0, continueProcessing: false, pauseReason: 'working_hours' }
   }
   const sentToday = await countSentToday(limits.timezone)
   let allowance = Math.max(0, limits.effective - sentToday)
   if (allowance === 0) {
     console.info(`[WhatsApp] Daily safety limit reached (${sentToday}/${limits.effective}). Queue left intact; resumes tomorrow (${limits.timezone}).`)
-    return 0
+    return { processedCount: 0, continueProcessing: false, pauseReason: 'daily_limit' }
   }
 
   // Fetch pending unified notifications for whatsapp
@@ -583,12 +594,18 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
     .order('created_at', { ascending: true })
 
   if (error) throw error
-  if (!pending || pending.length === 0) return 0
+  if (!pending || pending.length === 0) {
+    return { processedCount: 0, continueProcessing: false, pauseReason: 'empty_queue' }
+  }
 
   const pendingWhatsapp = pending.filter(row => row.status?.whatsapp === 'pending')
-  if (pendingWhatsapp.length === 0) return 0
+  if (pendingWhatsapp.length === 0) {
+    return { processedCount: 0, continueProcessing: false, pauseReason: 'empty_queue' }
+  }
 
   let processedCount = 0
+  let pauseReason = null
+  let continueProcessing = true
   // Successful sends until the next long "human" pause (re-rolled each time).
   let burstLeft = rollBurstSize()
 
@@ -631,6 +648,8 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       // tenant's next day.
       if (--allowance <= 0) {
         console.info(`[WhatsApp] Daily safety limit reached (${limits.effective}/${limits.effective}). Queue left intact; resumes tomorrow (${limits.timezone}).`)
+        pauseReason = 'daily_limit'
+        continueProcessing = false
         break
       }
 
@@ -663,5 +682,5 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
     }
   }
 
-  return processedCount;
+  return { processedCount, continueProcessing, pauseReason }
 }
