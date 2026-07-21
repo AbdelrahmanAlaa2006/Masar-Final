@@ -5,7 +5,6 @@ import {
   retryNotification,
   retryAllFailed,
   updateGatewayConfig,
-  processNotificationQueue,
   sendGatewayMessage,
   buildWaMeLink,
   markNotificationManuallySent,
@@ -13,6 +12,7 @@ import {
 } from '@backend/parentNotificationsApi'
 import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp, pairWhatsApp } from '@backend/whatsappGatewayApi'
 import { useTenant } from '../../contexts/TenantContext'
+import { kickWorker, subscribeWorker, isWorkerRunning } from '../../utils/whatsappWorker'
 
 export default function WhatsAppQueuePanel({ onBack, flash }) {
   const { tenant, tenantId } = useTenant()
@@ -258,54 +258,45 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     handleManualSendRow(next)
   }
 
-  // Trigger processing queue in real-time
-  const handleProcessQueue = async () => {
-    if (processing) return
-    setProcessing(true)
-    setProcessingProgress('جاري بدء معالجة الرسائل المعلقة...')
-
-    try {
-      // Loop run
-      let processed = 0
-      let totalToProcess = summary.pending
-
-      if (totalToProcess === 0) {
-        flash('لا توجد أي رسائل معلقة في الطابور حالياً لإرسالها.', 'info')
-        setProcessing(false)
-        return
+  // Subscribe to the module-level singleton worker so this page reflects its
+  // live progress — but the worker OWNS the loop, so it keeps running after the
+  // page unmounts. Unsubscribing on unmount never stops processing.
+  useEffect(() => {
+    setProcessing(isWorkerRunning())
+    const unsub = subscribeWorker(async (evt) => {
+      if (evt.type === 'running') {
+        setProcessing(evt.running)
+        if (!evt.running) setProcessingProgress('')
+      } else if (evt.type === 'progress') {
+        setProcessingProgress('جاري إرسال الرسائل في الخلفية...')
+        setNotifications(prev => prev.map(item => item.id === evt.id
+          ? { ...item, status: evt.status, retry_count: evt.status === 'failed' ? item.retry_count + 1 : item.retry_count, last_error: evt.error }
+          : item))
+      } else if (evt.type === 'done') {
+        flash(`اكتملت المعالجة: تم إرسال ${evt.sent} رسالة.`, 'success')
+        try { setSummary(await getNotificationQueueSummary()) } catch { /* non-fatal */ }
+      } else if (evt.type === 'error') {
+        flash('تعذّر إكمال بعض الرسائل: ' + (evt.error || ''), 'error')
       }
+    })
+    return unsub
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-      const progressCallback = (id, status, errorMsg) => {
-        processed++
-        setProcessingProgress(`جاري إرسال الرسالة ${processed} من ${totalToProcess}...`)
-
-        // Dynamic update table row
-        setNotifications(prev => prev.map(item => {
-          if (item.id === id) {
-            return {
-              ...item,
-              status,
-              retry_count: status === 'failed' ? item.retry_count + 1 : item.retry_count,
-              last_error: errorMsg
-            }
-          }
-          return item
-        }))
-      }
-
-      const count = await processNotificationQueue(tenant, progressCallback)
-      flash(`اكتملت المعالجة: تم إرسال ${count} رسالة بنجاح.`, 'success')
-
-      // Reload totals
-      const sum = await getNotificationQueueSummary()
-      setSummary(sum)
-    } catch (err) {
-      console.error(err)
-      flash('فشل معالجة طابور الرسائل: ' + err.message, 'error')
-    } finally {
-      setProcessing(false)
-      setProcessingProgress('')
+  // "Start Sending" — hands off to the singleton worker (single loop, survives
+  // navigation). Repeated clicks are a no-op while it's already running.
+  const handleProcessQueue = () => {
+    if (isWorkerRunning()) {
+      flash('المعالجة جارية بالفعل في الخلفية.', 'info')
+      return
     }
+    if (summary.pending === 0) {
+      flash('لا توجد أي رسائل معلقة في الطابور حالياً لإرسالها.', 'info')
+      return
+    }
+    setProcessingProgress('جاري بدء معالجة الرسائل المعلقة...')
+    kickWorker(tenant)
+    flash('بدأت المعالجة في الخلفية — يمكنك التنقل بحرية.', 'success')
   }
 
   // Individual row retry

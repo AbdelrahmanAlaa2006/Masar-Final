@@ -41,6 +41,9 @@ export function toLatLng(url) {
   // Place pin (…!3dLAT!4dLNG…) is the actual marker Google placed — prefer it.
   const pin = u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
   if (pin) return { lat: parseFloat(pin[1]), lng: parseFloat(pin[2]) }
+  // Classic embed (…/maps/embed?pb=…!2dLNG!3dLAT…) — note lng comes first.
+  const pb = u.match(/!2d(-?\d+\.\d+)!3d(-?\d+\.\d+)/)
+  if (pb) return { lat: parseFloat(pb[2]), lng: parseFloat(pb[1]) }
   const at = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
   if (at) return { lat: parseFloat(at[1]), lng: parseFloat(at[2]) }
   const q = u.match(/[?&](?:q|query)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)

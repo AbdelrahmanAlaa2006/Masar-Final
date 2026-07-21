@@ -348,6 +348,18 @@ function AppContent() {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
 
+  // WhatsApp queue autonomy: arm the module-level singleton worker once a staff
+  // session is ready, so the queue drains in the background regardless of which
+  // page is open (and resumes after a refresh). Idempotent — the worker itself
+  // only sends for auto-capable gateways (wapilot / cloud) and enforces the
+  // Smart Sending Engine's pacing, daily limits and working hours.
+  useEffect(() => {
+    const role = user?.role
+    if (!isLoggedIn || !tenant) return
+    if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') return
+    import('./utils/whatsappWorker').then(({ ensureAutoRun }) => ensureAutoRun(tenant))
+  }, [isLoggedIn, user?.role, tenant?.id])
+
   // Continuously tracked scrollY — read by the route-change tween
   // below. We need this because by the time the route-change effect
   // fires, react-router has already rendered the new page, and if the

@@ -1542,3 +1542,16 @@ body:not(.dark) .aa-page .loc-bg-grid { opacity: 0.5; }
   .aa-page .loc-v2-stage { position: static; }
   .aa-page .loc-v2-map { min-height: 320px; }
 }
+
+/* Full multi-line contact block inside a branch card (restores all phone
+   numbers — the compact meta chip only showed the first line). */
+.aa-page .loc-v2-branch-contact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+.aa-page .loc-v2-branch-contact > i { color: var(--primary); font-size: 0.78rem; margin-top: 5px; flex-shrink: 0; }
+.aa-page .loc-v2-branch-phone { white-space: pre-line; opacity: 0.85; font-weight: 500; }
