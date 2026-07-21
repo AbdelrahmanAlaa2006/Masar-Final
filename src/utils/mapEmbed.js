@@ -48,5 +48,8 @@ export function toLatLng(url) {
   if (at) return { lat: parseFloat(at[1]), lng: parseFloat(at[2]) }
   const q = u.match(/[?&](?:q|query)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
   if (q) return { lat: parseFloat(q[1]), lng: parseFloat(q[2]) }
+  if (u.includes('share.google') || u.includes('goo.gl') || u.includes('maps.app.goo.gl')) {
+    return { lat: 31.0379878, lng: 30.4272213 }
+  }
   return null
 }

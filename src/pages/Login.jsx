@@ -132,71 +132,71 @@ export default function Login() {
     return val
   }
 
-  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(themeConfig.branding?.brand_short || tenant?.config?.branding?.brand_short, tenantName, tenantName)
-  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(themeConfig.branding?.hero_title_a || tenant?.config?.branding?.hero_title_a, tenantName, tenantName)
-  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(themeConfig.branding?.hero_title_b || tenant?.config?.branding?.hero_title_b, '', '')
-  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(themeConfig.branding?.hero_sub || tenant?.config?.branding?.hero_sub, '', '')
+  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(tenant?.config?.branding?.brand_short || themeConfig.branding?.brand_short, tenantName, tenantName)
+  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(tenant?.config?.branding?.hero_title_a || themeConfig.branding?.hero_title_a, tenantName, tenantName)
+  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(tenant?.config?.branding?.hero_title_b || themeConfig.branding?.hero_title_b, '', '')
+  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(tenant?.config?.branding?.hero_sub || themeConfig.branding?.hero_sub, '', '')
 
-  const teacherName = getLocalized(themeConfig.teacher?.name || tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
-  const teacherRole = getLocalized(themeConfig.teacher?.role || tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
+  const teacherName = getLocalized(tenant?.config?.teacher?.name || themeConfig.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
+  const teacherRole = getLocalized(tenant?.config?.teacher?.role || themeConfig.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
   const teacherBio = getLocalized(
-    themeConfig.teacher?.bio || tenant?.config?.teacher?.bio,
+    tenant?.config?.teacher?.bio || themeConfig.teacher?.bio,
     'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.',
     'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'
   )
   const teacherQuote = getLocalized(
-    themeConfig.teacher?.quote || tenant?.config?.teacher?.quote,
+    tenant?.config?.teacher?.quote || themeConfig.teacher?.quote,
     '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»',
     '“Arabic isn\'t hard — it just needs to be taught the right way.”'
   )
-  const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
-  const teacherImageHover = themeConfig.teacher?.image_hover || tenant?.config?.teacher?.image_hover || "/images/me.png"
+  const teacherImageBase = tenant?.config?.teacher?.image_base || themeConfig.teacher?.image_base || "/images/profile.png"
+  const teacherImageHover = tenant?.config?.teacher?.image_hover || themeConfig.teacher?.image_hover || "/images/me.png"
   // Optional stat/identity fields: when the tenant leaves them empty they must
   // DISAPPEAR from the UI (no hardcoded default). Each resolves to null unless
   // set, and every render site is guarded so nothing hollow shows.
   const optField = (val) => (val ? getLocalized(val, null, null) : null)
-  const teacherExp = optField(themeConfig.teacher?.experience || tenant?.config?.teacher?.experience)
-  const teacherStudents = optField(themeConfig.teacher?.students_count || tenant?.config?.teacher?.students_count)
-  const teacherSatisfaction = optField(themeConfig.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction)
-  const teacherTargetStage = optField(themeConfig.teacher?.target_stage || tenant?.config?.teacher?.target_stage)
+  const teacherExp = optField(tenant?.config?.teacher?.experience || themeConfig.teacher?.experience)
+  const teacherStudents = optField(tenant?.config?.teacher?.students_count || themeConfig.teacher?.students_count)
+  const teacherSatisfaction = optField(tenant?.config?.teacher?.satisfaction || themeConfig.teacher?.satisfaction)
+  const teacherTargetStage = optField(tenant?.config?.teacher?.target_stage || themeConfig.teacher?.target_stage)
   const teacherTargetStageLabel = getLocalized(
-    themeConfig.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
+    tenant?.config?.teacher?.target_stage_label || themeConfig.teacher?.target_stage_label,
     'التخصص',
     'Specialty'
   )
-  const teacherLearningSystem = optField(themeConfig.teacher?.learning_system || tenant?.config?.teacher?.learning_system)
+  const teacherLearningSystem = optField(tenant?.config?.teacher?.learning_system || themeConfig.teacher?.learning_system)
 
   const socials = {
-    facebook: themeConfig.socials?.facebook || tenant?.config?.socials?.facebook || 'https://www.facebook.com',
-    whatsapp: themeConfig.socials?.whatsapp || tenant?.config?.socials?.whatsapp || 'https://wa.me/',
-    instagram: themeConfig.socials?.instagram || tenant?.config?.socials?.instagram || 'https://www.instagram.com',
-    youtube: themeConfig.socials?.youtube || tenant?.config?.socials?.youtube || 'https://www.youtube.com',
-    tiktok: themeConfig.socials?.tiktok || tenant?.config?.socials?.tiktok || 'https://www.tiktok.com'
+    facebook: tenant?.config?.socials?.facebook || themeConfig.socials?.facebook || 'https://www.facebook.com',
+    whatsapp: tenant?.config?.socials?.whatsapp || themeConfig.socials?.whatsapp || 'https://wa.me/',
+    instagram: tenant?.config?.socials?.instagram || themeConfig.socials?.instagram || 'https://www.instagram.com',
+    youtube: tenant?.config?.socials?.youtube || themeConfig.socials?.youtube || 'https://www.youtube.com',
+    tiktok: tenant?.config?.socials?.tiktok || themeConfig.socials?.tiktok || 'https://www.tiktok.com'
   }
 
-  const locationKicker = getLocalized(themeConfig.location?.kicker || tenant?.config?.location?.kicker, 'زورنا', 'Visit us')
-  const locationTitle = getLocalized(themeConfig.location?.title || tenant?.config?.location?.title, 'موقعنا على الخريطة', 'Find Us on the Map')
+  const locationKicker = getLocalized(tenant?.config?.location?.kicker || themeConfig.location?.kicker, 'زورنا', 'Visit us')
+  const locationTitle = getLocalized(tenant?.config?.location?.title || themeConfig.location?.title, 'موقعنا على الخريطة', 'Find Us on the Map')
   const locationDesc = getLocalized(
-    themeConfig.location?.description || tenant?.config?.location?.description,
+    tenant?.config?.location?.description || themeConfig.location?.description,
     'تقدر تزورنا في مقرّنا بدمنهور — قريب وسهل توصله.',
     'Drop by our center in Damanhour — easy to find and easy to reach.'
   )
   // No fabricated fallbacks — an unconfigured field simply doesn't render.
-  const locationAddress = getLocalized(themeConfig.location?.address || tenant?.config?.location?.address, '', '') || null
-  const locationCountry = getLocalized(themeConfig.location?.country || tenant?.config?.location?.country, '', '') || null
-  const locationMapUrl = toMapEmbed(themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url)
-  const locationPhone = themeConfig.location?.phone || tenant?.config?.location?.phone || null
+  const locationAddress = getLocalized(tenant?.config?.location?.address || themeConfig.location?.address, '', '') || null
+  const locationCountry = getLocalized(tenant?.config?.location?.country || themeConfig.location?.country, '', '') || null
+  const locationMapUrl = toMapEmbed(tenant?.config?.location?.map_iframe_url || themeConfig.location?.map_iframe_url)
+  const locationPhone = tenant?.config?.location?.phone || tenant?.config?.contact?.phone || themeConfig.location?.phone || null
 
   // Per-tenant landing sections (tenants.config.login_sections). Missing key =
   // visible, so existing tenants render exactly as before.
   const loginSections = tenant?.config?.login_sections || {}
   const showSection = (key) => loginSections[key] !== false
 
-  const locationHoursDays = getLocalized(themeConfig.location?.hours_days || tenant?.config?.location?.hours_days, '', '') || null
-  const locationHoursTime = getLocalized(themeConfig.location?.hours_time || tenant?.config?.location?.hours_time, '', '') || null
-  const locationDirectionsLink = themeConfig.location?.directions_link || tenant?.config?.location?.directions_link || null
-  const locationWhatsappLink = themeConfig.location?.whatsapp_link || tenant?.config?.location?.whatsapp_link || null
-  const branchesList = themeConfig.location?.branches || tenant?.config?.location?.branches || null
+  const locationHoursDays = getLocalized(tenant?.config?.location?.hours_days || themeConfig.location?.hours_days, '', '') || null
+  const locationHoursTime = getLocalized(tenant?.config?.location?.hours_time || themeConfig.location?.hours_time, '', '') || null
+  const locationDirectionsLink = tenant?.config?.location?.directions_link || themeConfig.location?.directions_link || null
+  const locationWhatsappLink = tenant?.config?.location?.whatsapp_link || themeConfig.location?.whatsapp_link || null
+  const branchesList = tenant?.config?.location?.branches || themeConfig.location?.branches || null
   // The section renders only when it has something real to show
   const hasLocationData = (branchesList && branchesList.length > 0) || !!(locationAddress || locationMapUrl || locationPhone)
 
@@ -209,10 +209,10 @@ export default function Login() {
           name: locationTitle,
           address: locationAddress,
           phone: locationPhone,
-          map_iframe_url: (themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url),
+          map_iframe_url: (tenant?.config?.location?.map_iframe_url || themeConfig.location?.map_iframe_url),
           directions_link: locationDirectionsLink,
-          hours_days: (themeConfig.location?.hours_days || tenant?.config?.location?.hours_days),
-          hours_time: (themeConfig.location?.hours_time || tenant?.config?.location?.hours_time),
+          hours_days: (tenant?.config?.location?.hours_days || themeConfig.location?.hours_days),
+          hours_time: (tenant?.config?.location?.hours_time || themeConfig.location?.hours_time),
         }]
     return raw
       .map((b, i) => ({
@@ -220,7 +220,7 @@ export default function Login() {
         address: b.address ? getLocalized(b.address, '', '') : '',
         phone: b.phone ? getLocalized(b.phone, '', '') : (locationPhone || ''),
         mapUrl: toMapEmbed(b.map_iframe_url) || locationMapUrl,
-        ...(toLatLng(b.map_iframe_url) || toLatLng(themeConfig.location?.map_iframe_url || tenant?.config?.location?.map_iframe_url) || {}),
+        ...(toLatLng(b.map_iframe_url) || toLatLng(tenant?.config?.location?.map_iframe_url || themeConfig.location?.map_iframe_url) || {}),
         directions: b.directions_link || locationDirectionsLink,
         hoursDays: b.hours_days ? getLocalized(b.hours_days, '', '') : locationHoursDays,
         hoursTime: b.hours_time ? getLocalized(b.hours_time, '', '') : locationHoursTime,

@@ -65,8 +65,8 @@ const LOGIN_SECTION_DEFS = [
 /* Detailed teacher fields (config.teacher) shown on the login/landing page.
    Plain strings are fine — getLocalized() accepts both strings and {ar,en}. */
 const TEACHER_EXTRA_DEFS = [
-  { key: 'bio', label: 'نبذة عن المعلم', textarea: true },
-  { key: 'quote', label: 'اقتباس / رسالة المعلم', textarea: true },
+  { key: 'bio', label: 'نبذة عن المعلم (ظهرت في كارت عن المعلم والواجهة)', textarea: true, placeholder: 'مثال: بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.' },
+  { key: 'quote', label: 'اقتباس / رسالة المعلم', textarea: true, placeholder: 'مثال: «اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»' },
   { key: 'experience', label: 'سنوات الخبرة (مثال: +10)' },
   { key: 'students_count', label: 'عدد الطلاب (مثال: +3,500)' },
   { key: 'satisfaction', label: 'نسبة الرضا (مثال: 98%)' },
@@ -151,6 +151,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editContactAddress, setEditContactAddress] = useState('')
   const [editSocials, setEditSocials] = useState({ facebook: '', youtube: '', instagram: '', telegram: '', whatsapp: '' })
   const [editHeroTitle, setEditHeroTitle] = useState('')
+  const [editHeroTitleB, setEditHeroTitleB] = useState('')
   const [editHeroSub, setEditHeroSub] = useState('')
   const [editFeatures, setEditFeatures] = useState({})
   const [editLogoUrl, setEditLogoUrl] = useState('')
@@ -477,6 +478,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
       whatsapp: cfg.socials?.whatsapp && cfg.socials.whatsapp !== '#' ? cfg.socials.whatsapp : ''
     })
     setEditHeroTitle(asText(cfg.branding?.hero_title_a) || asText(cfg.branding?.hero_title))
+    setEditHeroTitleB(asText(cfg.branding?.hero_title_b))
     setEditHeroSub(asText(cfg.branding?.hero_sub) || asText(cfg.branding?.hero_subtitle))
     // Feature toggles: missing key = enabled (same default as isFeatureEnabled)
     const feats = {}
@@ -590,7 +592,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
         })(),
         contact: cleaned({ ...(prevConfig.contact || {}), phone: editContactPhone, email: editContactEmail, address: editContactAddress }),
         socials: cleaned({ ...(prevConfig.socials || {}), ...editSocials }),
-        branding: cleaned({ ...(prevConfig.branding || {}), hero_title_a: editHeroTitle, hero_sub: editHeroSub }),
+        branding: cleaned({ ...(prevConfig.branding || {}), hero_title_a: editHeroTitle, hero_title_b: editHeroTitleB, hero_sub: editHeroSub }),
         features: { ...(prevConfig.features || {}), ...editFeatures },
         theme: cleaned({ ...(prevConfig.theme || {}), ...editTheme }),
         login_sections: { ...(prevConfig.login_sections || {}), ...editLoginSections },
@@ -1561,9 +1563,15 @@ export default function SuperAdminPanel({ onBack, flash }) {
                     style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero)</label>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero - السطر الأول)</label>
                   <input type="text" value={editHeroTitle} onChange={(e) => setEditHeroTitle(e.target.value)}
-                    placeholder="مثال: الفيزياء بطعم جديد" className="cp-input"
+                    placeholder="مثال: اللغة العربية" className="cp-input"
+                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero - السطر الثاني / الفرعي)</label>
+                  <input type="text" value={editHeroTitleB} onChange={(e) => setEditHeroTitleB(e.target.value)}
+                    placeholder="مثال: لغة الضاد بطعم جديد" className="cp-input"
                     style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
                 </div>
               </div>
@@ -1587,6 +1595,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
                     {f.textarea ? (
                       <textarea value={editTeacherExtra[f.key] || ''} rows={2}
                         onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        placeholder={f.placeholder || ''}
                         className="cp-input"
                         style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
                     ) : f.upload ? (
@@ -1606,6 +1615,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
                     ) : (
                       <input type="text" value={editTeacherExtra[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
                         onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        placeholder={f.placeholder || ''}
                         className="cp-input"
                         style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
                     )}
