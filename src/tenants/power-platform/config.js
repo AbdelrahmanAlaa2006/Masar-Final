@@ -13,6 +13,7 @@ export const themeConfig = {
   drawCustomShape: () => false,
   generateCustomShape: () => 'formula',
   logoUrl: '/images/Power Logo.png',
+  faviconUrl: '/images/power-favicon-fixed.png',
   branding: {
     brand_short: { ar: 'منصة باور', en: 'Power Platform' },
     seo_title: {

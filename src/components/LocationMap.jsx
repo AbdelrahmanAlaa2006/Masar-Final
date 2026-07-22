@@ -56,9 +56,9 @@ export default function LocationMap({ branches = [], selected = 0, onSelect }) {
     })
     mapRef.current = map
 
-    // CARTO Voyager tiles — clean, free, no key (same family the reference used).
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap, © CARTO',
+    // Google Maps Standard tiles for high detail in Egypt
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      attribution: '© Google Maps',
       maxZoom: 20,
     }).addTo(map)
 
@@ -70,7 +70,7 @@ export default function LocationMap({ branches = [], selected = 0, onSelect }) {
     })
 
     if (points.length === 1) {
-      map.setView([points[0].lat, points[0].lng], 15)
+      map.setView([points[0].lat, points[0].lng], 18)
     } else {
       map.fitBounds(L.latLngBounds(points.map(p => [p.lat, p.lng])).pad(0.25))
     }
@@ -93,7 +93,7 @@ export default function LocationMap({ branches = [], selected = 0, onSelect }) {
     const active = markersRef.current.find(m => m.i === selected)
     if (active) {
       const ll = active.marker.getLatLng()
-      map.flyTo(ll, Math.max(map.getZoom(), 15), { duration: 0.6 })
+      map.flyTo(ll, Math.max(map.getZoom(), 18), { duration: 0.6 })
       active.marker.openPopup()
     }
   }, [selected])

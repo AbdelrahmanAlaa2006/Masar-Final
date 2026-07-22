@@ -172,15 +172,26 @@ export function applyTenantTheme(tenant, themeConfig) {
 
   // Update tab icon (favicon) if a tenant custom logo is provided
   const dbLogo = tenant.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  if (dbLogo) {
+  const faviconUrl = themeConfig.faviconUrl || dbLogo || themeConfig.logoUrl || '/images/logo.white-favicon.png'
+  
+  if (faviconUrl) {
     let favicon = document.querySelector('link[rel="icon"]')
     if (!favicon) {
       favicon = document.createElement('link')
       favicon.setAttribute('rel', 'icon')
       document.head.appendChild(favicon)
     }
-    favicon.setAttribute('href', dbLogo)
+    favicon.setAttribute('href', faviconUrl)
     favicon.removeAttribute('type')
+
+    // Also update apple-touch-icon
+    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+    if (!appleIcon) {
+      appleIcon = document.createElement('link')
+      appleIcon.setAttribute('rel', 'apple-touch-icon')
+      document.head.appendChild(appleIcon)
+    }
+    appleIcon.setAttribute('href', faviconUrl)
   }
 }
 

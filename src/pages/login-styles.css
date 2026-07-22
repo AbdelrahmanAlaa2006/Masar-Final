@@ -125,6 +125,7 @@ body:not(.dark) .aa-nav {
   max-height: 36px;
   width: auto;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .aa-brand-mark {
@@ -471,7 +472,8 @@ body:not(.dark) .aa-portrait {
   position: relative;
   aspect-ratio: 4/5;
   overflow: visible;
-  background: var(--background, var(--dynamic-background, #09091a));
+  /* Use a soft spotlight effect in dark mode instead of a hard rectangular box */
+  background: radial-gradient(circle at center 40%, var(--primary-soft) 0%, transparent 70%);
   border-radius: 12px 12px 0 0;
 }
 

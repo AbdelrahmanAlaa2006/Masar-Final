@@ -52,7 +52,7 @@ export const DOMAINS = {
     canonical: 'https://mrmohamedabdella.com/',
     ogImage: 'https://mrmohamedabdella.com/images/og-image.png',
     themeColor: '#d4af37',
-    favicon: '/images/power-favicon.png',
+    favicon: '/images/power-favicon-fixed.png',
     faviconType: 'image/png',
     siteName: 'منصة باور — Power Platform',
     jsonLd: {
@@ -97,7 +97,7 @@ export const DOMAINS = {
         name: 'Khalid Elsharif',
         alternateName: ['خالد الشريف', 'أ. خالد الشريف', 'الاستاذ خالد الشريف', 'مستر خالد الشريف', 'Mr Khalid Elsharif', 'Khaled El Sharif'],
         jobTitle: 'Arabic Language Teacher — Egyptian Baccalaureate',
-        image: 'https://mrkhalidelsharif.com/images/eldad-logo.png',
+        image: 'https://mrkhalidelsharif.com/images/Mr%20Khalid%20Elsherif%20Image%20Cropped.jpg',
         knowsAbout: ['Arabic Language', 'Arabic Grammar', 'Arabic Literature', 'Rhetoric', 'Egyptian Baccalaureate curriculum', 'اللغة العربية', 'البكالوريا المصرية'],
         sameAs: [],
       },
