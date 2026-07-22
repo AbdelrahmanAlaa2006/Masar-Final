@@ -36,7 +36,7 @@ export const PLATFORMS = [
     accent: '#8a6d1f',
     image: '/images/Mr Mohamed Abdella Image.png',
     logo: '/images/Power Logo.png',
-    url: '/login?tenant=power-platform',
+    url: 'https://mrmohamedabdella.com/login',
   },
   {
     id: 'mona-chem',
@@ -53,18 +53,19 @@ export const PLATFORMS = [
     url: '/login?tenant=mona-chem',
   },
   {
-    id: 'sherif-physics',
-    status: 'soon',
-    name: { ar: 'منصة الفيزياء', en: 'Physics Platform' },
-    owner: { ar: 'أ. شريف محمد', en: 'Mr. Sherif Mohamed' },
+    id: 'eldad-physics',
+    status: 'live',
+    name: { ar: 'منصة العداد في الفيزياء', en: 'Eldad Physics Platform' },
+    owner: { ar: 'أ. خالد الشريف', en: 'Mr. Khalid El Sharif' },
     subject: { ar: 'الفيزياء — ثانوية عامة', en: 'Physics — Secondary' },
     blurb: {
-      ar: 'فيديوهات عالية الجودة وامتحانات إلكترونية بنتائج فورية ومتابعة حضور بالباركود.',
-      en: 'High-quality videos, instant-result online exams, and barcode attendance.',
+      ar: 'منصة متكاملة لتدريس الفيزياء: فيديوهات عالية الجودة، امتحانات إلكترونية، ومتابعة حضور أولياء الأمور.',
+      en: 'A comprehensive physics platform: high-quality videos, online exams, and parent attendance tracking.',
     },
     accent: '#1d4ed8',
-    image: null,
-    url: '/login?tenant=sherif-physics',
+    image: '/images/Mr Khalid Elsherif Image Without BG.png',
+    logo: '/images/Logo Eldad Arabic Without BG.png',
+    url: 'https://mrkhalidelsharif.com/login',
   },
 ]
 

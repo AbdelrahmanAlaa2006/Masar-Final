@@ -16,9 +16,9 @@ const COPY = {
     cta_primary: 'اطلب منصتك',
     cta_secondary: 'شاهد أعمالنا',
     stats: [
-      { v: '٢', l: 'منصتان تعملان الآن' },
+      { v: '٣', l: 'منصات تعمل الآن' },
       { v: 'آلاف', l: 'الطلاب يستخدمونها يومياً' },
-      { v: '٢', l: 'منصتان قيد الإطلاق' },
+      { v: '١', l: 'منصة قيد الإطلاق' },
     ],
     services_kicker: 'ماذا نبني لك',
     services_title: 'كل ما يحتاجه مدرّس ليعمل أونلاين وفي السنتر',
@@ -61,9 +61,9 @@ const COPY = {
     cta_primary: 'Start your platform',
     cta_secondary: 'See our work',
     stats: [
-      { v: '2', l: 'platforms live today' },
+      { v: '3', l: 'platforms live today' },
       { v: 'Thousands', l: 'of students using them daily' },
-      { v: '2', l: 'platforms launching soon' },
+      { v: '1', l: 'platform launching soon' },
     ],
     services_kicker: 'What we build',
     services_title: 'Everything a teacher needs, online and in-center',
@@ -303,7 +303,7 @@ export default function GitFekraLanding() {
                 <span className="gf-work-swatch" style={{ background: p.accent }} aria-hidden="true" />
                 <div className="gf-work-media" style={{ '--accent': p.accent }} aria-hidden="true">
                   {p.image ? (
-                    <img src={p.image} alt="" loading="lazy" />
+                    <img src={p.image} alt="" loading="lazy" style={p.imageStyle} />
                   ) : (
                     <span className="gf-work-monogram">{(p.name[lang] || '?').trim().charAt(0)}</span>
                   )}

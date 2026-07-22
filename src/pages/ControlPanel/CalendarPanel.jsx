@@ -167,12 +167,12 @@ export default function CalendarPanel({ onBack, flash }) {
     setSaving(true)
     try {
       const payload = {
-        title: formTitle,
+        title: formTitle.trim(),
         event_type: formType,
         starts_at: new Date(formStartsAt).toISOString(),
         grade: formGrade,
-        group_id: formGroupId || null,
-        package_id: formPackageId || null,
+        group_id: formGroupId ? formGroupId : null,
+        package_id: formPackageId ? formPackageId : null,
         ends_at: null,
         related_type: null,
         related_id: null,
@@ -189,7 +189,11 @@ export default function CalendarPanel({ onBack, flash }) {
       }
       setModalOpen(false)
     } catch (err) {
-      if (flash) flash(err.message || 'تعذر حفظ الفعالية ❌', 'error')
+      if (err.message && err.message.includes('scheduled_events_package_id_fkey')) {
+        if (flash) flash('تعذر حفظ الفعالية: القيد المرجعي للباقة مرتبط بجدول قديم. يرجى تطبيق ملف الهجرة SQL لتحديث قاعدة البيانات ❌', 'error')
+      } else {
+        if (flash) flash(err.message || 'تعذر حفظ الفعالية ❌', 'error')
+      }
     } finally {
       setSaving(false)
     }
