@@ -3,129 +3,26 @@
 
 <head>
   <meta charset="UTF-8" />
-  <!-- Static icons carry the production brand (Power) — Google reads these
-       from the raw HTML. At runtime, theme.js swaps the favicon to each
-       tenant's own logo, so other tenants are unaffected in the browser. -->
-  <link rel="icon" type="image/png" sizes="512x512" href="/images/power-favicon-fixed.png" />
-  <link rel="apple-touch-icon" href="/images/power-favicon-fixed.png" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#d4af37" />
+  <meta name="theme-color" content="#7c3aed" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="msapplication-TileColor" content="#d4af37" />
+  <meta name="msapplication-TileColor" content="#7c3aed" />
 
-  <!-- Primary SEO (static defaults describe the production domain
-       mrmohamedabdella.com — the platform of Mr Mohamed Abdella. Titles and
-       descriptions are re-applied at runtime per tenant, so other tenants on
-       preview hosts keep their own branding exactly as before.) -->
-  <title>منصة باور — مستر محمد عبداللاه | تعليم البرمجة والذكاء الاصطناعي</title>
+  <!-- NEUTRAL fallback SEO only. The REAL per-domain SEO (title, canonical, OG
+       card, favicon, JSON-LD) is generated per host by scripts/build-seo.mjs
+       after `vite build` — see vercel.json (buildCommand + host rewrites) and
+       seo/domains.mjs. NEVER put a tenant-specific <link rel="canonical"> here:
+       a cross-domain canonical would tell Google every OTHER teacher's domain
+       is a duplicate and de-index it. -->
+  <title>منصة تعليمية — GitFekra</title>
   <meta name="description"
-    content="منصة باور التعليمية لمستر محمد عبداللاه (Mr Mohamed Abdella) — شرح البرمجة والذكاء الاصطناعي وعلوم الحاسب للمراحل الإعدادية والثانوية ونظام البكالوريا المصرية الجديد. تعليم أونلاين تفاعلي، متابعة الطلاب، امتحانات إلكترونية وتقارير ولي الأمر. Programming & AI education platform by Mr Mohamed Abdella in Egypt." />
-  <meta name="keywords"
-    content="محمد عبداللاه, محمد عبد اللاه, مستر محمد عبداللاه, منصة باور, منصة باور للبرمجة, Mohamed Abdella, Mr Mohamed Abdella, Mohamed Abdellah, Mohamed Abdel Lah, تعلم البرمجة, منصة برمجة, الذكاء الاصطناعي, تعلم الذكاء الاصطناعي, البكالوريا المصرية, نظام البكالوريا الجديد, شرح البكالوريا المصرية, منصة تعليمية, تعليم أونلاين, شرح الثانوية العامة, شرح إعدادي, حاسب آلي, برمجة للثانوية, برمجة للأطفال, متابعة الطلاب, حجز ملازم, Programming Platform, Learn Programming, AI Education, Computer Science, Egyptian Baccalaureate, Online Education, Student Management, Coding Egypt" />
-  <meta name="author" content="Mr Mohamed Abdella — مستر محمد عبداللاه" />
+    content="منصات تعليمية متكاملة للمدرسين: محاضرات وفيديوهات وامتحانات وواجبات ومتابعة دقيقة لأداء كل طالب." />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-  <link rel="canonical" href="https://mrmohamedabdella.com/" />
-
-  <!-- Open Graph (Facebook / WhatsApp / LinkedIn) -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="منصة باور — Power Platform" />
-  <meta property="og:url" content="https://mrmohamedabdella.com/" />
-  <meta property="og:title" content="منصة باور — مستر محمد عبداللاه | تعليم البرمجة والذكاء الاصطناعي" />
-  <meta property="og:description"
-    content="منصة مستر محمد عبداللاه لتعليم البرمجة والذكاء الاصطناعي — للمراحل الإعدادية والثانوية والبكالوريا المصرية. شرح أونلاين تفاعلي ومتابعة كاملة للطلاب وأولياء الأمور." />
-  <meta property="og:image" content="https://mrmohamedabdella.com/images/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="منصة باور — Power Platform | Mr Mohamed Abdella" />
-  <meta property="og:locale" content="ar_EG" />
-  <meta property="og:locale:alternate" content="en_US" />
-
-  <!-- Twitter / X Cards -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="منصة باور — مستر محمد عبداللاه | Programming & AI" />
-  <meta name="twitter:description"
-    content="Learn Programming, AI & Computer Science with Mr Mohamed Abdella — Egyptian prep, secondary and new Baccalaureate stages. منصة باور للبرمجة والذكاء الاصطناعي." />
-  <meta name="twitter:image" content="https://mrmohamedabdella.com/images/og-image.png" />
-
-  <!-- Structured Data: the teacher -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    "@id": "https://mrmohamedabdella.com/#person",
-    "name": "Mohamed Abdella",
-    "alternateName": [
-      "محمد عبد اللاه",
-      "محمد عبداللاه",
-      "مستر محمد عبداللاه",
-      "Mr Mohamed Abdella",
-      "Mohamed Abdellah",
-      "Mohamed Abdel Lah",
-      "Mr Mohamed AbdelLah"
-    ],
-    "url": "https://mrmohamedabdella.com/",
-    "image": "https://mrmohamedabdella.com/images/Mr%20Mohamed%20Abdella%20Image.png",
-    "jobTitle": "Programming & Artificial Intelligence Teacher",
-    "description": "Programming teacher at the Egyptian Ministry of Education, Microsoft USA member, postgraduate studies in Computers & Information. Over 20 years teaching programming, AI and computer science for Egyptian preparatory, secondary and new Baccalaureate students.",
-    "knowsAbout": [
-      "Programming",
-      "Artificial Intelligence",
-      "Computer Science",
-      "Software Development",
-      "Egyptian Baccalaureate curriculum",
-      "STEM Education"
-    ],
-    "worksFor": { "@id": "https://mrmohamedabdella.com/#organization" },
-    "sameAs": [
-      "https://www.facebook.com/share/1CAuoHLo69/",
-      "https://youtube.com/@powertec-ai"
-    ]
-  }
-  </script>
-
-  <!-- Structured Data: the platform -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "EducationalOrganization",
-    "@id": "https://mrmohamedabdella.com/#organization",
-    "name": "منصة باور",
-    "alternateName": ["Power Platform", "منصة باور للبرمجة والذكاء الاصطناعي", "Mr Mohamed Abdella Platform"],
-    "url": "https://mrmohamedabdella.com/",
-    "logo": "https://mrmohamedabdella.com/images/Power%20Logo.png",
-    "image": "https://mrmohamedabdella.com/images/og-image.png",
-    "description": "منصة تعليمية متخصصة في تدريس البرمجة والذكاء الاصطناعي وعلوم الحاسب لطلاب المراحل الإعدادية والثانوية ونظام البكالوريا المصرية الجديد — شرح أونلاين تفاعلي، امتحانات إلكترونية، متابعة الطلاب وتقارير ولي الأمر. Educational platform for programming, AI and computer science in Egypt.",
-    "founder": { "@id": "https://mrmohamedabdella.com/#person" },
-    "telephone": "+201002780259",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Damanhour",
-      "addressRegion": "Beheira",
-      "addressCountry": "EG"
-    },
-    "sameAs": [
-      "https://www.facebook.com/share/1CAuoHLo69/",
-      "https://youtube.com/@powertec-ai"
-    ]
-  }
-  </script>
-
-  <!-- Structured Data: the website -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": "https://mrmohamedabdella.com/#website",
-    "name": "منصة باور — مستر محمد عبداللاه",
-    "alternateName": "Mr Mohamed Abdella — Power Platform",
-    "url": "https://mrmohamedabdella.com/",
-    "inLanguage": ["ar", "en"],
-    "publisher": { "@id": "https://mrmohamedabdella.com/#organization" }
-  }
-  </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700;800;900&family=Aref+Ruqaa:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cinzel:wght@400;700&family=Fira+Code:wght@400;700&family=Orbitron:wght@400;700&family=Quicksand:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Mono:wght@400;700&family=Rajdhani:wght@500;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
