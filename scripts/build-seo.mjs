@@ -15,7 +15,7 @@
    seo/domains.mjs + two lines in vercel.json.
    --------------------------------------------------------------------------- */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, unlink } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DOMAINS, DEFAULT_KEY } from '../seo/domains.mjs'
@@ -151,12 +151,21 @@ const run = async () => {
   let count = 0
   for (const [key, cfg] of Object.entries(DOMAINS)) {
     const html = cleaned.replace('</head>', `${headFor(cfg)}\n</head>`)
-    const outName = key === DEFAULT_KEY ? 'index.html' : `${key}.html`
+    // The neutral fallback goes to default.html — NOT index.html. Vercel serves
+    // a real dist/index.html for "/" *before* it applies host rewrites, so an
+    // index.html at the root would shadow the per-domain rewrite and every
+    // homepage would serve this neutral head. With no root index.html, "/" has
+    // no filesystem match and falls through to the host rewrites in vercel.json.
+    const outName = key === DEFAULT_KEY ? 'default.html' : `${key}.html`
     await writeFile(join(DIST, outName), html, 'utf8')
     count++
     const hosts = cfg.hosts?.length ? cfg.hosts.join(', ') : '(fallback for all other hosts)'
     console.log(`[build-seo] dist/${outName.padEnd(22)} ← ${hosts}`)
   }
+
+  // Remove Vite's root index.html so it can't shadow the "/" host rewrites.
+  await unlink(srcPath).catch(() => {})
+
   console.log(`[build-seo] wrote ${count} HTML variant(s).`)
 }
 

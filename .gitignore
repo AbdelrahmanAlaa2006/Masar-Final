@@ -41,3 +41,6 @@ whatsapp-sender/node_modules
 whatsapp-gateway/.env
 whatsapp-gateway/sessions/
 whatsapp-gateway/node_modules
+
+.vercel
+.env*
