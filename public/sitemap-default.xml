@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Neutral fallback sitemap for hosts without their own entry (preview
+     deploys, *.vercel.app). Intentionally lists no URLs so an unknown host
+     never advertises another domain's pages. Real domains are served their
+     own sitemap (sitemap-eldad.xml, sitemap-mohamed-abdella.xml) via vercel.json. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+</urlset>

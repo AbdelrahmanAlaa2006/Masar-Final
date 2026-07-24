@@ -11,11 +11,18 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmohamedabdella\\.com" }],
       "destination": "/sitemap-mohamed-abdella.xml"
     },
+    { "source": "/sitemap.xml", "destination": "/sitemap-default.xml" },
     {
       "source": "/robots.txt",
       "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
       "destination": "/robots-eldad.txt"
     },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedabdella\\.com" }],
+      "destination": "/robots-mohamed-abdella.txt"
+    },
+    { "source": "/robots.txt", "destination": "/robots-default.txt" },
     {
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
