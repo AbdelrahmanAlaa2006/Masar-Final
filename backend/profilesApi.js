@@ -6,11 +6,15 @@ import { recordSubscriptionPayment } from './financeApi'
 import { createClient } from '@supabase/supabase-js'
 
 /* Admin-only: list every student profile. RLS policy profiles_admin_all
-   lets an admin read all rows; a student would only see themselves. */
+   lets an admin read all rows; a student would only see themselves.
+   Uses the lean projection (STUDENT_LIST_COLUMNS, defined below) — notably it
+   NO LONGER ships the `password` column to the browser for the whole roster
+   (a payload + security concern). The only screen that needs a student's
+   password (ResetRequestsPanel) fetches it on demand via listStudentsByPhones. */
 export async function listStudents() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, phone, grade, "group", password, avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)')
+    .select(STUDENT_LIST_COLUMNS)
     .eq('role', 'student')
     .order('name', { ascending: true })
   if (error) throw error

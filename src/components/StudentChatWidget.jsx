@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { listChatMessages, sendChatMessage, markMessagesAsRead } from '@backend/chatApi'
+import { listChatMessages, sendChatMessage, markMessagesAsRead, countUnreadForStudent } from '@backend/chatApi'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import './StudentChatWidget.css'
 
@@ -73,12 +73,45 @@ export default function StudentChatWidget({ currentUser }) {
     }
   }, [isOpen, messages.length])
 
-  // Polling for new messages every 5 seconds
+  // Polling — scaled down to remove the per-student request floor:
+  //   • OPEN   → refresh the full message list every 5s (live conversation).
+  //   • CLOSED → only refresh the unread BADGE every 30s (a head-only COUNT,
+  //              not the whole message list).
+  //   • HIDDEN TAB → don't poll at all; refresh once the moment it's visible
+  //     again so a returning user still sees fresh state immediately.
+  // At thousands of students this cuts chat polling by ~85% with no change to
+  // the open-chat experience.
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMessages(true)
-    }, 5000)
-    return () => clearInterval(interval)
+    const OPEN_MS = 5000
+    const CLOSED_MS = 30000
+    let timer = null
+
+    const tick = async () => {
+      if (document.visibilityState !== 'visible') return
+      if (isOpen) {
+        await fetchMessages(true)
+      } else {
+        try { setUnreadCount(await countUnreadForStudent(studentId)) } catch { /* offline — keep last badge */ }
+      }
+    }
+
+    const start = () => {
+      clearInterval(timer)
+      timer = setInterval(tick, isOpen ? OPEN_MS : CLOSED_MS)
+    }
+
+    tick()   // refresh immediately on open/close (no stale window on open)
+    start()
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') { tick(); start() }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [studentId, isOpen])
 
   // Handle image pick

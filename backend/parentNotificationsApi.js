@@ -222,15 +222,17 @@ export async function retryNotification(id) {
 
 // Reset all failed notifications to pending
 export async function retryAllFailed(tenantId) {
-  // Read all failed rows first
-  const { data: failedRows } = await supabase
+  // Fetch ONLY failed WhatsApp rows — filtered server-side. Previously this
+  // downloaded EVERY notification row for the tenant and filtered in JS, which
+  // grows unbounded with message history. (A partial index on
+  // status->>'whatsapp'='failed' — see the audit — makes this scan instant.)
+  const { data: failedWhatsapp } = await supabase
     .from('unified_notifications')
     .select('id, status')
     .eq('tenant_id', tenantId)
+    .eq('status->>whatsapp', 'failed')
 
-  const failedWhatsapp = (failedRows || []).filter(r => r.status?.whatsapp === 'failed')
-
-  const promises = failedWhatsapp.map(async (row) => {
+  const promises = (failedWhatsapp || []).map(async (row) => {
     const updatedStatus = { ...(row.status || {}) }
     updatedStatus.whatsapp = 'pending'
     updatedStatus.whatsapp_error = null
@@ -244,7 +246,7 @@ export async function retryAllFailed(tenantId) {
   })
 
   await Promise.all(promises)
-  return failedWhatsapp
+  return failedWhatsapp || []
 }
 
 // Clear all pending WhatsApp notifications for a tenant
@@ -526,6 +528,13 @@ export async function processNotificationQueue(tenantConfig, onProgress) {
       })
       if (error) throw new Error(error.message || 'فشل الاتصال بدالة الإرسال')
       if (data?.error) throw new Error(data.error)
+      // Another processor (the cron heartbeat, or another device/tab) holds
+      // this tenant's lease. Do NOT keep hammering — stop this run cleanly and
+      // let that one drain the queue; the idle/cron heartbeat covers the rest.
+      if (data?.busy) {
+        pauseReason = 'busy'
+        break
+      }
       const results = data?.results || []
       results.forEach((r) => {
         if (r.status === 'sent') totalSent++

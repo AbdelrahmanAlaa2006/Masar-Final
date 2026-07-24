@@ -58,16 +58,20 @@ export function TenantProvider({ children }) {
           }
         }
 
-        // 2. Fetch all tenants for local development selectors (cached for 30 minutes)
-        const allTenants = await cached('available-tenants', 30 * 60 * 1000, async () => {
-          const { data } = await supabase
-            .from('tenants')
-            .select('slug, name')
-            .order('name')
-          return data || []
-        })
-        if (allTenants) {
-          setAvailableTenants(remapAvailableTenants(allTenants))
+        // 2. Fetch all tenants ONLY for the localhost dev switcher. In
+        // production this list is never rendered (the switcher is gated on
+        // isLocalhost below), so skip the query for every cold visitor.
+        if (isLocalhost) {
+          const allTenants = await cached('available-tenants', 30 * 60 * 1000, async () => {
+            const { data } = await supabase
+              .from('tenants')
+              .select('slug, name')
+              .order('name')
+            return data || []
+          })
+          if (allTenants) {
+            setAvailableTenants(remapAvailableTenants(allTenants))
+          }
         }
 
         // 3. Fetch tenant config from database (cached for 10 minutes)

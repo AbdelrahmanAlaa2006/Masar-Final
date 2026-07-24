@@ -51,18 +51,23 @@ export async function listCenterAttemptsForStudent(studentId, type) {
  */
 export async function listCenterUniqueEvaluations(grade, type) {
   if (!grade) return []
+  // Filter by the student's grade IN SQL via an inner join on profiles, instead
+  // of fetching EVERY grade row of this type across all grades and filtering in
+  // JS. `!inner` drops non-matching rows server-side; only this grade's rows
+  // are returned (backed by idx_grades_tenant_type_title).
   const { data, error } = await supabase
     .from('grades')
     .select(`
       title,
       max_score,
-      profiles!student_id ( grade )
+      profiles!student_id!inner ( grade )
     `)
     .eq('type', type)
-  
+    .eq('profiles.grade', grade)
+
   if (error) throw error
 
-  const filtered = (data || []).filter(r => r.profiles?.grade === grade)
+  const filtered = data || []
   const seen = new Set()
   const unique = []
 

@@ -312,6 +312,26 @@ serve(async (req) => {
       return count || 0
     }
 
+    // ── Per-tenant lease lock ────────────────────────────────────────────
+    // Exactly one processor per tenant may proceed past this point. This is
+    // what makes the pg_cron heartbeat and the browser worker (and multiple
+    // devices/tabs) safe to run together: without it, two concurrent runs send
+    // the same rows twice and each reads sent_today independently, overshooting
+    // the daily cap. The lease auto-expires so a crashed run never wedges the
+    // queue; a clean run releases it in `finally` below.
+    const LEASE_SECONDS = 180 // > the 110s time budget, with margin
+    const { data: gotLock, error: lockErr } = await admin.rpc('acquire_whatsapp_lock', {
+      p_tenant_id: tenantId, p_lease_seconds: LEASE_SECONDS,
+    })
+    if (lockErr) return json({ error: lockErr.message }, { status: 500 })
+    if (!gotLock) {
+      // Another processor owns this tenant right now — do NOT send. Report the
+      // queue depth so the caller can back off and let that run finish.
+      const queued = await pendingCount()
+      return json({ ok: true, results: [], remaining: queued, busy: true })
+    }
+
+    try {
     // Gate 1 — working hours (tenant-local, no query needed).
     const win = workingWindow(limits.timezone)
     if (!win.open) {
@@ -463,6 +483,10 @@ serve(async (req) => {
       capacity_remaining: capacityRemaining,
       estimated_completion_at: estimateCompletion(remaining || 0, capacityRemaining, limits.effective),
     })
+    } finally {
+      // Always free the lease — normal end, early gate return, or thrown error.
+      await admin.rpc('release_whatsapp_lock', { p_tenant_id: tenantId })
+    }
   } catch (e) {
     return json({ error: (e as Error).message || 'unexpected error' }, { status: 500 })
   }

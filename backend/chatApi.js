@@ -35,6 +35,28 @@ export async function listChatMessages(studentId) {
 }
 
 /**
+ * Lightweight unread-count for a student's own thread — badge only.
+ * A head-only COUNT of admin→student messages still unread. Lets the floating
+ * widget keep its badge fresh while CLOSED without downloading the whole
+ * message list every poll (the list is only needed when the window is open).
+ * Matches the client-side rule: not sent by the student AND is_read = false.
+ */
+export async function countUnreadForStudent(studentId) {
+  if (!studentId) return 0
+  const { count, error } = await supabase
+    .from('chat_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('student_id', studentId)
+    .eq('is_read', false)
+    .neq('sender_id', studentId)
+  if (error) {
+    console.error('Error counting unread chat:', error)
+    return 0
+  }
+  return count || 0
+}
+
+/**
  * Send a new chat message.
  */
 export async function sendChatMessage({ studentId, content, fileUrl, fileType, senderId }) {

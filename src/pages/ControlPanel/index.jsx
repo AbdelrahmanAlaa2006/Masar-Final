@@ -228,18 +228,12 @@ export default function ControlPanelIndex() {
     }
   }, [section])
 
-  // Clear chats refresh flag when navigating away from the chats section
-  useEffect(() => {
-    if (section !== 'chats') {
-      sessionStorage.removeItem('chats-refreshed')
-    }
-    return () => {
-      const params = new URLSearchParams(window.location.search)
-      if (window.location.pathname !== '/control-panel' || params.get('section') !== 'chats') {
-        sessionStorage.removeItem('chats-refreshed')
-      }
-    }
-  }, [section])
+  // NOTE: previously this cleared the 'chats-refreshed' flag on every navigation
+  // away from Chats, which made ChatsPanel's one-time layout-fix reload fire a
+  // FULL PAGE RELOAD on *every* visit to Chats (re-running the entire app boot).
+  // We now leave the flag set for the session, so the reload happens at most
+  // once per session (first Chats open) instead of on every visit. The panel
+  // still refreshes its data on each mount via loadOverview() — no reload needed.
 
   // Scroll to top on section transitions
   useEffect(() => {

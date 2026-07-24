@@ -52,12 +52,14 @@ export default function Notifications() {
     setLoading(true)
     const cacheKey = isStaff ? 'notifications:admin' : `notifications:student:${uid}`
     try {
-      const [rows, reads] = await Promise.all([
-        cached(cacheKey, NOTIF_TTL, () => listNotifications()),
-        uid
-          ? cached(`reads:${uid}`, NOTIF_TTL, () => listMyReadIds(uid))
-          : Promise.resolve([]),
-      ])
+      // Fetch the list first, then read-state BOUNDED to those ids (the badge
+      // only checks reads for loaded rows) — avoids downloading the student's
+      // entire read history every poll.
+      const rows = await cached(cacheKey, NOTIF_TTL, () => listNotifications())
+      const ids = rows.map((n) => n.id)
+      const reads = uid
+        ? await cached(`reads:${uid}`, NOTIF_TTL, () => listMyReadIds(uid, ids))
+        : []
 
       const readSet = new Set(reads)
 
@@ -87,13 +89,22 @@ export default function Notifications() {
   useEffect(() => { if (userId !== null) refresh(userId) }, [userId])
   useEffect(() => { if (open && userId) refresh(userId) }, [open, userId])
 
-  // Poll for new notifications every 30 seconds for live badge updates
+  // Poll for the live badge — every 60s, and ONLY while the tab is visible.
+  // A backgrounded tab has no reason to poll; we refresh once the moment it
+  // becomes visible again so a returning user sees fresh state immediately.
+  // (Was every 30s regardless of visibility — the bulk of the notification
+  // request floor at scale.)
   useEffect(() => {
     if (!userId) return
-    const interval = setInterval(() => {
-      refresh(userId)
-    }, 30000)
-    return () => clearInterval(interval)
+    const POLL_MS = 60000
+    const tick = () => { if (document.visibilityState === 'visible') refresh(userId) }
+    const interval = setInterval(tick, POLL_MS)
+    const onVisibility = () => { if (document.visibilityState === 'visible') refresh(userId) }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [userId])
 
   // Close on outside click / Escape

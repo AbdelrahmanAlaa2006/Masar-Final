@@ -15,13 +15,23 @@ export async function listNotifications({ limit = 50 } = {}) {
   return data || []
 }
 
-/* Per-user read state. We return just the ids the user has marked read. */
-export async function listMyReadIds(userId) {
+/* Per-user read state. We return just the ids the user has marked read.
+   Pass `ids` (the currently-loaded notification ids) to BOUND the query — the
+   badge only ever checks reads for the displayed rows, so without a bound this
+   returned the user's ENTIRE read history on every 60s poll (unbounded growth
+   for a long-tenured student). Bounding is exact for the badge and per-row
+   read state. Called without `ids` it preserves the old full-history behavior. */
+export async function listMyReadIds(userId, ids = null) {
   if (!userId) return []
-  const { data, error } = await supabase
+  let query = supabase
     .from('notification_reads')
     .select('notification_id')
     .eq('user_id', userId)
+  if (Array.isArray(ids)) {
+    if (ids.length === 0) return []
+    query = query.in('notification_id', ids)
+  }
+  const { data, error } = await query
   if (error) throw error
   return (data || []).map((r) => r.notification_id)
 }
