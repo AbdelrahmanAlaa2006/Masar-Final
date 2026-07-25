@@ -166,7 +166,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--primary, #7c3aed), var(--primary, #6366f1));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--primary, var(--primary)));
   padding: 8px 16px;
   border-radius: 8px;
   text-decoration: none;
@@ -174,12 +174,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 10px var(--primary-glow);
 }
 
 .pay-card-action-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 6px 15px var(--primary-glow);
 }
 
 /* ── Form & History Grid ── */
@@ -348,7 +348,7 @@
   font-size: 0.92rem;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--primary, #7c3aed), var(--primary, #6366f1));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--primary, var(--primary)));
   border: none;
   padding: 12px;
   border-radius: 10px;
@@ -358,12 +358,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .paypg-submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 6px 16px var(--primary-glow);
 }
 
 .paypg-submit-btn:disabled {
@@ -423,7 +423,7 @@
 
 .pay-item-amount {
   font-weight: 800;
-  color: var(--primary, #7c3aed);
+  color: var(--primary, var(--primary));
   font-size: 1rem;
 }
 
@@ -482,7 +482,7 @@
 
 .paypg-loader i {
   font-size: 1.8rem;
-  color: var(--primary, #7c3aed);
+  color: var(--primary, var(--primary));
 }
 
 .paypg-empty i {

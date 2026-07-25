@@ -15,8 +15,8 @@
 }
 
 .lgx-root {
-  --lgx-a: var(--primary, #7c3aed);
-  --lgx-b: var(--secondary, #06b6d4);
+  --lgx-a: var(--primary, var(--primary));
+  --lgx-b: var(--secondary, var(--primary));
   --lgx-grad: linear-gradient(135deg, var(--lgx-a), var(--lgx-b));
   --lgx-ease: cubic-bezier(.16, 1, .3, 1);
 
@@ -1047,12 +1047,12 @@
 .auth-toast-check { width: 56px; height: 56px; margin: 0 auto 14px; }
 .auth-toast-check svg { width: 100%; height: 100%; }
 .auth-toast-check-circle {
-  stroke: var(--lgx-a, var(--primary, #7c3aed)); stroke-width: 2.5;
+  stroke: var(--lgx-a, var(--primary, var(--primary))); stroke-width: 2.5;
   stroke-dasharray: 145; stroke-dashoffset: 145;
   animation: lgxStroke .5s cubic-bezier(.65, 0, .45, 1) forwards;
 }
 .auth-toast-check-path {
-  stroke: var(--lgx-b, #06b6d4); stroke-width: 3.2; stroke-linecap: round;
+  stroke: var(--lgx-b, var(--primary)); stroke-width: 3.2; stroke-linecap: round;
   stroke-dasharray: 48; stroke-dashoffset: 48;
   animation: lgxStroke .35s cubic-bezier(.65, 0, .45, 1) .35s forwards;
 }
@@ -1065,7 +1065,7 @@
 }
 .auth-toast-bar span {
   display: block; height: 100%; width: 100%;
-  background: linear-gradient(90deg, var(--lgx-a, var(--primary, #7c3aed)), var(--lgx-b, var(--primary-hover, #06b6d4)));
+  background: linear-gradient(90deg, var(--lgx-a, var(--primary, var(--primary))), var(--lgx-b, var(--primary-hover, var(--primary))));
   transform-origin: inline-start;
   animation: lgxBar 1.4s linear forwards;
 }

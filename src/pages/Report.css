@@ -747,7 +747,7 @@ body.dark .report-suggestions li:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 body.dark .report-suggestions li.is-active {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--primary-glow);
 }
 body.dark .report-suggestion-name {
   color: #f1f5f9;
@@ -798,17 +798,17 @@ body.dark .report-toggle {
 }
 
 .report-toggle-btn:hover {
-  color: var(--cp-primary, var(--primary, #7c3aed));
+  color: var(--cp-primary, var(--primary, var(--primary)));
 }
 
 .report-toggle-btn.is-active {
-  background: var(--cp-primary, var(--primary, #7c3aed));
+  background: var(--cp-primary, var(--primary, var(--primary)));
   color: #fff;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 body.dark .report-toggle-btn.is-active {
-  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.25);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 /* ── Public Report Mobile Viewport Adjustments ── */

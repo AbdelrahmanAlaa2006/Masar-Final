@@ -19,8 +19,8 @@
   --profile-avatar-bg: #f1f5f9;
   --profile-avatar-text: #0f172a;
   --profile-avatar-border: #ffffff;
-  --profile-avatar-shadow: 0 0 24px rgba(99, 102, 241, 0.1), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
-  --profile-avatar-pulse-1: 0 0 0 4px #ffffff, 0 0 16px rgba(99, 102, 241, 0.08), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
+  --profile-avatar-shadow: 0 0 24px var(--primary-soft), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
+  --profile-avatar-pulse-1: 0 0 0 4px #ffffff, 0 0 16px var(--primary-soft), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
   --profile-avatar-pulse-2: 0 0 0 4px #ffffff, 0 0 24px rgba(201, 162, 74, 0.18), 0 16px 32px -10px rgba(0, 0, 0, 0.1);
   --profile-fab-bg: rgba(255, 255, 255, 0.9);
   --profile-fab-border: rgba(0, 0, 0, 0.08);
@@ -61,8 +61,8 @@
   --profile-copy-btn-color: #64748b;
   --profile-copy-btn-hover-bg: rgba(0, 0, 0, 0.04);
   --profile-blob-opacity: 0.08;
-  --profile-accent-icon: var(--primary, #7c3aed);
-  --profile-accent-gradient: linear-gradient(180deg, var(--primary-hover, #06b6d4) 0%, var(--primary, #7c3aed) 100%);
+  --profile-accent-icon: var(--primary, var(--primary));
+  --profile-accent-gradient: linear-gradient(180deg, var(--primary-hover, var(--primary)) 0%, var(--primary, var(--primary)) 100%);
 }
 
 body.dark .profile-page {
@@ -82,8 +82,8 @@ body.dark .profile-page {
   --profile-avatar-bg: #1a2333;
   --profile-avatar-text: #ffffff;
   --profile-avatar-border: var(--dynamic-surface, #151e2e);
-  --profile-avatar-shadow: 0 0 24px rgba(99, 102, 241, 0.15), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
-  --profile-avatar-pulse-1: 0 0 0 4px var(--dynamic-surface, #151e2e), 0 0 16px rgba(99, 102, 241, 0.12), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  --profile-avatar-shadow: 0 0 24px var(--primary-soft), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
+  --profile-avatar-pulse-1: 0 0 0 4px var(--dynamic-surface, #151e2e), 0 0 16px var(--primary-soft), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
   --profile-avatar-pulse-2: 0 0 0 4px var(--dynamic-surface, #151e2e), 0 0 28px rgba(201, 162, 74, 0.25), 0 16px 40px -10px rgba(0, 0, 0, 0.6);
   --profile-fab-bg: rgba(15, 23, 42, 0.7);
   --profile-fab-border: rgba(255, 255, 255, 0.08);
@@ -97,9 +97,9 @@ body.dark .profile-page {
   --profile-chip-admin-bg: rgba(245, 199, 106, 0.08);
   --profile-chip-admin-border: rgba(245, 199, 106, 0.2);
   --profile-chip-admin-color: #f5c76a;
-  --profile-chip-student-bg: rgba(167, 139, 250, 0.08);
-  --profile-chip-student-border: rgba(167, 139, 250, 0.2);
-  --profile-chip-student-color: var(--primary-hover, #a78bfa);
+  --profile-chip-student-bg: var(--primary-glow);
+  --profile-chip-student-border: var(--primary-glow);
+  --profile-chip-student-color: var(--primary-hover, var(--primary));
   --profile-chip-active-bg: rgba(16, 185, 129, 0.08);
   --profile-chip-active-border: rgba(16, 185, 129, 0.2);
   --profile-chip-active-color: #10b981;
@@ -118,14 +118,14 @@ body.dark .profile-page {
   --profile-badge-val-bg: rgba(201, 162, 74, 0.1);
   --profile-badge-val-border: rgba(201, 162, 74, 0.15);
   --profile-badge-val-color: var(--secondary, #7cc4e8);
-  --profile-coming-bg: rgba(99, 102, 241, 0.12);
-  --profile-coming-border: rgba(99, 102, 241, 0.18);
-  --profile-coming-color: var(--primary-hover, #a78bfa);
+  --profile-coming-bg: var(--primary-soft);
+  --profile-coming-border: var(--primary-soft);
+  --profile-coming-color: var(--primary-hover, var(--primary));
   --profile-copy-btn-color: #64748b;
   --profile-copy-btn-hover-bg: rgba(255, 255, 255, 0.05);
   --profile-blob-opacity: 0.12;
   --profile-accent-icon: var(--secondary, #7cc4e8);
-  --profile-accent-gradient: linear-gradient(180deg, var(--secondary, #7cc4e8) 0%, var(--primary, #6366f1) 100%);
+  --profile-accent-gradient: linear-gradient(180deg, var(--secondary, #7cc4e8) 0%, var(--primary, var(--primary)) 100%);
 }
 
 .profile-page {
@@ -170,7 +170,7 @@ body.dark .profile-page {
 .profile-bg-blob--1 {
   width: 600px;
   height: 600px;
-  background: var(--primary, #6366f1);
+  background: var(--primary, var(--primary));
   top: -10%;
   right: -5%;
   animation-delay: 0s;
@@ -186,7 +186,7 @@ body.dark .profile-page {
 .profile-bg-blob--3 {
   width: 400px;
   height: 400px;
-  background: var(--primary-hover, #a78bfa);
+  background: var(--primary-hover, var(--primary));
   top: 35%;
   left: 40%;
   animation-delay: -10s;
@@ -348,7 +348,7 @@ body.dark .profile-page {
   inset: -2px;
   border-radius: 50%;
   padding: 2px;
-  background: conic-gradient(from 0deg, var(--secondary, #7cc4e8), var(--primary, #6366f1), var(--primary-hover, #a78bfa), var(--secondary, #7cc4e8)) border-box;
+  background: conic-gradient(from 0deg, var(--secondary, #7cc4e8), var(--primary, var(--primary)), var(--primary-hover, var(--primary)), var(--secondary, #7cc4e8)) border-box;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -854,7 +854,7 @@ body.dark .profile-chip--assistant {
 .parent-phone-edit-wrapper input:focus {
   outline: none;
   border-color: var(--profile-accent-icon) !important;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2) !important;
+  box-shadow: 0 0 0 2px var(--primary-glow) !important;
 }
 
 body.dark .parent-phone-edit-wrapper input:focus {
@@ -868,7 +868,7 @@ body.dark .parent-phone-edit-wrapper input:focus {
   border: none;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 12px var(--primary-glow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -883,7 +883,7 @@ body.dark .parent-phone-edit-wrapper input:focus {
 
 .profile-digital-card-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 8px 20px var(--primary-glow);
   filter: brightness(1.05);
 }
 
@@ -892,10 +892,10 @@ body.dark .parent-phone-edit-wrapper input:focus {
 }
 
 body.dark .profile-digital-card-btn {
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 12px var(--primary-soft);
 }
 
 body.dark .profile-digital-card-btn:hover {
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 20px var(--primary-soft);
 }
 

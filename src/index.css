@@ -4,8 +4,8 @@
      Tenants can still override via config.theme.bg_light. */
   --bg-color: #f5f3ee;
   background-color: var(--bg-color);
-  --primary: #7c3aed;
-  --secondary: #06b6d4;
+  --primary: var(--primary);
+  --secondary: var(--primary);
   --primary-hover: #6d28d9;
 }
 
@@ -179,8 +179,8 @@ body.dark .premium-page-header {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--primary, #7c3aed);
-  background: linear-gradient(135deg, var(--primary, #7c3aed) 0%, var(--secondary, #06b6d4) 100%);
+  color: var(--primary, var(--primary));
+  background: linear-gradient(135deg, var(--primary, var(--primary)) 0%, var(--secondary, var(--primary)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   opacity: 0.9;
@@ -277,13 +277,13 @@ body.dark .premium-back-btn:hover {
 }
 
 .premium-action-btn.btn-primary {
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.25);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%);
+  box-shadow: 0 4px 15px var(--primary-glow);
 }
 
 .premium-action-btn.btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 8px 25px var(--primary-glow);
 }
 
 @media (max-width: 991px) {

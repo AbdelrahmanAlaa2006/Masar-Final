@@ -836,7 +836,7 @@
   gap: 8px;
 }
 .er-dashboard-title i {
-  color: var(--primary, #667eea);
+  color: var(--primary, var(--primary));
 }
 .er-dashboard-layout {
   display: flex;
@@ -904,7 +904,7 @@
   border-radius: 50%;
   margin-inline-end: 6px;
 }
-.legend-passed { background: var(--primary-hover, #818cf8); }
+.legend-passed { background: var(--primary-hover, var(--primary)); }
 .legend-failed { background: #ef4444; }
 
 /* Line Chart */
@@ -958,7 +958,7 @@
 }
 .er-chart-line-path {
   fill: none;
-  stroke: var(--primary-hover, #818cf8);
+  stroke: var(--primary-hover, var(--primary));
   stroke-width: 1.2;
   stroke-linecap: round;
   stroke-linejoin: round;

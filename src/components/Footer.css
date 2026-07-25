@@ -19,8 +19,8 @@
      Now it cycles the tenant's own primary/secondary. */
   background: linear-gradient(
     90deg,
-    var(--primary, #667eea), var(--primary-hover, #764ba2), var(--secondary, #06b6d4),
-    var(--primary-hover, #764ba2), var(--primary, #667eea)
+    var(--primary, var(--primary)), var(--primary-hover, var(--primary)), var(--secondary, var(--primary)),
+    var(--primary-hover, var(--primary)), var(--primary, var(--primary))
   );
   background-size: 300% 100%;
   animation: sfStrip 9s linear infinite;
@@ -116,7 +116,7 @@
 }
 .sf-blob-2 {
   width: 220px; height: 220px;
-  background: var(--primary, #667eea);
+  background: var(--primary, var(--primary));
   bottom: -60px; left: 15%;
   animation: sfBlob2 17s ease-in-out infinite;
 }
@@ -175,7 +175,7 @@
   width: 56px; height: 56px;
   border-radius: 16px;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
+  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, var(--primary)) 100%);
   font-size: 1.6rem;
   color: #fff;
   box-shadow: 0 10px 25px color-mix(in srgb, var(--primary) 28%, transparent);
@@ -248,7 +248,7 @@
 .sf-social-btn:hover {
   transform: translateY(-3px);
   color: #fff;
-  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, #667eea) 100%);
+  background: linear-gradient(135deg, var(--primary, #4facfe) 0%, var(--primary, var(--primary)) 100%);
   border-color: transparent;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 28%, transparent);
 }

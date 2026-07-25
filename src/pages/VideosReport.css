@@ -568,7 +568,7 @@
   gap: 8px;
 }
 .vr-dashboard-title i {
-  color: var(--secondary, #06b6d4);
+  color: var(--secondary, var(--primary));
 }
 .vr-dashboard-layout {
   display: flex;

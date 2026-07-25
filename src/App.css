@@ -64,7 +64,7 @@
   padding: 24px 32px 18px;
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(245,245,255,0.92));
-  border: 1px solid rgba(124, 58, 237, 0.18);
+  border: 1px solid var(--primary-glow);
   box-shadow: 0 20px 60px rgba(76, 29, 149, 0.28), 0 4px 16px rgba(0,0,0,0.12);
   text-align: center;
   font-family: 'Tajawal', sans-serif;
@@ -74,8 +74,8 @@
 }
 body.dark .auth-toast {
   background: var(--dynamic-card, linear-gradient(145deg, rgba(30,32,48,0.96), rgba(24,26,40,0.92)));
-  border-color: color-mix(in srgb, var(--primary, #a855f7) 30%, transparent);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px color-mix(in srgb, var(--primary, #7c3aed) 25%, transparent);
+  border-color: color-mix(in srgb, var(--primary, var(--primary)) 30%, transparent);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px color-mix(in srgb, var(--primary, var(--primary)) 25%, transparent);
 }
 .auth-overlay.open .auth-toast { transform: translateY(0) scale(1); opacity: 1; }
 .auth-overlay.closing .auth-toast { transform: translateY(-8px) scale(0.96); opacity: 0; }
@@ -84,11 +84,11 @@ body.dark .auth-toast {
   height: 64px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary, #7c3aed), var(--primary-hover, #6366f1));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--primary-hover, var(--primary)));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary, #7c3aed) 35%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary, var(--primary)) 35%, transparent);
 }
 .auth-toast-check.success {
   background: linear-gradient(135deg, #10b981, #059669);
@@ -98,8 +98,8 @@ body.dark .auth-toast {
 .notify-icon i { color: #fff; font-size: 1.7rem; }
 .notify--warning .notify-icon { background: linear-gradient(135deg, #f59e0b, #f97316); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35); }
 .notify--error .notify-icon { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35); }
-.notify--info .notify-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35); }
-.notify--success .notify-icon { background: linear-gradient(135deg, #10b981, #06b6d4); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35); }
+.notify--info .notify-icon { background: linear-gradient(135deg, var(--primary), var(--primary)); box-shadow: 0 8px 24px var(--primary-soft); }
+.notify--success .notify-icon { background: linear-gradient(135deg, #10b981, var(--primary)); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35); }
 .auth-toast-check-circle {
   stroke: rgba(255,255,255,0.45);
   stroke-width: 2.5;
@@ -136,19 +136,19 @@ body.dark .auth-toast-sub { color: #94a3b8; }
   height: 3px;
   width: 100%;
   border-radius: 999px;
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--primary-glow);
   overflow: hidden;
 }
 .auth-toast-bar span {
   display: block;
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #7c3aed, #06b6d4);
+  background: linear-gradient(90deg, var(--primary), var(--primary));
   transform-origin: right center;
   animation: authBar 1.6s linear forwards;
 }
 .auth-toast-check.success ~ .auth-toast-bar span {
-  background: linear-gradient(90deg, #10b981, #06b6d4);
+  background: linear-gradient(90deg, #10b981, var(--primary));
 }
 @keyframes authBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
@@ -180,8 +180,8 @@ body.dark .app-page-loader {
 .app-page-loader-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid color-mix(in srgb, var(--primary, #a78bfa) 22%, transparent);
-  border-top: 3px solid var(--primary, #a78bfa);
+  border: 3px solid color-mix(in srgb, var(--primary, var(--primary)) 22%, transparent);
+  border-top: 3px solid var(--primary, var(--primary));
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 16px;

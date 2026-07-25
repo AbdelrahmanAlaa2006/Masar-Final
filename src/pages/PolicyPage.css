@@ -35,7 +35,7 @@
 
 .pp-hero {
   position: relative;
-  background: linear-gradient(135deg, var(--primary, #667eea) 0%, var(--primary-hover, #764ba2) 100%);
+  background: linear-gradient(135deg, var(--primary, var(--primary)) 0%, var(--primary-hover, var(--primary)) 100%);
   border-radius: 20px;
   padding: 36px 28px;
   color: #fff;
@@ -149,7 +149,7 @@ body.dark .pp-card h2 .pp-num { color: #c7d2fe; }
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary, #667eea), var(--primary-hover, #764ba2));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--primary-hover, var(--primary)));
 }
 
 /* FAQ accordion (Help page) */

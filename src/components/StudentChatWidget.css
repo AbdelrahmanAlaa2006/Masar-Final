@@ -13,7 +13,7 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, var(--primary-hover, #764ba2)));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--secondary, var(--primary-hover, var(--primary))));
   color: white;
   border: none;
   cursor: pointer;
@@ -81,7 +81,7 @@
 
 /* Header */
 .sc-header {
-  background: linear-gradient(135deg, var(--primary, #667eea), var(--secondary, var(--primary-hover, #764ba2)));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--secondary, var(--primary-hover, var(--primary))));
   padding: 14px 18px;
   display: flex;
   align-items: center;
@@ -165,7 +165,7 @@
 .sc-loading i, .sc-empty-chat i {
   font-size: 2rem;
   margin-bottom: 12px;
-  color: var(--primary, #667eea);
+  color: var(--primary, var(--primary));
 }
 .sc-empty-chat p {
   font-size: 0.88rem;
@@ -208,7 +208,7 @@
 }
 
 .sc-message-row.me .sc-message-bubble {
-  background: var(--primary, #667eea);
+  background: var(--primary, var(--primary));
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -223,7 +223,7 @@
 .sc-msg-author {
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--secondary, var(--primary-hover, #818cf8));
+  color: var(--secondary, var(--primary-hover, var(--primary)));
   margin-bottom: 2px;
 }
 
@@ -348,11 +348,11 @@
   outline: none;
 }
 .sc-text-input:focus {
-  border-color: var(--primary, #667eea);
+  border-color: var(--primary, var(--primary));
 }
 
 .sc-send-btn {
-  background: var(--primary, #667eea);
+  background: var(--primary, var(--primary));
   color: white;
   border: none;
   width: 36px;
@@ -365,7 +365,7 @@
   transition: background 0.2s;
 }
 .sc-send-btn:hover {
-  background: var(--secondary, var(--primary-hover, #764ba2));
+  background: var(--secondary, var(--primary-hover, var(--primary)));
 }
 
 /* Audio Recording Overlay */

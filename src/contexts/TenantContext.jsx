@@ -191,6 +191,26 @@ export function TenantProvider({ children }) {
             if (!dbConfig.location || Object.keys(dbConfig.location).length === 0) merged.location = {}
             merged.branding = { ...(merged.branding || {}), brand_short: dbConfig.branding?.brand_short || tenantData.name }
           }
+          // A tenant that defines its own config.theme is a custom-branded
+          // (premium) tenant: its DB colors must win over the SUBJECT FOLDER's
+          // baked palette. The subject folders (math/physics/…) hardcode a
+          // primaryColor, and applyTenantTheme() prefers themeConfig.primaryColor
+          // over tenant.primary_color — so without this a gold/black tenant that
+          // resolves to the math folder renders the folder's blue. Gated on
+          // config.theme, so subject tenants WITHOUT it keep their folder colors
+          // exactly (no regression).
+          if (dbConfig.theme && typeof dbConfig.theme === 'object' && Object.keys(dbConfig.theme).length > 0) {
+            if (tenantData.primary_color) merged.primaryColor = tenantData.primary_color
+            if (tenantData.secondary_color) merged.secondaryColor = tenantData.secondary_color
+            // Recolor the hero particle field from the brand primary so the
+            // floating symbols match the tenant instead of the folder's palette.
+            const p = tenantData.primary_color
+            if (p && /^#[0-9a-fA-F]{6}$/.test(p)) {
+              merged.particleColors = [p, p, p, p, p, p]
+              const r = parseInt(p.slice(1, 3), 16), g = parseInt(p.slice(3, 5), 16), b = parseInt(p.slice(5, 7), 16)
+              merged.getLineColor = (theme, alpha) => `rgba(${r}, ${g}, ${b}, ${alpha * (theme === 'dark' ? 0.22 : 0.15)})`
+            }
+          }
           themeConfigObj = merged
         }
 

@@ -28,7 +28,7 @@
 }
 
 .comments-section-header h3 i {
-  color: var(--primary-color, var(--primary, #7c3aed));
+  color: var(--primary-color, var(--primary, var(--primary)));
 }
 
 .comments-section-header p {
@@ -61,8 +61,8 @@
 
 .comment-textarea:focus {
   outline: none;
-  border-color: var(--primary-color, var(--primary, #7c3aed));
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+  border-color: var(--primary-color, var(--primary, var(--primary)));
+  box-shadow: 0 0 0 2px var(--primary-glow);
   background: var(--dynamic-card, rgba(15, 23, 42, 0.6));
 }
 
@@ -187,7 +187,7 @@
 .comment-action-btn {
   background: none;
   border: none;
-  color: var(--primary-color, var(--primary, #7c3aed));
+  color: var(--primary-color, var(--primary, var(--primary)));
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -200,7 +200,7 @@
 }
 
 .comment-action-btn:hover, .comment-action-btn.active {
-  background: var(--accent-dim, rgba(124, 58, 237, 0.12));
+  background: var(--accent-dim, var(--primary-glow));
 }
 
 .comment-reply-form {
@@ -262,7 +262,7 @@
 
 .comments-loading i {
   font-size: 2rem;
-  color: var(--primary-color, var(--primary, #7c3aed));
+  color: var(--primary-color, var(--primary, var(--primary)));
   margin-bottom: 12px;
 }
 

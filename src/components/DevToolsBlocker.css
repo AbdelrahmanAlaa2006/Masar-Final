@@ -97,7 +97,7 @@ body.dark .blocked-title {
 .blocked-subtitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
   margin: 0 0 20px 0;
 }
 

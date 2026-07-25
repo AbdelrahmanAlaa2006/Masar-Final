@@ -44,14 +44,14 @@ html {
 .constellation-bg {
   background-image:
     radial-gradient(circle at 12% 18%, var(--primary-glow) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 22%, rgba(129, 140, 248, 0.45) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 22%, var(--primary-soft) 0 2px, transparent 3px),
     radial-gradient(circle at 30% 70%, var(--primary-glow) 0 1.5px, transparent 3px),
     radial-gradient(circle at 65% 80%, var(--primary-glow) 0 2px, transparent 3px),
     radial-gradient(circle at 50% 40%, var(--primary-glow) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 88% 60%, rgba(129, 140, 248, 0.35) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 88% 60%, var(--primary-soft) 0 1.5px, transparent 3px),
     radial-gradient(circle at 8% 88%, var(--primary-glow) 0 1.5px, transparent 3px),
     radial-gradient(circle at 22% 45%, var(--primary-glow) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 95% 35%, rgba(129, 140, 248, 0.30) 0 1.5px, transparent 3px);
+    radial-gradient(circle at 95% 35%, var(--primary-soft) 0 1.5px, transparent 3px);
 }
 
 .hero-glow {
@@ -315,10 +315,10 @@ body:not(.dark) .aa-btn-outline {
   opacity: 0.5;
   background-image:
     radial-gradient(circle at 12% 18%, var(--primary-soft, var(--primary-glow)) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 22%, var(--primary-soft, rgba(129, 140, 248, 0.4)) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 22%, var(--primary-soft, var(--primary-soft)) 0 2px, transparent 3px),
     radial-gradient(circle at 30% 70%, var(--primary-soft, var(--primary-glow)) 0 1.5px, transparent 3px),
     radial-gradient(circle at 65% 80%, var(--primary-soft, var(--primary-glow)) 0 2px, transparent 3px),
-    radial-gradient(circle at 88% 60%, var(--primary-soft, rgba(129, 140, 248, 0.3)) 0 1.5px, transparent 3px);
+    radial-gradient(circle at 88% 60%, var(--primary-soft, var(--primary-soft)) 0 1.5px, transparent 3px);
 }
 
 .aa-hero-glow {
@@ -327,7 +327,7 @@ body:not(.dark) .aa-btn-outline {
 /* Light mode: glows must whisper, not shout — soft tint instead of a
    saturated blob, so no theme color reads as a "spot" on warm paper. */
 body:not(.dark) .aa-hero-glow {
-  background: radial-gradient(60% 50% at 50% 25%, var(--primary-soft, rgba(124, 58, 237, 0.10)), transparent 72%);
+  background: radial-gradient(60% 50% at 50% 25%, var(--primary-soft, var(--primary-glow)), transparent 72%);
   opacity: 0.8;
 }
 body:not(.dark) .aa-constellation { opacity: 0.3; }

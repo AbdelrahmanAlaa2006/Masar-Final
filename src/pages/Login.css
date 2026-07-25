@@ -4,8 +4,8 @@
   --login-bg-3: var(--primary-hover, #5b3f9a);
   /* Soft tints only — full-strength colors here rendered as saturated
      "spots" over the light background on every tenant theme. */
-  --login-orb-1: var(--secondary-soft, rgba(6, 182, 212, 0.12));
-  --login-orb-2: var(--primary-soft, rgba(124, 58, 237, 0.12));
+  --login-orb-1: var(--secondary-soft, var(--primary-soft));
+  --login-orb-2: var(--primary-soft, var(--primary-glow));
 
   --card-bg: rgba(255, 255, 255, 0.97);
   --card-border: rgba(255, 255, 255, 0.6);
@@ -63,8 +63,8 @@ body.dark {
   --login-orb-2: var(--secondary-soft, var(--secondary, var(--primary-hover, #4338ca)));
 
   --card-bg: var(--dynamic-card-bg, rgba(22, 22, 40, 0.85));
-  --card-border: var(--dynamic-card-border, rgba(139, 121, 201, 0.22));
-  --card-shadow: var(--dynamic-card-shadow, 0 24px 70px rgba(139, 121, 201, 0.35), 0 8px 24px rgba(99, 102, 241, 0.25), 0 0 0 1px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.08));
+  --card-border: var(--dynamic-card-border, var(--primary-glow));
+  --card-shadow: var(--dynamic-card-shadow, 0 24px 70px var(--primary-glow), 0 8px 24px var(--primary-soft), 0 0 0 1px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.08));
 
   --card-text: var(--dynamic-card-text, #e9e4ff);
   --card-text-soft: var(--dynamic-card-text-soft, #b8b0d4);
@@ -242,7 +242,7 @@ body:not(.dark) .navbar-logo {
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: 0.3px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover), var(--primary-hover, #06b6d4));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover), var(--primary-hover, var(--primary)));
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -379,7 +379,7 @@ body:not(.dark) .navbar-title {
   font-size: 2.2rem;
   font-weight: 800;
   margin: 0 0 8px;
-  background: linear-gradient(120deg, var(--primary-hover) 0%, var(--primary-hover, #c084fc) 25%, #ffffff 50%, var(--primary-hover, #c084fc) 75%, var(--primary-hover) 100%);
+  background: linear-gradient(120deg, var(--primary-hover) 0%, var(--primary-hover, var(--primary)) 25%, #ffffff 50%, var(--primary-hover, var(--primary)) 75%, var(--primary-hover) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -890,7 +890,7 @@ body.dark .right-section::after {
   font-family: 'Tajawal', sans-serif;
   line-height: 1.1;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-hover) 35%, var(--primary-hover, #06b6d4) 70%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-hover) 35%, var(--primary-hover, var(--primary)) 70%, var(--primary-hover) 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -900,7 +900,7 @@ body.dark .right-section::after {
 }
 
 body:not(.dark) .hero-tagline-title {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 35%, var(--primary) 70%, var(--primary-hover, #06b6d4) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 35%, var(--primary) 70%, var(--primary-hover, var(--primary)) 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -957,7 +957,7 @@ body:not(.dark) .hero-tagline-sub {
   height: 65%;
   top: 18%;
   left: 15%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 50%, var(--primary-hover, #06b6d4) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 50%, var(--primary-hover, var(--primary)) 100%);
   border-radius: 24px;
   animation: decorFloat1 10s ease-in-out infinite;
 }
@@ -967,7 +967,7 @@ body:not(.dark) .hero-tagline-sub {
   height: 30%;
   bottom: 10%;
   right: 5%;
-  background: linear-gradient(135deg, var(--primary-hover, #ec4899), #f59e0b);
+  background: linear-gradient(135deg, var(--primary-hover, var(--primary)), var(--primary));
   border-radius: 18px;
   animation: decorFloat2 12s ease-in-out infinite;
 }
@@ -977,7 +977,7 @@ body:not(.dark) .hero-tagline-sub {
   height: 25%;
   top: 8%;
   left: 5%;
-  background: linear-gradient(135deg, var(--primary-hover, #06b6d4), #10b981);
+  background: linear-gradient(135deg, var(--primary-hover, var(--primary)), var(--primary));
   border-radius: 16px;
   animation: decorFloat3 14s ease-in-out infinite;
 }
@@ -1181,7 +1181,7 @@ body:not(.dark) .instructor-badge {
 body.dark .floating-stat {
   background: rgba(30, 27, 75, 0.45);
   border-color: var(--primary-soft);
-  box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 30px -10px var(--primary-soft);
 }
 
 .floating-stat:hover {
@@ -1204,7 +1204,7 @@ body.dark .floating-stat {
   height: 44px;
   min-width: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-soft), rgba(6, 182, 212, 0.15));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1215,7 +1215,7 @@ body.dark .floating-stat {
 }
 
 body.dark .stat-icon {
-  background: linear-gradient(135deg, var(--primary-glow), rgba(6, 182, 212, 0.25));
+  background: linear-gradient(135deg, var(--primary-glow), var(--primary-soft));
   color: #fff;
 }
 
@@ -1475,7 +1475,7 @@ body:not(.dark) .feature-card:hover::before {
   width: 58px;
   height: 58px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--primary-soft), rgba(99, 102, 241, 0.12));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   border: 1px solid var(--primary-soft);
   color: var(--primary-hover);
   display: flex;
@@ -1490,7 +1490,7 @@ body:not(.dark) .feature-card:hover::before {
 }
 
 body:not(.dark) .feature-icon {
-  background: linear-gradient(135deg, var(--primary-soft), rgba(99, 102, 241, 0.06));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   border-color: var(--primary-glow);
   color: var(--primary);
 }
@@ -1571,7 +1571,7 @@ body:not(.dark) .step-card {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 0% 100%, rgba(6, 182, 212, 0.12) 0%, transparent 60%);
+  background: radial-gradient(circle at 0% 100%, var(--primary-soft) 0%, transparent 60%);
   opacity: 0.8;
   transition: opacity 0.4s ease, background 0.4s ease;
   pointer-events: none;
@@ -1579,7 +1579,7 @@ body:not(.dark) .step-card {
 }
 
 body:not(.dark) .step-card::before {
-  background: radial-gradient(circle at 0% 100%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
+  background: radial-gradient(circle at 0% 100%, var(--primary-soft) 0%, transparent 60%);
 }
 
 .step-card:hover {
@@ -1602,11 +1602,11 @@ body:not(.dark) .step-card:hover {
 }
 
 .step-card:hover::before {
-  background: radial-gradient(circle at 0% 100%, rgba(6, 182, 212, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle at 0% 100%, var(--primary-soft) 0%, transparent 70%);
 }
 
 body:not(.dark) .step-card:hover::before {
-  background: radial-gradient(circle at 0% 100%, rgba(6, 182, 212, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle at 0% 100%, var(--primary-soft) 0%, transparent 70%);
 }
 
 .step-number {
@@ -1614,7 +1614,7 @@ body:not(.dark) .step-card:hover::before {
   height: 66px;
   margin: 0 auto 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-soft), rgba(6, 182, 212, 0.15));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   border: 2px solid var(--primary-soft);
   color: var(--primary-hover);
   display: flex;
@@ -1630,7 +1630,7 @@ body:not(.dark) .step-card:hover::before {
 }
 
 body:not(.dark) .step-number {
-  background: linear-gradient(135deg, var(--primary-soft), rgba(6, 182, 212, 0.08));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   border-color: var(--primary-soft);
   color: var(--primary);
   text-shadow: none;
@@ -1638,10 +1638,10 @@ body:not(.dark) .step-number {
 
 .step-card:hover .step-number {
   transform: scale(1.12) translateY(-4px);
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover, #06b6d4));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover, var(--primary)));
   color: #fff;
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 25px var(--primary-glow), 0 0 15px rgba(6, 182, 212, 0.35);
+  box-shadow: 0 10px 25px var(--primary-glow), 0 0 15px var(--primary-soft);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -1838,7 +1838,7 @@ body:not(.dark) .location-info-card:hover {
   height: 52px;
   min-width: 52px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--primary-soft), rgba(99, 102, 241, 0.1));
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1892,7 +1892,7 @@ body:not(.dark) .location-info-card:hover h4 {
   width: 100%;
   padding: 18px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 50%, var(--primary-hover, #06b6d4) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 50%, var(--primary-hover, var(--primary)) 100%);
   background-size: 200% 100%;
   color: #fff;
   text-decoration: none;
@@ -1924,7 +1924,7 @@ body:not(.dark) .location-info-card:hover h4 {
   background-position: 100% 0;
   transform: translateY(-4px);
   box-shadow: 
-    0 16px 36px -10px rgba(6, 182, 212, 0.6),
+    0 16px 36px -10px var(--primary-soft),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -2595,11 +2595,11 @@ body.dark .login-packages-showcase {
   font-size: 2.2rem;
   font-weight: 800;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, var(--card-title-from, var(--primary, #7c3aed)), var(--card-title-to, #2563eb));
+  background: linear-gradient(135deg, var(--card-title-from, var(--primary, var(--primary))), var(--card-title-to, #2563eb));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: var(--primary, #7c3aed); /* Fallback for browsers that don't support text clipping */
+  color: var(--primary, var(--primary)); /* Fallback for browsers that don't support text clipping */
 }
 
 .login-packages-showcase .section-sub {
@@ -2645,13 +2645,13 @@ body.dark .landing-package-card {
 
 .landing-package-card:hover {
   transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.12);
-  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: 0 20px 40px var(--primary-glow);
+  border-color: var(--primary-glow);
 }
 
 body.dark .landing-package-card:hover {
-  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
-  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 20px 40px var(--primary-glow);
+  border-color: var(--primary-glow);
 }
 
 .landing-package-image {
@@ -2704,7 +2704,7 @@ body.dark .landing-package-body h3 {
 }
 
 .landing-package-card:hover .landing-package-body h3 {
-  color: var(--primary, #7c3aed);
+  color: var(--primary, var(--primary));
 }
 
 .landing-package-body p {
@@ -2751,7 +2751,7 @@ body.dark .landing-package-price {
 }
 
 .landing-package-btn {
-  background: linear-gradient(135deg, var(--primary, #7c3aed), var(--primary, #6366f1));
+  background: linear-gradient(135deg, var(--primary, var(--primary)), var(--primary, var(--primary)));
   color: #ffffff;
   border: none;
   padding: 10px 20px;
@@ -2760,12 +2760,12 @@ body.dark .landing-package-price {
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .landing-package-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 6px 16px var(--primary-glow);
   filter: brightness(1.1);
 }
 

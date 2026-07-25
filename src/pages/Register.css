@@ -27,7 +27,7 @@
 .register-page-wrapper::before {
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, var(--primary, #6366f1), transparent 70%);
+  background: radial-gradient(circle, var(--primary, var(--primary)), transparent 70%);
   top: -100px;
   left: -100px;
   animation: floatOrb 15s ease-in-out infinite;
@@ -180,14 +180,14 @@
 
 .register-input-wrapper input:focus,
 .register-input-wrapper select:focus {
-  border-color: var(--primary, #6366f1);
+  border-color: var(--primary, var(--primary));
   background: var(--dynamic-card, rgba(15, 23, 42, 0.5));
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 4px var(--primary-soft);
   transform: translateY(-1px);
 }
 
 .register-input-wrapper:focus-within i {
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
 }
 
 .register-password-toggle {
@@ -216,7 +216,7 @@
 /* Portrait column */
 .register-portrait-col {
   width: 45%;
-  background: radial-gradient(circle at center 40%, var(--primary-soft, rgba(99, 102, 241, 0.1)) 0%, transparent 70%);
+  background: radial-gradient(circle at center 40%, var(--primary-soft, var(--primary-soft)) 0%, transparent 70%);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -261,7 +261,7 @@
 }
 
 .register-teacher-badge {
-  background: var(--primary, #6366f1);
+  background: var(--primary, var(--primary));
   color: #ffffff !important;
   border: none;
   padding: 5px 14px;
@@ -322,7 +322,7 @@
 }
 
 .register-toggle-link a {
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
   text-decoration: none;
   font-weight: 700;
   margin-inline-start: 4px;
@@ -399,7 +399,7 @@
 .modern-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, var(--btn-from, var(--primary, #6366f1)), var(--btn-to, var(--primary-hover, #ec4899)));
+  background: linear-gradient(135deg, var(--btn-from, var(--primary, var(--primary))), var(--btn-to, var(--primary-hover, #ec4899)));
   background-size: 200% 100%;
   color: #fff;
   border: none;
@@ -413,7 +413,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: var(--btn-shadow, 0 4px 15px rgba(99, 102, 241, 0.4));
+  box-shadow: var(--btn-shadow, 0 4px 15px var(--primary-soft));
   position: relative;
   overflow: hidden;
   font-family: inherit;
@@ -440,7 +440,7 @@
 
 .modern-btn:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.01);
-  box-shadow: var(--btn-shadow-hover, 0 8px 25px rgba(99, 102, 241, 0.5)), 0 8px 24px var(--primary-soft, rgba(99, 102, 241, 0.15));
+  box-shadow: var(--btn-shadow-hover, 0 8px 25px var(--primary-soft)), 0 8px 24px var(--primary-soft, var(--primary-soft));
   background-position: 100% 0;
 }
 
@@ -517,8 +517,8 @@ body:not(.dark) .register-input-wrapper select:hover {
 body:not(.dark) .register-input-wrapper input:focus,
 body:not(.dark) .register-input-wrapper select:focus {
   background: #fff !important;
-  border-color: var(--primary, #6366f1) !important;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12) !important;
+  border-color: var(--primary, var(--primary)) !important;
+  box-shadow: 0 0 0 4px var(--primary-soft) !important;
 }
 
 body:not(.dark) .register-input-wrapper select option {

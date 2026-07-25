@@ -166,8 +166,8 @@
   cursor: pointer; transition: .2s; border: none;
   display: inline-flex; align-items: center; gap: 5px;
 }
-.hr-btn-detail { background: rgba(99,102,241,.15); color: var(--primary-hover, #818cf8); }
-.hr-btn-detail:hover { background: rgba(99,102,241,.25); }
+.hr-btn-detail { background: var(--primary-soft); color: var(--primary-hover, var(--primary)); }
+.hr-btn-detail:hover { background: var(--primary-soft); }
 .hr-btn-review { background: rgba(16,185,129,.15); color: #10b981; }
 .hr-btn-review:hover { background: rgba(16,185,129,.25); }
 
@@ -366,7 +366,7 @@
 .hr-note-box {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 10px 14px; border-radius: 10px;
-  background: rgba(99,102,241,.08); color: #a5b4fc;
+  background: var(--primary-soft); color: #a5b4fc;
   font-size: .85rem; margin-top: 10px; line-height: 1.5;
 }
 .hr-note-box i { margin-top: 3px; flex-shrink: 0; }

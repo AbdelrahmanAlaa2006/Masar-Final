@@ -306,7 +306,7 @@
 }
 
 .section-title i {
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
 }
 
 .history-empty p {
@@ -334,7 +334,7 @@
 
 .history-item:hover {
   transform: translateY(-1px);
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: var(--primary-soft);
 }
 
 .history-item.status-approved {
@@ -421,7 +421,7 @@
 .history-view-receipt {
   background: transparent;
   border: none;
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -606,7 +606,7 @@
 .qr-toggle-btn {
   background: none;
   border: none;
-  color: var(--primary, #6366f1);
+  color: var(--primary, var(--primary));
   font-weight: 700;
   cursor: pointer;
   font-size: 0.82rem;
@@ -937,7 +937,7 @@ body.dark .history-item-footer {
 }
 
 body.dark .history-view-receipt {
-  color: var(--primary-hover, #818cf8);
+  color: var(--primary-hover, var(--primary));
 }
 
 body.dark .checkout-modal-card {
