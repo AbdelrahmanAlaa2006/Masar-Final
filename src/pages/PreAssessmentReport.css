@@ -1,0 +1,320 @@
+@import "./ControlPanel.css";
+
+/* ──────────────────────────────────────────────────────────────
+   Pre-Video Assessment report.
+   Built on the shared control-panel tokens (cp-panel / cp-table /
+   cp-btn / cp-badge) so it matches the other reports exactly.
+   ────────────────────────────────────────────────────────────── */
+
+.par-page { padding-top: 30px; min-height: 100vh; }
+.par-container { max-width: 1400px; margin: 0 auto; padding: 0 20px 60px; }
+
+/* ── Header ── */
+.par-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cp-card-bg, #fff);
+  color: var(--cp-text-main);
+  border: 1.5px solid var(--cp-card-border, #e2e8f0);
+  padding: 0.5rem 1.1rem;
+  border-radius: 10px;
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color .2s;
+  margin-bottom: 14px;
+}
+.par-back-btn:hover { border-color: var(--primary); }
+
+.par-title-block h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--cp-text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.par-title-block h1 i { color: #5bc2e7; }
+.par-title-block p { margin: 0; color: var(--cp-text-muted); font-size: .95rem; }
+
+.par-error {
+  background: rgba(239, 68, 68, .1);
+  border: 1px solid rgba(239, 68, 68, .25);
+  color: #ef4444;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+/* ── Statistics ── */
+.par-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.par-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--cp-card-bg, #fff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+}
+.par-stat i { font-size: 1.4rem; flex: 0 0 auto; }
+.par-stat-val { font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+.par-stat-lbl { font-size: .78rem; font-weight: 600; color: var(--cp-text-muted); margin-top: 2px; }
+
+/* ── Filters ── */
+.par-filters { padding: 1.5rem; margin-bottom: 20px; }
+.par-filters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.par-filters-head h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--cp-text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.par-filters-head h2 i { color: #5bc2e7; }
+
+.par-reset {
+  background: transparent;
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  color: var(--cp-text-muted);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.par-reset:hover { color: #ef4444; border-color: rgba(239, 68, 68, .4); }
+
+.par-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.par-field-wide { grid-column: span 2; }
+
+.par-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--cp-text-muted);
+}
+.par-field select,
+.par-field input[type="date"],
+.par-search input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: var(--cp-card-bg, #fff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  color: var(--cp-text-main);
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  outline: none;
+}
+.par-field select:focus,
+.par-field input:focus { border-color: var(--primary); }
+
+.par-search { position: relative; }
+.par-search i {
+  position: absolute;
+  inset-inline-end: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cp-text-muted);
+  pointer-events: none;
+}
+.par-search input { padding-inline-end: 40px; }
+
+.par-tabs { display: flex; flex-wrap: wrap; gap: 10px; }
+.par-tabs .cp-btn { border-radius: 12px; padding: 8px 16px; }
+.par-tabs .cp-btn i { margin-inline-end: 6px; }
+
+/* ── Table ── */
+.par-table-card { overflow: hidden; }
+.par-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--cp-card-border, #e2e8f0);
+}
+.par-table-title { display: flex; align-items: center; gap: 10px; }
+.par-table-title h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--cp-text-main);
+}
+.par-table-title h2 i { color: #5bc2e7; margin-inline-end: 8px; }
+
+.par-table-actions { display: flex; gap: 10px; }
+.par-table-actions button {
+  background: transparent;
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  color: var(--cp-text-main);
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.par-table-actions button i { margin-inline-end: 6px; }
+.par-table-actions button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.par-table-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+.par-table th, .par-table td { white-space: nowrap; }
+.par-name { font-weight: 700; }
+.par-score { font-weight: 800; }
+
+/* Long video / assessment titles must not blow the row width out. */
+.par-truncate {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.par-type {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-inline-end: 6px;
+  vertical-align: middle;
+}
+.par-type-exam    { background: rgba(139, 92, 246, .15); color: #7c3aed; }
+.par-type-tasmee3 { background: rgba(16, 185, 129, .15); color: #059669; }
+body.dark .par-type-exam    { color: #c4b5fd; }
+body.dark .par-type-tasmee3 { color: #6ee7b7; }
+
+.par-status {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 800;
+}
+.par-status.is-pass { background: rgba(16, 185, 129, .15); color: #059669; }
+.par-status.is-fail { background: rgba(239, 68, 68, .15); color: #dc2626; }
+.par-status.is-none { background: rgba(148, 163, 184, .18); color: #64748b; }
+body.dark .par-status.is-pass { color: #6ee7b7; }
+body.dark .par-status.is-fail { color: #fca5a5; }
+body.dark .par-status.is-none { color: #cbd5e1; }
+
+.par-msg {
+  text-align: center;
+  padding: 40px 16px !important;
+  color: var(--cp-text-muted);
+  font-weight: 600;
+}
+.par-msg i { margin-inline-end: 8px; font-size: 1.1rem; }
+
+/* ── Pager ── */
+.par-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid var(--cp-card-border, #e2e8f0);
+  font-weight: 700;
+  color: var(--cp-text-muted);
+  font-size: .9rem;
+}
+.par-pager button {
+  background: transparent;
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  color: var(--cp-text-main);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.par-pager button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.par-pager button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Print ──────────────────────────────────────────────────
+   Root cause of "not everything appears": 16 columns on a portrait page,
+   inside an `overflow-x: auto` container, with `white-space: nowrap` cells.
+   The overflow clipped every column past the page edge. Fix: landscape,
+   let the container overflow visibly, let cells wrap, shrink the type. */
+@page { size: A4 landscape; margin: 8mm; }
+
+@media print {
+  .par-back-btn,
+  .par-filters,
+  .par-stats,
+  .par-table-actions,
+  .par-pager,
+  .cp-header-divider { display: none !important; }
+
+  .par-page { padding-top: 0; }
+  .par-container { max-width: none; padding: 0; }
+  .par-table-card { border: none; box-shadow: none; }
+
+  /* Stop the horizontal-scroll container from clipping printed columns. */
+  .cp-table-container { overflow: visible !important; }
+
+  .par-table {
+    width: 100%;
+    font-size: 7.5pt;
+    table-layout: fixed;      /* distribute width evenly so all 16 fit */
+  }
+  .par-table th,
+  .par-table td {
+    padding: 3px 4px !important;
+    white-space: normal !important;   /* wrap instead of overflowing */
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+  /* The truncation cap is a screen concern; on paper we want the full text. */
+  .par-truncate { max-width: none; overflow: visible; text-overflow: clip; }
+
+  /* Chips/pills flatten to plain text so they don't waste width or ink. */
+  .par-type, .par-status {
+    padding: 0 !important;
+    background: none !important;
+    border: none !important;
+    color: #000 !important;
+    font-weight: 700;
+  }
+
+  /* Repeat the header row on every printed page. */
+  .par-table thead { display: table-header-group; }
+  .par-table tr { page-break-inside: avoid; }
+}
+
+@media (max-width: 720px) {
+  .par-field-wide { grid-column: span 1; }
+  .par-table-head { flex-direction: column; align-items: stretch; }
+  .par-table-actions button { flex: 1; }
+}

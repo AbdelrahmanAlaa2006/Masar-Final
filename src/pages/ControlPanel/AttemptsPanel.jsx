@@ -8,6 +8,7 @@ import {
   resetStudentVideoAttempts,
   resetGradeVideoAttempts,
 } from '@backend/progressApi'
+import { listVideoAssessmentsForVideos, invalidateGateCache } from '@backend/videoAssessmentsApi'
 import {
   ScopePicker,
   TargetPicker,
@@ -39,6 +40,12 @@ export default function AttemptsPanel({
   const [pickerQuery, setPickerQuery] = useState('')
   const [overrides, setOverrides] = useState({})
   const [savingKey, setSavingKey] = useState(null)
+  // Map<videoId, gate[]> — the pre-video assessments attached to each video,
+  // so the videos panel can also grant bonus attempts on the gate.
+  const [gatesByVideo, setGatesByVideo] = useState(new Map())
+
+  const GATE_TYPE_LABEL = { exam: 'امتحان قبل الفيديو', tasmee3: 'تسميع قبل الفيديو' }
+  const GATE_TYPE_ICON  = { exam: 'fa-file-pen', tasmee3: 'fa-microphone-lines' }
 
   // ───── derived data for picker lists ─────
   const allStudents = useMemo(
@@ -77,14 +84,28 @@ export default function AttemptsPanel({
   const items = useMemo(() => {
     if (!targetGrade) return []
     if (section === 'videos') {
-      return videos
-        .filter((v) => v.grade === targetGrade)
-        .map((v) => ({
+      const out = []
+      for (const v of videos.filter((v) => v.grade === targetGrade)) {
+        out.push({
           id: v.id,
+          itemType: 'video',
           title: v.title,
           subject: v.description || '',
           date: fmtDate(v.created_at),
-        }))
+        })
+        // Interleave each video's pre-video gate(s) right under it.
+        for (const g of (gatesByVideo.get(v.id) || [])) {
+          out.push({
+            id: g.id,                       // video_assessments.id
+            itemType: 'video_assessment',
+            attemptsOnly: true,
+            icon: GATE_TYPE_ICON[g.assessment_type] || 'fa-clipboard-check',
+            title: `${GATE_TYPE_LABEL[g.assessment_type] || 'تقييم قبل الفيديو'}: ${v.title}`,
+            subject: g.assessment?.title || '',
+          })
+        }
+      }
+      return out
     }
     if (section === 'exams') {
       return exams
@@ -97,7 +118,23 @@ export default function AttemptsPanel({
         }))
     }
     return []
-  }, [section, targetGrade, videos, exams])
+  }, [section, targetGrade, videos, exams, gatesByVideo])
+
+  /* ── Load the gates for this grade's videos (videos section only) ── */
+  useEffect(() => {
+    if (section !== 'videos' || !targetGrade) { setGatesByVideo(new Map()); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ids = videos.filter((v) => v.grade === targetGrade).map((v) => v.id)
+        const map = await listVideoAssessmentsForVideos(ids)
+        if (!cancelled) setGatesByVideo(map)
+      } catch (e) {
+        if (!cancelled) setGatesByVideo(new Map())
+      }
+    })()
+    return () => { cancelled = true }
+  }, [section, targetGrade, videos])
 
   /* ── Load existing overrides for the chosen target+section ── */
   useEffect(() => {
@@ -105,14 +142,20 @@ export default function AttemptsPanel({
     let cancelled = false
     ;(async () => {
       try {
-        const itemType = section === 'videos' ? 'video' : 'exam'
-        const rows = await listOverridesForTarget(target.kind, target.id, itemType)
+        // The videos panel now manages TWO item types: the video itself and
+        // its pre-video gate. Load both so the steppers show granted bonuses.
+        const itemTypes = section === 'videos' ? ['video', 'video_assessment'] : ['exam']
+        const maps = await Promise.all(
+          itemTypes.map((it) => listOverridesForTarget(target.kind, target.id, it))
+        )
         if (cancelled) return
         const next = {}
-        for (const [itemId, r] of rows) {
-          next[`${target.kind}:${target.id}:${r.item_id}`] = {
-            allowed: r.allowed !== false,
-            attempts: r.attempts ?? null,
+        for (const rows of maps) {
+          for (const [, r] of rows) {
+            next[`${target.kind}:${target.id}:${r.item_type}:${r.item_id}`] = {
+              allowed: r.allowed !== false,
+              attempts: r.attempts ?? null,
+            }
           }
         }
         setOverrides(next)
@@ -124,8 +167,13 @@ export default function AttemptsPanel({
   }, [target, section]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ───── override helpers ───── */
+  // Item type: 'video' | 'exam' | 'video_assessment'. Gate rows carry their
+  // own itemType; plain video/exam rows fall back to the section default.
+  const itemTypeOf = (item) =>
+    item.itemType || (section === 'videos' ? 'video' : 'exam')
+
   const keyFor = (item) =>
-    target ? `${target.kind}:${target.id}:${item.id}` : ''
+    target ? `${target.kind}:${target.id}:${itemTypeOf(item)}:${item.id}` : ''
 
   const defaultAttemptsFor = () =>
     section === 'videos' ? DEFAULT_VIDEO_ATTEMPTS : DEFAULT_EXAM_ATTEMPTS
@@ -150,11 +198,13 @@ export default function AttemptsPanel({
       await upsertOverride({
         scope: target.kind,
         targetId: target.id,
-        itemType: section === 'videos' ? 'video' : 'exam',
+        itemType: itemTypeOf(item),
         itemId: item.id,
         ...(patch.allowed  !== undefined ? { allowed:  patch.allowed }  : {}),
         ...(patch.attempts !== undefined ? { attempts: patch.attempts } : {}),
       })
+      // Gate bonus changes what get_video_gate_status returns for the student.
+      if (itemTypeOf(item) === 'video_assessment') invalidateGateCache()
     } catch (e) {
       // rollback
       setOverrides((p) => ({ ...p, [key]: prev }))
@@ -181,9 +231,12 @@ export default function AttemptsPanel({
   }
 
   const resetItem = async (item) => {
+    const itemType = itemTypeOf(item)
+    const isVideoView = itemType === 'video'   // the video itself, not its gate
     const key = keyFor(item)
     const prev = overrides[key]
-    if (!prev && section !== 'videos') return
+    // Only the video-view row has a counter to zero even without an override.
+    if (!prev && !isVideoView) return
     if (prev) {
       setOverrides((p) => { const n = { ...p }; delete n[key]; return n })
     }
@@ -192,19 +245,21 @@ export default function AttemptsPanel({
         await deleteOverride({
           scope: target.kind,
           targetId: target.id,
-          itemType: section === 'videos' ? 'video' : 'exam',
+          itemType,
           itemId: item.id,
         })
       }
-      // For videos, also zero out the per-student view counter
-      if (section === 'videos') {
+      // For the video itself, also zero out the per-student view counter.
+      // Gate rows just drop their bonus override (the exam-style reset).
+      if (isVideoView) {
         if (target.kind === 'student') {
           await resetStudentVideoAttempts({ student_id: target.id, video_id: item.id })
         } else if (target.kind === 'prep') {
           await resetGradeVideoAttempts({ grade: target.id, video_id: item.id })
         }
       }
-      flash(section === 'videos'
+      if (itemType === 'video_assessment') invalidateGateCache()
+      flash(isVideoView
         ? 'تم تصفير المحاولات وإعادة الإعدادات الافتراضية'
         : 'تم استرجاع الإعدادات الافتراضية')
     } catch (e) {
@@ -215,7 +270,8 @@ export default function AttemptsPanel({
 
   const bulkSet = async (allowed) => {
     try {
-      await Promise.all(items.map((item) =>
+      // Allow/block is only meaningful for real videos/exams, not gate rows.
+      await Promise.all(items.filter((it) => !it.attemptsOnly).map((item) =>
         persistItem(item, { allowed })
       ))
       flash(allowed ? 'تم السماح بكل العناصر' : 'تم منع كل العناصر')
@@ -224,6 +280,7 @@ export default function AttemptsPanel({
 
   const bulkAddAttempt = async () => {
     try {
+      // Adds a bonus attempt to every row — videos AND their gates.
       await Promise.all(items.map((item) => {
         const cur = stateFor(item).attempts
         return persistItem(item, { attempts: Math.min(99, cur + 1) })
@@ -245,7 +302,8 @@ export default function AttemptsPanel({
   }, [scope, allStudents, allPreps, pickerQuery])
 
   const stats = useMemo(() => {
-    const list = items.map((it) => stateFor(it))
+    // Count real videos/exams only — gate rows are attempt-only add-ons.
+    const list = items.filter((it) => !it.attemptsOnly).map((it) => stateFor(it))
     return {
       total: list.length,
       allowed: list.filter((s) => s.allowed).length,

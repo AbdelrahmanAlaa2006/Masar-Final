@@ -7,14 +7,16 @@ import { listMyPurchases, listPackages } from '@backend/packagesApi'
 import { listVideos } from '@backend/videosApi'
 import { listHomeworks, getMySubmissionsBatch, submitHomework } from '@backend/homeworksApi'
 import { listExams, countSubmittedAttemptsBatch } from '@backend/examsApi'
-import { listQuizAttemptsForVideo, listProgressForVideo, incrementPartView, updatePartProgress } from '@backend/progressApi'
+import { listProgressForVideo, incrementPartView, updatePartProgress } from '@backend/progressApi'
+import { getVideoGateStatus, invalidateGateCache } from '@backend/videoAssessmentsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import YouTubePlayer from '../components/YouTubePlayer'
 import DrivePlayer from '../components/DrivePlayer'
 import BunnyPlayer from '../components/BunnyPlayer'
 import VideoComments from '../components/VideoComments'
-import QuizRunner from '../components/QuizRunner'
+import AssessmentRunner from '../components/AssessmentRunner'
+import VideoTitleCard from '../components/VideoTitleCard'
 import ScreenGuard from '../components/ScreenGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import useExitGuard from '../hooks/useExitGuard'
@@ -53,9 +55,9 @@ export default function Packages() {
   const [currentVideo, setCurrentVideo] = useState(null)
   const [selectedPart, setSelectedPart] = useState(null)
   const [progressRows, setProgressRows] = useState([])
-  const [quizAttempts, setQuizAttempts] = useState([])
+  const [gates, setGates] = useState([])
   const [quizTick, setQuizTick] = useState(0)
-  const [activeQuiz, setActiveQuiz] = useState(null)
+  const [activeGate, setActiveGate] = useState(null)
   const [pendingPart, setPendingPart] = useState(null)
   const [showPdf, setShowPdf] = useState(false)
 
@@ -222,7 +224,6 @@ export default function Packages() {
       activeHours: row.active_hours,
       expiryTime: row.expiry_at,
       createdAt: row.created_at,
-      quizzes: row.quizzes || [],
       pdf_url: row.pdf_url || null,
       pdf_key: row.pdf_key || null,
     }
@@ -251,23 +252,23 @@ export default function Packages() {
     let cancelled = false
     const run = async () => {
       if (!currentVideo || !currentUser?.id) {
-        setQuizAttempts([])
+        setGates([])
         setProgressRows([])
         passedThisSessionRef.current = new Set()
         return
       }
       if (userRole === 'admin' || userRole === 'assistant') {
-        setQuizAttempts([])
+        setGates([])
         setProgressRows([])
         return
       }
       try {
-        const [qa, pr] = await Promise.all([
-          listQuizAttemptsForVideo(currentVideo.id, currentUser.id),
+        const [gateMap, pr] = await Promise.all([
+          getVideoGateStatus([currentVideo.id], currentUser.id),
           listProgressForVideo(currentVideo.id, currentUser.id),
         ])
         if (!cancelled) {
-          setQuizAttempts(qa)
+          setGates(gateMap.get(currentVideo.id) || [])
           setProgressRows(pr)
         }
       } catch (err) {
@@ -278,17 +279,16 @@ export default function Packages() {
     return () => { cancelled = true }
   }, [currentVideo?.id, currentUser?.id, quizTick])
 
-  const findBlockingQuiz = (video, part) => {
-    if (!video || !video.quizzes || video.quizzes.length === 0) return null
-    const partIdx = video.parts.findIndex((p) => p.id === part.id)
-    const applies = (qz) =>
-      (qz.scope === 'whole' || (qz.scope === 'part' && Number(qz.partIndex) === partIdx)) &&
-      qz.triggerType !== 'timestamp'
-    for (const qz of video.quizzes) {
-      if (!applies(qz)) continue
-      if (passedThisSessionRef.current.has(qz.localId)) continue
-      const att = quizAttempts.find((a) => a.quiz_local_id === qz.localId)
-      if (!att?.passed) return qz
+  // Mirrors Videos.jsx. `unlocked` is the server's decision; this check only
+  // decides what to draw — start_pre_video_attempt() is the real gate.
+  const gatesForPart = (part) =>
+    gates.filter((g) => g.trigger_type === 'before' && (!g.part_id || g.part_id === part?.id))
+
+  const findBlockingGate = (video, part) => {
+    if (!part || gates.length === 0) return null
+    for (const g of gatesForPart(part)) {
+      if (passedThisSessionRef.current.has(g.video_assessment_id)) continue
+      if (!g.unlocked) return g
     }
     return null
   }
@@ -326,19 +326,16 @@ export default function Packages() {
       }
     }
 
-    const blocking = findBlockingQuiz(currentVideo, part)
+    const blocking = findBlockingGate(currentVideo, part)
     if (blocking && userRole !== 'admin' && userRole !== 'assistant') {
-      const att = quizAttempts.find((a) => a.quiz_local_id === blocking.localId)
-      const attempts = att?.attempts || 0
-      const max = blocking.maxAttempts || 1
-      if (!att?.passed && attempts >= max) {
+      if (blocking.attempts_remaining <= 0) {
         return showAlertModal(
-          'انتهت محاولات الامتحان',
-          `لقد استنفدت جميع المحاولات (${max}) لامتحان "${blocking.title}" ولم تنجح. يُرجى التواصل مع المعلم.`
+          'انتهت محاولاتك',
+          `لقد استنفدت جميع المحاولات (${blocking.allowed_attempts}) في "${blocking.title}" ولم تحقق نسبة النجاح المطلوبة (${blocking.passing_score}%). يُرجى التواصل مع المعلم.`
         )
       }
       setPendingPart(part)
-      setActiveQuiz(blocking)
+      setActiveGate(blocking)
       return
     }
 
@@ -370,48 +367,41 @@ export default function Packages() {
 
   const handleTimeUpdate = ({ seconds }) => {
     setCurrentTime(seconds)
-    if (!currentVideo || !currentVideo.quizzes || currentVideo.quizzes.length === 0 || userRole === 'admin' || userRole === 'assistant') return
-    const partIdx = currentVideo.parts.findIndex((p) => p.id === selectedPart.id)
-    const matches = currentVideo.quizzes.filter((qz) => {
-      if (qz.triggerType !== 'timestamp' || qz.scope !== 'part' || Number(qz.partIndex) !== partIdx) return false
-      if (passedThisSessionRef.current.has(qz.localId)) return false
-      const att = quizAttempts.find((a) => a.quiz_local_id === qz.localId)
-      if (att?.passed) return false
-      return Math.abs(seconds - (qz.timestampSeconds || 0)) <= 1.0
+    if (gates.length === 0 || activeGate || userRole === 'admin' || userRole === 'assistant') return
+    const due = gates.find((g) => {
+      if (g.trigger_type !== 'timestamp') return false
+      if (g.part_id && g.part_id !== selectedPart?.id) return false
+      if (g.unlocked || passedThisSessionRef.current.has(g.video_assessment_id)) return false
+      return Math.abs(seconds - (g.timestamp_seconds || 0)) <= 1.0
     })
-    if (matches.length > 0) {
-      const qz = matches[0]
-      const att = quizAttempts.find((a) => a.quiz_local_id === qz.localId)
-      const attempts = att?.attempts || 0
-      const max = qz.maxAttempts || 1
-      if (attempts >= max) return
+    if (due && due.attempts_remaining > 0) {
       setPendingPart(selectedPart)
-      setActiveQuiz(qz)
+      setActiveGate(due)
     }
   }
 
-  const handleQuizPass = () => {
-    if (activeQuiz?.localId != null) {
-      passedThisSessionRef.current.add(activeQuiz.localId)
+  const handleGateUnlock = () => {
+    if (activeGate?.video_assessment_id) {
+      passedThisSessionRef.current.add(activeGate.video_assessment_id)
     }
-    setActiveQuiz(null)
+    setActiveGate(null)
+    invalidateGateCache()
     setQuizTick((t) => t + 1)
     const part = pendingPart
     setPendingPart(null)
     if (part) setTimeout(() => playVideoPart(part), 50)
   }
 
-  const handleQuizClose = () => {
-    if (activeQuiz && activeQuiz.triggerType === 'timestamp') {
-      const passed = passedThisSessionRef.current.has(activeQuiz.localId) ||
-        quizAttempts.some((a) => a.quiz_local_id === activeQuiz.localId && a.passed)
-      if (!passed) {
-        const targetSeek = Math.max(0, (activeQuiz.timestampSeconds || 0) - 5)
-        handleSeekToNote(targetSeek)
+  const handleGateClose = () => {
+    if (activeGate && activeGate.trigger_type === 'timestamp') {
+      const unlocked = passedThisSessionRef.current.has(activeGate.video_assessment_id)
+      if (!unlocked) {
+        handleSeekToNote(Math.max(0, (activeGate.timestamp_seconds || 0) - 5))
       }
     }
-    setActiveQuiz(null)
+    setActiveGate(null)
     setPendingPart(null)
+    invalidateGateCache()
     setQuizTick((t) => t + 1)
   }
 
@@ -792,8 +782,20 @@ export default function Packages() {
           <div className="vid-player-header max-w-7xl mx-auto">
             <button className="btn btn-outline vid-player-back" onClick={goBackToDetail}>← العودة لمحتوى الباقة</button>
             <div className="vid-player-titles">
-              <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
+              <VideoTitleCard
+                title={currentVideo?.title}
+                description={currentVideo?.description}
+                eyebrow="من محتوى الباقة"
+                icon="fa-play"
+                meta={[
+                  currentVideo?.totalParts
+                    ? { icon: 'fa-layer-group', text: `${currentVideo.totalParts} أجزاء` }
+                    : null,
+                  currentVideo?.pdf_url
+                    ? { icon: 'fa-file-pdf', text: 'مذكرة مرفقة' }
+                    : null,
+                ].filter(Boolean)}
+              />
             </div>
             <div className="vid-player-spacer" />
           </div>
@@ -827,7 +829,7 @@ export default function Packages() {
                             initialWatchedSeconds={seed}
                             onProgress={handleProgress}
                             onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
+                            forcePause={!!activeGate}
                           />
                         ) : selectedPart.source === 'drive' ? (
                           <DrivePlayer
@@ -842,7 +844,7 @@ export default function Packages() {
                             onProgress={handleProgress}
                             seekTrigger={seekTrigger}
                             onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
+                            forcePause={!!activeGate}
                           />
                         )}
                       </PlayerFacade>
@@ -908,7 +910,7 @@ export default function Packages() {
                 <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
                 <div id="partsList" data-quiz-tick={quizTick}>
                   {currentVideo?.parts.map((part, index) => {
-                    const blocking = findBlockingQuiz(currentVideo, part)
+                    const blocking = findBlockingGate(currentVideo, part)
                     const left = partTrialsLeft(currentVideo, part)
                     const cap = partViewCap(currentVideo, part)
                     const outOfTrials = userRole !== 'admin' && userRole !== 'assistant' && left <= 0
@@ -948,8 +950,27 @@ export default function Packages() {
                           )}
                         </div>
                         {blocking && userRole !== 'admin' && userRole !== 'assistant' && (
-                          <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                          <div style={{ fontSize: '0.8rem', marginTop: '6px', fontWeight: 700, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: '#ed8936' }}>
+                              <i className="fas fa-clipboard-check"></i> {blocking.type_label} مطلوب: {blocking.title}
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              <i className="fas fa-bullseye" style={{ marginInlineEnd: 4 }}></i>
+                              النجاح {blocking.passing_score}%
+                            </span>
+                            {/* Attempts remaining is the only progress signal a
+                                student gets before passing — never a score. */}
+                            <span style={{ color: blocking.attempts_remaining <= 1 ? '#e53e3e' : 'var(--text-secondary)' }}>
+                              <i className="fas fa-repeat" style={{ marginInlineEnd: 4 }}></i>
+                              {blocking.allowed_attempts === 0
+                                ? 'محاولات غير محدودة'
+                                : `متبقي ${blocking.attempts_remaining} من ${blocking.allowed_attempts} محاولة`}
+                            </span>
+                          </div>
+                        )}
+                        {!blocking && gatesForPart(part).length > 0 && userRole !== 'admin' && userRole !== 'assistant' && (
+                          <div style={{ fontSize: '0.8rem', color: '#38a169', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-lock-open"></i> تم اجتياز التقييم المطلوب
                           </div>
                         )}
                         {outOfTrials && (
@@ -1072,15 +1093,12 @@ export default function Packages() {
         />
       )}
 
-      {/* 5. Video Gating Quiz Runner */}
-      {activeQuiz && currentVideo && currentUser && (
-        <QuizRunner
-          quiz={activeQuiz}
-          videoId={currentVideo.id}
-          studentId={currentUser.id}
-          priorAttempt={quizAttempts.find((a) => a.quiz_local_id === activeQuiz.localId)}
-          onPass={handleQuizPass}
-          onClose={handleQuizClose}
+      {/* 5. Pre-Video Assessment gate */}
+      {activeGate && currentVideo && currentUser && (
+        <AssessmentRunner
+          gate={activeGate}
+          onUnlock={handleGateUnlock}
+          onClose={handleGateClose}
         />
       )}
 

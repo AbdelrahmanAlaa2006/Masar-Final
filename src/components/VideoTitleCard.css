@@ -1,0 +1,278 @@
+/* ──────────────────────────────────────────────────────────────
+   Video title card — the header of the player view.
+
+   Theming: reads the tokens Videos.css / Packages.css already define
+   (--text-primary, --text-secondary, --border-primary, --gradient-primary,
+   --primary, --primary-glow) so it inherits each tenant's brand colour and
+   both themes without knowing anything about either. The few values those
+   files don't provide are declared locally under .vtc and flipped in the
+   body.dark block, rather than hard-coded per rule.
+   ────────────────────────────────────────────────────────────── */
+
+.vtc {
+  /* Local surface tokens — light theme is the default. */
+  --vtc-bg: linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72));
+  --vtc-border: rgba(15, 23, 42, 0.08);
+  --vtc-border-hover: var(--primary, #d97706);
+  --vtc-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.18);
+  --vtc-shadow-hover:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 18px 40px -16px rgba(15, 23, 42, 0.28);
+  --vtc-eyebrow: var(--text-secondary, #475569);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(11px, 1.6vw, 16px);
+
+  /* Medium, content-sized card centred above the player. A min-width keeps
+     even a two-letter title looking substantial; a max-width stops a long one
+     from stretching edge to edge; the content itself is centred so a short
+     title reads as an intentional chip, not a half-empty frame. */
+  width: fit-content;
+  min-width: min(320px, 100%);
+  max-width: min(620px, 100%);
+  margin: 0 auto;
+  padding: clamp(14px, 1.9vw, 20px) clamp(18px, 2.6vw, 26px);
+  box-sizing: border-box;
+
+  text-align: center;
+
+  border: 1px solid var(--vtc-border);
+  border-radius: 16px;
+  background: var(--vtc-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--vtc-shadow);
+  overflow: hidden;
+
+  /* Only the properties that actually change are transitioned, so the
+     compositor isn't asked to re-evaluate the whole box on hover. */
+  transition:
+    transform .28s cubic-bezier(.22, .8, .28, 1),
+    box-shadow .28s cubic-bezier(.22, .8, .28, 1),
+    border-color .28s ease;
+
+  animation: vtc-enter .42s cubic-bezier(.22, .8, .28, 1) both;
+}
+
+body.dark .vtc {
+  --vtc-bg: linear-gradient(150deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.35));
+  --vtc-border: rgba(255, 255, 255, 0.09);
+  --vtc-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 10px 30px -14px rgba(0, 0, 0, 0.75);
+  --vtc-shadow-hover:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 22px 48px -18px rgba(0, 0, 0, 0.9);
+  /* NOT --text-muted here: that token is #64748b in dark, which measures
+     3.59:1 against this card — under the 4.5:1 WCAG AA minimum for text this
+     size. This lighter slate measures ~6.9:1 and still reads as secondary. */
+  --vtc-eyebrow: #9aa7b8;
+}
+
+/* Accent rail along the inline-start edge. Carries the brand colour so the
+   title text itself can stay high-contrast (see .vtc-title). */
+.vtc::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: var(--gradient-primary, linear-gradient(180deg, var(--primary), var(--primary-hover)));
+  opacity: .85;
+  transition: opacity .28s ease, width .28s cubic-bezier(.22, .8, .28, 1);
+}
+
+/* Soft brand glow bleeding in from the accent edge. Pure paint, no layout. */
+.vtc::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 45%;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 0% 50%,
+    var(--primary-glow, rgba(217, 119, 6, 0.10)),
+    transparent 70%
+  );
+  opacity: .7;
+  transition: opacity .28s ease;
+}
+
+.vtc:hover {
+  transform: translateY(-3px) scale(1.012);
+  box-shadow: var(--vtc-shadow-hover);
+  border-color: color-mix(in srgb, var(--vtc-border-hover) 45%, transparent);
+}
+.vtc:hover::before { width: 6px; opacity: 1; }
+.vtc:hover::after  { opacity: 1; }
+
+/* ── Badge ─────────────────────────────────────────────────── */
+.vtc-badge {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(36px, 4.5vw, 44px);
+  height: clamp(36px, 4.5vw, 44px);
+  border-radius: 13px;
+  background: var(--gradient-primary, var(--primary));
+  color: #fff;
+  font-size: clamp(.82rem, 1.5vw, .98rem);
+  box-shadow: 0 8px 18px -8px var(--primary-glow, rgba(217, 119, 6, 0.55));
+  transition: transform .28s cubic-bezier(.22, .8, .28, 1);
+}
+.vtc:hover .vtc-badge { transform: scale(1.06) rotate(-4deg); }
+
+/* ── Text ──────────────────────────────────────────────────── */
+.vtc-body {
+  position: relative;
+  z-index: 1;
+  /* min-width:0 is what actually lets a long unbroken title wrap instead of
+     forcing the flex row wider than its container. flex:0 1 auto keeps the
+     badge+text group content-sized so `justify-content:center` can centre it. */
+  min-width: 0;
+  flex: 0 1 auto;
+  text-align: center;
+}
+
+.vtc-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--vtc-eyebrow);
+}
+
+/* Deliberately over-qualified (.vtc .vtc-title, 0-2-0): both host pages ship
+   `.vid-player-titles p` / `h2` rules at 0-1-1 that would otherwise win on the
+   description and heading. Scoping to .vtc keeps that local, not global. */
+.vtc .vtc-title {
+  margin: 0;
+  font-family: 'Tajawal', system-ui, sans-serif;
+  font-size: clamp(1.2rem, .95rem + 1.1vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+
+  /* Solid, not gradient-clipped: a gradient fill drops the contrast of the
+     most important text on the page, and varies per tenant brand colour.
+     The brand shows up in the rail and badge instead. */
+  color: var(--text-primary, #0f172a);
+
+  /* Long titles wrap on even lines rather than leaving one orphan word,
+     and a single very long word breaks instead of overflowing. */
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.vtc .vtc-desc {
+  margin: 4px auto 0;
+  max-width: 52ch;
+  font-size: clamp(.82rem, .76rem + .22vw, .92rem);
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--text-secondary, #475569);
+  overflow-wrap: anywhere;
+
+  /* Keep the card compact: a long description collapses to two lines with an
+     ellipsis rather than turning the header into a paragraph. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Meta chips ────────────────────────────────────────────── */
+.vtc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 11px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vtc-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--vtc-border);
+  background: color-mix(in srgb, var(--primary, #d97706) 8%, transparent);
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+  white-space: nowrap;
+}
+.vtc-meta-item i { color: var(--primary, #d97706); font-size: .66rem; }
+
+/* ── Entrance ──────────────────────────────────────────────── */
+@keyframes vtc-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .vtc {
+    border-radius: 14px;
+    /* Stay centred, but allow it to use the full width on small screens. */
+    min-width: 0;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  /* Lift-on-hover is meaningless on touch and can leave the card stuck in
+     the hovered state after a tap. */
+  .vtc:hover {
+    transform: none;
+    box-shadow: var(--vtc-shadow);
+  }
+  .vtc:hover::before { width: 4px; }
+  .vtc:hover .vtc-badge { transform: none; }
+}
+
+@media (max-width: 480px) {
+  .vtc {
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+  }
+  .vtc-badge { width: 34px; height: 34px; border-radius: 10px; }
+  .vtc .vtc-desc { margin-top: 6px; line-height: 1.65; }
+  .vtc-meta { gap: 6px; margin-top: 10px; }
+}
+
+/* ── Reduced motion ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .vtc {
+    animation: none;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  .vtc:hover { transform: none; }
+  .vtc-badge,
+  .vtc:hover .vtc-badge { transition: none; transform: none; }
+  .vtc::before { transition: opacity .2s ease; }
+}
+
+/* ── Print ─────────────────────────────────────────────────── */
+@media print {
+  .vtc {
+    animation: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    background: none;
+    border-color: #000;
+  }
+  .vtc::after { display: none; }
+}

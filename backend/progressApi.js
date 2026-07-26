@@ -1,50 +1,16 @@
 import { supabase } from './supabase'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
-// ──────────── Quiz attempts (video gating) ────────────
-// One row per (student, video, quiz_local_id). Upserted on every submit.
-
-export async function listQuizAttemptsForVideo(videoId, studentId) {
-  const key = `quiz_attempts:${videoId}:${studentId}`
-  return cached(key, LIST_TTL, async () => {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .select('*')
-      .eq('video_id', videoId)
-      .eq('student_id', studentId)
-    if (error) throw error
-    return data || []
-  })
-}
-
-export async function recordQuizAttempt({
-  student_id,
-  video_id,
-  quiz_local_id,
-  passed,
-  best_correct,
-  attempts,
-}) {
-  const payload = {
-    student_id,
-    video_id,
-    quiz_local_id,
-    passed,
-    best_correct,
-    attempts,
-    last_attempt_at: new Date().toISOString(),
-  }
-  const { data, error } = await supabase
-    .from('quiz_attempts')
-    .upsert(payload, { onConflict: 'student_id,video_id,quiz_local_id' })
-    .select()
-    .single()
-  if (error) throw error
-  invalidateCache(`quiz_attempts:${video_id}:${student_id}`)
-  invalidatePrefix('student-vids-')
-  invalidatePrefix('video_progress_student:')
-  return data
-}
+// ──────────── Quiz attempts (REMOVED) ────────────
+// `listQuizAttemptsForVideo` / `recordQuizAttempt` used to drive pre-video
+// gating off the `quiz_attempts` table. They are gone because the client was
+// the one deciding `passed` — a student could POST passed:true and unlock any
+// video. Gating now runs through video_assessments + the SECURITY DEFINER RPCs
+// in backend/videoAssessmentsApi.js, which score on the server.
+//
+// The `quiz_attempts` table itself is left in place (the 2026_07_26 migration
+// copies every historical pass into video_assessment_unlocks so nobody is
+// re-locked), but nothing reads or writes it any more.
 
 // ──────────── Video progress (view limits per part) ────────────
 

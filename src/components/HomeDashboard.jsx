@@ -227,6 +227,8 @@ function StudentDashboard() {
               .select('exam_id')
               .eq('student_id', userId)
               .not('submitted_at', 'is', null)
+              // Pre-video gate attempts aren't exams the student "took".
+              .is('video_assessment_id', null)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
         ])
@@ -271,6 +273,9 @@ function StudentDashboard() {
               .from('exams')
               .select('id, title, created_at, available_hours')
               .eq('grade', userGrade)
+              // Pre-video gate assessments are not exams the student can go
+              // and sit — never surface one as "your next exam".
+              .eq('origin', 'library')
               .order('created_at', { ascending: false })
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           )

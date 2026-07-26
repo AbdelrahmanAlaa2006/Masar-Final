@@ -1,0 +1,131 @@
+/* ──────────────────────────────────────────────────────────────
+   Pre-Video Assessment runner — additions on top of QuizRunner.css,
+   which supplies the shared modal / question / option styling so the
+   gate looks native to the rest of the platform.
+
+   The pieces here exist for the states QuizRunner never had:
+     • the withheld-result panel (score hidden while attempts remain)
+     • the countdown chip
+     • the post-reveal review heading
+   ────────────────────────────────────────────────────────────── */
+
+.ar-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 3rem 1rem;
+  color: var(--text-secondary, #4a5568);
+  font-weight: 600;
+}
+.ar-center i { font-size: 2rem; color: var(--primary); }
+.ar-center p { margin: 0; font-size: 14px; }
+
+/* Countdown chip in the header meta row */
+.ar-clock { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ar-clock.is-urgent { color: #dc2626; }
+.ar-clock.is-urgent i { color: #dc2626; }
+body.dark .ar-clock.is-urgent,
+body.dark .ar-clock.is-urgent i { color: #fca5a5; }
+
+/* ── Withheld result ──────────────────────────────────────────
+   Shown when the student failed but still has attempts. Deliberately
+   contains NO score, NO percentage and NO answer marking — the whole
+   reason the feature was redesigned. Styled as a neutral "in progress"
+   state rather than a failure card, so it reads as "keep going". */
+.ar-withheld {
+  text-align: center;
+  padding: 2rem 1.25rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(237, 137, 54, 0.08), rgba(246, 173, 85, 0.08));
+  border: 1px solid rgba(237, 137, 54, 0.28);
+}
+body.dark .ar-withheld {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(245, 158, 11, 0.08));
+  border-color: rgba(251, 191, 36, 0.25);
+}
+.ar-withheld-icon {
+  font-size: 2.6rem;
+  color: #ed8936;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+body.dark .ar-withheld-icon { color: #fbbf24; }
+.ar-withheld h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+}
+body.dark .ar-withheld h3 { color: #f1f5f9; }
+.ar-withheld > p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary, #4a5568);
+}
+
+.ar-withheld-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: start;
+  margin: 0 auto;
+  max-width: 460px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--page-bg-secondary, #fff);
+  border: 1px dashed var(--border-light, #e2e8f0);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--text-secondary, #4a5568);
+}
+.ar-withheld-note i { color: #ed8936; margin-top: 3px; flex: 0 0 auto; }
+body.dark .ar-withheld-note {
+  background: var(--dynamic-card, #1f2937);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+body.dark .ar-withheld-note i { color: #fbbf24; }
+
+.ar-remaining {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(102, 126, 234, 0.12);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+body.dark .ar-remaining { background: var(--primary-soft); }
+
+/* ── Review heading (only rendered after reveal) ─────────────── */
+.ar-review-head {
+  margin: 1.4rem 0 .9rem;
+  padding-bottom: .6rem;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ar-review-head i { color: var(--primary); }
+body.dark .ar-review-head {
+  color: #f1f5f9;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 600px) {
+  .ar-withheld { padding: 1.5rem 1rem; }
+  .ar-withheld-icon { font-size: 2.2rem; }
+  .ar-withheld h3 { font-size: 1.05rem; }
+  .ar-withheld > p { font-size: 13px; }
+  .ar-withheld-note { font-size: 12.5px; padding: 10px 12px; }
+}

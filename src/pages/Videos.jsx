@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './Videos.css'
 import PrepIllustration from '../components/PrepIllustration'
-import QuizRunner from '../components/QuizRunner'
+import AssessmentRunner from '../components/AssessmentRunner'
+import VideoTitleCard from '../components/VideoTitleCard'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import YouTubePlayer from '../components/YouTubePlayer'
 import DrivePlayer from '../components/DrivePlayer'
@@ -19,14 +20,23 @@ import { listNotes, createNote, deleteNote } from '@backend/videoNotesApi'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadLecturePdf, deleteR2Object } from '@backend/r2'
-import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
 import {
-  listQuizAttemptsForVideo,
   listProgressForVideo,
   incrementPartView,
   updatePartProgress,
 } from '@backend/progressApi'
+import {
+  getVideoGateStatus,
+  invalidateGateCache,
+  listVideoAssessments,
+  syncVideoAssessments,
+} from '@backend/videoAssessmentsApi'
+import PreAssessmentEditor, {
+  gatesToPayload,
+  payloadToGates,
+  validateGates,
+} from '../components/PreAssessmentEditor'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { dbToUiGrade, uiToDbGrade } from '@backend/examsApi'
 
@@ -90,7 +100,7 @@ export default function Videos() {
   const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   // Convert a DB video row (with embedded video_parts) into the shape the
-  // rest of the page was built around (parts[], totalParts, quizzes[]).
+  // rest of the page was built around (parts[], totalParts).
   function shapeVideo(row) {
     const parts = (row.video_parts || []).map((p) => ({
       id: p.id,
@@ -114,7 +124,6 @@ export default function Videos() {
       activeHours: row.active_hours,
       expiryTime: row.expiry_at,
       createdAt: row.created_at,
-      quizzes: row.quizzes || [],
       pdf_url: row.pdf_url || null,
       pdf_key: row.pdf_key || null,
       isArchived: !!row.is_archived,
@@ -146,12 +155,15 @@ export default function Videos() {
   const [loadError, setLoadError] = useState(null)
   const [videoOverrides, setVideoOverrides] = useState(new Map()) // videoId -> {allowed, attempts}
 
-  // Per-video progress+quiz cache for the one currently-open video
-  const [quizAttempts, setQuizAttempts] = useState([]) // rows from quiz_attempts
+  // Per-video gate + progress cache for the one currently-open video.
+  // `gates` are rows from get_video_gate_status(): the gate config PLUS this
+  // student's attempts-used / attempts-remaining / unlocked flags, all decided
+  // server-side. Nothing here is authoritative — it only drives what we draw.
+  const [gates, setGates] = useState([])
   const [progressRows, setProgressRows] = useState([]) // rows from video_progress
   const [quizTick, setQuizTick] = useState(0)
 
-  const [activeQuiz, setActiveQuiz] = useState(null)
+  const [activeGate, setActiveGate] = useState(null)
   const [pendingPart, setPendingPart] = useState(null)
 
   // Smart Video Notes state
@@ -160,10 +172,10 @@ export default function Videos() {
   const [noteContent, setNoteContent] = useState('')
   const [seekTrigger, setSeekTrigger] = useState(null)
   const [loadingNotes, setLoadingNotes] = useState(false)
-  // Quizzes the student has just passed in this session. We add to this set
-  // the moment a pass fires so the immediate `playVideoPart` retry doesn't
-  // re-read stale `quizAttempts` (which is fetched async) and re-show the
-  // quiz that was literally just passed.
+  // Gates the student has just unlocked in this session. We add to this set
+  // the moment the server reports a pass so the immediate `playVideoPart`
+  // retry doesn't re-read a stale `gates` array (refetched async) and re-show
+  // the assessment that was literally just passed.
   const passedThisSessionRef = useRef(new Set())
 
   // Load notes for the active video part
@@ -336,35 +348,35 @@ export default function Videos() {
     }))
   }
 
-  // ── Load per-video quiz attempts & progress when player opens ─
+  // ── Load per-video gates & progress when the player opens ────
   // Admins don't have progress/attempts of their own — skip entirely.
   // They preview videos without burning view counts (already enforced
-  // below) and aren't gated by quizzes.
+  // below) and aren't gated by assessments.
   useEffect(() => {
     let cancelled = false
     const run = async () => {
       if (!currentVideo || !currentUser?.id) {
-        setQuizAttempts([])
+        setGates([])
         setProgressRows([])
         passedThisSessionRef.current = new Set()
         return
       }
       if (currentUser.role === 'admin' || currentUser.role === 'assistant') {
-        setQuizAttempts([])
+        setGates([])
         setProgressRows([])
         return
       }
       try {
-        const [qa, pr] = await Promise.all([
-          listQuizAttemptsForVideo(currentVideo.id, currentUser.id),
+        const [gateMap, pr] = await Promise.all([
+          getVideoGateStatus([currentVideo.id], currentUser.id),
           listProgressForVideo(currentVideo.id, currentUser.id),
         ])
         if (!cancelled) {
-          setQuizAttempts(qa)
+          setGates(gateMap.get(currentVideo.id) || [])
           setProgressRows(pr)
         }
       } catch (err) {
-        console.error('progress load failed', err)
+        console.error('gate/progress load failed', err)
       }
     }
     run()
@@ -372,19 +384,19 @@ export default function Videos() {
   }, [currentVideo?.id, currentUser?.id, quizTick])
 
   // ── Helpers ──────────────────────────────────────────────────
-  const findBlockingQuiz = (video, part) => {
-    if (!video || !video.quizzes || video.quizzes.length === 0) return null
-    const partIdx = video.parts.findIndex(p => p.id === part.id)
-    const applies = (qz) =>
-      (qz.scope === 'whole' || (qz.scope === 'part' && Number(qz.partIndex) === partIdx)) &&
-      qz.triggerType !== 'timestamp'
-    for (const qz of video.quizzes) {
-      if (!applies(qz)) continue
-      // Just-passed quizzes are remembered in a ref so the immediate retry
-      // in handleQuizPass doesn't re-block on an un-refreshed cache.
-      if (passedThisSessionRef.current.has(qz.localId)) continue
-      const att = quizAttempts.find(a => a.quiz_local_id === qz.localId)
-      if (!att?.passed) return qz
+  // A gate with part_id = null guards the WHOLE video; one with a part_id
+  // guards only that part. `unlocked` is the server's word — we never derive
+  // it from a score here, because the client is not told the score.
+  const gatesForPart = (part) =>
+    gates.filter(g => g.trigger_type === 'before' && (!g.part_id || g.part_id === part?.id))
+
+  const findBlockingGate = (video, part) => {
+    if (!part || gates.length === 0) return null
+    for (const g of gatesForPart(part)) {
+      // Just-unlocked gates are remembered in a ref so the immediate retry in
+      // handleGateUnlock doesn't re-block on an un-refreshed cache.
+      if (passedThisSessionRef.current.has(g.video_assessment_id)) continue
+      if (!g.unlocked) return g
     }
     return null
   }
@@ -508,42 +520,33 @@ export default function Videos() {
         .catch((err) => console.error('youtube view increment failed', err))
     }
 
-    // Trigger timestamp-based quizzes
-    if (activeQuiz) return
+    // Trigger timestamp-based assessments (mid-video checkpoints). These are
+    // preserved from the legacy quizzes feature — the migration carried them
+    // across as gates with trigger_type = 'timestamp'.
+    if (activeGate) return
 
-    const partIdx = currentVideo.parts.findIndex(p => p.id === selectedPart.id)
-    if (partIdx !== -1 && currentVideo.quizzes && currentVideo.quizzes.length > 0) {
-      for (const qz of currentVideo.quizzes) {
-        if (qz.triggerType === 'timestamp' && qz.scope === 'part' && Number(qz.partIndex) === partIdx) {
-          const tSec = parseInt(qz.timestampSeconds, 10)
-          if (Number.isFinite(tSec) && seconds >= tSec) {
-            // Check if student has already passed the quiz
-            const passed = passedThisSessionRef.current.has(qz.localId) ||
-              quizAttempts.some(a => a.quiz_local_id === qz.localId && a.passed)
-            if (!passed) {
-              const att = quizAttempts.find(a => a.quiz_local_id === qz.localId)
-              const attempts = att?.attempts || 0
-              const max = qz.maxAttempts || 1
+    for (const g of gates) {
+      if (g.trigger_type !== 'timestamp') continue
+      if (g.part_id && g.part_id !== selectedPart.id) continue
+      const tSec = parseInt(g.timestamp_seconds, 10)
+      if (!Number.isFinite(tSec) || seconds < tSec) continue
 
-              if (attempts >= max) {
-                // Out of attempts, show alert and seek back to prevent infinite loop
-                showAlertModal(
-                  'انتهت محاولات الامتحان',
-                  `لقد استنفدت جميع المحاولات (${max}) لامتحان "${qz.title}" ولم تنجح. يُرجى التواصل مع المعلم.`
-                )
-                const targetSeek = Math.max(0, tSec - 5)
-                handleSeekToNote(targetSeek)
-                return
-              } else {
-                // Playback paused by setting activeQuiz, which triggers forcePause on player components
-                setPendingPart(selectedPart)
-                setActiveQuiz(qz)
-                return
-              }
-            }
-          }
-        }
+      if (g.unlocked || passedThisSessionRef.current.has(g.video_assessment_id)) continue
+
+      if (g.attempts_remaining <= 0) {
+        // Out of attempts — seek back so we don't loop the modal open.
+        showAlertModal(
+          'انتهت محاولاتك',
+          `لقد استنفدت جميع المحاولات (${g.allowed_attempts}) في "${g.title}" ولم تجتزه. يُرجى التواصل مع المعلم.`
+        )
+        handleSeekToNote(Math.max(0, tSec - 5))
+        return
       }
+
+      // Playback pauses via forcePause, which is bound to activeGate.
+      setPendingPart(selectedPart)
+      setActiveGate(g)
+      return
     }
   }
   const openVideoPlayer = (video) => {
@@ -598,10 +601,23 @@ export default function Videos() {
 
   const saveVideoEdit = async (patch) => {
     if (!editVideo) return
+    // `gates` is not a videos column — it belongs to video_assessments and is
+    // synced separately, after the parts are written (a gate scoped to a part
+    // added in this same save needs that part's fresh id).
+    const { gates: gatePatch, ...videoPatch } = patch
     try {
-      await updateVideo(editVideo.id, patch)
+      const saved = await updateVideo(editVideo.id, videoPatch)
+      if (gatePatch) {
+        await syncVideoAssessments(
+          editVideo.id,
+          gatesToPayload(gatePatch, saved.parts || []),
+          { created_by: currentUser?.id || null }
+        )
+      }
       invalidateCache('videos')
-      // Refresh the entire videos list from Supabase so all nested parts, IDs, and quizzes are perfectly in sync!
+      invalidateGateCache()
+      // Refresh the entire videos list from Supabase so all nested parts and
+      // IDs stay in sync.
       await refreshVideos()
       setEditVideo(null)
     } catch (err) {
@@ -655,20 +671,19 @@ export default function Videos() {
       }
     }
 
-    // Quiz gate
-    const blocking = findBlockingQuiz(currentVideo, part)
+    // Pre-video assessment gate. This check is a courtesy for the UI only —
+    // the real enforcement is start_pre_video_attempt() + the unlock row, so
+    // skipping past this in devtools gains a student nothing.
+    const blocking = findBlockingGate(currentVideo, part)
     if (blocking && userRole !== 'admin' && userRole !== 'assistant') {
-      const att = quizAttempts.find(a => a.quiz_local_id === blocking.localId)
-      const attempts = att?.attempts || 0
-      const max = blocking.maxAttempts || 1
-      if (!att?.passed && attempts >= max) {
+      if (blocking.attempts_remaining <= 0) {
         return showAlertModal(
-          'انتهت محاولات الامتحان',
-          `لقد استنفدت جميع المحاولات (${max}) لامتحان "${blocking.title}" ولم تنجح. يُرجى التواصل مع المعلم.`
+          'انتهت محاولاتك',
+          `لقد استنفدت جميع المحاولات (${blocking.allowed_attempts}) في "${blocking.title}" ولم تحقق نسبة النجاح المطلوبة (${blocking.passing_score}%). يُرجى التواصل مع المعلم.`
         )
       }
       setPendingPart(part)
-      setActiveQuiz(blocking)
+      setActiveGate(blocking)
       return
     }
 
@@ -710,33 +725,34 @@ export default function Videos() {
     }
   }, [selectedPart?.id, currentUser?.id, currentVideo?.id, userRole])
 
-  const handleQuizPass = () => {
-    // Remember the pass synchronously — findBlockingQuiz reads this ref so
+  const handleGateUnlock = () => {
+    // Remember the unlock synchronously — findBlockingGate reads this ref so
     // the immediate retry below doesn't get tricked into re-prompting while
-    // the new `quiz_attempts` row is still in flight.
-    if (activeQuiz?.localId != null) {
-      passedThisSessionRef.current.add(activeQuiz.localId)
+    // the refreshed gate status is still in flight.
+    if (activeGate?.video_assessment_id) {
+      passedThisSessionRef.current.add(activeGate.video_assessment_id)
     }
-    setActiveQuiz(null)
-    setQuizTick(t => t + 1) // re-fetch quiz_attempts so gating flips
+    setActiveGate(null)
+    invalidateGateCache()
+    setQuizTick(t => t + 1) // re-fetch gate status so the lock flips
     const part = pendingPart
     setPendingPart(null)
     if (part) setTimeout(() => playVideoPart(part), 50)
   }
 
-  const handleQuizClose = () => {
-    // If it was a timestamp quiz and they didn't pass, seek them back 5 seconds to prevent bypass
-    if (activeQuiz && activeQuiz.triggerType === 'timestamp') {
-      const passed = passedThisSessionRef.current.has(activeQuiz.localId) ||
-        quizAttempts.some(a => a.quiz_local_id === activeQuiz.localId && a.passed)
-      if (!passed) {
-        const targetSeek = Math.max(0, (activeQuiz.timestampSeconds || 0) - 5)
-        handleSeekToNote(targetSeek)
+  const handleGateClose = () => {
+    // A mid-video checkpoint that wasn't passed: seek back 5s so closing the
+    // modal isn't a way to skip past it.
+    if (activeGate && activeGate.trigger_type === 'timestamp') {
+      const unlocked = passedThisSessionRef.current.has(activeGate.video_assessment_id)
+      if (!unlocked) {
+        handleSeekToNote(Math.max(0, (activeGate.timestamp_seconds || 0) - 5))
       }
     }
-    setActiveQuiz(null)
+    setActiveGate(null)
     setPendingPart(null)
-    setQuizTick(t => t + 1) // reflect attempts count bump in UI
+    invalidateGateCache()
+    setQuizTick(t => t + 1) // reflect the attempts-used bump in the UI
   }
 
   // ── Render ───────────────────────────────────────────────────
@@ -1034,8 +1050,20 @@ export default function Videos() {
           <div className="vid-player-header max-w-7xl mx-auto">
             <button className="btn btn-outline vid-player-back" onClick={goBackToVideos}>← العودة للفيديوهات</button>
             <div className="vid-player-titles">
-              <h1 className="title-main gradient-text">{currentVideo?.title}</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>{currentVideo?.description}</p>
+              <VideoTitleCard
+                title={currentVideo?.title}
+                description={currentVideo?.description}
+                eyebrow={levelsMeta[currentGrade]?.ar}
+                icon="fa-play"
+                meta={[
+                  currentVideo?.totalParts
+                    ? { icon: 'fa-layer-group', text: `${currentVideo.totalParts} أجزاء` }
+                    : null,
+                  currentVideo?.pdf_url
+                    ? { icon: 'fa-file-pdf', text: 'مذكرة مرفقة' }
+                    : null,
+                ].filter(Boolean)}
+              />
             </div>
             <div className="vid-player-spacer" />
           </div>
@@ -1071,7 +1099,7 @@ export default function Videos() {
                             initialWatchedSeconds={seed}
                             onProgress={handleProgress}
                             onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
+                            forcePause={!!activeGate}
                           />
                         ) : selectedPart.source === 'drive' ? (
                           <DrivePlayer
@@ -1086,7 +1114,7 @@ export default function Videos() {
                             onProgress={handleProgress}
                             seekTrigger={seekTrigger}
                             onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeQuiz}
+                            forcePause={!!activeGate}
                           />
                         )}
                       </PlayerFacade>
@@ -1152,7 +1180,7 @@ export default function Videos() {
                 <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
                 <div id="partsList" data-quiz-tick={quizTick}>
                   {currentVideo?.parts.map((part, index) => {
-                    const blocking = findBlockingQuiz(currentVideo, part)
+                    const blocking = findBlockingGate(currentVideo, part)
                     const left = partTrialsLeft(currentVideo, part)
                     const cap = partViewCap(currentVideo, part)
                     const outOfTrials = userRole !== 'admin' && userRole !== 'assistant' && left <= 0
@@ -1193,8 +1221,27 @@ export default function Videos() {
                           )}
                         </div>
                         {blocking && userRole !== 'admin' && userRole !== 'assistant' && (
-                          <div style={{ fontSize: '0.8rem', color: '#ed8936', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-graduation-cap"></i> امتحان مطلوب: {blocking.title}
+                          <div style={{ fontSize: '0.8rem', marginTop: '6px', fontWeight: 700, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: '#ed8936' }}>
+                              <i className="fas fa-clipboard-check"></i> {blocking.type_label} مطلوب: {blocking.title}
+                            </span>
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              <i className="fas fa-bullseye" style={{ marginInlineEnd: 4 }}></i>
+                              النجاح {blocking.passing_score}%
+                            </span>
+                            {/* Attempts remaining is the ONLY progress signal a
+                                student sees before passing — never a score. */}
+                            <span style={{ color: blocking.attempts_remaining <= 1 ? '#e53e3e' : 'var(--text-secondary)' }}>
+                              <i className="fas fa-repeat" style={{ marginInlineEnd: 4 }}></i>
+                              {blocking.allowed_attempts === 0
+                                ? 'محاولات غير محدودة'
+                                : `متبقي ${blocking.attempts_remaining} من ${blocking.allowed_attempts} محاولة`}
+                            </span>
+                          </div>
+                        )}
+                        {!blocking && gatesForPart(part).length > 0 && userRole !== 'admin' && userRole !== 'assistant' && (
+                          <div style={{ fontSize: '0.8rem', color: '#38a169', marginTop: '6px', fontWeight: 700 }}>
+                            <i className="fas fa-lock-open"></i> تم اجتياز التقييم المطلوب
                           </div>
                         )}
                         {outOfTrials && (
@@ -1307,15 +1354,12 @@ export default function Videos() {
         </div>
       )}
 
-      {/* Quiz Gate */}
-      {activeQuiz && currentVideo && currentUser && (
-        <QuizRunner
-          quiz={activeQuiz}
-          videoId={currentVideo.id}
-          studentId={currentUser.id}
-          priorAttempt={quizAttempts.find(a => a.quiz_local_id === activeQuiz.localId)}
-          onPass={handleQuizPass}
-          onClose={handleQuizClose}
+      {/* Pre-Video Assessment gate */}
+      {activeGate && currentVideo && currentUser && (
+        <AssessmentRunner
+          gate={activeGate}
+          onUnlock={handleGateUnlock}
+          onClose={handleGateClose}
         />
       )}
 
@@ -1408,7 +1452,7 @@ export default function Videos() {
 
 /* ── Inline edit modal for an existing video ───────────────────
    Upgraded to allow dynamic editing of video parts, Google Drive / Youtube
-   auto-extraction, Bunny Stream uploading, and inline gating quizzes. */
+   auto-extraction, Bunny Stream uploading, and pre-video assessments. */
 function extractYouTubeId(input) {
   if (!input) return ''
   const s = String(input).trim()
@@ -1440,26 +1484,6 @@ function extractDriveId(input) {
   } catch { /* not a URL */ }
   return ''
 }
-
-const makeQuestion = () => ({
-  qid: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-  question: '',
-  image: '',
-  options: ['', ''],
-  answers: [0],
-  points: 1,
-  isMultiple: false,
-})
-
-const makeQuiz = () => ({
-  localId: `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-  title: '',
-  scope: 'whole',
-  partIndex: '',
-  passingQuestions: '',
-  maxAttempts: 1,
-  questions: [makeQuestion()],
-})
 
 function BunnyUploader({ part, title, onChange }) {
   const [file, setFile] = useState(null)
@@ -1605,24 +1629,6 @@ function BunnyUploader({ part, title, onChange }) {
   )
 }
 
-function parseTimestampToSeconds(str) {
-  if (!str) return null
-  const s = String(str).trim()
-  const parts = s.split(':').map(Number)
-  if (parts.some(Number.isNaN)) return null
-  if (parts.length === 1) return parts[0]
-  if (parts.length === 2) return parts[0] * 60 + parts[1]
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-  return null
-}
-
-function formatSecondsToTimestamp(sec) {
-  if (sec == null || Number.isNaN(sec)) return ''
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
 function EditVideoModal({ video, onCancel, onSave }) {
   const { isGradeEnabled, gradesList } = useTenant()
   const [title, setTitle] = useState(video.title || '')
@@ -1651,29 +1657,25 @@ function EditVideoModal({ video, onCancel, onSave }) {
     }))
   })
 
-  // Initialize quizzes state
-  const [quizzes, setQuizzes] = useState(() => {
-    return (video.quizzes || []).map((qz) => ({
-      localId: qz.localId || `qz_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      title: qz.title || '',
-      scope: qz.scope || 'whole',
-      partIndex: qz.scope === 'part' ? (qz.partIndex ?? '') : '',
-      passingQuestions: qz.passingQuestions ?? '',
-      maxAttempts: qz.maxAttempts ?? 1,
-      triggerType: qz.triggerType || 'gate',
-      timestamp: qz.timestamp || (qz.timestampSeconds != null ? formatSecondsToTimestamp(qz.timestampSeconds) : ''),
-      timestampSeconds: qz.timestampSeconds ?? null,
-      questions: (qz.questions || []).map((q) => ({
-        qid: q.qid || `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        question: q.question || '',
-        image: q.image || '',
-        options: Array.isArray(q.options) && q.options.length >= 2 ? [...q.options] : ['', ''],
-        answers: Array.isArray(q.answers) && q.answers.length > 0 ? [...q.answers] : [0],
-        points: Math.max(1, parseInt(q.points, 10) || 1),
-        isMultiple: !!q.isMultiple,
-      })),
-    }))
-  })
+  // Pre-video assessment gates. These live in their own table now, so unlike
+  // parts they can't be seeded from the `video` prop — we fetch them.
+  const [gates, setGates] = useState([])
+  const [gatesLoading, setGatesLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await listVideoAssessments(video.id)
+        if (!cancelled) setGates(payloadToGates(rows, video.parts || []))
+      } catch (err) {
+        console.error('failed to load pre-video assessments', err)
+      } finally {
+        if (!cancelled) setGatesLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [video.id])
 
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
@@ -1704,69 +1706,6 @@ function EditVideoModal({ video, onCancel, onSave }) {
     setVideoParts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p))
   }
 
-  const addQuiz = () => setQuizzes(prev => [...prev, makeQuiz()])
-  const removeQuiz = (localId) => setQuizzes(prev => prev.filter(q => q.localId !== localId))
-  const updateQuiz = (localId, field, value) =>
-    setQuizzes(prev => prev.map(q => q.localId === localId ? { ...q, [field]: value } : q))
-
-  const mapQuestions = (quizId, fn) =>
-    setQuizzes(prev => prev.map(qz =>
-      qz.localId === quizId ? { ...qz, questions: fn(qz.questions) } : qz
-    ))
-
-  const addQuestion = (quizId) =>
-    mapQuestions(quizId, qs => [...qs, makeQuestion()])
-
-  const removeQuestion = (quizId, qid) =>
-    mapQuestions(quizId, qs => qs.length > 1 ? qs.filter(q => q.qid !== qid) : qs)
-
-  const updateQuestionField = (quizId, qid, field, value) =>
-    mapQuestions(quizId, qs => qs.map(q => q.qid === qid ? { ...q, [field]: value } : q))
-
-  const addQuestionOption = (quizId, qid) =>
-    mapQuestions(quizId, qs => qs.map(q =>
-      q.qid === qid ? { ...q, options: [...q.options, ''] } : q
-    ))
-
-  const removeQuestionOption = (quizId, qid, optIdx) =>
-    mapQuestions(quizId, qs => qs.map(q => {
-      if (q.qid !== qid || q.options.length <= 2) return q
-      const options = q.options.filter((_, i) => i !== optIdx)
-      const answers = q.answers
-        .filter(a => a !== optIdx)
-        .map(a => a > optIdx ? a - 1 : a)
-      return { ...q, options, answers: answers.length ? answers : [0] }
-    }))
-
-  const updateQuestionOption = (quizId, qid, optIdx, value) =>
-    mapQuestions(quizId, qs => qs.map(q => {
-      if (q.qid !== qid) return q
-      const options = q.options.map((o, i) => i === optIdx ? value : o)
-      return { ...q, options }
-    }))
-
-  const toggleMultiple = (quizId, qid) =>
-    mapQuestions(quizId, qs => qs.map(q => {
-      if (q.qid !== qid) return q
-      const isMultiple = !q.isMultiple
-      const answers = isMultiple ? q.answers : [q.answers[0] ?? 0]
-      return { ...q, isMultiple, answers }
-    }))
-
-  const setCorrectAnswer = (quizId, qid, optIdx, checked) =>
-    mapQuestions(quizId, qs => qs.map(q => {
-      if (q.qid !== qid) return q
-      let answers
-      if (q.isMultiple) {
-        answers = checked
-          ? Array.from(new Set([...q.answers, optIdx]))
-          : q.answers.filter(a => a !== optIdx)
-        if (answers.length === 0) answers = [optIdx]
-      } else {
-        answers = [optIdx]
-      }
-      return { ...q, answers }
-    }))
 
   const buildPayload = () => {
     if (!title.trim()) {
@@ -1817,91 +1756,12 @@ function EditVideoModal({ video, onCancel, onSave }) {
       }
     }
 
-    // Validate quizzes
-    const parsedQuizzes = []
-    for (let i = 0; i < quizzes.length; i++) {
-      const qz = quizzes[i]
-      const label = `الامتحان ${i + 1}`
-      const questions = Array.isArray(qz.questions) ? qz.questions : []
-      if (questions.length === 0) {
-        notify(`${label}: أضف سؤالاً واحداً على الأقل`, { type: 'warning' })
-        return null
-      }
-      for (let qi = 0; qi < questions.length; qi++) {
-        const q = questions[qi]
-        if (!q.question.trim()) {
-          notify(`${label} — السؤال ${qi + 1}: اكتب نص السؤال`, { type: 'warning' })
-          return null
-        }
-        if (q.options.length < 2 || q.options.some(o => !String(o).trim())) {
-          notify(`${label} — السؤال ${qi + 1}: أدخل اختيارين على الأقل وكلها مكتوبة`, { type: 'warning' })
-          return null
-        }
-        if (!Array.isArray(q.answers) || q.answers.length === 0) {
-          notify(`${label} — السؤال ${qi + 1}: حدد الإجابة الصحيحة`, { type: 'warning' })
-          return null
-        }
-      }
-      const triggerType = qz.triggerType || 'gate'
-      let timestamp = qz.timestamp || ''
-      let timestampSeconds = null
-
-      if (triggerType === 'timestamp') {
-        if (qz.scope !== 'part' || qz.partIndex === '' || qz.partIndex == null) {
-          notify(`${label}: الاختبارات أثناء المشاهدة يجب أن تكون مرتبطة بجزء محدد من الفيديو`, { type: 'warning' })
-          return null
-        }
-        if (!timestamp.trim()) {
-          notify(`${label}: يرجى تحديد وقت ظهور الاختبار (مثال 02:30)`, { type: 'warning' })
-          return null
-        }
-        const parsedSecs = parseTimestampToSeconds(timestamp)
-        if (parsedSecs === null || parsedSecs < 0) {
-          notify(`${label}: صيغة وقت ظهور الاختبار غير صالحة. يرجى إدخال الصيغة كـ (دقيقة:ثانية) مثل 02:30`, { type: 'warning' })
-          return null
-        }
-        timestampSeconds = parsedSecs
-      } else {
-        if (qz.scope === 'part' && (qz.partIndex === '' || qz.partIndex == null)) {
-          notify(`${label}: اختر الجزء المرتبط بالامتحان`, { type: 'warning' })
-          return null
-        }
-      }
-
-      const pqRaw = parseInt(qz.passingQuestions)
-      const pq = Number.isNaN(pqRaw) ? questions.length : pqRaw
-      if (pq < 1 || pq > questions.length) {
-        notify(`${label}: عدد أسئلة النجاح يجب أن يكون بين 1 و ${questions.length}`, { type: 'warning' })
-        return null
-      }
-      const maxAttRaw = parseInt(qz.maxAttempts)
-      const maxAtt = Number.isNaN(maxAttRaw) ? 1 : maxAttRaw
-      if (maxAtt < 1) {
-        notify(`${label}: عدد المحاولات يجب أن يكون 1 على الأقل`, { type: 'warning' })
-        return null
-      }
-      const cleanQuestions = questions.map(q => ({
-        question: q.question.trim(),
-        image: q.image || null,
-        options: q.options.map(o => String(o).trim()),
-        answers: [...q.answers].sort((a, b) => a - b),
-        points: Math.max(1, parseInt(q.points, 10) || 1),
-        isMultiple: !!q.isMultiple,
-      }))
-      const totalPoints = cleanQuestions.reduce((s, q) => s + q.points, 0)
-      parsedQuizzes.push({
-        localId: qz.localId,
-        title: qz.title.trim() || label,
-        scope: qz.scope,
-        partIndex: qz.scope === 'part' ? parseInt(qz.partIndex) : null,
-        passingQuestions: pq,
-        maxAttempts: maxAtt,
-        triggerType,
-        timestamp: triggerType === 'timestamp' ? timestamp.trim() : '',
-        timestampSeconds: triggerType === 'timestamp' ? timestampSeconds : null,
-        questions: cleanQuestions,
-        totalPoints,
-      })
+    // Validate the pre-video assessments. The database re-checks all of it;
+    // these messages just fail fast in Arabic before the round trip.
+    const gateError = validateGates(gates)
+    if (gateError) {
+      notify(gateError, { type: 'warning' })
+      return null
     }
 
     return {
@@ -1909,7 +1769,7 @@ function EditVideoModal({ video, onCancel, onSave }) {
       description: desc.trim() || null,
       grade,
       active_hours: parseInt(hours, 10) || 24,
-      quizzes: parsedQuizzes,
+      gates,
       parts: videoParts.map(p => {
         const src = p.source === 'drive' ? 'drive'
           : p.source === 'bunny' ? 'bunny'
@@ -2546,288 +2406,21 @@ function EditVideoModal({ video, onCancel, onSave }) {
             ))}
           </div>
 
-          {/* Quizzes Gating Builder */}
-          <div className="quizzes-section-head">
-            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#8b5cf6' }}>
-              📝 اختبارات بوابة المشاهدة (اختياري)
-            </h3>
-            <button type="button" className="edit-btn-sm" onClick={addQuiz}>
-              ➕ إضافة اختبار
-            </button>
-          </div>
-
-          {quizzes.length === 0 ? (
-            <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              لا توجد اختبارات بوابة مضافة لهذه المحاضرة حالياً. الطلاب سيشاهدون المحاضرة مباشرة دون حواجز امتحانات.
+          {/* ── Pre-Video Assessment ──────────────────────────────
+               Replaces the old inline quiz builder: the teacher attaches an
+               existing امتحان or تسميع, sets attempts + pass mark, and the
+               server does the grading and unlocking. */}
+          {gatesLoading ? (
+            <div className="pae" style={{ textAlign: 'center', padding: 20, color: 'var(--text-secondary)' }}>
+              <i className="fas fa-spinner fa-spin"></i> جاري تحميل التقييمات...
             </div>
           ) : (
-            <div className="quizzes-wrapper">
-              {quizzes.map((qz, qi) => {
-                const questionCount = qz.questions.length
-                const totalPoints = qz.questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 1), 0)
-
-                return (
-                  <div className="part-block-card" key={qz.localId}>
-                    <div className="part-block-header">
-                      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#10b981' }}>
-                        اختبار {qi + 1}: {qz.title || 'امتحان بدون عنوان'}
-                      </span>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginInlineStart: 10 }}>
-                        {questionCount} سؤال · {totalPoints} نقطة
-                      </span>
-                      <button type="button" className="edit-btn-sm edit-btn-delete" onClick={() => removeQuiz(qz.localId)}>
-                        <i className="fas fa-trash"></i> حذف الاختبار
-                      </button>
-                    </div>
-
-                    <div className="edit-grid" style={{ marginBottom: 12 }}>
-                      <div className="edit-field">
-                        <label>عنوان الاختبار</label>
-                        <input
-                          type="text"
-                          className="edit-input"
-                          value={qz.title}
-                          onChange={(e) => updateQuiz(qz.localId, 'title', e.target.value)}
-                          placeholder="مثال: اختبار سريع قبل الجزء الثاني"
-                          required
-                        />
-                      </div>
-                      <div className="edit-field">
-                        <label>محاولات الحل المتاحة للطالب</label>
-                        <input
-                          type="number"
-                          min="1"
-                          className="edit-input"
-                          value={qz.maxAttempts}
-                          onChange={(e) => updateQuiz(qz.localId, 'maxAttempts', parseInt(e.target.value, 10) || 1)}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="edit-grid" style={{ marginBottom: 12 }}>
-                      <div className="edit-field">
-                        <label>طريقة تفعيل الاختبار</label>
-                        <select
-                          className="edit-select"
-                          value={qz.triggerType || 'gate'}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            const patch = { triggerType: val }
-                            if (val === 'timestamp') {
-                              patch.scope = 'part'
-                            }
-                            updateQuiz(qz.localId, 'triggerType', val)
-                            if (patch.scope) {
-                              updateQuiz(qz.localId, 'scope', patch.scope)
-                            }
-                          }}
-                        >
-                          <option value="gate">قبل البدء بالمشاهدة (بوابة دخول)</option>
-                          <option value="timestamp">أثناء المشاهدة (عند وقت محدد)</option>
-                        </select>
-                      </div>
-
-                      {qz.triggerType === 'timestamp' ? (
-                        <div className="edit-field">
-                          <label>وقت ظهور الاختبار (دقيقة:ثانية)</label>
-                          <input
-                            type="text"
-                            placeholder="مثال: 02:30"
-                            className="edit-input"
-                            value={qz.timestamp || ''}
-                            onChange={(e) => updateQuiz(qz.localId, 'timestamp', e.target.value)}
-                            required
-                          />
-                          <small style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                            الوقت الذي سيظهر عنده الاختبار أثناء تشغيل الجزء.
-                          </small>
-                        </div>
-                      ) : (
-                        <div className="edit-field">
-                          <label>نطاق الاختبار</label>
-                          <select
-                            className="edit-select"
-                            value={qz.scope}
-                            onChange={(e) => updateQuiz(qz.localId, 'scope', e.target.value)}
-                          >
-                            <option value="whole">قبل بدء مشاهدة الفيديو بالكامل</option>
-                            <option value="part">قبل بدء جزء محدد من المحاضرة</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="edit-grid" style={{ marginBottom: 12 }}>
-                      {(qz.scope === 'part' || qz.triggerType === 'timestamp') ? (
-                        <>
-                          <div className="edit-field">
-                            <label>الجزء المرتبط بالاختبار</label>
-                            <select
-                              className="edit-select"
-                              value={qz.partIndex}
-                              onChange={(e) => updateQuiz(qz.localId, 'partIndex', e.target.value)}
-                              required
-                            >
-                              <option value="">-- اختر الجزء --</option>
-                              {videoParts.map((p, pidx) => (
-                                <option key={p.id} value={pidx}>
-                                  الجزء {pidx + 1} {p.title ? `— ${p.title}` : ''}
-                                </option>
-                              ))}
-                            </select>
-                            {qz.triggerType === 'timestamp' && qz.partIndex !== '' && videoParts[parseInt(qz.partIndex)]?.source === 'drive' && (
-                              <small style={{ color: '#d97706', fontSize: 11, marginTop: 4 }}>
-                                ⚠️ فيديوهات Google Drive لا تدعم تفعيل الاختبار أثناء المشاهدة.
-                              </small>
-                            )}
-                          </div>
-                          <div className="edit-field">
-                            <label>الأسئلة المطلوبة للنجاح</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={questionCount}
-                              className="edit-input"
-                              value={qz.passingQuestions}
-                              onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
-                              placeholder={`الافتراضي: الكل (${questionCount})`}
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="edit-field">
-                            <label>الأسئلة المطلوبة للنجاح</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={questionCount}
-                              className="edit-input"
-                              value={qz.passingQuestions}
-                              onChange={(e) => updateQuiz(qz.localId, 'passingQuestions', e.target.value)}
-                              placeholder={`الافتراضي: الكل (${questionCount})`}
-                            />
-                          </div>
-                          <div className="edit-field" />
-                        </>
-                      )}
-                    </div>
-
-                    {/* Questions box */}
-                    <div className="qb-questions-box">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#a78bfa' }}>
-                          أسئلة هذا الاختبار
-                        </h4>
-                        <button type="button" className="edit-btn-sm" onClick={() => addQuestion(qz.localId)}>
-                          ➕ سؤال جديد
-                        </button>
-                      </div>
-
-                      {qz.questions.map((q, qidx) => (
-                        <div className="qb-q-block" key={q.qid}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <span style={{ fontWeight: 800, color: '#8b5cf6' }}>سؤال {qidx + 1}</span>
-                            <button
-                              type="button"
-                              className={`edit-btn-sm ${q.isMultiple ? 'active' : ''}`}
-                              onClick={() => toggleMultiple(qz.localId, q.qid)}
-                            >
-                              <i className={`fas ${q.isMultiple ? 'fa-check-double' : 'fa-check'}`}></i>
-                              {q.isMultiple ? ' متعدد الإجابات' : ' إجابة واحدة'}
-                            </button>
-
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginInlineStart: 10 }}>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>النقاط:</span>
-                              <input
-                                type="number"
-                                min="1"
-                                className="edit-input"
-                                style={{ width: 60, padding: '4px 8px', fontSize: '0.8rem' }}
-                                value={q.points}
-                                onChange={(e) => updateQuestionField(qz.localId, q.qid, 'points', Math.max(1, parseInt(e.target.value, 10) || 1))}
-                              />
-                            </div>
-
-                            <button type="button" className="edit-btn-sm" style={{ marginInlineStart: 8 }} onClick={() => addQuestionOption(qz.localId, q.qid)}>
-                              ➕ إضافة خيار
-                            </button>
-                            <button type="button" className="edit-btn-sm" onClick={() => removeQuestionOption(qz.localId, q.qid, q.options.length - 1)} disabled={q.options.length <= 2}>
-                              ➖ حذف خيار
-                            </button>
-
-                            <button type="button" className="edit-btn-sm edit-btn-delete" style={{ marginRight: 'auto' }} onClick={() => removeQuestion(qz.localId, q.qid)} disabled={qz.questions.length <= 1}>
-                              🗑 حذف
-                            </button>
-                          </div>
-
-                          <div className="edit-field" style={{ marginBottom: 10 }}>
-                            <textarea
-                              className="edit-textarea"
-                              value={q.question}
-                              onChange={(e) => updateQuestionField(qz.localId, q.qid, 'question', e.target.value)}
-                              placeholder="اكتب نص السؤال هنا..."
-                              required
-                            />
-                          </div>
-
-                          {/* Optional Question Image illustration picker */}
-                          <div style={{ marginBottom: 12 }}>
-                            <QuestionImagePicker
-                              value={q.image}
-                              onChange={(url) => updateQuestionField(qz.localId, q.qid, 'image', url)}
-                            />
-                          </div>
-
-                          {/* Option builder inputs */}
-                          <div className="edit-opts-wrapper">
-                            {q.options.map((opt, oidx) => (
-                              <div className="edit-opt-item" key={oidx}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
-                                  {String.fromCharCode(65 + oidx)}
-                                </span>
-                                <input
-                                  type="text"
-                                  className="edit-input"
-                                  style={{ padding: '8px 12px' }}
-                                  value={opt}
-                                  onChange={(e) => updateQuestionOption(qz.localId, q.qid, oidx, e.target.value)}
-                                  placeholder={`الخيار ${oidx + 1}`}
-                                  required
-                                />
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Answer Picker checkboxes/radios */}
-                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', marginTop: 10 }}>
-                            ✓ حدد الاختيار الصحيح:
-                          </div>
-                          <div className="edit-ans-wrapper">
-                            {q.options.map((opt, oidx) => {
-                              const isChecked = q.answers.includes(oidx)
-                              return (
-                                <label className="edit-ans-item" key={oidx}>
-                                  <input
-                                    type={q.isMultiple ? 'checkbox' : 'radio'}
-                                    name={`edit-correct-ans-${q.qid}`}
-                                    checked={isChecked}
-                                    onChange={(e) => setCorrectAnswer(qz.localId, q.qid, oidx, e.target.checked)}
-                                    style={{ width: 16, height: 16, accentColor: '#10b981' }}
-                                  />
-                                  <span>{opt.trim() || `الخيار ${String.fromCharCode(65 + oidx)}`}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <PreAssessmentEditor
+              gates={gates}
+              onChange={setGates}
+              parts={videoParts}
+              grade={grade}
+            />
           )}
 
           {/* Action Row */}
@@ -2869,26 +2462,24 @@ function EditVideoModal({ video, onCancel, onSave }) {
               ))}
             </div>
 
-            {previewData.quizzes && previewData.quizzes.length > 0 && (
+            {previewData.gates && previewData.gates.length > 0 && (
               <div>
-                <h4 style={{ color: '#10b981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', paddingBottom: 6 }}>الامتحانات المضافة:</h4>
-                {previewData.quizzes.map((qz, qzi) => (
-                  <div key={qzi} style={{ padding: 15, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 12 }}>
-                    <strong>{qz.title}</strong> &middot; التفعيل: <code>{qz.triggerType === 'timestamp' ? `أثناء مشاهدة جزء ${qz.partIndex + 1} عند (${qz.timestamp})` : qz.scope === 'whole' ? 'كامل الفيديو (بوابة)' : `جزء ${qz.partIndex + 1} (بوابة)`}</code> &middot; النجاح: <code>{qz.passingQuestions}</code> من <code>{qz.questions.length}</code> أسئلة &middot; المحاولات: <code>{qz.maxAttempts}</code>
-                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {qz.questions.map((q, qidx) => (
-                        <div key={qidx} style={{ paddingInlineStart: 12, borderRight: '2px solid rgba(255,255,255,0.1)' }}>
-                          <strong>س{qidx + 1}: {q.question} ({q.points} نقطة)</strong>
-                          <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap', marginTop: 4 }}>
-                            {q.options.map((opt, oidx) => (
-                              <span key={oidx} style={{ fontSize: '0.8rem', color: q.answers.includes(oidx) ? '#10b981' : 'var(--text-secondary)' }}>
-                                {String.fromCharCode(65 + oidx)}. {opt} {q.answers.includes(oidx) && '✓'}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <h4 style={{ color: '#10b981', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', paddingBottom: 6 }}>التقييمات المطلوبة:</h4>
+                {previewData.gates.map((g, gi) => (
+                  <div key={g.localKey || gi} style={{ padding: 15, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 12 }}>
+                    <strong>{g.assessment_type === 'tasmee3' ? 'تسميع' : 'امتحان'}</strong>
+                    {' '}&middot; التفعيل:{' '}
+                    <code>
+                      {g.trigger_type === 'timestamp'
+                        ? `أثناء المشاهدة عند الثانية ${g.timestamp_seconds ?? 0}`
+                        : (g.part_index === '' || g.part_index == null)
+                          ? 'كامل الفيديو'
+                          : `جزء ${Number(g.part_index) + 1}`}
+                    </code>
+                    {' '}&middot; النجاح: <code>{g.passing_score}%</code>
+                    {' '}&middot; المحاولات:{' '}
+                    <code>{g.allowed_attempts === 0 ? 'غير محدود' : g.allowed_attempts}</code>
+                    {!g.is_enabled && <span style={{ color: '#f59e0b' }}> &middot; موقوف</span>}
                   </div>
                 ))}
               </div>

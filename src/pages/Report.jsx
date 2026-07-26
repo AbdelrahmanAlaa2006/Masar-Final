@@ -630,6 +630,32 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
+              <button className="cp-section-card cp-accent-purple" onClick={() => navigate('/pre-assessment-report?type=exam')}>
+                <div className="cp-section-icon">
+                  <i className="fas fa-file-pen"></i>
+                </div>
+                <div className="cp-section-body">
+                  <h3>امتحان قبل الفيديو</h3>
+                  <p>أداء الطلاب في الامتحانات المطلوبة قبل مشاهدة كل فيديو</p>
+                </div>
+                <div className="cp-section-chevron-circle">
+                  <i className="fas fa-chevron-left"></i>
+                </div>
+              </button>
+
+              <button className="cp-section-card cp-accent-teal" onClick={() => navigate('/pre-assessment-report?type=tasmee3')}>
+                <div className="cp-section-icon">
+                  <i className="fas fa-microphone-lines"></i>
+                </div>
+                <div className="cp-section-body">
+                  <h3>تسميع قبل الفيديو</h3>
+                  <p>أداء الطلاب في التسميعات المطلوبة قبل مشاهدة كل فيديو</p>
+                </div>
+                <div className="cp-section-chevron-circle">
+                  <i className="fas fa-chevron-left"></i>
+                </div>
+              </button>
+
               <button className="cp-section-card cp-accent-teal" onClick={() => goToGroupReport('videos')}>
                 <div className="cp-section-icon">
                   <i className="fas fa-chart-line"></i>

@@ -689,6 +689,14 @@
   margin-bottom: 24px;
 }
 
+/* The title slot is a flex child here (unlike Videos.css, where the header is
+   a grid). Without these it collapses to its content width and VideoTitleCard
+   can't fill the row. min-width:0 is what lets a long title wrap. */
+.vid-player-titles {
+  flex: 1;
+  min-width: 0;
+}
+
 .vid-player-titles h2 {
   font-size: 1.5rem;
   font-weight: 800;

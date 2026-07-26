@@ -1,6 +1,12 @@
 /* ──────────────────────────────────────────────────────────────
-   Quiz runner — gating modal that students must pass to unlock
+   Assessment gate modal — the dialog a student must pass to unlock
    a video or video part. Mirrors the exam-grading colour palette.
+
+   Filename is historical: this was QuizRunner's stylesheet, and it is
+   now the shared base for AssessmentRunner (which layers the
+   withheld-result and countdown states on top in AssessmentRunner.css).
+   The `qr-` class prefix is kept so the two files stay greppable
+   together.
    ────────────────────────────────────────────────────────────── */
 .qr-overlay {
   position: fixed;

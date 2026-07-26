@@ -12,9 +12,15 @@ export async function listVideos() {
 
   let query = supabase
     .from('videos')
+    // `quizzes` is deliberately NOT selected. That legacy JSONB column carried
+    // the pre-video quiz questions *with their answer key* to every student's
+    // browser. Gating now lives in `video_assessments` and questions come from
+    // get_assessment_questions(), which strips `answers` server-side. The
+    // column is left on the table as a rollback path for the 2026_07_26
+    // migration, but nothing reads it any more.
     .select(`
       id, title, description, grade, is_archived,
-      active_hours, expiry_at, quizzes, created_at,
+      active_hours, expiry_at, created_at,
       pdf_url, pdf_key,
       video_parts (
         id, part_index, title,
@@ -123,12 +129,21 @@ export async function createVideo(input) {
           : Math.max(1, Math.min(99, parseInt(p.view_limit, 10) || 1)),
       }
     })
-    const { error: partsErr } = await supabase.from('video_parts').insert(rows)
+    // Return the inserted parts (with their new ids) so callers that need to
+    // reference a part immediately — e.g. attaching a pre-video assessment to
+    // "الجزء 2" — can resolve index -> id without a second round trip.
+    const { data: insertedParts, error: partsErr } = await supabase
+      .from('video_parts')
+      .insert(rows)
+      .select('id, part_index, title')
     if (partsErr) {
       // best-effort rollback so we don't leave a headless video row
       await supabase.from('videos').delete().eq('id', video.id)
       throw partsErr
     }
+    video.parts = (insertedParts || []).sort((a, b) => a.part_index - b.part_index)
+  } else {
+    video.parts = []
   }
   return video
 }
@@ -257,6 +272,16 @@ export async function updateVideo(id, input) {
       if (insErr) throw insErr
     }
   }
+
+  // Hand back the parts as they now exist, in order. Callers that attach a
+  // pre-video assessment to "الجزء 2" resolve that index against this list —
+  // parts added in the same save only get their ids here.
+  const { data: freshParts } = await supabase
+    .from('video_parts')
+    .select('id, part_index, title')
+    .eq('video_id', id)
+    .order('part_index')
+  video.parts = freshParts || []
 
   return video
 }

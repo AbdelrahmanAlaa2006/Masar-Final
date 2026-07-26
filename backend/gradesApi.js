@@ -200,7 +200,10 @@ export async function getStudentGradesSummary(studentId) {
         .from('exam_attempts')
         .select('exam_id, score, max_score, exams ( reveal_grades )')
         .eq('student_id', studentId)
-        .not('submitted_at', 'is', null),
+        .not('submitted_at', 'is', null)
+        // Gate attempts belong to the pre-video assessment report, not to the
+        // student's exam grade summary.
+        .is('video_assessment_id', null),
       grade
         ? supabase
             .from('access_overrides')

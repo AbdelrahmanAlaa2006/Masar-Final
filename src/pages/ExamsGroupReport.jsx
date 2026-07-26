@@ -229,6 +229,9 @@ export default function ExamsGroupReport() {
             .eq('exam_id', examId)
             .in('student_id', ids)
             .not('submitted_at', 'is', null)
+            // The same exam can also gate a video; those sittings are reported
+            // in /pre-assessment-report and must not inflate this one.
+            .is('video_assessment_id', null)
           if (error) throw error
           return data || []
         })

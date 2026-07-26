@@ -898,6 +898,19 @@ body.dark .cp-page::before {
   border-color: rgba(239, 68, 68, 0.15);
 }
 
+/* Pre-video gate rows sit visually nested under their video: indented from
+   the inline-start, a lighter surface, and an accent rail. */
+.cp-item.cp-item-gate {
+  margin-inline-start: 28px;
+  background: rgba(124, 58, 237, 0.05);
+  border-color: rgba(124, 58, 237, 0.18);
+  border-inline-start: 3px solid rgba(124, 58, 237, 0.5);
+}
+.cp-item.cp-item-gate .cp-item-icon { color: #8b5cf6; }
+@media (max-width: 600px) {
+  .cp-item.cp-item-gate { margin-inline-start: 12px; }
+}
+
 .cp-item-icon {
   width: 44px;
   height: 44px;

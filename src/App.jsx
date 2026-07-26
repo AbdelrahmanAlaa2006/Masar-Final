@@ -13,6 +13,7 @@ const Videos = lazy(() => import('./pages/Videos'))
 const Report = lazy(() => import('./pages/Report'))
 const VideosReport = lazy(() => import('./pages/VideosReport'))
 const ExamsReport = lazy(() => import('./pages/ExamsReport'))
+const PreAssessmentReport = lazy(() => import('./pages/PreAssessmentReport'))
 const VideosGroupReport = lazy(() => import('./pages/VideosGroupReport'))
 const ExamsGroupReport = lazy(() => import('./pages/ExamsGroupReport'))
 const HomeworkReport = lazy(() => import('./pages/HomeworkReport'))
@@ -624,6 +625,8 @@ function AppContent() {
             <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute>} />
             <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute>} />
             <Route path="/report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute>} />
+            {/* Staff-only: the report RPCs re-check 'reports'/'videos' server-side. */}
+            <Route path="/pre-assessment-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute>} />
             <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute>} />
             <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute>} />
             <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute>} />

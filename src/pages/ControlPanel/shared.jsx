@@ -353,7 +353,7 @@ export function ItemsManager({
         <ul className="cp-items">
           {items.map((item) => (
             <ItemRow
-              key={item.id}
+              key={`${item.itemType || 'x'}:${item.id}`}
               item={item}
               isVideo={isVideo}
               state={stateFor(item)}
@@ -372,6 +372,10 @@ export function ItemsManager({
 export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, onReset }) {
   const [draft, setDraft] = useState(state.attempts)
   const [saving, setSaving] = useState(false)
+  // Gate rows (a pre-video exam/تسميع) only grant bonus attempts — there is no
+  // allow/block toggle for them, so hide the switch and the status pill.
+  const attemptsOnly = !!item.attemptsOnly
+  const rowIcon = item.icon || (isVideo ? 'fa-play-circle' : 'fa-file-alt')
 
   useEffect(() => {
     setDraft(state.attempts)
@@ -391,9 +395,9 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
   }
 
   return (
-    <li className={`cp-item ${state.allowed ? '' : 'is-blocked'}`}>
+    <li className={`cp-item ${state.allowed ? '' : 'is-blocked'} ${attemptsOnly ? 'cp-item-gate' : ''}`}>
       <div className="cp-item-icon">
-        <i className={`fas ${isVideo ? 'fa-play-circle' : 'fa-file-alt'}`}></i>
+        <i className={`fas ${rowIcon}`}></i>
       </div>
 
       <div className="cp-item-body">
@@ -403,10 +407,12 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
         <div className="cp-item-meta">
           {item.subject && <span><i className="fas fa-book"></i> {item.subject}</span>}
           {item.date && <span><i className="fas fa-calendar"></i> {item.date}</span>}
-          <span className={`cp-status-pill ${state.allowed ? 'cp-status-on' : 'cp-status-off'}`}>
-            <i className={`fas ${state.allowed ? 'fa-circle-check' : 'fa-ban'}`}></i>
-            {state.allowed ? 'مسموح' : 'محظور'}
-          </span>
+          {!attemptsOnly && (
+            <span className={`cp-status-pill ${state.allowed ? 'cp-status-on' : 'cp-status-off'}`}>
+              <i className={`fas ${state.allowed ? 'fa-circle-check' : 'fa-ban'}`}></i>
+              {state.allowed ? 'مسموح' : 'محظور'}
+            </span>
+          )}
           {dirty && (
             <span className="cp-status-pill cp-status-dirty" style={{ background: '#fef3c7', color: '#92400e' }}>
               <i className="fas fa-pen"></i>
@@ -417,10 +423,12 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
       </div>
 
       <div className="cp-item-controls">
-        <label className="cp-switch" title={state.allowed ? 'مسموح بالوصول' : 'الوصول محظور'}>
-          <input type="checkbox" checked={state.allowed} onChange={onToggle} />
-          <span className="cp-switch-slider"></span>
-        </label>
+        {!attemptsOnly && (
+          <label className="cp-switch" title={state.allowed ? 'مسموح بالوصول' : 'الوصول محظور'}>
+            <input type="checkbox" checked={state.allowed} onChange={onToggle} />
+            <span className="cp-switch-slider"></span>
+          </label>
+        )}
 
         <div className="cp-stepper" title="محاولات إضافية فوق الإعداد الافتراضي">
           <button className="cp-stepper-btn" type="button" onClick={() => setDraftClamped(draft - 1)} aria-label="إنقاص">
@@ -458,7 +466,7 @@ export function ItemRow({ item, isVideo, state, onToggle, onAttempts, onBump, on
           className="cp-icon-btn"
           type="button"
           onClick={onReset}
-          title={isVideo
+          title={isVideo && !attemptsOnly
             ? 'تصفير المحاولات المستخدمة وإرجاع الإعدادات الافتراضية'
             : 'استرجاع الإعدادات الافتراضية'}
         >
