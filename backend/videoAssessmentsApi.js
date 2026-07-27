@@ -336,9 +336,11 @@ function reportArgs(f = {}) {
     p_status:        f.status && f.status !== 'all' ? f.status : null,
     p_from:          f.from || null,
     p_to:            f.to || null,
-    // 'exam' | 'tasmee3' — lets امتحان-before-video and تسميع-before-video each
-    // have their own report. null/'all' = both.
+    // 'exam' | 'tasmee3' — narrows the report to one assessment type.
+    // null/'all' = both, which is the default (one combined report).
     p_type:          f.type && f.type !== 'all' ? f.type : null,
+    // Set = individual student report (one student, all their gates).
+    p_student_id:    f.studentId || null,
   }
 }
 

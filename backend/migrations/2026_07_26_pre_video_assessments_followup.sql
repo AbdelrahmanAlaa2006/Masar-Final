@@ -440,11 +440,28 @@ grant execute on function public.submit_pre_video_attempt(uuid, jsonb) to authen
 -- ---------------------------------------------------------------------
 -- 5. Report: add the assessment-TYPE filter (exam | tasmee3)
 -- ---------------------------------------------------------------------
--- Signatures change (new p_type arg), so the live functions must be dropped
--- before recreation.
-drop function if exists public.pre_assessment_report_base(text, uuid, uuid, uuid, uuid, uuid, timestamptz, timestamptz, text);
-drop function if exists public.pre_assessment_report(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, int, int);
-drop function if exists public.pre_assessment_report_stats(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz);
+-- Signatures change (new p_type + p_student_id args), so the live functions
+-- must be dropped before recreation. We drop EVERY overload by name rather
+-- than naming one signature: this file may be re-run after an earlier version
+-- of itself, and a leftover overload is worse than none — PostgREST would be
+-- free to resolve a call to the stale one.
+do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in (
+         'pre_assessment_report_base',
+         'pre_assessment_report',
+         'pre_assessment_report_stats'
+       )
+  loop
+    execute format('drop function if exists %s', r.sig);
+  end loop;
+end $$;
 
 create or replace function public.pre_assessment_report_base(
   p_grade         text,
@@ -456,7 +473,8 @@ create or replace function public.pre_assessment_report_base(
   p_from          timestamptz,
   p_to            timestamptz,
   p_search        text,
-  p_type          text default null           -- 'exam' | 'tasmee3' | null (all)
+  p_type          text default null,          -- 'exam' | 'tasmee3' | null (all)
+  p_student_id    uuid default null           -- set = individual student report
 )
 returns table (
   student_id       uuid,
@@ -526,7 +544,8 @@ as $$
                  and (sca.expires_at is null or sca.expires_at > now())
             ))
        )
-     where (p_grade  is null or p.grade = p_grade)
+     where (p_student_id is null or p.id = p_student_id)
+       and (p_grade  is null or p.grade = p_grade)
        and (p_branch_id is null or p.branch_id = p_branch_id)
        and (p_teacher_id is null or g.teacher_id = p_teacher_id)
        and (p_group_id is null or exists (
@@ -589,8 +608,8 @@ as $$
   left join public.profiles t on t.id = c.teacher_id;
 $$;
 
-revoke all on function public.pre_assessment_report_base(text, uuid, uuid, uuid, uuid, uuid, timestamptz, timestamptz, text, text) from public;
-revoke all on function public.pre_assessment_report_base(text, uuid, uuid, uuid, uuid, uuid, timestamptz, timestamptz, text, text) from authenticated, anon;
+revoke all on function public.pre_assessment_report_base(text, uuid, uuid, uuid, uuid, uuid, timestamptz, timestamptz, text, text, uuid) from public;
+revoke all on function public.pre_assessment_report_base(text, uuid, uuid, uuid, uuid, uuid, timestamptz, timestamptz, text, text, uuid) from authenticated, anon;
 
 create or replace function public.pre_assessment_report(
   p_search        text        default null,
@@ -604,6 +623,7 @@ create or replace function public.pre_assessment_report(
   p_from          timestamptz default null,
   p_to            timestamptz default null,
   p_type          text        default null,
+  p_student_id    uuid        default null,
   p_limit         int         default 50,
   p_offset        int         default 0
 )
@@ -656,7 +676,7 @@ begin
   with base as (
     select * from public.pre_assessment_report_base(
       p_grade, p_branch_id, p_group_id, p_teacher_id,
-      p_video_id, p_assessment_id, p_from, p_to, p_search, p_type
+      p_video_id, p_assessment_id, p_from, p_to, p_search, p_type, p_student_id
     )
   ),
   filtered as (
@@ -679,8 +699,8 @@ begin
 end;
 $$;
 
-revoke all on function public.pre_assessment_report(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, int, int) from public;
-grant execute on function public.pre_assessment_report(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, int, int) to authenticated;
+revoke all on function public.pre_assessment_report(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, uuid, int, int) from public;
+grant execute on function public.pre_assessment_report(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, uuid, int, int) to authenticated;
 
 create or replace function public.pre_assessment_report_stats(
   p_search        text        default null,
@@ -693,7 +713,8 @@ create or replace function public.pre_assessment_report_stats(
   p_status        text        default null,
   p_from          timestamptz default null,
   p_to            timestamptz default null,
-  p_type          text        default null
+  p_type          text        default null,
+  p_student_id    uuid        default null
 )
 returns table (
   total_students   bigint,
@@ -728,7 +749,7 @@ begin
   with base as (
     select * from public.pre_assessment_report_base(
       p_grade, p_branch_id, p_group_id, p_teacher_id,
-      p_video_id, p_assessment_id, p_from, p_to, p_search, p_type
+      p_video_id, p_assessment_id, p_from, p_to, p_search, p_type, p_student_id
     )
   ),
   filtered as (
@@ -759,8 +780,8 @@ begin
 end;
 $$;
 
-revoke all on function public.pre_assessment_report_stats(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text) from public;
-grant execute on function public.pre_assessment_report_stats(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text) to authenticated;
+revoke all on function public.pre_assessment_report_stats(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, uuid) from public;
+grant execute on function public.pre_assessment_report_stats(text, text, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, text, uuid) to authenticated;
 
 
 -- ---------------------------------------------------------------------

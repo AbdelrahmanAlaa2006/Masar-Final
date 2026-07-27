@@ -136,6 +136,7 @@ export default function Report() {
       prep: student.prep || '',
     })
     if (type === 'videos') navigate(`/videos-report?${params.toString()}`)
+    else if (type === 'pre-assessment') navigate(`/pre-assessment-report?${params.toString()}`)
     else if (type === 'exams') {
       params.set('type', 'exam')
       navigate(`/exams-report?${params.toString()}`)
@@ -407,7 +408,8 @@ export default function Report() {
   }
 
   const goToGroupReport = (type) => {
-    if (type === 'videos') navigate('/videos-group-report')
+    if (type === 'pre-assessment') navigate('/pre-assessment-report')
+    else if (type === 'videos') navigate('/videos-group-report')
     else if (type === 'exams') navigate('/exams-group-report?type=exam')
     else if (type === 'quizzes') navigate('/exams-group-report?type=quiz')
     else if (type === 'homework') navigate('/homework-group-report')
@@ -622,6 +624,19 @@ export default function Report() {
                   <i className="fas fa-chevron-left"></i>
                 </div>
               </button>
+
+              <button className="cp-section-card cp-accent-purple" onClick={() => goTo('pre-assessment')}>
+                <div className="cp-section-icon">
+                  <i className="fas fa-clipboard-check"></i>
+                </div>
+                <div className="cp-section-body">
+                  <h3>تقرير التقييمات قبل الفيديو</h3>
+                  <p>أداء الطالب في الامتحانات والتسميعات المطلوبة قبل مشاهدة كل فيديو</p>
+                </div>
+                <div className="cp-section-chevron-circle">
+                  <i className="fas fa-chevron-left"></i>
+                </div>
+              </button>
             </div>
 
             <h2 className="cp-panel-header" style={{ margin: '2rem 0 1rem', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -630,26 +645,13 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
-              <button className="cp-section-card cp-accent-purple" onClick={() => navigate('/pre-assessment-report?type=exam')}>
+              <button className="cp-section-card cp-accent-purple" onClick={() => goToGroupReport('pre-assessment')}>
                 <div className="cp-section-icon">
-                  <i className="fas fa-file-pen"></i>
+                  <i className="fas fa-clipboard-check"></i>
                 </div>
                 <div className="cp-section-body">
-                  <h3>امتحان قبل الفيديو</h3>
-                  <p>أداء الطلاب في الامتحانات المطلوبة قبل مشاهدة كل فيديو</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
-
-              <button className="cp-section-card cp-accent-teal" onClick={() => navigate('/pre-assessment-report?type=tasmee3')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-microphone-lines"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تسميع قبل الفيديو</h3>
-                  <p>أداء الطلاب في التسميعات المطلوبة قبل مشاهدة كل فيديو</p>
+                  <h3>تقرير جماعي للتقييمات قبل الفيديو</h3>
+                  <p>أداء كل الطلاب في الامتحانات والتسميعات المطلوبة قبل مشاهدة الفيديوهات</p>
                 </div>
                 <div className="cp-section-chevron-circle">
                   <i className="fas fa-chevron-left"></i>
@@ -877,6 +879,7 @@ export default function Report() {
                 <p style={{ color: 'var(--cp-text-muted)' }}>
                   لعرض {
                     pickerType === 'videos' ? 'تقرير الفيديوهات' :
+                    pickerType === 'pre-assessment' ? 'تقرير التقييمات قبل الفيديو' :
                     pickerType === 'exams' ? 'تقرير الامتحانات' :
                     pickerType === 'quizzes' ? 'تقرير التسميعات' :
                     pickerType === 'homework' ? 'تقرير الواجبات' :

@@ -53,22 +53,24 @@ const fmtDuration = (secs) => {
 
 const pct = (v) => (v == null ? '—' : `${Number(v).toFixed(0)}%`)
 
-// Which assessment type this report instance covers, from ?type=.
-// Each type gets its own report entry (امتحان قبل الفيديو / تسميع قبل الفيديو);
-// no ?type shows both.
-const TYPE_META = {
-  exam:    { label: 'امتحان قبل الفيديو', icon: 'fa-file-pen',          noun: 'الامتحان' },
-  tasmee3: { label: 'تسميع قبل الفيديو',  icon: 'fa-microphone-lines',  noun: 'التسميع' },
-  all:     { label: 'التقييمات قبل الفيديو', icon: 'fa-clipboard-check', noun: 'التقييم' },
-}
+// امتحان and تسميع are the same kind of gate and read identically, so this is
+// ONE report with a type dropdown — not two near-duplicate reports.
+const TYPE_TABS = [
+  { key: 'all',     label: 'الكل',    icon: 'fa-layer-group' },
+  { key: 'exam',    label: 'امتحان',  icon: 'fa-file-pen' },
+  { key: 'tasmee3', label: 'تسميع',   icon: 'fa-microphone-lines' },
+]
 
 export default function PreAssessmentReport() {
   const navigate = useNavigate()
   const { gradesList } = useTenant()
   const [searchParams] = useSearchParams()
-  const typeParam = searchParams.get('type')
-  const type = typeParam === 'exam' || typeParam === 'tasmee3' ? typeParam : 'all'
-  const typeMeta = TYPE_META[type]
+
+  /* Individual mode: ?id=<uuid> pins the report to one student, the same way
+     the other فردية reports do. Everything else is the group view. */
+  const studentId = searchParams.get('id') || ''
+  const studentNameParam = searchParams.get('student') || ''
+  const isIndividual = !!studentId
 
   // ── Filters ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -79,6 +81,7 @@ export default function PreAssessmentReport() {
   const [videoId, setVideoId] = useState('')
   const [assessmentId, setAssessmentId] = useState('')
   const [status, setStatus] = useState('all')
+  const [type, setType] = useState('all')
 
   // ── Data ───────────────────────────────────────────────────
   const [rows, setRows] = useState([])
@@ -99,15 +102,18 @@ export default function PreAssessmentReport() {
   }, [search])
 
   const filters = useMemo(() => ({
-    search: debouncedSearch || null,
-    grade: grade || null,
-    branchId: branchId || null,
-    groupId: groupId || null,
+    // In individual mode the student is pinned by id, so the roster-wide
+    // filters (search / grade / branch / group) are irrelevant and hidden.
+    studentId: studentId || null,
+    search: isIndividual ? null : (debouncedSearch || null),
+    grade: isIndividual ? null : (grade || null),
+    branchId: isIndividual ? null : (branchId || null),
+    groupId: isIndividual ? null : (groupId || null),
     videoId: videoId || null,
     assessmentId: assessmentId || null,
     status,
     type,
-  }), [debouncedSearch, grade, branchId, groupId, videoId, assessmentId, status, type])
+  }), [studentId, isIndividual, debouncedSearch, grade, branchId, groupId, videoId, assessmentId, status, type])
 
   // Any filter change resets to the first page.
   useEffect(() => { setPage(0) }, [filters])
@@ -205,12 +211,23 @@ export default function PreAssessmentReport() {
 
   const resetFilters = () => {
     setSearch(''); setGrade(''); setBranchId(''); setGroupId('')
-    setVideoId(''); setAssessmentId(''); setStatus('all')
+    setVideoId(''); setAssessmentId(''); setStatus('all'); setType('all')
   }
 
   const activeFilterCount = [
-    debouncedSearch, grade, branchId, groupId, videoId, assessmentId,
-  ].filter(Boolean).length + (status !== 'all' ? 1 : 0)
+    isIndividual ? '' : debouncedSearch,
+    isIndividual ? '' : grade,
+    isIndividual ? '' : branchId,
+    isIndividual ? '' : groupId,
+    videoId, assessmentId,
+  ].filter(Boolean).length + (status !== 'all' ? 1 : 0) + (type !== 'all' ? 1 : 0)
+
+  // In individual mode the rows all belong to one student, so their name is
+  // the page subject rather than a column value.
+  const studentLabel = rows[0]?.student_name || studentNameParam || ''
+  const studentMeta = rows[0] || null
+  // 15 columns in group mode; individual mode drops the 5 identity columns.
+  const colCount = isIndividual ? 10 : 15
 
   /* Export pulls EVERY matching row, not just the visible page — a report you
      can only export one page of is useless. Paged server-side so a large
@@ -275,16 +292,44 @@ export default function PreAssessmentReport() {
           </button>
           <div className="par-title-block">
             <h1>
-              <i className={`fas ${typeMeta.icon}`}></i>
-              تقرير {typeMeta.label}
+              <i className="fas fa-clipboard-check"></i>
+              تقرير التقييمات قبل الفيديو
             </h1>
-            <p>متابعة أداء الطلاب في {typeMeta.noun} المطلوب قبل مشاهدة الفيديوهات</p>
+            <p>
+              {isIndividual
+                ? `أداء ${studentLabel || 'الطالب'} في الامتحانات والتسميعات المطلوبة قبل مشاهدة الفيديوهات`
+                : 'متابعة أداء الطلاب في الامتحانات والتسميعات المطلوبة قبل مشاهدة الفيديوهات'}
+            </p>
           </div>
         </div>
         <div className="cp-header-divider"></div>
 
         {loadError && (
           <div className="par-error"><i className="fas fa-triangle-exclamation"></i> {loadError}</div>
+        )}
+
+        {/* Individual mode: the student's identity, lifted out of the table. */}
+        {isIndividual && (
+          <div className="par-student-banner">
+            <div className="par-student-avatar"><i className="fas fa-user"></i></div>
+            <div className="par-student-info">
+              <div className="par-student-name">{studentLabel || '—'}</div>
+              <div className="par-student-meta">
+                {studentMeta?.student_phone && (
+                  <span><i className="fas fa-id-badge"></i> {studentMeta.student_phone}</span>
+                )}
+                {studentMeta?.grade && (
+                  <span><i className="fas fa-graduation-cap"></i> {studentMeta.grade}</span>
+                )}
+                {studentMeta?.branch_name && (
+                  <span><i className="fas fa-building"></i> {studentMeta.branch_name}</span>
+                )}
+                {studentMeta?.group_name && (
+                  <span><i className="fas fa-user-group"></i> {studentMeta.group_name}</span>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Statistics ── */}
@@ -315,44 +360,50 @@ export default function PreAssessmentReport() {
           </div>
 
           <div className="par-filter-grid">
-            <div className="par-field par-field-wide">
-              <label>بحث عن طالب</label>
-              <div className="par-search">
-                <i className="fas fa-magnifying-glass"></i>
-                <input
-                  type="text"
-                  placeholder="الاسم أو رقم الهاتف..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
+            {/* Roster-wide filters are meaningless once the report is pinned
+                to one student, so individual mode drops them entirely. */}
+            {!isIndividual && (
+              <>
+                <div className="par-field par-field-wide">
+                  <label>بحث عن طالب</label>
+                  <div className="par-search">
+                    <i className="fas fa-magnifying-glass"></i>
+                    <input
+                      type="text"
+                      placeholder="الاسم أو رقم الهاتف..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            <div className="par-field">
-              <label>الصف الدراسي</label>
-              <select value={grade} onChange={(e) => { setGrade(e.target.value); setGroupId('') }}>
-                <option value="">كل الصفوف</option>
-                {(gradesList || []).map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
+                <div className="par-field">
+                  <label>الصف الدراسي</label>
+                  <select value={grade} onChange={(e) => { setGrade(e.target.value); setGroupId('') }}>
+                    <option value="">كل الصفوف</option>
+                    {(gradesList || []).map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="par-field">
-              <label>الفرع</label>
-              <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-                <option value="">كل الفروع</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
+                <div className="par-field">
+                  <label>الفرع</label>
+                  <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                    <option value="">كل الفروع</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
 
-            <div className="par-field">
-              <label>المجموعة</label>
-              <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-                <option value="">كل المجموعات</option>
-                {groupsForGrade.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
-            </div>
+                <div className="par-field">
+                  <label>المجموعة</label>
+                  <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+                    <option value="">كل المجموعات</option>
+                    {groupsForGrade.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div className="par-field">
               <label>الفيديو</label>
@@ -363,21 +414,36 @@ export default function PreAssessmentReport() {
             </div>
 
             <div className="par-field">
-              <label>{typeMeta.noun}</label>
+              <label>التقييم</label>
               <select value={assessmentId} onChange={(e) => setAssessmentId(e.target.value)}>
                 <option value="">
-                  {videoId ? `كل ${typeMeta.noun === 'التقييم' ? 'التقييمات' : typeMeta.noun} لهذا الفيديو` : `كل ${typeMeta.noun === 'التقييم' ? 'التقييمات' : typeMeta.noun}`}
+                  {videoId ? 'كل تقييمات هذا الفيديو' : 'كل التقييمات'}
                 </option>
                 {assessmentOptions.map(a => (
                   <option key={a.id} value={a.id}>
-                    {a.title}{type === 'all' ? ` (${a.type === 'tasmee3' ? 'تسميع' : 'امتحان'})` : ''}
+                    {a.title} ({a.type === 'tasmee3' ? 'تسميع' : 'امتحان'})
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
+          {/* Type: one report, filtered — not two separate reports. */}
+          <div className="par-tabs par-tabs-type">
+            <span className="par-tabs-label"><i className="fas fa-shapes"></i> النوع:</span>
+            {TYPE_TABS.map(t => (
+              <button
+                key={t.key}
+                className={`cp-btn ${type === t.key ? 'cp-btn-info-active' : 'cp-btn-ghost'}`}
+                onClick={() => setType(t.key)}
+              >
+                <i className={`fas ${t.icon}`}></i> {t.label}
+              </button>
+            ))}
+          </div>
+
           <div className="par-tabs">
+            <span className="par-tabs-label"><i className="fas fa-filter"></i> الحالة:</span>
             {STATUS_TABS.map(t => (
               <button
                 key={t.key}
@@ -392,7 +458,11 @@ export default function PreAssessmentReport() {
 
         {/* ── Table ── */}
         <div className="cp-table-card par-table-card">
-          <PrintReportHeader subtitle={`تقرير ${typeMeta.label}`} />
+          <PrintReportHeader
+            subtitle={isIndividual && studentLabel
+              ? `تقرير التقييمات قبل الفيديو — ${studentLabel}`
+              : 'تقرير التقييمات قبل الفيديو'}
+          />
 
           <div className="par-table-head">
             <div className="par-table-title">
@@ -414,11 +484,13 @@ export default function PreAssessmentReport() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>اسم الطالب</th>
-                  <th>رقم الطالب</th>
-                  <th>الصف</th>
-                  <th>الفرع</th>
-                  <th>المجموعة</th>
+                  {/* In individual mode every row is the same student, so the
+                      identity columns collapse into the banner above. */}
+                  {!isIndividual && <th>اسم الطالب</th>}
+                  {!isIndividual && <th>رقم الطالب</th>}
+                  {!isIndividual && <th>الصف</th>}
+                  {!isIndividual && <th>الفرع</th>}
+                  {!isIndividual && <th>المجموعة</th>}
                   <th>الفيديو</th>
                   <th>التقييم</th>
                   <th>المحاولات</th>
@@ -432,23 +504,23 @@ export default function PreAssessmentReport() {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={15} className="par-msg">
+                  <tr><td colSpan={colCount} className="par-msg">
                     <i className="fas fa-spinner fa-spin"></i> جاري التحميل...
                   </td></tr>
                 )}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan={15} className="par-msg">
+                  <tr><td colSpan={colCount} className="par-msg">
                     <i className="fas fa-inbox"></i> لا توجد نتائج مطابقة
                   </td></tr>
                 )}
                 {!loading && rows.map((r, i) => (
                   <tr key={`${r.gate_id}_${r.student_id}`}>
                     <td>{page * PAGE_SIZE + i + 1}</td>
-                    <td className="par-name">{r.student_name}</td>
-                    <td>{r.student_phone || '—'}</td>
-                    <td>{r.grade || '—'}</td>
-                    <td>{r.branch_name || '—'}</td>
-                    <td>{r.group_name || '—'}</td>
+                    {!isIndividual && <td className="par-name">{r.student_name}</td>}
+                    {!isIndividual && <td>{r.student_phone || '—'}</td>}
+                    {!isIndividual && <td>{r.grade || '—'}</td>}
+                    {!isIndividual && <td>{r.branch_name || '—'}</td>}
+                    {!isIndividual && <td>{r.group_name || '—'}</td>}
                     <td className="par-truncate" title={r.video_title}>{r.video_title}</td>
                     <td className="par-truncate" title={r.assessment_title}>
                       <span className={`par-type par-type-${r.assessment_type}`}>
