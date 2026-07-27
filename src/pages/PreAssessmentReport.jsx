@@ -85,7 +85,7 @@ export default function PreAssessmentReport() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [stats, setStats] = useState(null)
-  const [options, setOptions] = useState({ videos: [], assessments: [], teachers: [] })
+  const [options, setOptions] = useState({ videos: [], assessments: [], gates: [] })
   const [branches, setBranches] = useState([])
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,7 +123,7 @@ export default function PreAssessmentReport() {
           listGroups().catch(() => []),
         ])
         if (cancelled) return
-        setOptions(opts || { videos: [], assessments: [], teachers: [] })
+        setOptions(opts || { videos: [], assessments: [], gates: [] })
         setBranches(br || [])
         setGroups(gr || [])
       } catch (err) {
@@ -236,7 +236,7 @@ export default function PreAssessmentReport() {
         'الفيديو', 'التقييم', 'النوع',
         'المحاولات المستخدمة', 'المحاولات المسموحة',
         'أفضل نتيجة %', 'آخر نتيجة %', 'نسبة النجاح المطلوبة %',
-        'الحالة', 'تاريخ الإنجاز', 'الوقت المستغرق', 'المعلم',
+        'الحالة', 'تاريخ الإنجاز', 'الوقت المستغرق',
       ]
       const body = all.map(r => [
         r.student_name, r.student_phone, r.grade, r.branch_name || '—', r.group_name || '—',
@@ -248,7 +248,6 @@ export default function PreAssessmentReport() {
         r.passed ? 'ناجح' : r.completed ? 'راسب' : 'لم يبدأ',
         r.last_submitted_at ? fmtDate(r.last_submitted_at) : '—',
         fmtDuration(r.seconds_taken),
-        r.teacher_name || '—',
       ])
 
       // The BOM makes Excel open the file as UTF-8 instead of mangling Arabic.
@@ -429,17 +428,16 @@ export default function PreAssessmentReport() {
                   <th>الحالة</th>
                   <th>تاريخ الإنجاز</th>
                   <th>الوقت المستغرق</th>
-                  <th>المعلم</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={16} className="par-msg">
+                  <tr><td colSpan={15} className="par-msg">
                     <i className="fas fa-spinner fa-spin"></i> جاري التحميل...
                   </td></tr>
                 )}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan={16} className="par-msg">
+                  <tr><td colSpan={15} className="par-msg">
                     <i className="fas fa-inbox"></i> لا توجد نتائج مطابقة
                   </td></tr>
                 )}
@@ -471,7 +469,6 @@ export default function PreAssessmentReport() {
                     </td>
                     <td>{fmtDate(r.last_submitted_at)}</td>
                     <td>{fmtDuration(r.seconds_taken)}</td>
-                    <td>{r.teacher_name || '—'}</td>
                   </tr>
                 ))}
               </tbody>

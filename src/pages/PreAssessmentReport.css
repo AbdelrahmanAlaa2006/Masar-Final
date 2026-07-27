@@ -263,10 +263,11 @@ body.dark .par-status.is-none { color: #cbd5e1; }
 .par-pager button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── Print ──────────────────────────────────────────────────
-   Root cause of "not everything appears": 16 columns on a portrait page,
-   inside an `overflow-x: auto` container, with `white-space: nowrap` cells.
-   The overflow clipped every column past the page edge. Fix: landscape,
-   let the container overflow visibly, let cells wrap, shrink the type. */
+   Root cause of "not everything appears": a 15-column table on a portrait
+   page, inside an `overflow-x: auto` container, with `white-space: nowrap`
+   cells. The overflow clipped every column past the page edge, so the print
+   preview simply stopped mid-table. Fix: landscape, let the container
+   overflow visibly, let cells wrap, and shrink the type to fit. */
 @page { size: A4 landscape; margin: 8mm; }
 
 @media print {
