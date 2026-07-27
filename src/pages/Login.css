@@ -2325,6 +2325,24 @@ body:not(.dark) .footer-divider {
   margin: 0;
 }
 
+/* Developer credit on the public login footer (moved from the in-app footer). */
+.login-dev-credit {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.2px;
+  color: var(--footer-text);
+  opacity: 0.9;
+}
+.login-dev-credit i { color: var(--primary); }
+.login-dev-credit span:not(.amp) { opacity: 0.7; }
+.login-dev-credit strong { font-weight: 700; color: var(--primary); }
+.login-dev-credit .amp { opacity: 0.5; }
+
 /* Responsive */
 @media (max-width: 480px) {
   .footer-brand {

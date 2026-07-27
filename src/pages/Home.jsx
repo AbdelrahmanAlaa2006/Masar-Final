@@ -257,7 +257,7 @@ export default function Home() {
             {role === 'super_admin' ? 'مطورنا العزيز' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
           </span>
           {role === 'super_admin' && (
-            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: '#06b6d4', verticalAlign: 'middle' }}></i>
+            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: 'var(--primary)', verticalAlign: 'middle' }}></i>
           )}
         </h2>
         <p className="home-greeting-sub">
@@ -412,7 +412,7 @@ export default function Home() {
                 : `يومك سعيد يا ${username || 'الطالب'}`)}
           </span>
           {role === 'super_admin' && (
-            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: '#06b6d4', verticalAlign: 'middle' }}></i>
+            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: 'var(--primary)', verticalAlign: 'middle' }}></i>
           )}
         </h2>
         <div className="greeting-title-accent" />

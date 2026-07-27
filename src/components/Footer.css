@@ -666,8 +666,19 @@ body:not(.dark) .sf-links a:hover {
 }
 body:not(.dark) .sf-badge {
   color: #475569;
-  background: var(--dynamic-card, rgba(15, 23, 42, 0.04));
+  /* NOT var(--dynamic-card): that variable is the DARK-mode surface (set
+     globally by applyTenantTheme), so in light mode these pills rendered
+     near-black. A subtle light tint is correct for light mode. */
+  background: rgba(15, 23, 42, 0.04);
   border-color: rgba(15, 23, 42, 0.08);
+}
+/* The footer badges (آمن / سريع / متجاوب) are the text-only variant — plain
+   text + icon, no filled pill. The rule above out-specifies .sf-badge--text's
+   transparent background, so restore it (and readable text) for light mode. */
+body:not(.dark) .sf-badge--text {
+  background: transparent;
+  border: 0;
+  color: #475569;
 }
 body:not(.dark) .sf-cv { color: #0f172a; }
 body:not(.dark) .sf-ck { color: #64748b; }

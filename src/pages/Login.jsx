@@ -1032,6 +1032,16 @@ export default function Login() {
               ? `© 2026 ${isDefaultTenant ? 'جِت فِكرة' : tenantName}. جميع الحقوق محفوظة`
               : `© 2026 ${isDefaultTenant ? 'GitFekra' : tenantName}. All rights reserved`}
           </p>
+
+          {/* Developer credit — moved here from the in-app Footer so it shows on
+              the public login page only, not inside the app. */}
+          <p className="login-dev-credit" dir="ltr">
+            <i className="fas fa-code"></i>
+            <span>Developed by</span>
+            <strong>Abdelrahman Alaa</strong>
+            <span className="amp">&amp;</span>
+            <strong>Eyad Elalkamy</strong>
+          </p>
         </div>
       </footer>
 
