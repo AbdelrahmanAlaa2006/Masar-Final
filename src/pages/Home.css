@@ -396,7 +396,10 @@ body.dark .card p {
 }
 
 .name-highlight {
-  background: linear-gradient(135deg, var(--primary-hover, var(--primary)) 0%, var(--primary, var(--primary)) 100%);
+  /* Bright→brand gradient (was primary-hover→primary, whose darkened first
+     stop looked muddy on gold tenants). Lightening the top stop keeps it a
+     clean, premium single-hue sheen for every tenant. */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 78%, #fff) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1048,7 +1051,9 @@ body.dark .home-greeting-hi {
 
 .home-greeting-name {
   display: inline-block;
-  background: linear-gradient(180deg, var(--primary-hover, var(--primary)) 0%, var(--primary, var(--primary)) 100%);
+  /* Clean bright→brand gold sheen (was the muddy primary-hover→primary that
+     made only the name look off next to the pure-gold heading). */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 78%, #fff) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
