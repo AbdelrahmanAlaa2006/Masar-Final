@@ -6,6 +6,11 @@ import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { invalidate as invalidateCache } from '../utils/cache'
+import SharedTextBlocksEditor, {
+  editorBlocksToPayload,
+  validateEditorBlocks,
+} from '../components/SharedTextBlocksEditor'
+import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 
 export default function ExamAdd() {
   const navigate = useNavigate()
@@ -32,6 +37,9 @@ export default function ExamAdd() {
   const [examDurationHours, setExamDurationHours] = useState(72)
   const [numQuestions, setNumQuestions] = useState('')
   const [questions, setQuestions] = useState([])
+  // Shared reading passages. Held here and written straight after the exam
+  // row is created, because a block references the exam by id.
+  const [sharedBlocks, setSharedBlocks] = useState([])
   const [questionsCopy, setQuestionsCopy] = useState('')
   const [showCopySection, setShowCopySection] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -250,8 +258,16 @@ export default function ExamAdd() {
       points: q.points,
       isMultiple: q.isMultiple,
     }))
+    const blockError = validateEditorBlocks(sharedBlocks)
+    if (blockError) {
+      notify(blockError, { type: 'warning' })
+      return null
+    }
     const total_points = cleanQuestions.reduce((sum, q) => sum + (q.points || 1), 0)
-    return { dbGrade, cleanQuestions, total_points }
+    // Indices are computed from the FINAL question order, so a question the
+    // teacher added or removed mid-session still resolves correctly.
+    const blocks = editorBlocksToPayload(sharedBlocks, questions)
+    return { dbGrade, cleanQuestions, total_points, blocks }
   }
 
   // Preview-only — shows the same preview card without writing to DB.
@@ -291,7 +307,7 @@ export default function ExamAdd() {
 
     setSaving(true)
     try {
-      await createExam({
+      const created = await createExam({
         number: examNumber.trim() || null,
         title: examTitle.trim(),
         grade: payload.dbGrade,
@@ -303,6 +319,14 @@ export default function ExamAdd() {
         created_by: createdBy,
         exam_type: examType,
       })
+
+      // Blocks reference the exam by id, so they can only be written once the
+      // row exists. A failure here would otherwise leave a saved exam whose
+      // passages silently went missing, so surface it instead of swallowing it.
+      if (payload.blocks.length && created?.id) {
+        await saveExamSharedBlocks(created.id, payload.blocks)
+      }
+
       invalidateCache('exams')
       setShowSuccess(true)
       setTimeout(() => { navigate('/exams') }, 1200)
@@ -614,6 +638,14 @@ export default function ExamAdd() {
               <i className="fas fa-plus"></i>
               <span>إضافة سؤال آخر</span>
             </button>
+
+            {/* Shared reading passages — written right after the exam row is
+                created, keyed to the questions above. */}
+            <SharedTextBlocksEditor
+              blocks={sharedBlocks}
+              onChange={setSharedBlocks}
+              questions={questions}
+            />
 
             {/* Two distinct actions: preview-only (no DB write) and save.
                 Splitting them lets the admin sanity-check before committing

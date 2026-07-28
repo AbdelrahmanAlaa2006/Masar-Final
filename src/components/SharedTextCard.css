@@ -1,0 +1,102 @@
+/* ──────────────────────────────────────────────────────────────
+   Shared reading passage, shown above a linked question.
+
+   It must read as *source material*, not as part of the question —
+   so it gets a distinctly calmer surface, a book icon, a larger and
+   more generously-spaced type scale, and a coloured rail. The
+   question card underneath keeps its usual styling.
+   ────────────────────────────────────────────────────────────── */
+
+.stc {
+  --stc-bg: #f6f7f9;
+  --stc-border: rgba(15, 23, 42, 0.10);
+  --stc-rail: var(--primary, #667eea);
+  --stc-text: #1f2937;
+  --stc-title: #0f172a;
+
+  position: relative;
+  margin: 0 0 18px;
+  padding: clamp(14px, 2.2vw, 20px) clamp(16px, 2.6vw, 24px);
+  border: 1px solid var(--stc-border);
+  border-radius: 14px;
+  background: var(--stc-bg);
+  /* Inline-start rail = the RIGHT edge in this RTL app, automatically. */
+  border-inline-start: 4px solid var(--stc-rail);
+  direction: rtl;
+  text-align: start;
+}
+
+body.dark .stc {
+  --stc-bg: rgba(148, 163, 184, 0.07);
+  --stc-border: rgba(255, 255, 255, 0.10);
+  --stc-text: #dbe3ee;
+  --stc-title: #f1f5f9;
+}
+
+/* ── Head ── */
+.stc-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--stc-border);
+}
+.stc-icon { font-size: 1.15rem; line-height: 1; flex: 0 0 auto; }
+.stc-title {
+  margin: 0;
+  font-size: clamp(.92rem, .86rem + .3vw, 1.05rem);
+  font-weight: 800;
+  color: var(--stc-title);
+  line-height: 1.4;
+}
+
+/* ── Body ──
+   pre-wrap keeps the paragraph and line breaks the teacher typed, while
+   still wrapping long lines; anywhere handles an unbroken string (a URL
+   or a long code token) without pushing the card wider than the player. */
+.stc-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: clamp(.95rem, .88rem + .35vw, 1.08rem);
+  line-height: 2.05;
+  font-weight: 500;
+  color: var(--stc-text);
+
+  /* A very long passage scrolls inside its own card instead of pushing the
+     question and the answer choices off the screen. */
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+/* Keep the scrollbar from crowding the text in RTL. */
+.stc-body::-webkit-scrollbar { width: 8px; }
+.stc-body::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, .35);
+  border-radius: 999px;
+}
+
+@media (max-width: 600px) {
+  .stc {
+    margin-bottom: 14px;
+    border-radius: 12px;
+    border-inline-start-width: 3px;
+  }
+  .stc-body {
+    line-height: 1.95;
+    /* Phones have far less vertical room — cap tighter so the answer
+       choices stay reachable without a long scroll. */
+    max-height: 38vh;
+  }
+}
+
+/* Printing a paper copy: show the whole passage, no inner scroll. */
+@media print {
+  .stc {
+    background: none;
+    border: 1px solid #000;
+    border-radius: 0;
+    break-inside: avoid;
+  }
+  .stc-body { max-height: none; overflow: visible; }
+}

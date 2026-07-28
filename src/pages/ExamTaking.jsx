@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt, listAttemptsForStudent } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
+import { listExamSharedBlocks, buildQuestionBlockMap } from '@backend/examSharedBlocksApi'
+import SharedTextCard from '../components/SharedTextCard'
 import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
@@ -13,6 +15,9 @@ export default function ExamTaking() {
   const examId = params.get('id')
 
   const [exam, setExam] = useState(null)
+  // questionIndex -> shared text block. Built ONCE on load from a single
+  // query, so paging through questions never hits the database.
+  const [sharedBlockMap, setSharedBlockMap] = useState(() => new Map())
   const [loadError, setLoadError] = useState(null)
   const [attemptId, setAttemptId] = useState(null)
   const [userId, setUserId] = useState(null)
@@ -106,6 +111,19 @@ export default function ExamTaking() {
         }
 
         setExam(e)
+
+        // Shared reading passages: ONE query for the whole exam, folded into
+        // an index -> block Map. An exam with no passages simply gets an
+        // empty Map and renders exactly as it always has.
+        // Non-fatal on purpose — a passage is supporting material, so if this
+        // fails we still let the student sit the exam rather than block them.
+        try {
+          const blocks = await listExamSharedBlocks(e.id)
+          setSharedBlockMap(buildQuestionBlockMap(blocks))
+        } catch (blockErr) {
+          console.error('shared text blocks load failed', blockErr)
+        }
+
         // Restore prior in-flight progress (answers, current question,
         // remaining time) so a refresh mid-exam doesn't reset everything.
         // Bypassed for admins so they always start fresh.
@@ -412,6 +430,10 @@ export default function ExamTaking() {
             <div className="et-progress-track">
               <div className="et-progress-fill" style={{ width: `${progress}%` }} />
             </div>
+
+            {/* Shared reading passage, re-shown above every linked question so
+                the student never has to navigate back to re-read it. */}
+            <SharedTextCard block={sharedBlockMap.get(currentQuestion)} />
 
             <div className="et-question-area">
               <div className="et-question-meta">

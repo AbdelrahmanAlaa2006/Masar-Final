@@ -5,6 +5,12 @@ import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch, setExamArchived } from '@backend/examsApi'
+import SharedTextBlocksEditor, {
+  blocksToEditorModel,
+  editorBlocksToPayload,
+  validateEditorBlocks,
+} from '../components/SharedTextBlocksEditor'
+import { listExamSharedBlocks, saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
@@ -315,8 +321,17 @@ export default function Exams() {
   const requestEdit = (exam) => setEditExam(exam)
   const saveExamEdit = async (patch) => {
     if (!editExam) return
+    // `sharedBlocks` is not an exams column — it belongs to its own tables and
+    // is saved in the SAME operation as the questions. That ordering is what
+    // keeps passage->question indices aligned: the RPC re-validates every
+    // index against the question array we just wrote, so a question the
+    // teacher deleted can never leave a passage on the wrong one.
+    const { sharedBlocks, ...examPatch } = patch
     try {
-      const updated = await updateExam(editExam.id, patch)
+      const updated = await updateExam(editExam.id, examPatch)
+      if (sharedBlocks) {
+        await saveExamSharedBlocks(editExam.id, sharedBlocks)
+      }
       invalidateCache('exams')
       setRows(prev => prev.map(e => e.id === editExam.id ? { ...e, ...updated } : e))
       setEditExam(null)
@@ -894,6 +909,29 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
 
+  // Shared reading passages live in their own tables, so unlike questions they
+  // can't be seeded from the `exam` prop — fetch them.
+  const [sharedBlocks, setSharedBlocks] = useState([])
+  const [blocksLoading, setBlocksLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await listExamSharedBlocks(exam.id)
+        // Resolve stored indices against the question list as loaded, where
+        // position === local id; from here on the editor tracks ids only.
+        if (!cancelled) setSharedBlocks(blocksToEditorModel(rows, questions))
+      } catch (err) {
+        console.error('shared text blocks load failed', err)
+      } finally {
+        if (!cancelled) setBlocksLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam.id])
+
   // Recalculate total points dynamically when questions or their points change.
   const totalPoints = useMemo(() => {
     return questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 1), 0)
@@ -1063,6 +1101,12 @@ function EditExamModal({ exam, onCancel, onSave }) {
       return null
     }
 
+    const blockError = validateEditorBlocks(sharedBlocks)
+    if (blockError) {
+      notify(blockError, { type: 'warning' })
+      return null
+    }
+
     const cleanQuestions = questions.map(q => ({
       question: q.question.trim(),
       image: q.image || null,
@@ -1073,6 +1117,9 @@ function EditExamModal({ exam, onCancel, onSave }) {
     }))
 
     return {
+      // Recomputed from the FINAL question order, so deletions and additions
+      // made in this session are reflected before the mappings are written.
+      sharedBlocks: editorBlocksToPayload(sharedBlocks, questions),
       title: title.trim(),
       number: number || null,
       grade,
@@ -1520,6 +1567,20 @@ function EditExamModal({ exam, onCancel, onSave }) {
             <i className="fas fa-plus"></i>
             <span>إضافة سؤال جديد يدوياً</span>
           </button>
+
+          {/* Shared reading passages. Saved together with the questions above,
+              so edits to either stay in step. */}
+          {blocksLoading ? (
+            <div className="stb" style={{ textAlign: 'center', padding: 20, color: 'var(--text-secondary)' }}>
+              <i className="fas fa-spinner fa-spin"></i> جاري تحميل النصوص المشتركة...
+            </div>
+          ) : (
+            <SharedTextBlocksEditor
+              blocks={sharedBlocks}
+              onChange={setSharedBlocks}
+              questions={questions}
+            />
+          )}
 
           {/* Action Row */}
           <div className="edit-action-row">
