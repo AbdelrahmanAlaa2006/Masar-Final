@@ -3,8 +3,9 @@
 -- Run once in the Supabase SQL editor. Idempotent: safe to re-run.
 --
 -- FEATURE
---   A "Shared Text Block" is a reading passage / case study / code snippet
---   written once and shown above EVERY question the teacher assigns it to.
+--   A "Shared Text Block" is a reading passage / case study / code snippet /
+--   image (a scanned passage, diagram or chart) written or uploaded once and
+--   shown above EVERY question the teacher assigns it to.
 --   The exam player shows one question at a time, so the passage has to
 --   re-appear on each linked question — the student must never have to
 --   navigate backwards to re-read it.
@@ -40,13 +41,28 @@ create table if not exists public.exam_shared_blocks (
   tenant_id     uuid not null references public.tenants(id) on delete cascade,
   exam_id       uuid not null references public.exams(id) on delete cascade,
   title         text,
-  content       text not null,
+  -- A block carries text, an image, or both. `content` is nullable because an
+  -- image-only block (a scanned passage, a diagram, a chart) is legitimate.
+  content       text,
+  image_url     text,
   display_order int  not null default 0,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
-  -- "Prevent saving if the shared text is empty" — enforced in the schema so
-  -- it holds no matter which client writes.
-  constraint exam_shared_blocks_content_chk check (length(btrim(content)) > 0)
+  -- "Prevent saving if the shared text is empty" — a block still has to say
+  -- SOMETHING, but either medium satisfies that. Enforced in the schema so it
+  -- holds no matter which client writes.
+  constraint exam_shared_blocks_content_chk check (
+    coalesce(btrim(content), '') <> '' or coalesce(btrim(image_url), '') <> ''
+  )
+);
+
+-- Re-runnable upgrade path for a database that already has the text-only
+-- version of this table from an earlier run of this file.
+alter table public.exam_shared_blocks add column if not exists image_url text;
+alter table public.exam_shared_blocks alter column content drop not null;
+alter table public.exam_shared_blocks drop constraint if exists exam_shared_blocks_content_chk;
+alter table public.exam_shared_blocks add  constraint exam_shared_blocks_content_chk check (
+  coalesce(btrim(content), '') <> '' or coalesce(btrim(image_url), '') <> ''
 );
 
 create index if not exists idx_exam_shared_blocks_exam
@@ -191,7 +207,8 @@ as $$
       jsonb_build_object(
         'id',            b.id,
         'title',         b.title,
-        'content',       b.content,
+        'content',       coalesce(b.content, ''),
+        'image_url',     b.image_url,
         'display_order', b.display_order,
         'question_indexes', coalesce(q.idxs, '[]'::jsonb)
       )
@@ -246,6 +263,7 @@ declare
   v_new_id   uuid;
   v_order    int := 0;
   v_content  text;
+  v_image    text;
   v_title    text;
   v_idx      jsonb;
   v_index    int;
@@ -276,16 +294,19 @@ begin
   for v_block in select value from jsonb_array_elements(coalesce(p_blocks, '[]'::jsonb))
   loop
     v_content := btrim(coalesce(v_block ->> 'content', ''));
-    if v_content = '' then
+    v_image   := btrim(coalesce(v_block ->> 'image_url', ''));
+
+    -- A block must carry text OR an image; empty-and-imageless is rejected.
+    if v_content = '' and v_image = '' then
       raise exception 'shared text block % has empty content', v_order + 1;
     end if;
 
     v_title := nullif(btrim(coalesce(v_block ->> 'title', '')), '');
 
     insert into public.exam_shared_blocks
-      (tenant_id, exam_id, title, content, display_order)
+      (tenant_id, exam_id, title, content, image_url, display_order)
     values
-      (v_tenant, p_exam_id, v_title, v_content, v_order)
+      (v_tenant, p_exam_id, v_title, nullif(v_content, ''), nullif(v_image, ''), v_order)
     returning id into v_new_id;
 
     for v_idx in

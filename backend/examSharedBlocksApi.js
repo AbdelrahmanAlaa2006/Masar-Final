@@ -27,7 +27,7 @@ export async function listExamSharedBlocks(examId) {
   const { data, error } = await supabase
     .from('exam_shared_blocks')
     .select(`
-      id, exam_id, title, content, display_order, created_at, updated_at,
+      id, exam_id, title, content, image_url, display_order, created_at, updated_at,
       exam_shared_block_questions ( question_index )
     `)
     .eq('exam_id', examId)
@@ -38,6 +38,7 @@ export async function listExamSharedBlocks(examId) {
     id: b.id,
     title: b.title || '',
     content: b.content || '',
+    image_url: b.image_url || '',
     display_order: b.display_order ?? 0,
     question_indexes: (b.exam_shared_block_questions || [])
       .map(m => m.question_index)
@@ -73,10 +74,12 @@ export async function saveExamSharedBlocks(examId, blocks) {
   if (!examId) throw new Error('لا يمكن حفظ النصوص المشتركة قبل حفظ الامتحان')
 
   const payload = (blocks || [])
-    .filter(b => (b.content || '').trim())
+    // A block is worth saving if it carries text OR an image.
+    .filter(b => (b.content || '').trim() || (b.image_url || '').trim())
     .map((b, i) => ({
       title: (b.title || '').trim() || null,
       content: (b.content || '').trim(),
+      image_url: (b.image_url || '').trim() || null,
       display_order: i,
       question_indexes: [...new Set(
         (b.question_indexes || [])
@@ -104,8 +107,8 @@ export function validateSharedBlocks(blocks, questionCount) {
     const b = blocks[i]
     const label = `النص المشترك رقم ${i + 1}`
 
-    if (!(b.content || '').trim()) {
-      return `${label}: لا يمكن حفظ نص مشترك فارغ.`
+    if (!(b.content || '').trim() && !(b.image_url || '').trim()) {
+      return `${label}: أضف نصاً أو صورة قبل الحفظ.`
     }
     for (const raw of b.question_indexes || []) {
       const idx = parseInt(raw, 10)
@@ -125,7 +128,7 @@ export function validateSharedBlocks(blocks, questionCount) {
    so the builder never surfaces a raw Postgres string. */
 function translateBlockError(raw) {
   const m = String(raw || '')
-  if (m.includes('empty content'))        return 'لا يمكن حفظ نص مشترك فارغ.'
+  if (m.includes('empty content'))        return 'لا يمكن حفظ نص مشترك فارغ — أضف نصاً أو صورة.'
   if (m.includes('more than one shared')) return 'لا يمكن ربط السؤال الواحد بأكثر من نص مشترك.'
   if (m.includes('but this exam has'))    return 'أحد النصوص المشتركة مرتبط بسؤال غير موجود. أعد اختيار الأسئلة ثم احفظ.'
   if (m.includes('invalid question'))     return 'تحديد الأسئلة غير صالح.'

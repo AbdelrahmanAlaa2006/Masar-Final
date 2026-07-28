@@ -1,4 +1,5 @@
 import React from 'react'
+import QuestionImagePicker from './QuestionImagePicker'
 import './SharedTextBlocksEditor.css'
 
 /**
@@ -32,6 +33,7 @@ export const makeSharedBlock = () => ({
   localKey: `sb_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
   title: '',
   content: '',
+  image_url: '',
   question_ids: [],
 })
 
@@ -44,6 +46,7 @@ export function blocksToEditorModel(rows, questions) {
     id: r.id || null,
     title: r.title || '',
     content: r.content || '',
+    image_url: r.image_url || '',
     question_ids: (r.question_indexes || [])
       .map(idx => qs[idx]?.id)
       .filter(id => id !== undefined),
@@ -57,6 +60,7 @@ export function editorBlocksToPayload(blocks, questions) {
   return (blocks || []).map(b => ({
     title: b.title,
     content: b.content,
+    image_url: b.image_url || '',
     question_indexes: (b.question_ids || [])
       .map(qid => qs.findIndex(q => q.id === qid))
       .filter(idx => idx >= 0)
@@ -69,8 +73,9 @@ export function validateEditorBlocks(blocks) {
   const seen = new Map()
   for (let i = 0; i < (blocks || []).length; i++) {
     const b = blocks[i]
-    if (!(b.content || '').trim()) {
-      return `النص المشترك رقم ${i + 1}: لا يمكن حفظ نص مشترك فارغ.`
+    // Text OR image satisfies the block; only an entirely empty one is bad.
+    if (!(b.content || '').trim() && !(b.image_url || '').trim()) {
+      return `النص المشترك رقم ${i + 1}: أضف نصاً أو صورة قبل الحفظ.`
     }
     for (const qid of b.question_ids || []) {
       if (seen.has(qid)) {
@@ -186,7 +191,7 @@ export default function SharedTextBlocksEditor({ blocks, onChange, questions }) 
 
             <div className="stb-field">
               <label>
-                النص <span className="stb-req">*</span>
+                النص <span className="stb-opt">(نص أو صورة أو كليهما)</span>
                 {charCount > 0 && <span className="stb-count">{charCount} حرف</span>}
               </label>
               <textarea
@@ -199,6 +204,23 @@ export default function SharedTextBlocksEditor({ blocks, onChange, questions }) 
                 تُحفظ فواصل الأسطر والفقرات كما تكتبها تماماً.
               </small>
             </div>
+
+            {/* Image alternative/addition — a scanned passage, diagram or
+                chart. Reuses the same uploader the questions use, so it lands
+                in the same bucket and behaves identically. */}
+            <div className="stb-field">
+              <QuestionImagePicker
+                value={b.image_url || ''}
+                onChange={(url) => update(b.localKey, { image_url: url })}
+                label="صورة النص المشترك (اختياري)"
+              />
+            </div>
+
+            {!(b.content || '').trim() && !(b.image_url || '').trim() && (
+              <small className="stb-warn stb-block-warn">
+                هذا النص فارغ — أضف نصاً أو صورة قبل الحفظ.
+              </small>
+            )}
 
             <div className="stb-field">
               <label>الأسئلة التي سيظهر فوقها هذا النص</label>

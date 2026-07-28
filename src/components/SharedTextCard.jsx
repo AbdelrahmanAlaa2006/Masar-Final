@@ -14,7 +14,12 @@ import './SharedTextCard.css'
  * put a stored-XSS hole into the exam player for no gain here.
  */
 export default function SharedTextCard({ block }) {
-  if (!block || !(block.content || '').trim()) return null
+  const text = (block?.content || '').trim()
+  const image = (block?.image_url || '').trim()
+
+  // A block can be text, an image, or both — render nothing only when it has
+  // neither, so an image-only passage still shows.
+  if (!block || (!text && !image)) return null
 
   return (
     <section
@@ -25,7 +30,19 @@ export default function SharedTextCard({ block }) {
         <span className="stc-icon" aria-hidden="true">📖</span>
         <h3 className="stc-title">{block.title?.trim() || 'اقرأ النص التالي'}</h3>
       </header>
-      <div className="stc-body">{block.content}</div>
+
+      <div className="stc-scroll">
+        {image && (
+          <figure className="stc-figure">
+            <img
+              src={image}
+              alt={block.title?.trim() || 'صورة النص المشترك'}
+              loading="lazy"
+            />
+          </figure>
+        )}
+        {text && <div className="stc-body">{text}</div>}
+      </div>
     </section>
   )
 }

@@ -51,6 +51,42 @@ body.dark .stc {
   line-height: 1.4;
 }
 
+/* ── Scroll area ──
+   Wraps BOTH the image and the text so a tall passage — of either medium —
+   scrolls inside its own card rather than pushing the question and the answer
+   choices off the screen. */
+.stc-scroll {
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.stc-scroll::-webkit-scrollbar { width: 8px; }
+.stc-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, .35);
+  border-radius: 999px;
+}
+
+/* ── Image ──
+   A scanned passage, diagram or chart. Never wider than the card, never
+   taller than about half the scroll area, so accompanying text stays visible
+   without scrolling past a full-bleed photo. */
+.stc-figure {
+  margin: 0 0 10px;
+  text-align: center;
+}
+.stc-figure:last-child { margin-bottom: 0; }
+.stc-figure img {
+  max-width: 100%;
+  max-height: 34vh;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--stc-border);
+  background: #fff;
+  object-fit: contain;
+  /* Tapping opens the browser's own image view on mobile. */
+  cursor: zoom-in;
+}
+body.dark .stc-figure img { background: rgba(255, 255, 255, .04); }
+
 /* ── Body ──
    pre-wrap keeps the paragraph and line breaks the teacher typed, while
    still wrapping long lines; anywhere handles an unbroken string (a URL
@@ -62,18 +98,6 @@ body.dark .stc {
   line-height: 2.05;
   font-weight: 500;
   color: var(--stc-text);
-
-  /* A very long passage scrolls inside its own card instead of pushing the
-     question and the answer choices off the screen. */
-  max-height: 46vh;
-  overflow-y: auto;
-}
-
-/* Keep the scrollbar from crowding the text in RTL. */
-.stc-body::-webkit-scrollbar { width: 8px; }
-.stc-body::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, .35);
-  border-radius: 999px;
 }
 
 @media (max-width: 600px) {
@@ -82,12 +106,13 @@ body.dark .stc {
     border-radius: 12px;
     border-inline-start-width: 3px;
   }
-  .stc-body {
-    line-height: 1.95;
+  .stc-body { line-height: 1.95; }
+  .stc-scroll {
     /* Phones have far less vertical room — cap tighter so the answer
        choices stay reachable without a long scroll. */
     max-height: 38vh;
   }
+  .stc-figure img { max-height: 28vh; }
 }
 
 /* Printing a paper copy: show the whole passage, no inner scroll. */
@@ -98,5 +123,6 @@ body.dark .stc {
     border-radius: 0;
     break-inside: avoid;
   }
-  .stc-body { max-height: none; overflow: visible; }
+  .stc-scroll { max-height: none; overflow: visible; }
+  .stc-figure img { max-height: none; border-color: #000; }
 }
