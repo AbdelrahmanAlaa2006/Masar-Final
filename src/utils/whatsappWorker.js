@@ -70,6 +70,7 @@ async function drain() {
   try {
     let keepGoing = true
     let totalSent = 0
+    let lastReason = null
 
     while (keepGoing) {
       if (!acquireLock()) break // ensure we still own the lock in case of extreme slowness
@@ -81,14 +82,13 @@ async function drain() {
 
       totalSent += processedCount
       keepGoing = continueProcessing
-
-      // Optional: you can log or handle pauseReason here if needed in the future
-      if (!keepGoing && pauseReason) {
-         // console.debug(`Worker loop paused: ${pauseReason}`)
-      }
+      if (pauseReason) lastReason = pauseReason
     }
-    
-    emit({ type: 'done', sent: totalSent })
+
+    // Carry WHY the run stopped (outside_working_hours / daily_limit / busy /
+    // empty_queue) so the panel can explain "0 sent" instead of confusing the
+    // admin with a bare number.
+    emit({ type: 'done', sent: totalSent, reason: lastReason })
   } catch (e) {
     emit({ type: 'error', error: e?.message || String(e) })
   } finally {

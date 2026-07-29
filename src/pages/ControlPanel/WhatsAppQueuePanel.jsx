@@ -273,7 +273,23 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
           ? { ...item, status: evt.status, retry_count: evt.status === 'failed' ? item.retry_count + 1 : item.retry_count, last_error: evt.error }
           : item))
       } else if (evt.type === 'done') {
-        flash(`اكتملت المعالجة: تم إرسال ${evt.sent} رسالة.`, 'success')
+        // Explain WHY when nothing (or not everything) was sent — the engine
+        // pauses by design (working hours / daily safety cap / another
+        // processor active), and a bare "0 sent" reads like a bug.
+        const REASON_MSG = {
+          outside_working_hours: 'الإرسال متوقف مؤقتًا: خارج ساعات الإرسال (9 صباحًا – 10 مساءً بتوقيت القاهرة). ستُرسل الرسائل تلقائيًا عند فتح النافذة — لا حاجة لأي إجراء.',
+          working_hours: 'الإرسال متوقف مؤقتًا: خارج ساعات الإرسال (9 صباحًا – 10 مساءً بتوقيت القاهرة). ستُرسل الرسائل تلقائيًا عند فتح النافذة — لا حاجة لأي إجراء.',
+          daily_limit: 'اكتمل الحد اليومي الآمن للإرسال (حماية الرقم من الحظر). المتبقي سيُستأنف تلقائيًا غدًا.',
+          busy: 'الخادم يعالج قائمة الإرسال بالفعل في الخلفية — لا حاجة لبدء المعالجة مرة أخرى.',
+        }
+        const reasonMsg = REASON_MSG[evt.reason]
+        if (evt.sent > 0) {
+          flash(`اكتملت المعالجة: تم إرسال ${evt.sent} رسالة.${reasonMsg ? ' ' + reasonMsg : ''}`, 'success')
+        } else if (reasonMsg) {
+          flash(reasonMsg, 'info')
+        } else {
+          flash('لا توجد رسائل معلقة مؤهلة للإرسال حاليًا.', 'info')
+        }
         try { setSummary(await getNotificationQueueSummary()) } catch { /* non-fatal */ }
       } else if (evt.type === 'error') {
         flash('تعذّر إكمال بعض الرسائل: ' + (evt.error || ''), 'error')
