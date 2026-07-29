@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@backend/supabase'
 import { listStudentsByPhones } from '@backend/profilesApi'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../../utils/cache'
 import { initials } from './shared'
+import { useTenant } from '../../contexts/TenantContext'
+import { generateTenantPassword } from '../../utils/tenantPassword'
 
 export default function ResetRequestsPanel({ onBack, flash }) {
+  const { tenant, tenantSlug } = useTenant()
   const [requests, setRequests] = useState([])
   // Only the students referenced by pending requests are loaded (by phone),
   // keyed by normalized phone — never the whole roster.
@@ -17,6 +21,11 @@ export default function ResetRequestsPanel({ onBack, flash }) {
   const [copiedPassId, setCopiedPassId] = useState(null)
   const [showGuide, setShowGuide] = useState(true)
   const [tempPasswords, setTempPasswords] = useState({})
+  
+  // Custom password reset modal state
+  const [resetModalStudent, setResetModalStudent] = useState(null)
+  const [customPasswordInput, setCustomPasswordInput] = useState('')
+  const [showCustomPasswordText, setShowCustomPasswordText] = useState(true)
 
   // Load pending password reset requests
   useEffect(() => {
@@ -118,10 +127,12 @@ export default function ResetRequestsPanel({ onBack, flash }) {
     }
   }
 
-  const handleResetPassword = async (req, studentId) => {
+  const handleResetPassword = async (req, studentId, customPass = null) => {
     if (busyId) return
     setBusyId(req.id)
-    const newPass = 'masar' + Math.floor(1000 + Math.random() * 9000)
+    
+    const newPass = customPass || generateTenantPassword(tenant || tenantSlug)
+
     try {
       const { error: rpcError } = await supabase.rpc('reset_student_password', {
         p_student_id: studentId,
@@ -130,11 +141,12 @@ export default function ResetRequestsPanel({ onBack, flash }) {
       if (rpcError) throw rpcError
 
       setTempPasswords((prev) => ({ ...prev, [req.id]: newPass }))
-      flash(`تم تعيين كلمة مرور مؤقتة للطالب بنجاح: ${newPass} (تم نسخها تلقائياً)`, 'success')
+      flash(`تم تحديث كلمة مرور الطالب بنجاح: ${newPass} (تم نسخها تلقائياً)`, 'success')
       navigator.clipboard.writeText(newPass)
+      setResetModalStudent(null)
     } catch (e) {
       console.error(e)
-      flash(e.message || 'تعذّر إعادة تعيين كلمة المرور. يرجى التأكد من تشغيل ملف SQL في قاعدة البيانات أولاً.', 'warning')
+      flash(e.message || 'تعذّر إعادة تعيين كلمة المرور.', 'warning')
     } finally {
       setBusyId(null)
     }
@@ -246,17 +258,21 @@ export default function ResetRequestsPanel({ onBack, flash }) {
                 </div>
 
                 <div className="cp-item-controls" style={{ gap: 8, flexWrap: 'wrap' }}>
-                  {studentMatch && isManualNoPassword && (
+                  {studentMatch && (
                     <button
-                      className="cp-btn cp-btn-success cp-btn-sm"
+                      className="cp-btn cp-btn-info cp-btn-sm"
                       type="button"
                       disabled={isBusy}
-                      onClick={() => handleResetPassword(req, studentMatch.id)}
-                      title="إنشاء كلمة مرور مؤقتة وتحديث حساب الطالب بها"
-                      style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)' }}
+                      onClick={() => {
+                        setResetModalStudent({ req, studentId: studentMatch.id, name: req.full_name })
+                        setCustomPasswordInput(generateTenantPassword(tenant || tenantSlug))
+                        setShowCustomPasswordText(true)
+                      }}
+                      title="تعيين أو كتابة كلمة مرور جديدة لـ الطالب"
+                      style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)', fontWeight: 'bold' }}
                     >
-                      <i className="fas fa-magic"></i>
-                      توليد كلمة مرور مؤقتة
+                      <i className="fas fa-key"></i>
+                      تعيين كلمة مرور جديدة
                     </button>
                   )}
 
@@ -310,6 +326,73 @@ export default function ResetRequestsPanel({ onBack, flash }) {
             )
           })}
         </ul>
+      )}
+
+      {/* Manual / Custom Reset Password Modal */}
+      {resetModalStudent && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!customPasswordInput.trim()) return
+              handleResetPassword(resetModalStudent.req, resetModalStudent.studentId, customPasswordInput.trim())
+            }} 
+            style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '28px', maxWidth: '480px', width: '100%', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}
+          >
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
+              <i className="fas fa-key" style={{ marginInlineEnd: 8, color: '#38bdf8' }}></i>
+              إعادة تعيين كلمة المرور: {resetModalStudent.name}
+            </h3>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#94a3b8' }}>أدخل كلمة المرور الجديدة *</label>
+                <button
+                  type="button"
+                  onClick={() => setCustomPasswordInput(generateTenantPassword(tenant || tenantSlug))}
+                  style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  <i className="fas fa-magic" style={{ marginInlineEnd: 4 }}></i> توليد تلقائي
+                </button>
+              </div>
+
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showCustomPasswordText ? 'text' : 'password'}
+                  value={customPasswordInput}
+                  onChange={(e) => setCustomPasswordInput(e.target.value)}
+                  placeholder="أكتب كلمة المرور التي تريدها هنا..."
+                  className="cp-input"
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', paddingLeft: '38px', fontSize: '1rem', fontWeight: 600 }}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCustomPasswordText(!showCustomPasswordText)}
+                  tabIndex={-1}
+                  title={showCustomPasswordText ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                  style={{ position: 'absolute', left: '10px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.95rem', padding: 4 }}
+                >
+                  <i className={`fas ${showCustomPasswordText ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+              <small style={{ display: 'block', marginTop: '6px', color: '#64748b', fontSize: '0.78rem' }}>
+                يمكنك كتابة أي كلمة مرور تختارها بنفسك، أو الضغط على "توليد تلقائي".
+              </small>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="submit" disabled={!customPasswordInput.trim() || busyId} className="cp-btn cp-btn-success" style={{ flex: 1, padding: '10px', fontWeight: 'bold' }}>
+                {busyId ? 'جاري الحفظ...' : 'حفظ وتحديث كلمة المرور'}
+              </button>
+              <button type="button" onClick={() => setResetModalStudent(null)} className="cp-btn cp-btn-secondary" style={{ padding: '10px 20px' }}>
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
       )}
     </section>
   )

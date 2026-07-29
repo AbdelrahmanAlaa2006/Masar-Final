@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listHomeworks, getMySubmissionsBatch, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { getProfile } from '@backend/profilesApi'
@@ -519,7 +520,7 @@ export default function HomeworkReport() {
       </div>
 
       {/* DETAIL MODAL */}
-      {showDetailModal && selectedHw && (
+      {showDetailModal && selectedHw && createPortal(
         <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
           <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 480 }}>
             <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
@@ -605,11 +606,12 @@ export default function HomeworkReport() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ANSWER REVIEW MODAL */}
-      {showReviewModal && selectedHw && (
+      {showReviewModal && selectedHw && createPortal(
         <div className="rp-modal-overlay" onClick={closeAll} role="dialog" aria-modal="true">
           <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 640 }}>
             <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
@@ -733,7 +735,8 @@ export default function HomeworkReport() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </main>
   )

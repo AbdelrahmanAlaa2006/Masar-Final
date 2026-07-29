@@ -337,7 +337,7 @@ function ManageBooklets({ flash, gradeOptions, branchOptions, groupOptions }) {
             )}
             <div>
               <label style={labelStyle}>السعر (ج.م) *</label>
-              <input type="number" min="0" step="0.01" value={fPrice} onChange={(e) => setFPrice(e.target.value)} className="cp-input" style={{ width: '100%' }} required />
+              <input type="number" min="0" step="0.01" value={fPrice} onChange={(e) => setFPrice(e.target.value)} onWheel={(e) => e.target.blur()} className="cp-input" style={{ width: '100%' }} required />
             </div>
           </div>
           <label style={labelStyle}>الوصف (اختياري)</label>

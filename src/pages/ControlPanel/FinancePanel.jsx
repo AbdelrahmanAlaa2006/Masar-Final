@@ -708,7 +708,7 @@ export default function FinancePanel({ onBack, flash }) {
             </div>
             <div>
               <label style={labelStyle}>المبلغ (ج.م)</label>
-              <input type="number" min="0" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} className="cp-input" style={{ width: '100%' }} required />
+              <input type="number" min="0" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} onWheel={(e) => e.target.blur()} className="cp-input" style={{ width: '100%' }} required />
             </div>
             <div>
               <label style={labelStyle}>تاريخ العملية الفعلي (يدعم تواريخ سابقة)</label>
@@ -991,7 +991,7 @@ export default function FinancePanel({ onBack, flash }) {
               {ledgerEditRow.description} {ledgerEditRow.student_name ? `— ${ledgerEditRow.student_name}` : ''}
             </p>
             <label style={labelStyle}>المبلغ (ج.م)</label>
-            <input type="number" min="0" step="0.01" value={ledgerEditAmount} onChange={(e) => setLedgerEditAmount(e.target.value)} className="cp-input" style={{ width: '100%', marginBottom: '12px' }} />
+            <input type="number" min="0" step="0.01" value={ledgerEditAmount} onChange={(e) => setLedgerEditAmount(e.target.value)} onWheel={(e) => e.target.blur()} className="cp-input" style={{ width: '100%', marginBottom: '12px' }} />
             <label style={labelStyle}>تاريخ العملية الفعلي</label>
             <DatePicker value={ledgerEditDate} onChange={setLedgerEditDate} style={{ width: '100%' }} placeholder="التاريخ" />
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>

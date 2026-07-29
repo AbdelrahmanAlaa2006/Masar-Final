@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { useTenant } from '../../contexts/TenantContext'
+import { generateTenantPassword } from '../../utils/tenantPassword'
 
 const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
 
@@ -32,7 +33,7 @@ const fmtDate = (iso) => {
 
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList, tenantId, tenantName } = useTenant()
+  const { gradesList, tenantId, tenantName, tenant, tenantSlug } = useTenant()
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -72,6 +73,7 @@ export default function AccountsPanel({ onBack, flash }) {
 
   // Add student modal and state
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showAddPassword, setShowAddPassword] = useState(false)
   const [addStudentForm, setAddStudentForm] = useState({
     name: '',
     phone: '',
@@ -1165,7 +1167,11 @@ export default function AccountsPanel({ onBack, flash }) {
       {/* Add Student Modal */}
       {showAddModal && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <form onSubmit={handleAddSubmit} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+          <form onSubmit={handleAddSubmit} autoComplete="off" style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+            {/* Hidden dummy inputs to block aggressive browser credential autofill */}
+            <input type="text" name="prevent_autofill_username" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+            <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>
               <i className="fas fa-user-plus" style={{ marginInlineEnd: 8, color: '#10b981' }}></i>
               إضافة طالب جديد
@@ -1174,22 +1180,70 @@ export default function AccountsPanel({ onBack, flash }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>الاسم بالكامل *</label>
-                <input type="text" value={addStudentForm.name} onChange={(e) => setAddStudentForm({ ...addStudentForm, name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                <input type="text" name="new_student_fullname" autoComplete="off" value={addStudentForm.name} onChange={(e) => setAddStudentForm({ ...addStudentForm, name: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
               </div>
               
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف الطالب *</label>
-                <input type="text" value={addStudentForm.phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                <input type="text" name="new_student_phone" autoComplete="off" data-lpignore="true" data-1p-ignore="true" value={addStudentForm.phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>كلمة المرور *</label>
-                <input type="password" value={addStudentForm.password} onChange={(e) => setAddStudentForm({ ...addStudentForm, password: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required minLength={6} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.84rem', fontWeight: 'bold', color: '#94a3b8' }}>كلمة المرور *</label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const generated = generateTenantPassword(tenant || tenantSlug)
+                      setAddStudentForm(prev => ({ ...prev, password: generated }))
+                      setShowAddPassword(true)
+                    }}
+                    style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    <i className="fas fa-magic" style={{ marginInlineEnd: 4 }}></i> توليد كلمة مرور
+                  </button>
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type={showAddPassword ? 'text' : 'password'} 
+                    name="new_student_password" 
+                    autoComplete="new-password" 
+                    data-lpignore="true" 
+                    data-1p-ignore="true" 
+                    value={addStudentForm.password} 
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, password: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', paddingLeft: '38px' }} 
+                    required 
+                    minLength={6} 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPassword(!showAddPassword)}
+                    tabIndex={-1}
+                    title={showAddPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    style={{
+                      position: 'absolute',
+                      left: '10px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      fontSize: '0.95rem',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'center'
+                    }}
+                  >
+                    <i className={`fas ${showAddPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف ولي الأمر *</label>
-                <input type="text" value={addStudentForm.parent_phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, parent_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
+                <input type="text" name="new_student_parent_phone" autoComplete="off" data-lpignore="true" data-1p-ignore="true" value={addStudentForm.parent_phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, parent_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
               </div>
 
               <div>

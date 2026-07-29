@@ -1747,7 +1747,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
       {showCashModal && (
         <div className="rp-modal-overlay" onClick={() => setShowCashModal(false)} role="dialog" aria-modal="true">
-          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 500 }}>
+          <div className="rp-modal" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', color: 'var(--cp-text-main)', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             
             {/* Modal Header */}
             <div className="rp-modal-header" style={{ borderBottom: '1px solid var(--cp-divider)' }}>
@@ -1764,7 +1764,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
             </div>
 
             {/* Modal Body / Form */}
-            <form onSubmit={handleSaveCash} style={{ padding: 20 }}>
+            <form onSubmit={handleSaveCash} style={{ padding: 20, overflowY: 'auto', maxHeight: 'calc(90vh - 75px)' }}>
               
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label className="paypg-modal-label">البحث عن الطالب واختياره *</label>
@@ -1789,7 +1789,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem', flex: 1, minWidth: 160 }}>
                       <span style={{ color: 'var(--cp-text-muted)' }}>خصم استثنائي دائم لهذا الطالب (ج.م)</span>
-                      <input type="number" min="0" value={cashDiscount} onChange={(e) => setCashDiscount(e.target.value)} placeholder="0" className="cp-input" style={{ padding: '8px 10px' }} />
+                      <input type="number" min="0" value={cashDiscount} onChange={(e) => setCashDiscount(e.target.value)} onWheel={(e) => e.target.blur()} placeholder="0" className="cp-input" style={{ padding: '8px 10px' }} />
                     </label>
                     <button type="button" onClick={handleSaveDiscount} disabled={savingDiscount} className="cp-btn cp-btn-info" style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}>
                       {savingDiscount ? <i className="fas fa-spinner fa-spin"></i> : 'حفظ الخصم'}
@@ -1842,6 +1842,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   placeholder="مثال: 150"
                   value={cashAmount}
                   onChange={(e) => setCashAmount(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   className="paypg-admin-input"
                   style={{ width: '100%', height: 42, ...(cashDue > 0 ? { background: 'rgba(16,185,129,0.06)', fontWeight: 800 } : {}) }}
                   required
@@ -1902,9 +1903,10 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     <div 
                       className="paypg-modal-student-list"
                       style={{
-                        position: 'absolute', top: '100%', left: 0, right: 0,
-                        maxHeight: 180, overflowY: 'auto', zIndex: 999, marginTop: 4, padding: 6,
-                        animation: 'fadeInDown 0.15s ease-out', marginBottom: 0,
+                        position: 'absolute', bottom: '100%', left: 0, right: 0,
+                        maxHeight: 250, overflowY: 'auto', zIndex: 999, marginBottom: 6, padding: 6,
+                        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.35)',
+                        animation: 'fadeInDown 0.15s ease-out', marginTop: 0,
                         overscrollBehavior: 'contain'
                       }}
                     >

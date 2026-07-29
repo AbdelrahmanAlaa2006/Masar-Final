@@ -34,6 +34,12 @@ body.dark {
   color: #f7fafc;
 }
 
+/* Suppress flaky native browser password reveal eye icon (Edge) so custom React eye toggle is always consistent */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
 /* Anti-cheating: no text selection / drag for non-admin users.
    Inputs, textareas, and contentEditable surfaces stay usable so the
    student can still type answers in exams and edit their profile. */
