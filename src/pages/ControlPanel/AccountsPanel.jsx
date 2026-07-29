@@ -8,6 +8,7 @@ import { listGroups, assignStudentToGroup, listStudentsByGroup } from '@backend/
 import { getBulkInitialPaymentsPreview, registerBulkInitialPayments, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { initials, GRADE_LABEL } from './shared'
 import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl } from '../../utils/barcodeLabels'
+import { buildStudentExportRows, downloadStudentsCsv, printStudentsList } from '../../utils/studentsExport'
 import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '@backend/supabase'
@@ -31,7 +32,7 @@ const fmtDate = (iso) => {
 
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList, tenantId } = useTenant()
+  const { gradesList, tenantId, tenantName } = useTenant()
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -52,6 +53,7 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [bulkPrinting, setBulkPrinting] = useState(false)
   const [printGroupId, setPrintGroupId] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   // Server-side pagination state (replaces loading the whole tenant roster).
   const PAGE_SIZE = 50
@@ -501,6 +503,73 @@ export default function AccountsPanel({ onBack, flash }) {
     }
   }
 
+  /* ── Export the roster (CSV / printable PDF) ──────────────────────────────
+     Exports EVERY student matching the CURRENT filters (tab, grade, branch,
+     group, search) — not just the visible page. The table is server-paginated,
+     so we page through in chunks instead of pulling the whole tenant roster. */
+  const fetchAllFiltered = async () => {
+    const CHUNK = 500
+    const out = []
+    for (let p = 0; p < 200; p++) { // hard stop — 100k rows, never an infinite loop
+      const { rows, count } = await listStudentsPaged({
+        page: p,
+        pageSize: CHUNK,
+        statusTab,
+        grade: selectedGrade,
+        branchId: selectedBranch,
+        groupId: selectedGroup,
+        search: debouncedQuery,
+      })
+      out.push(...(rows || []))
+      if ((rows || []).length < CHUNK || out.length >= (count || 0)) break
+    }
+    return out
+  }
+
+  // Human-readable description of the active filters, printed under the title.
+  const exportSubtitle = () => {
+    const parts = [selectedGrade !== 'all' ? (GRADE_LABEL[selectedGrade] || selectedGrade) : 'كل المراحل']
+    if (selectedBranch !== 'all') parts.push(branches.find(b => b.id === selectedBranch)?.name)
+    if (selectedGroup !== 'all') parts.push(groups.find(g => g.id === selectedGroup)?.name)
+    if (debouncedQuery) parts.push(`بحث: ${debouncedQuery}`)
+    parts.push(new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }))
+    return parts.filter(Boolean).join(' • ')
+  }
+
+  const handleExport = async (format) => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const all = await fetchAllFiltered()
+      if (all.length === 0) {
+        flash('لا يوجد طلاب مطابقون للفلاتر الحالية.', 'warning')
+        return
+      }
+      const rows = buildStudentExportRows(all, { groups, branches, gradeLabel: GRADE_LABEL })
+
+      if (format === 'csv') {
+        downloadStudentsCsv(rows, `students-${new Date().toISOString().slice(0, 10)}.csv`)
+        flash(`تم تصدير ${rows.length} طالب إلى ملف CSV.`, 'success')
+      } else {
+        printStudentsList(rows, {
+          title: `كشف الطلاب — ${tenantName || 'المنصة'}`,
+          subtitle: exportSubtitle(),
+          onError: (reason) => flash(
+            reason === 'popup-blocked'
+              ? 'متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.'
+              : 'لا يوجد طلاب للطباعة.',
+            'warning'
+          ),
+        })
+        flash(`تم تجهيز ${rows.length} طالب للطباعة — اختر «حفظ كـ PDF» من نافذة الطباعة.`, 'success')
+      }
+    } catch (e) {
+      flash('تعذّر التصدير: ' + (e.message || ''), 'warning')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Selection helpers (scoped to the current page of `students`).
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -693,6 +762,40 @@ export default function AccountsPanel({ onBack, flash }) {
           <i className={`fas ${bulkPrinting ? 'fa-spinner fa-spin' : 'fa-graduation-cap'}`}></i>
           {bulkPrinting ? ' جارٍ التحضير...' : (selectedGrade !== 'all' ? ' طباعة المرحلة' : ' طباعة كل المراحل')}
         </button>
+      </div>
+
+      {/* Export the roster — always follows the filters selected above */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'var(--primary-soft)', border: '1px solid var(--primary-glow)' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-color)' }}>
+          <i className="fas fa-file-export" style={{ marginInlineEnd: 6, color: 'var(--primary)' }}></i>
+          تصدير بيانات الطلاب:
+        </span>
+
+        <button
+          className="cp-btn cp-btn-success"
+          onClick={() => handleExport('csv')}
+          disabled={exporting}
+          title="تصدير ملف CSV يفتح في Excel لكل الطلاب المطابقين للفلاتر الحالية"
+          style={{ height: 40, opacity: exporting ? 0.6 : 1 }}
+        >
+          <i className={`fas ${exporting ? 'fa-spinner fa-spin' : 'fa-file-csv'}`} style={{ marginInlineEnd: 6 }}></i>
+          {exporting ? 'جارٍ التحضير...' : 'تصدير CSV (Excel)'}
+        </button>
+
+        <button
+          className="cp-btn cp-btn-info"
+          onClick={() => handleExport('pdf')}
+          disabled={exporting}
+          title="كشف مطبوع — اختر «حفظ كـ PDF» من نافذة الطباعة"
+          style={{ height: 40, opacity: exporting ? 0.6 : 1 }}
+        >
+          <i className={`fas ${exporting ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`} style={{ marginInlineEnd: 6 }}></i>
+          {exporting ? 'جارٍ التحضير...' : 'تصدير PDF'}
+        </button>
+
+        <span style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)' }}>
+          يشمل: الاسم، هاتف الطالب، هاتف ولي الأمر، المرحلة، الفرع، النوع، والمجموعات — لكل الطلاب المطابقين للفلاتر الحالية ({totalCount}).
+        </span>
       </div>
 
       {/* Grid Table */}
