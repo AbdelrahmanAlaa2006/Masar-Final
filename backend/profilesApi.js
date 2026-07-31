@@ -327,6 +327,7 @@ export async function createStudentByAdmin({
   enrollmentType,
   branchId,
   groupId,
+  secondaryGroupId = null,
   groupName,
   status = 'active',
   tenantId,
@@ -408,20 +409,33 @@ export async function createStudentByAdmin({
     throw new Error('فشل إنشاء الملف الشخصي للطالب: ' + profileError.message)
   }
 
-  // 3. Link to group in student_groups join table
+  // 3. Link to group(s) in student_groups join table
+  const groupRecords = []
   if (groupId) {
+    groupRecords.push({
+      student_id: studentId,
+      group_id: groupId,
+      is_primary: true
+    })
+  }
+  if (secondaryGroupId && secondaryGroupId !== groupId) {
+    groupRecords.push({
+      student_id: studentId,
+      group_id: secondaryGroupId,
+      is_primary: false
+    })
+  }
+
+  if (groupRecords.length > 0) {
     try {
       await supabase
         .from('student_groups')
-        .upsert({
-          student_id: studentId,
-          group_id: groupId,
-          is_primary: true
-        }, { onConflict: 'student_id,group_id' })
+        .upsert(groupRecords, { onConflict: 'student_id,group_id' })
     } catch (err) {
-      console.error('Failed to link student to group:', err)
+      console.error('Failed to link student to group(s):', err)
     }
   }
+
 
   // 4. Handle automatic payments
   // Monthly payment

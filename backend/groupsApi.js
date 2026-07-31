@@ -101,6 +101,48 @@ export async function assignStudentToGroup(studentId, groupId, isPrimary = true)
   return data
 }
 
+export async function setStudentGroups(studentId, { primaryGroupId, secondaryGroupId }) {
+  const { error: delError } = await supabase
+    .from('student_groups')
+    .delete()
+    .eq('student_id', studentId)
+  if (delError) throw delError
+
+  const records = []
+  if (primaryGroupId) {
+    records.push({ student_id: studentId, group_id: primaryGroupId, is_primary: true })
+  }
+  if (secondaryGroupId && secondaryGroupId !== primaryGroupId) {
+    records.push({ student_id: studentId, group_id: secondaryGroupId, is_primary: false })
+  }
+
+  if (records.length > 0) {
+    const { error: insError } = await supabase
+      .from('student_groups')
+      .insert(records)
+    if (insError) throw insError
+  }
+
+  let primaryName = null
+  if (primaryGroupId) {
+    const { data: groupData } = await supabase
+      .from('groups')
+      .select('name')
+      .eq('id', primaryGroupId)
+      .maybeSingle()
+    if (groupData) primaryName = groupData.name
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ "group": primaryName })
+    .eq('id', studentId)
+
+  invalidateCache('students')
+  return true
+}
+
+
 export async function listStudentGroups(studentId) {
   const { data, error } = await supabase
     .from('student_groups')

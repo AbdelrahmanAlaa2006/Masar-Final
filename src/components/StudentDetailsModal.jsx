@@ -8,7 +8,12 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
 
   // Mismatch detection
   const selectedGroup = groups?.find(g => g.id === selectedGroupId)
-  const isDifferentGroup = selectedGroupId && selectedGroup && student && (student.group_name !== selectedGroup.name)
+  const isStudentInGroup = selectedGroupId ? (
+    student?.group_id === selectedGroupId ||
+    student?.student_groups?.some(sg => sg.group_id === selectedGroupId) ||
+    student?.group_name === selectedGroup?.name
+  ) : true
+  const isDifferentGroup = Boolean(selectedGroupId && selectedGroup && student && !isStudentInGroup)
   const isDifferentGrade = currentGrade && student && (student.grade !== currentGrade)
   // ONLINE students are not part of the center system — no barcode attendance for them
   const isOnlineStudent = student?.enrollment_type === 'ONLINE'

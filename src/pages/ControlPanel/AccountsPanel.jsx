@@ -4,7 +4,7 @@ import { listStudentsPaged, getStudentStatusCounts, listStudentsByGrade, updateS
 import { listBranches } from '@backend/branchesApi'
 import { listAcademicYears } from '@backend/academicYearsApi'
 import { createNotification } from '@backend/notificationsApi'
-import { listGroups, assignStudentToGroup, listStudentsByGroup } from '@backend/groupsApi'
+import { listGroups, assignStudentToGroup, setStudentGroups, listStudentsByGroup } from '@backend/groupsApi'
 import { getBulkInitialPaymentsPreview, registerBulkInitialPayments, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { initials, GRADE_LABEL } from './shared'
 import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl } from '../../utils/barcodeLabels'
@@ -98,6 +98,8 @@ export default function AccountsPanel({ onBack, flash }) {
     grade: '',
     branch_id: '',
     selectedGroupId: '',
+    hasSecondGroup: false,
+    secondaryGroupId: '',
     enrollment_type: 'CENTER',
     status: 'active',
     parent_phone: '',
@@ -271,19 +273,20 @@ export default function AccountsPanel({ onBack, flash }) {
     try {
       const updated = await updateStudentProfile(editStudent.id, editStudent)
       
-      // Update group if changed
-      if (editStudent.selectedGroupId !== editStudent.currentGroupId) {
-        if (editStudent.selectedGroupId) {
-          await assignStudentToGroup(editStudent.id, editStudent.selectedGroupId)
-        } else {
-          await supabase.from('student_groups').delete().eq('student_id', editStudent.id)
-          await supabase.from('profiles').update({ "group": null }).eq('id', editStudent.id)
-        }
-      }
+      // Update group assignments in student_groups join table
+      const primaryGId = editStudent.selectedGroupId || null
+      const secGId = (editStudent.hasSecondGroup && editStudent.secondaryGroupId) ? editStudent.secondaryGroupId : null
+      
+      await setStudentGroups(editStudent.id, {
+        primaryGroupId: primaryGId,
+        secondaryGroupId: secGId
+      })
 
-      const matchedGroup = groups.find(g => g.id === editStudent.selectedGroupId)
-      const groupName = matchedGroup ? matchedGroup.name : ''
-      const updatedGroups = editStudent.selectedGroupId ? [{ group_id: editStudent.selectedGroupId }] : []
+      const primaryGroupObj = groups.find(g => g.id === primaryGId)
+      const groupName = primaryGroupObj ? primaryGroupObj.name : ''
+      const updatedGroups = []
+      if (primaryGId) updatedGroups.push({ group_id: primaryGId, is_primary: true })
+      if (secGId) updatedGroups.push({ group_id: secGId, is_primary: false })
       
       setStudents(prev => prev.map(s => s.id === editStudent.id ? { 
         ...s, 
@@ -363,6 +366,7 @@ export default function AccountsPanel({ onBack, flash }) {
         enrollmentType: addStudentForm.enrollment_type,
         branchId: addStudentForm.branch_id || null,
         groupId: addStudentForm.selectedGroupId || null,
+        secondaryGroupId: (addStudentForm.hasSecondGroup && addStudentForm.secondaryGroupId) ? addStudentForm.secondaryGroupId : null,
         groupName: groupObj ? groupObj.name : '',
         status: addStudentForm.status,
         tenantId: tenantId,
@@ -439,9 +443,13 @@ export default function AccountsPanel({ onBack, flash }) {
   // Resolve a student's current group name (so a printed barcode always shows
   // the latest group — if an admin moves the student, the next print updates).
   const getGroupName = (student) => {
-    if (student.group) return student.group
-    const gid = student.student_groups?.[0]?.group_id
-    if (gid) return groups.find(g => g.id === gid)?.name || ''
+    if (student?.student_groups && student.student_groups.length > 0) {
+      const names = student.student_groups
+        .map(sg => groups.find(g => g.id === sg.group_id)?.name)
+        .filter(Boolean)
+      if (names.length > 0) return names.join(' + ')
+    }
+    if (student?.group) return student.group
     return ''
   }
 
@@ -958,11 +966,16 @@ export default function AccountsPanel({ onBack, flash }) {
                         <button
                           className="cp-btn cp-btn-info cp-btn-sm"
                           onClick={() => {
-                            const curGroupId = student.student_groups?.[0]?.group_id || ''
+                            const primaryG = student.student_groups?.find(sg => sg.is_primary) || student.student_groups?.[0]
+                            const secG = student.student_groups?.find(sg => !sg.is_primary && sg.group_id !== primaryG?.group_id)
+                            const curGroupId = primaryG?.group_id || ''
+                            const secGroupId = secG?.group_id || ''
                             setEditStudent({ 
                               ...student, 
                               currentGroupId: curGroupId, 
-                              selectedGroupId: curGroupId 
+                              selectedGroupId: curGroupId,
+                              hasSecondGroup: Boolean(secGroupId),
+                              secondaryGroupId: secGroupId
                             })
                             setShowEditModal(true)
                           }}
@@ -1099,7 +1112,7 @@ export default function AccountsPanel({ onBack, flash }) {
                 <input type="text" value={editStudent.parent_phone || ''} onChange={(e) => setEditStudent({ ...editStudent, parent_phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>المجموعة الدراسية</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#94a3b8' }}>المجموعة الدراسية (الأساسية)</label>
                 <select 
                   value={editStudent.selectedGroupId || ''} 
                   onChange={(e) => setEditStudent({ ...editStudent, selectedGroupId: e.target.value })} 
@@ -1115,6 +1128,45 @@ export default function AccountsPanel({ onBack, flash }) {
                   }
                 </select>
               </div>
+
+              <div style={{ gridColumn: '1 / -1', marginTop: '-4px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.86rem', color: '#38bdf8', fontWeight: 600 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={Boolean(editStudent.hasSecondGroup)} 
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setEditStudent({ 
+                        ...editStudent, 
+                        hasSecondGroup: checked, 
+                        secondaryGroupId: checked ? editStudent.secondaryGroupId : '' 
+                      })
+                    }}
+                    style={{ width: 16, height: 16, accentColor: '#38bdf8' }}
+                  />
+                  <span>إضافة مجموعة ثانية للطالب (للغياب والحضور)</span>
+                </label>
+              </div>
+
+              {editStudent.hasSecondGroup && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '4px', color: '#38bdf8', fontWeight: 'bold' }}>المجموعة الدراسية الثانية (للغياب والحضور)</label>
+                  <select 
+                    value={editStudent.secondaryGroupId || ''} 
+                    onChange={(e) => setEditStudent({ ...editStudent, secondaryGroupId: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid #38bdf8' }}
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر المجموعة الثانية...</option>
+                    {groups
+                      .filter(g => g.grade === editStudent.grade && (!editStudent.branch_id || g.branch_id === editStudent.branch_id) && g.id !== editStudent.selectedGroupId)
+                      .map(g => (
+                        <option key={g.id} value={g.id} style={{ background: '#0f172a', color: '#fff' }}>{g.name}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Warning Flags */}
@@ -1305,7 +1357,7 @@ export default function AccountsPanel({ onBack, flash }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المجموعة الدراسية</label>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المجموعة الدراسية (الأساسية)</label>
                 <select 
                   value={addStudentForm.selectedGroupId} 
                   onChange={(e) => setAddStudentForm({ ...addStudentForm, selectedGroupId: e.target.value })} 
@@ -1321,6 +1373,47 @@ export default function AccountsPanel({ onBack, flash }) {
                   }
                 </select>
               </div>
+
+              <div style={{ gridColumn: '1 / -1', marginTop: '-4px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', color: '#38bdf8', fontWeight: 600 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={addStudentForm.hasSecondGroup} 
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setAddStudentForm({ 
+                        ...addStudentForm, 
+                        hasSecondGroup: checked, 
+                        secondaryGroupId: checked ? addStudentForm.secondaryGroupId : '' 
+                      })
+                    }}
+                    style={{ width: 16, height: 16, accentColor: '#38bdf8' }}
+                  />
+                  <span>إضافة مجموعة ثانية للطالب (للغياب والحضور)</span>
+                </label>
+              </div>
+
+              {addStudentForm.hasSecondGroup && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#38bdf8' }}>
+                    المجموعة الدراسية الثانية (للغياب والحضور)
+                  </label>
+                  <select 
+                    value={addStudentForm.secondaryGroupId} 
+                    onChange={(e) => setAddStudentForm({ ...addStudentForm, secondaryGroupId: e.target.value })} 
+                    className="cp-input" 
+                    style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid #38bdf8' }}
+                  >
+                    <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر المجموعة الثانية...</option>
+                    {groups
+                      .filter(g => g.grade === addStudentForm.grade && (!addStudentForm.branch_id || g.branch_id === addStudentForm.branch_id) && g.id !== addStudentForm.selectedGroupId)
+                      .map(g => (
+                        <option key={g.id} style={{ background: '#0f172a', color: '#fff' }} value={g.id}>{g.name}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>نوع التسجيل والاشتراك</label>
