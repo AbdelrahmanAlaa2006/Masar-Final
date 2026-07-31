@@ -64,7 +64,7 @@ function applyStudentFilters(query, { statusTab, grade, branchId, studentIds, se
 }
 
 // Returns one page of students plus the exact total for that filter.
-export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = 'all', grade = 'all', branchId = 'all', groupId = 'all', search = '' } = {}) {
+export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = 'all', grade = 'all', branchId = 'all', groupId = 'all', search = '', sortBy = 'created_at', sortOrder = 'desc' } = {}) {
   const from = page * pageSize
   const to = from + pageSize - 1
 
@@ -84,8 +84,11 @@ export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = '
 
   query = applyStudentFilters(query, { statusTab, grade, branchId, studentIds, search })
 
+  const isAsc = sortOrder === 'asc'
+  const sortCol = ['created_at', 'name'].includes(sortBy) ? sortBy : 'created_at'
+
   const { data, error, count } = await query
-    .order('name', { ascending: true })
+    .order(sortCol, { ascending: isAsc, nullsFirst: false })
     .range(from, to)
 
   if (error) throw error

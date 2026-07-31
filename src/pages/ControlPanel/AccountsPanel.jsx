@@ -31,6 +31,22 @@ const fmtDate = (iso) => {
   }
 }
 
+const fmtDateTime = (iso) => {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}
+
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
   const { gradesList, tenantId, tenantName, tenant, tenantSlug } = useTenant()
@@ -48,6 +64,7 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedBranch, setSelectedBranch] = useState('all')
   const [selectedGroup, setSelectedGroup] = useState('all')
   const [statusTab, setStatusTab] = useState('pending')
+  const [sortBy, setSortBy] = useState('created_at_desc')
 
   // Selected label size + multi-select state (checkboxes in the table).
   const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE)
@@ -126,13 +143,19 @@ export default function AccountsPanel({ onBack, flash }) {
     })()
   }, [])
 
-  // Load one page of students for the active tab/grade/search. Server-side
+  // Load one page of students for the active tab/grade/search/sort. Server-side
   // filtering + .range() means we never pull the whole roster into the browser.
   const loadPage = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true)
     try {
+      let sortCol = 'created_at'
+      let sortDir = 'desc'
+      if (sortBy === 'created_at_asc') { sortCol = 'created_at'; sortDir = 'asc' }
+      else if (sortBy === 'name_asc') { sortCol = 'name'; sortDir = 'asc' }
+      else if (sortBy === 'name_desc') { sortCol = 'name'; sortDir = 'desc' }
+
       const { rows, count } = await listStudentsPaged({
-        page, pageSize: PAGE_SIZE, statusTab, grade: selectedGrade, branchId: selectedBranch, groupId: selectedGroup, search: debouncedQuery
+        page, pageSize: PAGE_SIZE, statusTab, grade: selectedGrade, branchId: selectedBranch, groupId: selectedGroup, search: debouncedQuery, sortBy: sortCol, sortOrder: sortDir
       })
       setStudents(rows)
       setTotalCount(count)
@@ -141,7 +164,7 @@ export default function AccountsPanel({ onBack, flash }) {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [page, statusTab, selectedGrade, selectedBranch, selectedGroup, debouncedQuery])
+  }, [page, statusTab, selectedGrade, selectedBranch, selectedGroup, debouncedQuery, sortBy])
 
   // Tab badge counts come from cheap head-only COUNT queries (constant size).
   const reloadCounts = useCallback(async () => {
@@ -159,8 +182,8 @@ export default function AccountsPanel({ onBack, flash }) {
     return () => clearTimeout(id)
   }, [query])
 
-  // Reset to the first page whenever the tab or grade filter changes.
-  useEffect(() => { setPage(0) }, [statusTab, selectedGrade, selectedBranch, selectedGroup])
+  // Reset to the first page whenever the tab, grade, or sort filter changes.
+  useEffect(() => { setPage(0) }, [statusTab, selectedGrade, selectedBranch, selectedGroup, sortBy])
 
   // If the selected group doesn't belong to the newly selected grade or branch, reset it to 'all'
   useEffect(() => {
@@ -680,6 +703,15 @@ export default function AccountsPanel({ onBack, flash }) {
           </select>
         </div>
 
+        <div>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ padding: '10px 14px', borderRadius: '10px', border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer', fontWeight: '500' }}>
+            <option value="created_at_desc">📅 الترتيب: الأحدث تسجيلاً أولاً</option>
+            <option value="created_at_asc">📅 الترتيب: الأقدم تسجيلاً أولاً</option>
+            <option value="name_asc">🔤 الترتيب: اسم الطالب (أ - ي)</option>
+            <option value="name_desc">🔤 الترتيب: اسم الطالب (ي - أ)</option>
+          </select>
+        </div>
+
         <button className="cp-icon-btn" onClick={refreshList} title="تحديث القائمة" style={{ height: 42, width: 42 }}>
           <i className="fas fa-rotate"></i>
         </button>
@@ -853,6 +885,12 @@ export default function AccountsPanel({ onBack, flash }) {
                           {flag}
                         </span>
                       ))}
+                      {student.created_at && (
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'normal', marginTop: '2px' }}>
+                          <i className="far fa-clock" style={{ marginInlineEnd: 4, fontSize: '0.7rem' }}></i>
+                          تاريخ التسجيل: {fmtDateTime(student.created_at)}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.82rem' }}>
