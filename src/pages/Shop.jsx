@@ -246,9 +246,9 @@ export default function Shop() {
 
           <div className="shop-empty-state" style={{ padding: '60px 24px', maxWidth: '650px', margin: '40px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '20px' }}>
             <i className="fas fa-lock" style={{ fontSize: '3.5rem', color: '#14b8a6', marginBottom: '10px' }}></i>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-color, #0f172a)' }}>الباقات مخصصة لطلاب الأونلاين والتعليم المدمج 💻</h3>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-color, #0f172a)' }}>الباقات مخصصة لطلاب الأونلاين والسنتر وأونلاين 💻</h3>
             <p style={{ fontSize: '0.98rem', lineHeight: '1.7', color: 'var(--cp-text-muted, #64748b)', margin: 0 }}>
-              هذا القسم متاح حصرياً لطلاب الأونلاين (ONLINE) أو المدمج (HYBRID) لشراء الباقات والاشتراك بالمنصة.
+              هذا القسم متاح حصرياً لطلاب الأونلاين أو (سنتر وأونلاين) لشراء الباقات والاشتراك بالمنصة.
             </p>
             
             <div style={{ 
@@ -262,12 +262,12 @@ export default function Shop() {
             }}>
               <p style={{ margin: '0 0 10px 0', fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-color, #0f172a)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <i className="fas fa-info-circle" style={{ color: '#14b8a6' }}></i>
-                <span>بما أن نوع تسجيلك حضور مباشر بالسنتر (CENTER):</span>
+                <span>بما أن نوع تسجيلك حضور مباشر بالسنتر:</span>
               </p>
               <ul style={{ margin: 0, paddingRight: '20px', fontSize: '0.88rem', lineHeight: '1.7', color: 'var(--cp-text-muted, #64748b)', listStyleType: 'disc' }}>
                 <li>يتم تفعيل حصصك ومحاضراتك تلقائياً من الإدارة عند الحضور وتسجيل الدخول بالسنتر.</li>
                 <li>يتم سداد الاشتراكات والمصاريف مباشرة بمكتب السنتر.</li>
-                <li>إذا كنت ترغب في تحويل نظام حسابك إلى أونلاين أو مدمج لتتمكن من الشراء من المتجر، يرجى مراجعة مشرف السنتر أو التواصل مع الدعم الفني.</li>
+                <li>إذا كنت ترغب في تحويل نظام حسابك إلى (سنتر وأونلاين) لتتمكن من الشراء من المتجر، يرجى مراجعة مشرف السنتر أو التواصل مع الدعم الفني.</li>
               </ul>
             </div>
           </div>

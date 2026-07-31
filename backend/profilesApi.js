@@ -32,7 +32,7 @@ export async function listStudents() {
 // Lean projection for list tables: same as listStudents minus the sensitive
 // `password` column (which the bulk list should never carry).
 const STUDENT_LIST_COLUMNS =
-  'id, name, phone, grade, "group", avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)'
+  'id, name, phone, grade, "group", avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, subscription_discount, flags, student_groups(group_id)'
 
 // Apply the same status/grade/search semantics the AccountsPanel used to do
 // client-side, but in the database so only one page of rows is returned.
@@ -228,7 +228,7 @@ export async function getProfile(id) {
   return cached(`profile:${id}`, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, flags, student_groups(group_id)')
+      .select('id, name, phone, grade, "group", role, avatar_url, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, subscription_discount, flags, student_groups(group_id)')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
@@ -268,6 +268,7 @@ export async function updateStudentProfile(studentId, updates) {
       academic_year_id: updates.academic_year_id || null,
       status: updates.status,
       enrollment_type: updates.enrollment_type,
+      subscription_discount: Math.max(0, parseFloat(updates.subscription_discount) || 0),
       flags: updates.flags || [],
       parent_phone: updates.parent_phone || null,
       is_approved: updates.status === 'active' || updates.is_approved || false,
@@ -399,6 +400,7 @@ export async function createStudentByAdmin({
       branch_id: branchId || null,
       group: groupName || null,
       academic_year_id: activeYearId,
+      subscription_discount: Math.max(0, parseFloat(form.subscription_discount || form.subscriptionDiscount) || 0),
       is_approved: status === 'active',
       is_active: status === 'active',
       status: status

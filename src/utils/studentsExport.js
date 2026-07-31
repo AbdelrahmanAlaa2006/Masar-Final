@@ -19,6 +19,8 @@ export const EXPORT_COLUMNS = [
   { key: 'branch', label: 'الفرع' },
   { key: 'type', label: 'النوع' },
   { key: 'groups', label: 'المجموعات' },
+  { key: 'empty1', label: '', empty: true },
+  { key: 'empty2', label: '', empty: true },
 ]
 
 /* Normalize raw profile rows into flat export rows. Group ids and branch ids
@@ -28,13 +30,19 @@ export function buildStudentExportRows(students, { groups = [], branches = [], g
   const groupById = new Map((groups || []).map((g) => [g.id, g.name]))
   const branchById = new Map((branches || []).map((b) => [b.id, b.name]))
 
+  const ENROLLMENT_TYPE_LABEL = {
+    CENTER: 'سنتر',
+    ONLINE: 'أونلاين',
+    HYBRID: 'سنتر وأونلاين',
+  }
+
   return (students || []).map((s) => ({
     name: s.name || '',
     phone: s.phone || '',
     parentPhone: s.parent_phone || '',
     grade: gradeLabel[s.grade] || s.grade || '',
     branch: branchById.get(s.branch_id) || 'الفرع الرئيسي',
-    type: s.enrollment_type || 'CENTER',
+    type: ENROLLMENT_TYPE_LABEL[s.enrollment_type] || s.enrollment_type || 'سنتر',
     // A student can belong to more than one group; list them all.
     groups:
       (s.student_groups || [])
@@ -110,11 +118,12 @@ function buildPrintDocument(rows, { title, subtitle }) {
     `th { background: #f0f0f0; font-weight: 700; }` +
     `tbody tr:nth-child(even) { background: #fafafa; }` +
     `td.ltr { direction: ltr; text-align: right; unicode-bidi: plaintext; }` +
-    `.idx { width: 34px; color: #666; text-align: center; }`
+    `.idx { width: 34px; color: #666; text-align: center; }` +
+    `th.empty-col, td.empty-col { min-width: 60px; width: 70px; }`
 
   const head =
     `<tr><th class="idx">#</th>` +
-    EXPORT_COLUMNS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('') +
+    EXPORT_COLUMNS.map((c) => `<th${c.empty ? ' class="empty-col"' : ''}>${escapeHtml(c.label)}</th>`).join('') +
     `</tr>`
 
   const body = (rows || [])
@@ -123,7 +132,7 @@ function buildPrintDocument(rows, { title, subtitle }) {
         `<tr><td class="idx">${i + 1}</td>` +
         EXPORT_COLUMNS.map((c) => {
           // Phones render LTR so Arabic RTL context doesn't reorder the digits.
-          const cls = c.key === 'phone' || c.key === 'parentPhone' ? ' class="ltr"' : ''
+          const cls = c.empty ? ' class="empty-col"' : (c.key === 'phone' || c.key === 'parentPhone' ? ' class="ltr"' : '')
           return `<td${cls}>${escapeHtml(r[c.key])}</td>`
         }).join('') +
         `</tr>`

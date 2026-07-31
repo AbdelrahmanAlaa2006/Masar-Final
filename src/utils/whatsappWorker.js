@@ -95,7 +95,9 @@ async function drain() {
     running = false
     releaseLock()
     emit({ type: 'running', running: false })
-    scheduleIdle()                            // keep watching for new work
+    // NOTE: we intentionally do NOT call scheduleIdle() here.
+    // The worker should only run when the admin explicitly clicks "Send Queue".
+    // Auto-resuming caused notifications to be processed without the admin's consent.
   }
 }
 
@@ -124,18 +126,16 @@ export function kickWorker(t) {
   drain()
 }
 
-/* App-level autonomy — call once when a staff session is ready. Idempotent and
-   safe on every mount. Arms the heartbeat so the queue drains on its own, and
-   resumes immediately if this tab was mid-processing before a refresh. */
+/* App-level hook — called once when a staff session is ready.  Previously
+   this auto-started the drain loop and armed an idle heartbeat so the queue
+   processed in the background.  This caused notifications to go from
+   "pending" → "sent" without the admin pressing "Send Queue", which is NOT
+   desired: the admin must explicitly start the send.  Now this only stores
+   the tenant reference so kickWorker() has it when needed. */
 export function ensureAutoRun(t) {
   if (t) tenant = t
-  if (!isAutoCapable(tenant)) return
-  let active = false
-  try { active = sessionStorage.getItem(ACTIVE_KEY) === '1' } catch {}
-  
-  // Only resume if the worker was explicitly started in a previous session
-  // or before a page refresh. We NO LONGER force it to start automatically.
-  if (active) drain()
+  // Do NOT auto-start.  The worker is only triggered by kickWorker (the
+  // manual "Send Queue" button in WhatsAppQueuePanel).
 }
 
 /* Stop watching (e.g., the admin cleared the queue or logged out). Does not

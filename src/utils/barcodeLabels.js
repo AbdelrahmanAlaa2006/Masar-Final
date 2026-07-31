@@ -74,14 +74,16 @@ function escapeHtml(value) {
 }
 
 // One label's markup. Layout: name (bold — auto-fits to one line, wraps to a
-// max of two only when unavoidable), then the barcode filling the remaining
-// vertical space (contained, never clipped or stretched).
+// max of two only when unavoidable), optional grade/group metadata line, then
+// the barcode filling the remaining vertical space.
 function labelHtml(item) {
   const name = escapeHtml(item.name)
+  const metaText = escapeHtml([item.grade, item.group].filter(Boolean).join(' - '))
   const src = escapeHtml(item.barcodeUrl)
   return (
     `<div class="lbl">` +
     `<div class="lbl-name">${name}</div>` +
+    (metaText ? `<div class="lbl-meta">${metaText}</div>` : '') +
     `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
     `</div>`
   )
@@ -92,17 +94,16 @@ function buildDocument(items, preset, title) {
   const { w, h, name, meta, pad } = preset
   const labels = items.map(labelHtml).join('')
 
-  // EXACT PAGE SIZE: By setting @page size to match the preset target (w=40, h=30) and margin to 0,
-  // we align with the physical stock size. We size .lbl slightly smaller than the page height
-  // (preset.h - 2mm = 28mm) to act as a safety buffer against browser sub-pixel rounding errors,
-  // ensuring zero cumulative drift and preventing a second blank page.
+  // EXACT PAGE MATCHING: @page size is ${w}mm ${h}mm with margin 0. Sizing .lbl to
+  // EXACTLY height ${h}mm ensures each label box occupies 100% of one page height.
+  // This guarantees zero cumulative vertical drift across sequential multi-label prints.
   const styles =
     `@page { size: ${w}mm ${h}mm; margin: 0; }` +
     `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; margin: 0; padding: 0; }` +
+    `html, body { background: #fff; margin: 0; padding: 0; width: ${w}mm; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-    `width: ${w}mm; height: ${h - 2}mm; padding: 3mm ${pad}mm 1mm ${pad}mm;` +
+    `width: ${w}mm; height: ${h}mm; padding: 2mm ${pad}mm 1mm ${pad}mm;` +
     `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
     `text-align: center; overflow: hidden;` +
     `page-break-after: always; break-after: page;` +
@@ -111,9 +112,11 @@ function buildDocument(items, preset, title) {
     `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
     `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
     `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
+    `.lbl-meta { font-weight: 600; font-size: ${meta}pt; line-height: 1.1; color: #333; width: 100%;` +
+    `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.5mm; }` +
     // Barcode takes all remaining height; the image is contained so it never
     // stretches (distorted bars = unscannable) or clips.
-    `.lbl-bc { width: 100%; margin-top: 1.5mm;` +
+    `.lbl-bc { width: 100%; margin-top: 1mm;` +
     `display: flex; align-items: center; justify-content: center; }` +
     `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
     `object-fit: contain; image-rendering: crisp-edges; }`
@@ -129,7 +132,7 @@ function buildDocument(items, preset, title) {
   // prints blank. Single-fire guard + safety timeout in case an image hangs.
   const script =
     `(function(){` +
-    `var START=${nameStart}, MIN=${nameMin};` +
+    `var START=${nameStart}, MIN=${nameMin}, META_START=${meta};` +
     `function fitNames(){` +
     `var els=document.querySelectorAll('.lbl-name');` +
     `for(var i=0;i<els.length;i++){` +
@@ -143,9 +146,17 @@ function buildDocument(items, preset, title) {
     `}` +
     `}` +
     `}` +
+    `function fitMeta(){` +
+    `var els=document.querySelectorAll('.lbl-meta');` +
+    `for(var i=0;i<els.length;i++){` +
+    `var el=els[i], pt=META_START;` +
+    `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
+    `while(el.scrollWidth>el.clientWidth+0.5 && pt>4){ pt-=0.4; el.style.fontSize=pt+'pt'; }` +
+    `}` +
+    `}` +
     `var printed=false;` +
     `function go(){ if(printed) return; printed=true;` +
-    `try{ fitNames(); }catch(e){}` +
+    `try{ fitNames(); fitMeta(); }catch(e){}` +
     `try{ window.focus(); }catch(e){}` +
     `window.print();` +
     `}` +

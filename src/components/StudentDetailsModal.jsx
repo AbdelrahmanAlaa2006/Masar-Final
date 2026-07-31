@@ -109,9 +109,9 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   }
 
   const ENROLLMENT_LABEL = {
-    CENTER: 'سنتر (حضور فعلي)',
+    CENTER: 'سنتر',
     ONLINE: 'أونلاين',
-    HYBRID: 'مدمج (سنتر + أونلاين)'
+    HYBRID: 'سنتر وأونلاين'
   }
 
   const WARNING_LABELS = {

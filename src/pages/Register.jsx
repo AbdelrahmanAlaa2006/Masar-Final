@@ -360,9 +360,9 @@ export default function Register() {
               <div className="register-input-wrapper">
                 <i className="fas fa-laptop-house"></i>
                 <select value={enrollmentType} onChange={e => setEnrollmentType(e.target.value)} required>
-                  <option value="CENTER">{lang === 'ar' ? 'حضور بالسنتر (CENTER)' : 'Center Presence (CENTER)'}</option>
-                  <option value="ONLINE">{lang === 'ar' ? 'دراسة أونلاين (ONLINE)' : 'Online Studying (ONLINE)'}</option>
-                  <option value="HYBRID">{lang === 'ar' ? 'مدمج سنتر + أونلاين (HYBRID)' : 'Hybrid Center & Online (HYBRID)'}</option>
+                  <option value="CENTER">{lang === 'ar' ? 'حضور بالسنتر' : 'Center Presence'}</option>
+                  <option value="ONLINE">{lang === 'ar' ? 'دراسة أونلاين' : 'Online Studying'}</option>
+                  <option value="HYBRID">{lang === 'ar' ? 'سنتر وأونلاين' : 'Center & Online'}</option>
                 </select>
               </div>
 

@@ -102,6 +102,7 @@ export default function AccountsPanel({ onBack, flash }) {
     secondaryGroupId: '',
     enrollment_type: 'CENTER',
     status: 'active',
+    subscription_discount: 0,
     parent_phone: '',
     registerMonthly: false,
     monthlyMonth: '',
@@ -187,7 +188,7 @@ export default function AccountsPanel({ onBack, flash }) {
   // Reset to the first page whenever the tab, grade, or sort filter changes.
   useEffect(() => { setPage(0) }, [statusTab, selectedGrade, selectedBranch, selectedGroup, sortBy])
 
-  // If the selected group doesn't belong to the newly selected grade or branch, reset it to 'all'
+  // If the selected group or print group doesn't belong to the newly selected grade or branch, reset it
   useEffect(() => {
     if (selectedGroup !== 'all') {
       const activeGroupObj = groups.find(g => g.id === selectedGroup)
@@ -199,7 +200,17 @@ export default function AccountsPanel({ onBack, flash }) {
         }
       }
     }
-  }, [selectedGrade, selectedBranch, groups, selectedGroup])
+    if (printGroupId) {
+      const activeGroupObj = groups.find(g => g.id === printGroupId)
+      if (activeGroupObj) {
+        const matchesGrade = selectedGrade === 'all' || activeGroupObj.grade === selectedGrade
+        const matchesBranch = selectedBranch === 'all' || activeGroupObj.branch_id === selectedBranch
+        if (!matchesGrade || !matchesBranch) {
+          setPrintGroupId('')
+        }
+      }
+    }
+  }, [selectedGrade, selectedBranch, groups, selectedGroup, printGroupId])
 
   // After a mutation, refresh the current page rows + tab counts quietly.
   const softRefresh = useCallback(() => {
@@ -369,6 +380,7 @@ export default function AccountsPanel({ onBack, flash }) {
         secondaryGroupId: (addStudentForm.hasSecondGroup && addStudentForm.secondaryGroupId) ? addStudentForm.secondaryGroupId : null,
         groupName: groupObj ? groupObj.name : '',
         status: addStudentForm.status,
+        subscriptionDiscount: addStudentForm.subscription_discount,
         tenantId: tenantId,
         registerMonthly: addStudentForm.registerMonthly,
         monthlyMonth: addStudentForm.monthlyMonth,
@@ -792,7 +804,9 @@ export default function AccountsPanel({ onBack, flash }) {
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
           <select value={printGroupId} onChange={(e) => setPrintGroupId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(99, 102, 241, 0.18)', background: 'var(--card-bg, #fff)', color: 'var(--text-color)', cursor: 'pointer' }}>
             <option value="">— اختر مجموعة —</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {groups
+              .filter(g => (selectedGrade === 'all' || g.grade === selectedGrade) && (selectedBranch === 'all' || g.branch_id === selectedBranch))
+              .map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
           <button className="cp-btn cp-btn-info" onClick={handlePrintGroup} disabled={!printGroupId || bulkPrinting} title="طباعة باركودات المجموعة كاملة" style={{ height: 40, opacity: (!printGroupId || bulkPrinting) ? 0.5 : 1 }}>
             <i className="fas fa-users"></i> طباعة المجموعة
@@ -916,8 +930,13 @@ export default function AccountsPanel({ onBack, flash }) {
                         {currentStatus.toUpperCase()}
                       </span>
                       <span style={{ marginInlineStart: '6px', fontSize: '0.8rem', color: '#64748b' }}>
-                        {student.enrollment_type || 'CENTER'}
+                        {student.enrollment_type === 'HYBRID' ? 'سنتر وأونلاين' : student.enrollment_type === 'ONLINE' ? 'أونلاين' : 'سنتر'}
                       </span>
+                      {Number(student.subscription_discount) > 0 && (
+                        <span style={{ marginInlineStart: '6px', fontSize: '0.78rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 'bold' }} title="خصم دائم للطالب من قيمة الاشتراك">
+                          🏷️ خصم دائم: {student.subscription_discount} ج.م
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -1077,9 +1096,9 @@ export default function AccountsPanel({ onBack, flash }) {
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>نوع التسجيل والاشتراك</label>
                 <select value={editStudent.enrollment_type || 'CENTER'} onChange={(e) => setEditStudent({ ...editStudent, enrollment_type: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="CENTER">CENTER (حضور سنتر)</option>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="ONLINE">ONLINE (منصة الكترونية)</option>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="HYBRID">HYBRID (مدمج سنتر + اونلاين)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="CENTER">سنتر (حضور سنتر)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="ONLINE">أونلاين (منصة إلكترونية)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="HYBRID">سنتر وأونلاين (حضور سنتر + منصة)</option>
                 </select>
               </div>
 
@@ -1169,30 +1188,25 @@ export default function AccountsPanel({ onBack, flash }) {
               )}
             </div>
 
-            {/* Warning Flags */}
-            <h4 style={{ fontSize: '0.98rem', fontWeight: 'bold', marginBottom: '12px', color: '#ef4444', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>العلامات والتحذيرات الذكية (Smart Flags)</h4>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '28px' }}>
-              {['debt', 'excessive_absences', 'blocked', 'scholarship', 'VIP'].map(flag => {
-                const currentFlags = editStudent.flags || []
-                const hasFlag = currentFlags.includes(flag)
-                const flagLabels = { debt: 'مديونية مالية', excessive_absences: 'غياب متكرر', blocked: 'حساب محظور', scholarship: 'طالب منحة', VIP: 'طالب VIP' }
-                return (
-                  <label key={flag} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={hasFlag} 
-                      onChange={(e) => {
-                        const nextFlags = e.target.checked
-                          ? [...currentFlags, flag]
-                          : currentFlags.filter(f => f !== flag)
-                        setEditStudent({ ...editStudent, flags: nextFlags })
-                      }}
-                      style={{ accentColor: '#ef4444' }}
-                    />
-                    <span>{flagLabels[flag]}</span>
-                  </label>
-                )
-              })}
+            {/* Permanent Discount Section */}
+            <div style={{ marginBottom: '24px', background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', color: '#10b981' }}>
+                <i className="fas fa-tag" style={{ marginInlineEnd: 6 }}></i>
+                الخصم الدائم للطالب (جنيه مصري)
+              </label>
+              <input 
+                type="number" 
+                min="0"
+                step="10"
+                value={editStudent.subscription_discount ?? 0}
+                onChange={(e) => setEditStudent({ ...editStudent, subscription_discount: e.target.value })}
+                placeholder="0"
+                className="cp-input"
+                style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 'bold', fontSize: '0.98rem' }}
+              />
+              <span style={{ display: 'block', fontSize: '0.78rem', color: '#94a3b8', marginTop: 6 }}>
+                مبلغ الخصم يُخصم تلقائياً وبشكل دائم من قيمة الاشتراك المعتادة للطالب عند تسديد أي شهر.
+              </span>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -1418,9 +1432,9 @@ export default function AccountsPanel({ onBack, flash }) {
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>نوع التسجيل والاشتراك</label>
                 <select value={addStudentForm.enrollment_type} onChange={(e) => setAddStudentForm({ ...addStudentForm, enrollment_type: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="CENTER">CENTER (حضور سنتر)</option>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="ONLINE">ONLINE (منصة الكترونية)</option>
-                  <option style={{ background: '#0f172a', color: '#fff' }} value="HYBRID">HYBRID (مدمج سنتر + اونلاين)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="CENTER">سنتر (حضور سنتر)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="ONLINE">أونلاين (منصة إلكترونية)</option>
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="HYBRID">سنتر وأونلاين (حضور سنتر + منصة)</option>
                 </select>
               </div>
 
@@ -1432,6 +1446,27 @@ export default function AccountsPanel({ onBack, flash }) {
                   <option style={{ background: '#0f172a', color: '#fff' }} value="suspended">موقوف</option>
                 </select>
               </div>
+            </div>
+
+            {/* Permanent Discount Section */}
+            <div style={{ marginBottom: '24px', background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 'bold', marginBottom: '6px', color: '#10b981' }}>
+                <i className="fas fa-tag" style={{ marginInlineEnd: 6 }}></i>
+                الخصم الدائم للطالب (اختياري - جنيه مصري)
+              </label>
+              <input 
+                type="number" 
+                min="0"
+                step="10"
+                value={addStudentForm.subscription_discount ?? 0}
+                onChange={(e) => setAddStudentForm({ ...addStudentForm, subscription_discount: e.target.value })}
+                placeholder="0"
+                className="cp-input"
+                style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 'bold', fontSize: '0.98rem' }}
+              />
+              <span style={{ display: 'block', fontSize: '0.78rem', color: '#94a3b8', marginTop: 6 }}>
+                يُخصم هذا المبلغ تلقائياً وبشكل دائم من مصاريف الاشتراكات الشهرية لهذا الطالب عند تحصيل الدفعات.
+              </span>
             </div>
 
 
