@@ -109,6 +109,14 @@ export default function AttendancePanel({ onBack, flash }) {
   const [cashierSuccess, setCashierSuccess] = useState('')
   const [scannerFocused, setScannerFocused] = useState(false)
 
+  // Physical-key buffer for the barcode scanner.
+  // USB barcode scanners are keyboard wedges: they send physical keystrokes.
+  // When the OS keyboard layout is Arabic the *characters* differ, but the
+  // KeyboardEvent.code (physical key position) is always the same.  We
+  // capture codes in a ref buffer and translate them to ASCII ourselves,
+  // making the scanner layout-independent.
+  const scannerKeyBuffer = useRef('')
+
   // Tabs and History States
   const [activeSubTab, setActiveSubTab] = useState('record') // 'record' | 'history'
   const [historyRecords, setHistoryRecords] = useState([])
@@ -301,12 +309,11 @@ export default function AttendancePanel({ onBack, flash }) {
           })
         }
 
-        const nextRecords = {}
-        const allCurrentStudents = [...students, ...extraStudents]
-        allCurrentStudents.forEach(s => {
-          nextRecords[s.id] = mapping[s.id] || 'absent'
-        })
-        setAttendanceRecords(nextRecords)
+        // Only populate attendanceRecords with students who ACTUALLY have a
+        // saved DB record. Students not in the mapping have never been saved
+        // for this session — leaving them out of attendanceRecords lets the
+        // save button distinguish "never saved" from "explicitly absent".
+        setAttendanceRecords(mapping)
       } catch (err) {
         console.error(err)
       }
@@ -440,9 +447,14 @@ export default function AttendancePanel({ onBack, flash }) {
     }
     if (filteredStudentsList.length === 0) return
 
-    const changedStudents = filteredStudentsList.filter(s => (attendanceRecords[s.id] || 'absent') !== status)
+    // Include students that either have a different status OR have no record
+    // yet (so clicking "absent all" actually saves them for the first time).
+    const changedStudents = filteredStudentsList.filter(s => {
+      const hasRecord = Object.prototype.hasOwnProperty.call(attendanceRecords, s.id)
+      return !hasRecord || attendanceRecords[s.id] !== status
+    })
     if (changedStudents.length === 0) {
-      flash('No changes detected.', 'info')
+      flash('لا يوجد تغيير - جميع الطلاب محفوظ لهم نفس الحالة بالفعل', 'info')
       return
     }
 
@@ -496,9 +508,13 @@ export default function AttendancePanel({ onBack, flash }) {
       return
     }
 
-    const oldStatus = attendanceRecords[studentId] || 'absent'
-    if (oldStatus === status) {
-      flash('No changes detected.', 'info')
+    // Only skip if the student already has an explicitly saved record with the
+    // same status. When there is NO record yet (the student has never been
+    // marked) we must allow saving — even for 'absent' — so the record is
+    // persisted and the parent notification goes out.
+    const hasExistingRecord = Object.prototype.hasOwnProperty.call(attendanceRecords, studentId)
+    if (hasExistingRecord && attendanceRecords[studentId] === status) {
+      flash('لا يوجد تغيير - حالة الحضور محفوظة بالفعل', 'info')
       return
     }
 
@@ -618,7 +634,13 @@ export default function AttendancePanel({ onBack, flash }) {
     }
   }
 
-  // Save current attendance sheet
+  // Save current attendance sheet — marks all UN-SAVED students as absent.
+  // Students who were already individually saved (via barcode scan or manual
+  // click) already have their attendance_record + notification in the DB, so
+  // we skip them here to avoid duplicate WhatsApp messages.  The backend RPC
+  // (save_attendance_batch_v2) does an UPSERT, and the notification queue
+  // checks for existing notifications per attendance_record_id, so even if a
+  // student somehow slips through, the backend won't duplicate.
   const handleSaveAttendance = async () => {
     if (!selectedSessionId || selectedSessionId === 'new') {
       flash('يرجى إنشاء حصة أو اختيار حصة مسجلة لحفظ التحضير', 'warning')
@@ -628,12 +650,24 @@ export default function AttendancePanel({ onBack, flash }) {
     const currentSession = sessions.find(s => s.id === selectedSessionId)
     const sessionTitle = currentSession ? currentSession.title : 'حصة دراسية'
 
-    const payload = filteredStudentsList.map(s => ({
+    // Only include students that have NOT been individually saved yet.
+    // Those already in attendanceRecords were saved by auto-check-in or
+    // manual per-student clicks and already have their notifications queued.
+    const unsavedStudents = filteredStudentsList.filter(
+      s => !Object.prototype.hasOwnProperty.call(attendanceRecords, s.id)
+    )
+
+    if (unsavedStudents.length === 0) {
+      flash('جميع الطلاب محفوظ لهم حالة حضور بالفعل — لا يوجد طلاب بدون تسجيل', 'info')
+      return
+    }
+
+    const payload = unsavedStudents.map(s => ({
       student_id: s.id,
       student_name: s.name,
       parent_phone: s.parent_phone,
       session_id: selectedSessionId,
-      status: attendanceRecords[s.id] || 'absent',
+      status: 'absent',
       notes: '',
       created_by: currentUser?.id
     }))
@@ -641,7 +675,13 @@ export default function AttendancePanel({ onBack, flash }) {
     setSaving(true)
     try {
       await saveAttendanceBatch(payload, sessionTitle)
-      flash('تم حفظ الحضور بنجاح وجاري إرسال إشعارات أولياء الأمور عبر الـ queue.', 'success')
+
+      // Update local state so the UI reflects the newly saved absent records
+      const nextRecords = { ...attendanceRecords }
+      unsavedStudents.forEach(s => { nextRecords[s.id] = 'absent' })
+      setAttendanceRecords(nextRecords)
+
+      flash(`تم حفظ التحضير بنجاح — ${unsavedStudents.length} طالب تم تسجيلهم غائبين وجاري إرسال الإشعارات`, 'success')
     } catch (err) {
       console.error(err)
       flash('حدث خطأ أثناء حفظ التحضير: ' + err.message, 'error')
@@ -1140,28 +1180,73 @@ export default function AttendancePanel({ onBack, flash }) {
                 value={scannerText}
                 onChange={(e) => setScannerText(e.target.value)}
                 onKeyDown={(e) => {
-                  // Scanners terminate with Enter (some models send Tab).
-                  // Keyboard events are strictly ordered, so by the time the
-                  // terminator's keydown fires every character of the barcode
-                  // is already in the DOM value — read it synchronously and
-                  // clear the field IMMEDIATELY. The old 50ms-delayed read let
-                  // a second fast scan append to the first one's value, which
-                  // guaranteed a "student not found" on repeated scans.
+                  // ── Layout-independent physical-key capture ──
+                  // USB barcode scanners are keyboard-wedge devices: they fire
+                  // the same physical keystrokes regardless of the OS keyboard
+                  // layout.  When the layout is Arabic the *characters* in the
+                  // input differ (ؤب- vs BC-), but `e.code` always reflects
+                  // the physical key (KeyB, KeyC, Minus …).  We translate
+                  // e.code → ASCII ourselves so the scanner works on ANY
+                  // keyboard layout without needing the old
+                  // mapArabicKeysToEnglish reverse-mapping.
+                  const code = e.code
+
+                  // Terminator: Enter or Tab → submit whatever is buffered.
                   if (e.key === 'Enter' || e.key === 'Tab') {
                     e.preventDefault()
-                    const inputEl = e.target
-                    const lookupValue = inputEl.value
-                    inputEl.value = ''
+                    // Prefer the physical-key buffer; fall back to the DOM
+                    // value (for manual typing or pasting).
+                    const physicalToken = scannerKeyBuffer.current
+                    const domToken = e.target.value
+                    const lookupValue = physicalToken || domToken
+                    // Reset both buffers immediately.
+                    scannerKeyBuffer.current = ''
+                    e.target.value = ''
                     setScannerText('')
                     if (!lookupValue.trim()) return
                     // Serialize lookups so overlapping scans process in order.
                     scanChainRef.current = scanChainRef.current
                       .then(() => handleQrScanned(lookupValue, true))
                       .catch(() => {})
+                    return
                   }
+
+                  // Map physical key code → ASCII character.
+                  let ch = null
+                  if (code.startsWith('Key')) {
+                    // KeyA-KeyZ → 'a'-'z' (or 'A'-'Z' with shift)
+                    ch = e.shiftKey ? code.charAt(3) : code.charAt(3).toLowerCase()
+                  } else if (code.startsWith('Digit')) {
+                    // Digit0-Digit9 → '0'-'9'
+                    ch = code.charAt(5)
+                  } else if (code === 'Minus') {
+                    ch = e.shiftKey ? '_' : '-'
+                  } else if (code === 'Period') {
+                    ch = e.shiftKey ? '>' : '.'
+                  } else if (code === 'Comma') {
+                    ch = e.shiftKey ? '<' : ','
+                  } else if (code === 'Slash') {
+                    ch = e.shiftKey ? '?' : '/'
+                  } else if (code === 'Semicolon') {
+                    ch = e.shiftKey ? ':' : ';'
+                  } else if (code === 'Equal') {
+                    ch = e.shiftKey ? '+' : '='
+                  } else if (code === 'Space') {
+                    ch = ' '
+                  }
+
+                  if (ch !== null) {
+                    scannerKeyBuffer.current += ch
+                  }
+                  // Non-printable keys (Shift, Ctrl, CapsLock, etc.) are
+                  // silently ignored — they don't append to the buffer.
                 }}
                 onFocus={() => setScannerFocused(true)}
-                onBlur={() => setScannerFocused(false)}
+                onBlur={() => {
+                  setScannerFocused(false)
+                  // Clear the physical buffer on blur to prevent stale data
+                  scannerKeyBuffer.current = ''
+                }}
                 placeholder="انقر هنا لبدء المسح بالباركود مباشرة..."
                 className="cp-input"
                 style={{
@@ -1201,6 +1286,42 @@ export default function AttendancePanel({ onBack, flash }) {
                 <button onClick={() => setAllStatus('present')} className="cp-btn" style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}>حاضر للكل</button>
                 <button onClick={() => setAllStatus('absent')} className="cp-btn" style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>غائب للكل</button>
                 <button onClick={() => setAllStatus('late')} className="cp-btn" style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)' }}>متأخر للكل</button>
+
+                {/* Save button — marks all unsaved students as absent */}
+                {selectedSessionId && selectedSessionId !== 'new' && (() => {
+                  const unsavedCount = filteredStudentsList.filter(
+                    s => !Object.prototype.hasOwnProperty.call(attendanceRecords, s.id)
+                  ).length
+                  return (
+                    <button
+                      onClick={handleSaveAttendance}
+                      disabled={saving || unsavedCount === 0}
+                      className="cp-btn"
+                      style={{
+                        padding: '6px 16px',
+                        fontSize: '0.82rem',
+                        fontWeight: 'bold',
+                        background: unsavedCount > 0 ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : 'rgba(100,100,100,0.15)',
+                        color: unsavedCount > 0 ? '#fff' : 'var(--cp-text-muted)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: unsavedCount > 0 ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none',
+                        cursor: unsavedCount > 0 ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      {saving ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-save" />}
+                      {saving
+                        ? 'جاري الحفظ...'
+                        : unsavedCount > 0
+                          ? `حفظ التحضير (${unsavedCount} غائب)`
+                          : 'تم حفظ الكل ✓'
+                      }
+                    </button>
+                  )
+                })()}
               </div>
 
               {selectedStudentIds.length > 0 && (
