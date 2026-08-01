@@ -138,9 +138,15 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const hasDebt = student.outstanding_balance > 0
 
   // Monthly subscription status ("should he pay this month, or is he safe?").
+  const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+  const currentMonthName = ARABIC_MONTHS[new Date().getMonth()]
   const paidThisMonth = typeof student.paid_this_month === 'boolean'
     ? student.paid_this_month
     : (() => {
+        // Check if the last payment description mentions the current month
+        const desc = student.last_payment?.description || ''
+        if (desc.includes(currentMonthName)) return true
+        // Fallback: payment created_at in this calendar month
         const iso = student.last_payment?.created_at
         if (!iso) return false
         const p = new Date(iso), now = new Date()

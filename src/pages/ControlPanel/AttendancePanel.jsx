@@ -718,8 +718,14 @@ export default function AttendancePanel({ onBack, flash }) {
 
       // Compute the REAL monthly amount due: paid this calendar month -> 0,
       // otherwise max(0, grade fee - this student's exception discount).
+      const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
       const lastPayIso = studentData.last_payment?.created_at
+      const lastPayDesc = studentData.last_payment?.description || ''
+      const currentMonthName = ARABIC_MONTHS[new Date().getMonth()]
       const paidThisMonth = (() => {
+        // Check 1: the payment description explicitly mentions the current month
+        if (lastPayDesc.includes(currentMonthName)) return true
+        // Check 2: fallback — payment was created in the same calendar month
         if (!lastPayIso) return false
         const d = new Date(lastPayIso), now = new Date()
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()

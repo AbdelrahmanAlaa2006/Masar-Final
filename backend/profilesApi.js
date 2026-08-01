@@ -335,7 +335,8 @@ export async function createStudentByAdmin({
   registerMonthly = false,
   monthlyMonth = '',
   registerBooklet = false,
-  adminId = null
+  adminId = null,
+  subscriptionDiscount = 0
 }) {
   if (!tenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
   if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
@@ -400,7 +401,7 @@ export async function createStudentByAdmin({
       branch_id: branchId || null,
       group: groupName || null,
       academic_year_id: activeYearId,
-      subscription_discount: Math.max(0, parseFloat(form.subscription_discount || form.subscriptionDiscount) || 0),
+      subscription_discount: Math.max(0, parseFloat(subscriptionDiscount) || 0),
       is_approved: status === 'active',
       is_active: status === 'active',
       status: status
