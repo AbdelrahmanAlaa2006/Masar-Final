@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getCenterStudentAttendance } from '@backend/reportsApi'
 import { getProfile } from '@backend/profilesApi'
 import PrintReportHeader from '../components/PrintReportHeader'
@@ -13,6 +13,7 @@ const STATUS_LABELS = {
 }
 
 export default function AttendanceReport() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [studentName, setStudentName] = useState('الطالب')
   const [studentId, setStudentId] = useState('')
@@ -189,10 +190,24 @@ export default function AttendanceReport() {
     )
   }
 
+  const handleBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/report')
+    }
+  }
+
   return (
     <main className="cp-page er-print-container">
       <div className="cp-container">
         
+        {/* Back button */}
+        <button className="cp-crumbs-back" onClick={handleBack} style={{ marginBottom: '1.5rem' }}>
+          <i className="fas fa-arrow-right"></i>
+          <span>رجوع</span>
+        </button>
+
         {/* Header */}
         <div className="er-header-wrap">
           <div className="er-title-area">
@@ -200,6 +215,9 @@ export default function AttendanceReport() {
             <p>متابعة وتتبع سجل حضور وغياب وتأخيرات الطالب بالسنتر</p>
           </div>
           <div className="er-actions">
+            <button onClick={handleBack} className="cp-btn cp-btn-ghost" style={{ padding: '8px 16px', borderRadius: 12 }}>
+              <i className="fas fa-arrow-right" style={{ marginLeft: 6 }}></i> رجوع
+            </button>
             <button onClick={exportCsv} className="cp-btn cp-btn-ghost" style={{ padding: '8px 16px', borderRadius: 12 }}>
               <i className="fas fa-file-csv" style={{ marginLeft: 6 }}></i> تصدير CSV
             </button>

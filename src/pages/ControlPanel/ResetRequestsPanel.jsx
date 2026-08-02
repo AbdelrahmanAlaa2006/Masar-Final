@@ -50,9 +50,12 @@ export default function ResetRequestsPanel({ onBack, flash }) {
         if (phones.length > 0) {
           const matched = await listStudentsByPhones(phones)
           if (!cancelled) {
-            const clean = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
+            const getKey = (val) => {
+              const str = String(val || '').trim().toLowerCase()
+              return /^\d+$/.test(str) ? str.replace(/^0+/, '') : str
+            }
             const map = {}
-            for (const s of matched) map[clean(s.phone)] = s
+            for (const s of matched) map[getKey(s.phone)] = s
             setStudentsByPhone(map)
           }
         }
@@ -233,10 +236,12 @@ export default function ResetRequestsPanel({ onBack, flash }) {
           {filtered.map((req) => {
             const isBusy = busyId === req.id
             
-            // Find student matching phone (ignoring format variances)
-            const getCleanPhone = (num) => String(num || '').replace(/\D/g, '').replace(/^0+/, '')
-            const reqPhoneClean = getCleanPhone(req.phone)
-            const studentMatch = studentsByPhone[reqPhoneClean]
+            // Find student matching phone or code (ignoring format variances)
+            const getKey = (val) => {
+              const str = String(val || '').trim().toLowerCase()
+              return /^\d+$/.test(str) ? str.replace(/^0+/, '') : str
+            }
+            const studentMatch = studentsByPhone[getKey(req.phone)]
             const currentPassword = tempPasswords[req.id] || studentMatch?.password || 'غير مسجلة (تمت إضافته يدويًا)'
             const isManualNoPassword = !studentMatch?.password && !tempPasswords[req.id]
 

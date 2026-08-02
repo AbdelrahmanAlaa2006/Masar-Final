@@ -323,12 +323,20 @@ export default function ExamsReport() {
   const wrongCount = (exam) => exam.questions.filter((q) => q.studentAnswer !== q.correct).length
   const letters = ['أ', 'ب', 'ج', 'د']
 
+  const handleBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/report')
+    }
+  }
+
   return (
     <main className="cp-page">
       <div className="cp-container">
 
         {/* Back button */}
-        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
+        <button className="cp-crumbs-back" onClick={handleBack} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
           <span>رجوع</span>
         </button>

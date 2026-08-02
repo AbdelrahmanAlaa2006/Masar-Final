@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listCenterGradesGroupCombined } from '@backend/reportsApi'
 import { listBranches } from '@backend/branchesApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
 import './ExamsGroupReport.css'
+
+import { useTenant } from '../contexts/TenantContext'
+import { supabase } from '@backend/supabase'
 
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
@@ -24,10 +28,13 @@ const fmtDate = (d) => {
 }
 
 export default function GradesGroupReport() {
+  const navigate = useNavigate()
+  const { isGradeEnabled, gradesList } = useTenant()
   const [currentGrade, setCurrentGrade] = useState('')
   const [currentGroup, setCurrentGroup] = useState('')
   const [students, setStudents] = useState([])
   const [gradesData, setGradesData] = useState([])
+  const [gradeStudentCounts, setGradeStudentCounts] = useState({})
 
   const [loading, setLoading] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
@@ -42,6 +49,34 @@ export default function GradesGroupReport() {
   const [dateTo, setDateTo] = useState('')
   const [branches, setBranches] = useState([])
   const [branchFilter, setBranchFilter] = useState('all')
+
+  // Pre-fetch student counts per grade for the tenant
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('grade')
+          .eq('role', 'student')
+        if (error || cancelled) return
+        const counts = {}
+        (data || []).forEach(r => {
+          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
+        })
+        setGradeStudentCounts(counts)
+      } catch (err) {
+        console.error('Failed to count students per grade:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // Grade chips filtered by tenant enabled grades
+  const availableGrades = useMemo(() => {
+    const tenantGradeIds = gradesList?.length > 0 ? gradesList.map(g => g.id) : null
+    return GRADE_ORDER.filter(g => isGradeEnabled(g) || (tenantGradeIds && tenantGradeIds.includes(g)))
+  }, [isGradeEnabled, gradesList])
 
   // Load branches
   useEffect(() => {
@@ -265,6 +300,12 @@ export default function GradesGroupReport() {
     <main className="cp-page">
       <div className="cp-container">
         
+        {/* Back button */}
+        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
+          <i className="fas fa-arrow-right"></i>
+          <span>رجوع</span>
+        </button>
+
         <div className="cp-page-header">
           <div className="cp-page-header-text">
             <h1>التقرير الجماعي لدرجات السنتر</h1>
@@ -288,7 +329,7 @@ export default function GradesGroupReport() {
             <i className="fas fa-graduation-cap" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> الصف الدراسي
           </h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {GRADE_ORDER.map((grade) => (
+            {availableGrades.map((grade) => (
               <button
                 key={grade}
                 className={`cp-btn ${currentGrade === grade ? 'cp-btn-success' : 'cp-btn-ghost'}`}
@@ -298,7 +339,7 @@ export default function GradesGroupReport() {
                 <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
                 {GRADE_LABEL[grade]}
                 <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
-                  {students.filter(s => s.grade === grade).length}
+                  {currentGrade === grade ? students.filter(s => s.grade === grade).length : (gradeStudentCounts[grade] || 0)}
                 </span>
               </button>
             ))}

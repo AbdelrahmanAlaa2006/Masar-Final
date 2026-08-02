@@ -31,30 +31,30 @@ export default function Report() {
     sessionStorage.setItem('masar-report-source', src)
   }
 
-  /* Real students from Supabase (admin only — RLS lets admins read all profiles).
-     We shape them as { name, id, prep, group, phone, avatar_url } to stay
-     compatible with the existing UI that renders prep/group meta. There is
-     no "group" concept in the MVP schema, so we leave it blank. */
+  /* Real students from Supabase (admin only — RLS lets admins read all profiles). */
   const [allStudents, setAllStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [studentsError, setStudentsError] = useState('')
 
-  // Debounced server-side search — only matching students are fetched, never
-  // the whole roster. Empty input shows a small default suggestion list.
+  const [modalStudents, setModalStudents] = useState([])
+  const [modalLoading, setModalLoading] = useState(false)
+
+  // Debounced server-side search for main search bar — fetches up to 50 matches across database
   useEffect(() => {
-    if (isStudent) return           // students don't need the roster
+    if (isStudent) return
     let cancelled = false
     const timer = setTimeout(async () => {
       try {
         setStudentsLoading(true)
         setStudentsError('')
-        const rows = await searchStudents(studentInput, studentInput.trim() ? 12 : 8)
+        const rows = await searchStudents(studentInput, studentInput.trim() ? 50 : 30)
         if (cancelled) return
         setAllStudents(rows.map((r) => ({
           id:         r.id,
           name:       r.name || '—',
           phone:      r.phone || '',
           prep:       GRADE_LABEL[r.grade] || '—',
+          grade:      r.grade || '',
           group:      r.group || '',
           avatar_url: r.avatar_url,
         })))
@@ -63,9 +63,36 @@ export default function Report() {
       } finally {
         if (!cancelled) setStudentsLoading(false)
       }
-    }, 300)
+    }, 250)
     return () => { cancelled = true; clearTimeout(timer) }
   }, [isStudent, studentInput])
+
+  // Debounced server-side search for Modal picker — queries entire DB up to 50 results
+  useEffect(() => {
+    if (!pickerOpen) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        setModalLoading(true)
+        const rows = await searchStudents(pickerQuery, pickerQuery.trim() ? 50 : 30)
+        if (cancelled) return
+        setModalStudents(rows.map((r) => ({
+          id:         r.id,
+          name:       r.name || '—',
+          phone:      r.phone || '',
+          prep:       GRADE_LABEL[r.grade] || '—',
+          grade:      r.grade || '',
+          group:      r.group || '',
+          avatar_url: r.avatar_url,
+        })))
+      } catch (e) {
+        console.error(e)
+      } finally {
+        if (!cancelled) setModalLoading(false)
+      }
+    }, 250)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [pickerOpen, pickerQuery])
 
   /* close on outside click */
   useEffect(() => {
@@ -80,15 +107,15 @@ export default function Report() {
 
   const filtered = useMemo(() => {
     const q = studentInput.trim().toLowerCase()
-    if (!q) return allStudents.slice(0, 8)
+    if (!q) return allStudents.slice(0, 30)
     return allStudents
       .filter((s) =>
-        [s.name, s.id, s.group, s.prep]
+        [s.name, s.id, s.group, s.prep, s.phone]
           .join(' ')
           .toLowerCase()
           .includes(q)
       )
-      .slice(0, 12)
+      .slice(0, 50)
   }, [studentInput, allStudents])
 
   const onChange = (value) => {
@@ -386,19 +413,26 @@ export default function Report() {
       /* Open the picker modal instead of a browser alert */
       setPickerType(type)
       setPickerQuery('')
+      setModalGrade('')
       setPickerOpen(true)
       return
     }
     navigateToReport(type, student)
   }
 
+  const [modalGrade, setModalGrade] = useState('')
+
   const pickerResults = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase()
-    if (!q) return allStudents
-    return allStudents.filter((s) =>
-      [s.name, s.id, s.group, s.prep].join(' ').toLowerCase().includes(q)
+    let pool = modalStudents.length > 0 ? modalStudents : allStudents
+    if (modalGrade) {
+      pool = pool.filter((s) => s.grade === modalGrade)
+    }
+    if (!q) return pool
+    return pool.filter((s) =>
+      [s.name, s.id, s.group, s.prep, s.phone].join(' ').toLowerCase().includes(q)
     )
-  }, [pickerQuery, allStudents])
+  }, [pickerQuery, modalGrade, modalStudents, allStudents])
 
   const pickFromModal = (s) => {
     setSelectedStudent(s)
@@ -424,6 +458,12 @@ export default function Report() {
   return (
     <main className="cp-page">
       <div className="cp-container">
+
+        {/* Back button */}
+        <button className="cp-crumbs-back" onClick={() => navigate('/control-panel')} style={{ marginBottom: '1.5rem' }}>
+          <i className="fas fa-arrow-right"></i>
+          <span>رجوع إلى لوحة التحكم</span>
+        </button>
 
         <div className="cp-page-header">
           <div className="cp-page-header-text">
@@ -452,7 +492,7 @@ export default function Report() {
             <i className="fas fa-search"></i>
             <input
               type="text"
-              placeholder="ابحث بالاسم، رقم الطالب، المجموعة، أو المرحلة..."
+              placeholder="ابحث بالاسم، رقم الهاتف، أو كود الطالب..."
               value={studentInput}
               onChange={(e) => onChange(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
@@ -478,12 +518,13 @@ export default function Report() {
               </div>
               <div className="cp-target-banner-body">
                 <div className="cp-target-banner-label">
-                  <i className="fas fa-circle-check"></i> الطالب المحدد
+                  <i className="fas fa-circle-check"></i> الطالب المحدد للتقارير الفردية
                 </div>
                 <div className="cp-target-banner-name">{selectedStudent.name}</div>
                 <div className="cp-target-banner-meta">
                   <span className="cp-id-pill"><i className="fas fa-id-badge"></i> {selectedStudent.id}</span>
                   <span><i className="fas fa-graduation-cap"></i> {selectedStudent.prep}</span>
+                  {selectedStudent.phone && <span><i className="fas fa-phone"></i> {selectedStudent.phone}</span>}
                   {selectedStudent.group && <span><i className="fas fa-users"></i> {selectedStudent.group}</span>}
                 </div>
               </div>
@@ -528,6 +569,7 @@ export default function Report() {
                         <div className="cp-item-meta" style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: '0.78rem', color: 'var(--cp-text-muted)' }}>
                           <span className="cp-id-pill"><i className="fas fa-id-badge"></i> {s.id}</span>
                           <span><i className="fas fa-graduation-cap"></i> {s.prep}</span>
+                          {s.phone && <span><i className="fas fa-phone"></i> {s.phone}</span>}
                           {s.group && <span><i className="fas fa-users"></i> {s.group}</span>}
                         </div>
                       </div>
@@ -906,18 +948,25 @@ export default function Report() {
               <input
                 type="text"
                 autoFocus
-                placeholder="ابحث بالاسم أو رقم الطالب..."
+                placeholder="ابحث بالاسم، رقم الهاتف، أو كود الطالب..."
                 value={pickerQuery}
                 onChange={(e) => setPickerQuery(e.target.value)}
                 style={{ background: 'var(--cp-bg)', border: '1px solid var(--cp-input-border)', color: 'var(--cp-text-main)' }}
               />
+              {modalLoading && (
+                <i className="fas fa-spinner fa-spin" style={{ position: 'absolute', left: 16, color: '#818cf8' }}></i>
+              )}
             </div>
 
-            <div className="rp-modal-meta" style={{ color: 'var(--cp-text-muted)' }}>
+            <div className="rp-modal-meta" style={{ color: 'var(--cp-text-muted)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.84rem' }}>
               <i className="fas fa-list-ul" style={{ color: '#5bc2e7' }}></i>
               <span>
-                {pickerResults.length}{' '}
-                {pickerResults.length === 1 ? 'طالب' : 'طالب'}
+                {modalLoading
+                  ? 'جارٍ البحث في قاعدة البيانات...'
+                  : pickerQuery
+                    ? `نتائج البحث: تم العثور على ${pickerResults.length} طالب`
+                    : `عرض أول ${pickerResults.length} طالب من القائمة (ابحث بالاسم أو الرقم للوصول لأي طالب)`
+                }
               </span>
             </div>
 

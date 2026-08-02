@@ -7,6 +7,7 @@ import { supabase } from '@backend/supabase'
 import { getYoutubeDurations } from '../services/youtubeMeta'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
+import { useTenant } from '../contexts/TenantContext'
 
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
@@ -16,11 +17,13 @@ const initials = (name = '') => {
 
 export default function VideosGroupReport() {
   const navigate = useNavigate()
+  const { isGradeEnabled, gradesList } = useTenant()
 
   const [students, setStudents] = useState([])   // real profiles
   const [videos, setVideos]     = useState([])   // real videos
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [gradeStudentCounts, setGradeStudentCounts] = useState({})
 
   const [currentGrade, setCurrentGrade] = useState('') // DB enum value
   const [currentGroup, setCurrentGroup] = useState('') // class group label, '' = all
@@ -30,6 +33,28 @@ export default function VideosGroupReport() {
   const [allStudentsData, setAllStudentsData] = useState([])
   const [displayedStudents, setDisplayedStudents] = useState([])
   const [reportLoading, setReportLoading] = useState(false)
+
+  // Pre-fetch student counts per grade for the tenant
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('grade')
+          .eq('role', 'student')
+        if (error || cancelled) return
+        const counts = {}
+        (data || []).forEach(r => {
+          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
+        })
+        setGradeStudentCounts(counts)
+      } catch (err) {
+        console.error('Failed to count students per grade:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   // ── Initial load: real students + real videos ───────────────
   useEffect(() => {
@@ -49,12 +74,13 @@ export default function VideosGroupReport() {
     return () => { cancelled = true }
   }, [])
 
-  // Grade chips come from grades that have videos (you can only report on a
-  // grade that has content). Avoids scanning the whole student roster.
+  // Grade chips filtered by tenant enabled grades
   const availableGrades = useMemo(() => {
+    const tenantGradeIds = gradesList?.length > 0 ? gradesList.map(g => g.id) : null
+    const baseList = GRADE_ORDER.filter(g => isGradeEnabled(g) || (tenantGradeIds && tenantGradeIds.includes(g)))
     const set = new Set(videos.map(v => v.grade).filter(Boolean))
-    return GRADE_ORDER.filter(g => set.has(g))
-  }, [videos])
+    return baseList.filter(g => set.size === 0 || set.has(g))
+  }, [videos, isGradeEnabled, gradesList])
 
   // Load this grade's students only (lazy, scoped) when a grade is selected.
   useEffect(() => {
@@ -292,7 +318,7 @@ export default function VideosGroupReport() {
             <div className="cp-group-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {availableGrades.map((grade) => {
                 const active = currentGrade === grade
-                const count = students.filter(s => s.grade === grade).length
+                const count = active ? students.filter(s => s.grade === grade).length : (gradeStudentCounts[grade] || 0)
                 return (
                   <button
                     key={grade}

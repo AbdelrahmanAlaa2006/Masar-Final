@@ -29,6 +29,152 @@ body {
   --cp-chevron-border: rgba(0, 0, 0, 0.05);
 }
 
+/* Modern Browser-Style Internal Tab Bar (Premium SaaS Workspace Aesthetic) */
+.cp-tab-bar {
+  margin-bottom: 20px;
+  background: var(--cp-card-bg);
+  border: 1px solid var(--cp-card-border);
+  border-radius: 12px;
+  padding: 5px 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  position: relative;
+  z-index: 10;
+  direction: rtl;
+}
+
+.cp-tab-scroll {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+  padding: 2px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cp-tab-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.cp-tab-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cp-tab-scroll::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 999px;
+}
+
+.cp-tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--cp-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cp-tab-item:hover {
+  background: var(--cp-hover-bg);
+  color: var(--cp-text-main);
+}
+
+.cp-tab-item.active {
+  background: var(--cp-card-bg);
+  color: var(--primary, #6366f1);
+  border-color: rgba(99, 102, 241, 0.25);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(99, 102, 241, 0.08);
+}
+
+body.dark .cp-tab-item.active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #818cf8;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.cp-tab-icon {
+  font-size: 0.88rem;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.cp-tab-item:hover .cp-tab-icon {
+  opacity: 0.9;
+}
+
+.cp-tab-item.active .cp-tab-icon {
+  opacity: 1;
+  color: var(--primary, #6366f1);
+}
+
+body.dark .cp-tab-item.active .cp-tab-icon {
+  color: #818cf8;
+}
+
+.cp-tab-title {
+  display: inline-block;
+  line-height: 1;
+}
+
+.cp-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--cp-text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.15s ease;
+  margin-inline-start: 4px;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cp-tab-item:hover .cp-tab-close {
+  opacity: 0.85;
+}
+
+.cp-tab-close:hover {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444 !important;
+  opacity: 1 !important;
+  transform: scale(1.05);
+}
+
+.cp-tab-close:active {
+  transform: scale(0.95);
+}
+
+.cp-tab-pane {
+  animation: cpTabFadeIn 0.15s ease-out;
+}
+
+@keyframes cpTabFadeIn {
+  from { opacity: 0.92; }
+  to { opacity: 1; }
+}
+
 .cp-page {
   background: var(--cp-bg);
   background-image: var(--cp-bg-image);

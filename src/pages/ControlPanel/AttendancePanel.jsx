@@ -229,7 +229,6 @@ export default function AttendancePanel({ onBack, flash }) {
   // 2. Fetch Sessions and Students when grade or branch changes
   useEffect(() => {
     let active = true
-    if (!selectedAcademicYearId) return
     setLoading(true)
     setSearchQuery('') // Reset active search query when grade/branch changes
     ;(async () => {
@@ -1045,6 +1044,7 @@ export default function AttendancePanel({ onBack, flash }) {
         <div>
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>الفرع</label>
           <select value={selectedBranchId} onChange={(e) => setSelectedBranchId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
+            <option value="">جميع الفروع / الفرع الرئيسي</option>
             {branches.map(b => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
@@ -1054,6 +1054,7 @@ export default function AttendancePanel({ onBack, flash }) {
         <div>
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>العام الدراسي</label>
           <select value={selectedAcademicYearId} onChange={(e) => setSelectedAcademicYearId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
+            <option value="">جميع الأعوام / العام الحالي</option>
             {academicYears.map(y => (
               <option key={y.id} value={y.id}>{y.name} {y.is_active ? '(الحالي)' : ''}</option>
             ))}
@@ -1073,9 +1074,12 @@ export default function AttendancePanel({ onBack, flash }) {
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>المجموعة</label>
           <select value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
             <option value="">جميع المجموعات</option>
-            {groups.filter(g => g.grade === grade && (!selectedBranchId || g.branch_id === selectedBranchId)).map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
+            {groups
+              .filter(g => !grade || !g.grade || g.grade === grade)
+              .map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))
+            }
           </select>
         </div>
 

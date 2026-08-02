@@ -492,13 +492,20 @@ export default function Login() {
 
   const handleForgotSubmit = async e => {
     e.preventDefault(); setForgotError('')
-    if (forgotPhone.trim().length < 8) { setForgotError(lang === 'ar' ? 'رقم الهاتف غير صحيح' : 'Invalid phone number'); return }
+    const handleTrim = forgotPhone.trim()
+    const isValidHandle = handleTrim.length >= 8 || /^[a-zA-Z0-9_\-]{3,20}$/.test(handleTrim)
+    if (!isValidHandle) {
+      setForgotError(lang === 'ar'
+        ? (codeLoginEnabled ? 'رقم الهاتف أو الكود غير صحيح' : 'رقم الهاتف غير صحيح')
+        : (codeLoginEnabled ? 'Invalid phone or code' : 'Invalid phone number'))
+      return
+    }
     if (forgotName.trim().length < 3) { setForgotError(lang === 'ar' ? 'الاسم يجب أن يكون 3 أحرف على الأقل' : 'Name must be at least 3 characters'); return }
     setForgotLoading(true)
     try {
       const { error: insertError } = await supabase
         .from('password_reset_requests')
-        .insert({ phone: forgotPhone.trim(), full_name: forgotName.trim(), status: 'pending', tenant_id: tenantId })
+        .insert({ phone: handleTrim, full_name: forgotName.trim(), status: 'pending', tenant_id: tenantId })
       if (insertError) throw insertError
       setForgotSuccess(true)
     } catch (err) {
@@ -1106,13 +1113,13 @@ export default function Login() {
                 <div className="auth-modal-header">
                   <div className="auth-modal-icon"><i className="fas fa-key"></i></div>
                   <h3>{lang === 'ar' ? 'استعادة كلمة المرور' : 'Reset Password'}</h3>
-                  <p>{lang === 'ar' ? 'أدخل رقم هاتفك واسمك بالكامل لتقديم طلب استعادة كلمة المرور.' : 'Enter your phone number and full name to request a password reset.'}</p>
+                  <p>{lang === 'ar' ? (codeLoginEnabled ? 'أدخل رقم هاتفك أو كود الطالب واسمك بالكامل لتقديم طلب استعادة كلمة المرور.' : 'أدخل رقم هاتفك واسمك بالكامل لتقديم طلب استعادة كلمة المرور.') : (codeLoginEnabled ? 'Enter your phone number or student code and full name to request a password reset.' : 'Enter your phone number and full name to request a password reset.')}</p>
                 </div>
                 {forgotError && <div className="error-message show">{forgotError}</div>}
                 <form onSubmit={handleForgotSubmit} className="auth-modal-form">
                   <div className="input-wrapper">
-                    <i className="fas fa-phone"></i>
-                    <input type="tel" value={forgotPhone} onChange={e => setForgotPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
+                    <i className={codeLoginEnabled ? "fas fa-id-card" : "fas fa-phone"}></i>
+                    <input type="text" value={forgotPhone} onChange={e => setForgotPhone(e.target.value)} required placeholder={codeLoginEnabled ? (lang === 'ar' ? 'رقم الهاتف أو كود الطالب' : 'Phone number or student code') : t.phone} dir="auto" />
                   </div>
                   <div className="input-wrapper">
                     <i className="fas fa-user"></i>

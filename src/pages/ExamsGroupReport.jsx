@@ -11,15 +11,19 @@ import PrintReportHeader from '../components/PrintReportHeader'
 
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
+import { useTenant } from '../contexts/TenantContext'
+
 export default function ExamsGroupReport() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const { isGradeEnabled, gradesList } = useTenant()
 
   const [students, setStudents] = useState([])
   const [exams, setExams]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [gradeStudentCounts, setGradeStudentCounts] = useState({})
 
   const [currentGrade, setCurrentGrade] = useState('')
   const [currentGroup, setCurrentGroup] = useState('') // class group label, '' = all
@@ -28,6 +32,28 @@ export default function ExamsGroupReport() {
 
   const [branches, setBranches] = useState([])
   const [branchFilter, setBranchFilter] = useState('all')
+
+  // Pre-fetch student counts per grade for the tenant
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('grade')
+          .eq('role', 'student')
+        if (error || cancelled) return
+        const counts = {}
+        (data || []).forEach(r => {
+          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
+        })
+        setGradeStudentCounts(counts)
+      } catch (err) {
+        console.error('Failed to count students per grade:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   // Load branches
   useEffect(() => {
@@ -82,15 +108,17 @@ export default function ExamsGroupReport() {
     return () => { cancelled = true }
   }, [reportType, reportSource])
 
-  // Grade chips come from the grades that actually have exams — you can only
-  // report on a grade that has content anyway. Avoids scanning all students.
+  // Grade chips filtered by tenant enabled grades
   const availableGrades = useMemo(() => {
+    const tenantGradeIds = gradesList?.length > 0 ? gradesList.map(g => g.id) : null
+    const baseList = GRADE_ORDER.filter(g => isGradeEnabled(g) || (tenantGradeIds && tenantGradeIds.includes(g)))
+
     if (reportSource === 'center') {
-      return GRADE_ORDER
+      return baseList
     }
     const set = new Set(exams.map(e => e.grade).filter(Boolean))
-    return GRADE_ORDER.filter(g => set.has(g))
-  }, [exams, reportSource])
+    return baseList.filter(g => set.size === 0 || set.has(g))
+  }, [exams, reportSource, isGradeEnabled, gradesList])
 
   // Load this grade's students only (lazy, scoped) when a grade is selected.
   useEffect(() => {
@@ -456,7 +484,7 @@ export default function ExamsGroupReport() {
                   <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
                   {GRADE_LABEL[grade]}
                   <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
-                    {students.filter(s => s.grade === grade).length}
+                    {currentGrade === grade ? students.filter(s => s.grade === grade).length : (gradeStudentCounts[grade] || 0)}
                   </span>
                 </button>
               ))}

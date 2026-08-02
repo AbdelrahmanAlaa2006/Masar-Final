@@ -272,12 +272,20 @@ export default function VideosReport() {
   const notWatched = videosData.filter((v) => v.progress === 0).length
   const avgProgress = total > 0 ? Math.round(videosData.reduce((sum, v) => sum + v.progress, 0) / total) : 0
 
+  const handleBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/report')
+    }
+  }
+
   return (
     <main className="cp-page">
       <div className="cp-container">
 
         {/* Back */}
-        <button className="cp-crumbs-back" onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem' }}>
+        <button className="cp-crumbs-back" onClick={handleBack} style={{ marginBottom: '1.5rem' }}>
           <i className="fas fa-arrow-right"></i>
           <span>رجوع</span>
         </button>

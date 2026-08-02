@@ -570,6 +570,8 @@ function AppContent() {
   // auth as props keeps the component reference stable so ExamTaking
   // and friends aren't unmounted whenever AppContent re-renders.
   const role = user?.role
+  const isStaff = isLoggedIn && (role === 'admin' || role === 'assistant' || role === 'super_admin')
+  const isControlPanelRoute = location.pathname.startsWith('/control-panel')
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
   const isRegisterPage = location.pathname === '/register'

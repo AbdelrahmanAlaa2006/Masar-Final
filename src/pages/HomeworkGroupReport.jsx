@@ -6,16 +6,21 @@ import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
 
+import { useTenant } from '../contexts/TenantContext'
+import { supabase } from '@backend/supabase'
+
 import { GRADE_LABEL, GRADE_ORDER } from './ControlPanel/shared'
 
 export default function HomeworkGroupReport() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isGradeEnabled, gradesList } = useTenant()
 
   const [students, setStudents] = useState([])
   const [homeworks, setHomeworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [gradeStudentCounts, setGradeStudentCounts] = useState({})
 
   const [currentGrade, setCurrentGrade] = useState('')
   const [currentGroup, setCurrentGroup] = useState('')
@@ -25,6 +30,28 @@ export default function HomeworkGroupReport() {
   const [allStudentsData, setAllStudentsData] = useState([])
   const [displayedStudents, setDisplayedStudents] = useState([])
   const [reportLoading, setReportLoading] = useState(false)
+
+  // Pre-fetch student counts per grade for the tenant
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('grade')
+          .eq('role', 'student')
+        if (error || cancelled) return
+        const counts = {}
+        (data || []).forEach(r => {
+          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
+        })
+        setGradeStudentCounts(counts)
+      } catch (err) {
+        console.error('Failed to count students per grade:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -43,12 +70,13 @@ export default function HomeworkGroupReport() {
     return () => { cancelled = true }
   }, [])
 
-  // Grade chips come from grades that have homeworks (you can only report on a
-  // grade that has content). Avoids scanning the whole student roster.
+  // Grade chips filtered by tenant enabled grades
   const availableGrades = useMemo(() => {
+    const tenantGradeIds = gradesList?.length > 0 ? gradesList.map(g => g.id) : null
+    const baseList = GRADE_ORDER.filter(g => isGradeEnabled(g) || (tenantGradeIds && tenantGradeIds.includes(g)))
     const set = new Set(homeworks.map(h => h.grade).filter(Boolean))
-    return GRADE_ORDER.filter(g => set.has(g))
-  }, [homeworks])
+    return baseList.filter(g => set.size === 0 || set.has(g))
+  }, [homeworks, isGradeEnabled, gradesList])
 
   // Load this grade's students only (lazy, scoped) when a grade is selected.
   useEffect(() => {
@@ -322,7 +350,7 @@ export default function HomeworkGroupReport() {
                   <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
                   {GRADE_LABEL[grade]}
                   <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
-                    {students.filter(s => s.grade === grade).length}
+                    {currentGrade === grade ? students.filter(s => s.grade === grade).length : (gradeStudentCounts[grade] || 0)}
                   </span>
                 </button>
               ))}
