@@ -340,17 +340,15 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedSessionId])
 
-  // Filter student list by Group and Search Query (name or phone number)
+  // Filter student list strictly by Group and Search Query (name or phone number)
   const filteredStudentsList = useMemo(() => {
     let list = students
     
-    // 1. Group Filter
+    // 1. Group Filter (strict group isolation)
     if (selectedGroupId) {
       const targetGroup = groups.find(g => g.id === selectedGroupId)
       if (targetGroup) {
         list = list.filter(s => {
-          // Always show if student is explicitly marked present/late/excused in this session
-          if (attendanceRecords[s.id] && attendanceRecords[s.id] !== 'absent') return true
           if (s.group === targetGroup.name) return true
           if (s.student_groups && s.student_groups.some(sg => sg.group_id === selectedGroupId)) return true
           return false
@@ -370,7 +368,7 @@ export default function AttendancePanel({ onBack, flash }) {
     }
     
     return list
-  }, [students, selectedGroupId, groups, attendanceRecords, searchQuery])
+  }, [students, selectedGroupId, groups, searchQuery])
 
   // Merged history records: every student in the current group/class merged with their database attendance record
   const mergedHistoryRecords = useMemo(() => {
@@ -413,18 +411,17 @@ export default function AttendancePanel({ onBack, flash }) {
     })
   }, [mergedHistoryRecords, historySearchQuery])
 
-  // Filter sessions by selected group (or general sessions if no group is selected)
+  // Sessions for active stage & academic year (reusable across groups of the same stage)
   const filteredSessions = useMemo(() => {
     return sessions.filter(s => {
-      if (selectedGroupId) {
-        return s.group_id === selectedGroupId
-      } else {
-        return s.group_id === null
+      if (selectedAcademicYearId && s.academic_year_id && s.academic_year_id !== selectedAcademicYearId) {
+        return false
       }
+      return true
     })
-  }, [sessions, selectedGroupId])
+  }, [sessions, selectedAcademicYearId])
 
-  // Automatically select the first available filtered session if current selectedSessionId is no longer in list
+  // Automatically keep selectedSessionId valid within filteredSessions
   useEffect(() => {
     if (selectedSessionId === 'new') return
     const exists = filteredSessions.some(s => s.id === selectedSessionId)
@@ -1099,7 +1096,9 @@ export default function AttendancePanel({ onBack, flash }) {
           <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--cp-text-muted)' }}>الحصة / الدرس</label>
           <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} className="cp-input" style={{ width: '100%' }}>
             {filteredSessions.map(s => (
-              <option key={s.id} value={s.id}>{s.title} ({s.date})</option>
+              <option key={s.id} value={s.id}>
+                {s.title} ({s.date}){s.groups?.name ? ` [${s.groups.name}]` : ''}
+              </option>
             ))}
             <option value="new">+ إنشاء حصة دراسية جديدة</option>
           </select>
@@ -1357,7 +1356,7 @@ export default function AttendancePanel({ onBack, flash }) {
           )}
 
           {/* Student List Grid / Table */}
-          {loading ? (
+          {loading && filteredStudentsList.length === 0 ? (
             <div className="cp-empty">
               <i className="fas fa-spinner fa-spin" />
               <p>جاري تحميل قائمة الطلاب...</p>
@@ -1368,7 +1367,7 @@ export default function AttendancePanel({ onBack, flash }) {
               <p>لا يوجد طلاب مسجلين في هذا الفرع أو المرحلة حالياً</p>
             </div>
           ) : (
-            <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--cp-card-shadow)', marginBottom: '24px' }}>
+            <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--cp-card-shadow)', marginBottom: '24px', opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s ease' }}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.92rem' }}>
                   <thead>

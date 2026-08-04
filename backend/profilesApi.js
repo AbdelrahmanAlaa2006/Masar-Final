@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { listSubscriptionFees } from './paymentsApi'
 import { listStudentBooklets, markBookletsPaid } from './bookletsApi'
 import { recordSubscriptionPayment } from './financeApi'
@@ -254,7 +254,7 @@ export async function updateStudentStatus(studentId, { is_approved, is_active })
   if (error) throw error
 
   invalidateProfile(studentId)
-  invalidateCache('students')
+  invalidatePrefix('students')
   return data
 }
 
@@ -281,7 +281,7 @@ export async function updateStudentProfile(studentId, updates) {
   if (error) throw error
 
   invalidateProfile(studentId)
-  invalidateCache('students')
+  invalidatePrefix('students')
   return data
 }
 

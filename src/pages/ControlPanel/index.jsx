@@ -3,6 +3,9 @@ import { useLocation, useSearchParams, useNavigate } from 'react-router-dom'
 import { listExams } from '@backend/examsApi'
 import { listVideos } from '@backend/videosApi'
 import { listStudents } from '@backend/profilesApi'
+import { listBranches } from '@backend/branchesApi'
+import { listAcademicYears } from '@backend/academicYearsApi'
+import { listGroups } from '@backend/groupsApi'
 import { cached, LIST_TTL } from '../../utils/cache'
 import { SectionCard, Breadcrumbs } from './shared'
 import { supabase } from '@backend/supabase'
@@ -284,6 +287,9 @@ export default function ControlPanelIndex() {
           const [v, e] = await Promise.all([
             cached('videos', LIST_TTL, listVideos),
             cached('exams-lean', LIST_TTL, () => listExams({ lean: true })),
+            listBranches(),
+            listAcademicYears(),
+            listGroups()
           ])
           if (cancelled) return
           setVideos(v)
@@ -292,7 +298,7 @@ export default function ControlPanelIndex() {
           const fetchCount = async () => {
             const { count, error } = await supabase
               .from('password_reset_requests')
-              .select('*', { count: 'exact', head: true })
+              .select('id', { count: 'exact', head: true })
               .eq('status', 'pending')
             if (error) throw error
             return count || 0
@@ -304,7 +310,7 @@ export default function ControlPanelIndex() {
             const fetchPendingCount = async () => {
               const { count, error } = await supabase
                 .from('profiles')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact', head: true })
                 .eq('role', 'student')
                 .eq('is_approved', false)
               if (error) throw error
@@ -349,7 +355,7 @@ export default function ControlPanelIndex() {
             const fetchCount = async () => {
               const { count, error } = await supabase
                 .from('password_reset_requests')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact', head: true })
                 .eq('status', 'pending')
               if (error) throw error
               return count || 0
@@ -358,7 +364,7 @@ export default function ControlPanelIndex() {
             const fetchPendingCount = async () => {
               const { count, error } = await supabase
                 .from('profiles')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact', head: true })
                 .eq('role', 'student')
                 .eq('is_approved', false)
               if (error) throw error

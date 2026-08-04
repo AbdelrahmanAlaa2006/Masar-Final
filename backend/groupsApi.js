@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
+import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 export async function listGroups() {
   return cached('groups-list', LIST_TTL, async () => {
@@ -97,7 +97,7 @@ export async function assignStudentToGroup(studentId, groupId, isPrimary = true)
       .eq('id', studentId)
   }
 
-  invalidateCache('students')
+  invalidatePrefix('students')
   return data
 }
 
@@ -138,7 +138,7 @@ export async function setStudentGroups(studentId, { primaryGroupId, secondaryGro
     .update({ "group": primaryName })
     .eq('id', studentId)
 
-  invalidateCache('students')
+  invalidatePrefix('students')
   return true
 }
 
@@ -171,7 +171,7 @@ export async function bulkTransferStudents(studentIds, targetGroupId, tenantId) 
     p_tenant_id: tenantId
   })
   if (error) throw error
-  invalidateCache('students')
+  invalidatePrefix('students')
   return true
 }
 

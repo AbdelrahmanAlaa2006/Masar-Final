@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,GET /rest/v1/finance_transactions,HTTPError('400 Client Error: Bad Request for url: GET /rest/v1/finance_transactions'),157,2026-08-04T01:12:23Z,2026-08-04T01:12:58Z

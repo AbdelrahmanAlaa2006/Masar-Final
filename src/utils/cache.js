@@ -1,87 +1,142 @@
-// Upgraded persistent cache with in-memory store and localStorage backup.
-// Lives across tab refreshes and SPA lifetimes for maximum optimization.
+// Upgraded persistent cache engine with in-memory store, localStorage backup,
+// strict fresh/stale SWR rules, in-flight request deduplication, and tenant isolation.
 
-// Default TTL for shared list caches (videos, lectures, exams, students).
-export const LIST_TTL = 30 * 60 * 1000
+// Default TTLs by category
+export const LIST_TTL = 30 * 60 * 1000 // Category 1: Static reference lists (30 min)
+export const CONTENT_TTL = 5 * 60 * 1000 // Category 2: Occasional content lists (5 min)
 
-// In-flight Promise store to prevent duplicate concurrent network requests.
-const store = new Map() // key -> { p: Promise, t: number }
-
+const MAX_CACHE_ITEMS = 200
+const MAX_PERSIST_ROWS = 500
 const LS_PREFIX = 'masar-cache:'
 
-/* Tenant-scoped cache isolation.
-   Cache keys like 'students' / 'videos' / 'exams' are shared by name. On a
-   shared device, or when a super-admin switches tenants, one tenant's cached
-   list could otherwise surface under another. We prefix every key with the
-   active tenant id so each tenant has its own namespace. Keys created before a
-   tenant is resolved (e.g. 'available-tenants', 'tenant-config:<slug>') are
-   left unprefixed — which is correct, since they are tenant-agnostic.
-   The same prefix is applied in cached/invalidate/invalidatePrefix so writes
-   and invalidations always match. */
+// In-memory store: key -> { p: Promise, val: any, t: number, revalidating?: boolean }
+const store = new Map()
+
 let activeTenantKey = ''
 
+/**
+ * Set active tenant namespace. If tenant switches, memory store is cleared to prevent cross-tenant leakage.
+ */
 export function setCacheTenant(tenantId) {
-  activeTenantKey = tenantId ? String(tenantId) : ''
+  const newKey = tenantId ? String(tenantId) : ''
+  if (activeTenantKey !== newKey) {
+    store.clear()
+    activeTenantKey = newKey
+  }
 }
 
 function scoped(key) {
   return activeTenantKey ? `${activeTenantKey}::${key}` : key
 }
 
-/* Large lists (e.g. the full student roster, which can reach 10k rows and
-   carries PII) are kept in the in-memory cache only and are NOT mirrored to
-   localStorage. Persisting them risks: (a) PII/credentials sitting at rest on
-   shared devices, and (b) blowing the ~5MB localStorage quota, which makes the
-   write throw and silently degrades caching. Small, stable configs (tenant
-   config, feature flags, permissions, single profiles) stay well under this
-   and continue to persist as before. */
-const MAX_PERSIST_ROWS = 500
-
 function isTooLargeToPersist(val) {
   return Array.isArray(val) && val.length > MAX_PERSIST_ROWS
 }
 
-export async function cached(rawKey, ttlMs, loader) {
-  const key = scoped(rawKey)
-  // 1. In-memory hot cache hit
-  const memHit = store.get(key)
-  if (memHit && Date.now() - memHit.t < ttlMs) return memHit.p
+function enforceMaxStoreCapacity() {
+  if (store.size > MAX_CACHE_ITEMS) {
+    const oldestKey = store.keys().next().value
+    if (oldestKey) store.delete(oldestKey)
+  }
+}
 
-  // 2. Persistent localStorage backup cache hit
+/**
+ * Perform cached lookup with strict fresh/stale states and in-flight deduplication.
+ * @param {string} rawKey - Unscoped cache key
+ * @param {number} freshTtlMs - Duration in ms the entry is strictly fresh (0 = bypass cache)
+ * @param {Function} loader - Async function returning fresh data
+ * @param {Object} [options]
+ * @param {number} [options.maxStaleTtlMs] - Maximum age allowed to serve stale data with background revalidation
+ * @param {boolean} [options.bypass] - Force bypass cache and perform fresh network request
+ */
+export async function cached(rawKey, freshTtlMs, loader, options = {}) {
+  const { maxStaleTtlMs = freshTtlMs * 4, bypass = false } = options
+  const key = scoped(rawKey)
+
+  // Bypass cache completely if freshTtlMs is 0 or bypass is true (Category 3 operational data)
+  if (freshTtlMs <= 0 || bypass) {
+    return loader()
+  }
+
+  const now = Date.now()
+  const memHit = store.get(key)
+
+  // 1. In-flight request deduplication: if a request is active, join it
+  if (memHit && memHit.p && memHit.isPending) {
+    return memHit.p
+  }
+
+  // 2. Fresh In-memory Cache Hit (0 network requests)
+  if (memHit && now - memHit.t < freshTtlMs) {
+    return memHit.p
+  }
+
+  // 3. Stale In-memory Hit (serve stale + 1 deduplicated background revalidation)
+  if (memHit && now - memHit.t < maxStaleTtlMs) {
+    if (!memHit.isRevalidating) {
+      memHit.isRevalidating = true
+      Promise.resolve()
+        .then(() => loader())
+        .then((freshVal) => {
+          const freshPromise = Promise.resolve(freshVal)
+          store.set(key, { p: freshPromise, val: freshVal, t: Date.now(), isPending: false, isRevalidating: false })
+          if (!isTooLargeToPersist(freshVal)) {
+            try {
+              localStorage.setItem(`${LS_PREFIX}${key}`, JSON.stringify({ value: freshVal, t: Date.now() }))
+            } catch {}
+          }
+        })
+        .catch(() => {
+          memHit.isRevalidating = false
+        })
+    }
+    return memHit.p
+  }
+
+  // 4. Persistent localStorage backup check
   try {
     const lsVal = localStorage.getItem(`${LS_PREFIX}${key}`)
     if (lsVal) {
       const parsed = JSON.parse(lsVal)
-      if (parsed && typeof parsed.t === 'number' && Date.now() - parsed.t < ttlMs) {
-        // Pre-populate the in-memory store with a resolved Promise
+      if (parsed && typeof parsed.t === 'number') {
+        const age = now - parsed.t
         const p = Promise.resolve(parsed.value)
-        store.set(key, { p, t: parsed.t })
-        return p
+        if (age < freshTtlMs) {
+          store.set(key, { p, val: parsed.value, t: parsed.t, isPending: false, isRevalidating: false })
+          enforceMaxStoreCapacity()
+          return p
+        }
       }
     }
   } catch {}
 
-  // 3. Cache miss: trigger the dynamic loader Promise
-  const p = Promise.resolve().then(() => loader())
-  store.set(key, { p, t: Date.now() })
+  // 5. Cache Miss or Expired: Trigger fresh loader with in-flight deduplication
+  let isPending = true
+  const p = Promise.resolve()
+    .then(() => loader())
+    .then((val) => {
+      isPending = false
+      const resolvedP = Promise.resolve(val)
+      store.set(key, { p: resolvedP, val, t: Date.now(), isPending: false, isRevalidating: false })
+      enforceMaxStoreCapacity()
 
-  // When the Promise resolves, back it up to localStorage for persistence.
-  // Large lists are skipped (kept in memory only) — see MAX_PERSIST_ROWS.
-  p.then((val) => {
-    if (isTooLargeToPersist(val)) return
-    try {
-      localStorage.setItem(
-        `${LS_PREFIX}${key}`,
-        JSON.stringify({ value: val, t: Date.now() })
-      )
-    } catch {}
-  }).catch(() => {
-    // If the loader rejects, evict from both stores so the next call retries
-    if (store.get(key)?.p === p) store.delete(key)
-    try {
-      localStorage.removeItem(`${LS_PREFIX}${key}`)
-    } catch {}
-  })
+      if (!isTooLargeToPersist(val)) {
+        try {
+          localStorage.setItem(`${LS_PREFIX}${key}`, JSON.stringify({ value: val, t: Date.now() }))
+        } catch {}
+      }
+      return val
+    })
+    .catch((err) => {
+      store.delete(key)
+      try {
+        localStorage.removeItem(`${LS_PREFIX}${key}`)
+      } catch {}
+      throw err
+    })
+
+  store.set(key, { p, t: now, isPending: true, isRevalidating: false })
+  enforceMaxStoreCapacity()
 
   return p
 }
@@ -94,14 +149,11 @@ export function invalidate(rawKey) {
   } catch {}
 }
 
-// Invalidate every key that starts with `prefix` across both memory and localStorage
 export function invalidatePrefix(rawPrefix) {
   const prefix = scoped(rawPrefix)
-  // Memory
   for (const k of Array.from(store.keys())) {
     if (k.startsWith(prefix)) store.delete(k)
   }
-  // localStorage
   try {
     const len = localStorage.length
     const keysToRemove = []
