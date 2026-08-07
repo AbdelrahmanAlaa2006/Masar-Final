@@ -37,6 +37,8 @@ export function TenantProvider({ children }) {
             localStorage.removeItem('masar-cache:tenant-config:cyber')
             localStorage.removeItem('masar-cache:tenant-config:sherif-programming')
             localStorage.removeItem('masar-cache:tenant-config:mohamed-abdella')
+            localStorage.removeItem('masar-cache:tenant-config:math')
+            localStorage.removeItem('masar-cache:tenant-config:belqadar-math')
           } catch {}
         }
 
@@ -83,6 +85,9 @@ export function TenantProvider({ children }) {
         // keep old preview links working via both aliases.
         if (candidate === 'power-platform' || candidate === 'sherif-programming') {
           querySlug = 'mohamed-abdella'
+        }
+        if (candidate === 'math' || candidate === 'belqadar' || candidate === 'belqadar-math' || candidate === 'mahmoud-belqadar') {
+          querySlug = 'sherif-math'
         }
 
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000

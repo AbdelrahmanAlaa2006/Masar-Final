@@ -121,6 +121,21 @@ function Wordmark() {
   )
 }
 
+const ROTATING_WORDS = {
+  ar: [
+    'منصته التعليمية',
+    'هويته المستقلة',
+    'سنتره الأونلاين',
+    'علامته التجارية',
+  ],
+  en: [
+    'their own platform',
+    'their independent brand',
+    'their online center',
+    'their custom web app',
+  ],
+}
+
 export default function GitFekraLanding() {
   const [lang, setLang] = useState('ar')
   const [dark, setDark] = useState(() => {
@@ -133,10 +148,24 @@ export default function GitFekraLanding() {
   const [tourShot, setTourShot] = useState(null)
   const [tourTab, setTourTab] = useState('student')
   const [tourIndex, setTourIndex] = useState(0)
+  const [rotIndex, setRotIndex] = useState(0)
+  const [isRotating, setIsRotating] = useState(false)
   const tourShots = TOUR.filter((s) => s.role === tourTab)
   const currentShot = tourShots[Math.min(tourIndex, tourShots.length - 1)]
   const t = COPY[lang]
   useReveal(lang)
+
+  // Rotate hero keyword every 3.2s with a smooth slide transition
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIsRotating(true)
+      setTimeout(() => {
+        setRotIndex((i) => (i + 1) % ROTATING_WORDS[lang].length)
+        setIsRotating(false)
+      }, 300)
+    }, 3200)
+    return () => clearInterval(id)
+  }, [lang])
 
   // Auto-advance the showcase every 6s (paused while the lightbox is open)
   useEffect(() => {
@@ -189,8 +218,35 @@ export default function GitFekraLanding() {
 
       {/* Hero */}
       <section className="gf-hero" id="top">
-        <p className="gf-kicker gf-reveal">{t.hero_kicker}</p>
-        <h1 className="gf-hero-title gf-reveal">{t.hero_title}</h1>
+        <p className="gf-kicker gf-reveal">
+          <span className="gf-radar-dot">
+            <span className="gf-radar-ping" />
+          </span>
+          {t.hero_kicker}
+        </p>
+        <h1 className="gf-hero-title gf-reveal">
+          {lang === 'ar' ? (
+            <>
+              نبني لكل مدرّس{' '}
+              <span className="gf-rotator-slot">
+                <span className={`gf-rotator-text ${isRotating ? 'is-exiting' : 'is-entering'}`}>
+                  {ROTATING_WORDS.ar[rotIndex % ROTATING_WORDS.ar.length]}
+                </span>
+              </span>{' '}
+              الخاصة.
+            </>
+          ) : (
+            <>
+              We build for every teacher{' '}
+              <span className="gf-rotator-slot">
+                <span className={`gf-rotator-text ${isRotating ? 'is-exiting' : 'is-entering'}`}>
+                  {ROTATING_WORDS.en[rotIndex % ROTATING_WORDS.en.length]}
+                </span>
+              </span>
+              .
+            </>
+          )}
+        </h1>
         <p className="gf-hero-sub gf-reveal">{t.hero_sub}</p>
         <div className="gf-hero-cta gf-reveal">
           <a href="#contact" className="gf-btn gf-btn-ink">{t.cta_primary}</a>
@@ -199,7 +255,7 @@ export default function GitFekraLanding() {
         <dl className="gf-stats gf-reveal">
           {t.stats.map((s, i) => (
             <div className="gf-stat" key={i}>
-              <dt>{s.v}</dt>
+              <dt className="gf-stat-v">{s.v}</dt>
               <dd>{s.l}</dd>
             </div>
           ))}
@@ -233,6 +289,21 @@ export default function GitFekraLanding() {
           <p className="gf-section-note">{t.tour_note}</p>
         </header>
         <div className="gf-showcase gf-reveal">
+          <div className="gf-tour-feature-pills">
+            <span className="gf-tour-pill">
+              <i className="fas fa-shield-halved" />
+              {lang === 'ar' ? 'حماية مشفرة ضد التسريب وتصوير الشاشة' : 'Encrypted DRM Anti-Piracy Protection'}
+            </span>
+            <span className="gf-tour-pill">
+              <i className="fas fa-bolt" />
+              {lang === 'ar' ? 'تصحيح تلقائي فوري للامتحانات وتحليل الدرجات' : 'Instant Auto-Grading & Exam Analytics'}
+            </span>
+            <span className="gf-tour-pill">
+              <i className="fas fa-user-shield" />
+              {lang === 'ar' ? 'بوابة مستقلة لمتابعة أولياء الأمور' : 'Dedicated Parent Portal'}
+            </span>
+          </div>
+
           <div className="gf-tour-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tourTab === 'student'}
               className={`gf-tour-tab ${tourTab === 'student' ? 'is-active' : ''}`}
@@ -300,25 +371,39 @@ export default function GitFekraLanding() {
           {PLATFORMS.map((p, i) => {
             const inner = (
               <>
-                <span className="gf-work-swatch" style={{ background: p.accent }} aria-hidden="true" />
-                <div className="gf-work-media" style={{ '--accent': p.accent }} aria-hidden="true">
-                  {p.image ? (
-                    <img src={p.image} alt="" loading="lazy" style={p.imageStyle} />
-                  ) : (
-                    <span className="gf-work-monogram">{(p.name[lang] || '?').trim().charAt(0)}</span>
-                  )}
-                  {p.logo && <img className="gf-work-logo" src={p.logo} alt="" loading="lazy" />}
-                </div>
-                <div className="gf-work-body">
-                  <div className="gf-work-toprow">
-                    <h3>{p.name[lang]}</h3>
-                    <span className={`gf-work-status ${p.status === 'live' ? 'is-live' : 'is-soon'}`}>
-                      {p.status === 'live' ? t.badge_live : t.badge_soon}
-                    </span>
+                <div className="gf-work-header">
+                  <div className="gf-work-identity">
+                    <div className="gf-work-avatar-box">
+                      <div className="gf-work-avatar-inner">
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.owner[lang]}
+                            className="gf-work-avatar-img"
+                            loading="lazy"
+                            style={{ objectPosition: p.imagePosition || 'center top', ...(p.imageStyle || {}) }}
+                          />
+                        ) : (
+                          <span className="gf-work-avatar-monogram">{(p.name[lang] || '?').trim().charAt(0)}</span>
+                        )}
+                      </div>
+                      {p.logo && (
+                        <img className="gf-work-badge-logo" src={p.logo} alt="" loading="lazy" />
+                      )}
+                    </div>
+                    <div className="gf-work-titles">
+                      <h3>{p.name[lang]}</h3>
+                      <p className="gf-work-owner">{p.owner[lang]}</p>
+                      <p className="gf-work-subject">{p.subject[lang]}</p>
+                    </div>
                   </div>
-                  <p className="gf-work-owner">{p.owner[lang]}</p>
-                  <p className="gf-work-subject">{p.subject[lang]}</p>
-                  <p className="gf-work-blurb">{p.blurb[lang]}</p>
+                  <span className={`gf-work-status ${p.status === 'live' ? 'is-live' : 'is-soon'}`}>
+                    <span className="gf-work-status-dot" />
+                    {p.status === 'live' ? t.badge_live : t.badge_soon}
+                  </span>
+                </div>
+                <p className="gf-work-blurb">{p.blurb[lang]}</p>
+                <div className="gf-work-footer">
                   {p.url && (
                     <span className="gf-work-visit">
                       {t.visit_platform}
@@ -329,11 +414,22 @@ export default function GitFekraLanding() {
               </>
             )
             return p.url ? (
-              <a className="gf-work-card gf-reveal" key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" style={{ transitionDelay: `${(i % 2) * 70}ms` }}>
+              <a
+                className="gf-work-card gf-reveal"
+                key={p.id}
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ '--card-accent': p.accent, transitionDelay: `${(i % 2) * 70}ms` }}
+              >
                 {inner}
               </a>
             ) : (
-              <article className="gf-work-card gf-reveal" key={p.id} style={{ transitionDelay: `${(i % 2) * 70}ms` }}>
+              <article
+                className="gf-work-card gf-reveal"
+                key={p.id}
+                style={{ '--card-accent': p.accent, transitionDelay: `${(i % 2) * 70}ms` }}
+              >
                 {inner}
               </article>
             )
@@ -348,13 +444,19 @@ export default function GitFekraLanding() {
           <h2>{t.process_title}</h2>
         </header>
         <ol className="gf-process">
-          {PROCESS.map((step, i) => (
-            <li className="gf-step gf-reveal" key={step.n} style={{ transitionDelay: `${i * 70}ms` }}>
-              <span className="gf-step-n">{step.n}</span>
-              <h3>{step.title[lang]}</h3>
-              <p>{step.body[lang]}</p>
-            </li>
-          ))}
+          {PROCESS.map((step, i) => {
+            const stepIcons = ['fa-comments', 'fa-palette', 'fa-cloud-arrow-up', 'fa-headset']
+            return (
+              <li className="gf-step gf-reveal" key={step.n} style={{ transitionDelay: `${i * 70}ms` }}>
+                <div className="gf-step-badge">
+                  <span className="gf-step-n">{step.n}</span>
+                  <i className={`fas ${stepIcons[i % stepIcons.length]} gf-step-icon`} />
+                </div>
+                <h3>{step.title[lang]}</h3>
+                <p>{step.body[lang]}</p>
+              </li>
+            )
+          })}
         </ol>
       </section>
 
@@ -377,6 +479,65 @@ export default function GitFekraLanding() {
               </li>
             ))}
           </ul>
+
+          {/* Founders & Leadership */}
+          <div className="gf-founders-grid gf-reveal">
+            <div className="gf-founder-card">
+              <div className="gf-founder-avatar-wrap">
+                <img src="/images/Abdelrahman%20Photo%20Facebook.jpg" alt="Abdelrahman Alaa" className="gf-founder-img" />
+              </div>
+              <div className="gf-founder-info">
+                <div className="gf-founder-verified">
+                  <i className="fas fa-circle-check" />
+                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Engineer'}</span>
+                </div>
+                <h3>{lang === 'ar' ? 'عبدالرحمن علاء' : 'Abdelrahman Alaa'}</h3>
+                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس برمجيات وأمن سيبراني — المؤسس' : 'Software Engineer & Cybersecurity Specialist — Co-Founder'}</span>
+                <p className="gf-founder-edu">
+                  <i className="fas fa-graduation-cap" /> {lang === 'ar' ? 'كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية' : 'Faculty of Computers and Data Science, Alexandria University'}
+                </p>
+                <p className="gf-founder-bio">
+                  {lang === 'ar'
+                    ? 'المسؤول عن تصميم البنية البرمجية لمنظومة جِت فِكرة، وهندسة قواعد البيانات السحابية عالية الأداء، وأنظمة الحماية والأمن السيبراني.'
+                    : 'Architect of the core backend engine, high-performance database infrastructure, and enterprise cloud security protocols.'}
+                </p>
+                <div className="gf-founder-socials">
+                  <a href="https://github.com/AbdelrahmanAlaa2006" target="_blank" rel="noopener noreferrer" className="gf-soc-btn github"><i className="fab fa-github" /> GitHub</a>
+                  <a href="https://www.linkedin.com/in/abdelrahman-alaa2006" target="_blank" rel="noopener noreferrer" className="gf-soc-btn linkedin"><i className="fab fa-linkedin" /> LinkedIn</a>
+                  <a href="https://www.facebook.com/abdelrahman.alaa.988711" target="_blank" rel="noopener noreferrer" className="gf-soc-btn facebook"><i className="fab fa-facebook" /> Facebook</a>
+                  <a href="https://www.instagram.com/abd_elrahman_alaa3/" target="_blank" rel="noopener noreferrer" className="gf-soc-btn instagram"><i className="fab fa-instagram" /> Instagram</a>
+                </div>
+              </div>
+            </div>
+
+            <div className="gf-founder-card">
+              <div className="gf-founder-avatar-wrap">
+                <img src="/images/Eyad%20Photo%20Instagram.jpg" alt="Eyad Elalkamy" className="gf-founder-img" />
+              </div>
+              <div className="gf-founder-info">
+                <div className="gf-founder-verified">
+                  <i className="fas fa-circle-check" />
+                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Engineer'}</span>
+                </div>
+                <h3>{lang === 'ar' ? 'إياد العلقامي' : 'Eyad Elalkamy'}</h3>
+                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس برمجيات وأمن سيبراني — المؤسس' : 'Software Engineer & Cybersecurity Specialist — Co-Founder'}</span>
+                <p className="gf-founder-edu">
+                  <i className="fas fa-graduation-cap" /> {lang === 'ar' ? 'كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية' : 'Faculty of Computers and Data Science, Alexandria University'}
+                </p>
+                <p className="gf-founder-bio">
+                  {lang === 'ar'
+                    ? 'المسؤول عن تجربة المستخدم، واجهات الطلاب والمعلمين التفاعلية، وتطوير أداء وأمان الأنظمة المباشرة.'
+                    : 'Leads front-end system design, interactive student dashboards, real-time client performance, and user security.'}
+                </p>
+                <div className="gf-founder-socials">
+                  <a href="https://github.com/eyadelalkamy-oss" target="_blank" rel="noopener noreferrer" className="gf-soc-btn github"><i className="fab fa-github" /> GitHub</a>
+                  <a href="https://www.linkedin.com/in/eyad-atef-elalkamy-709615385" target="_blank" rel="noopener noreferrer" className="gf-soc-btn linkedin"><i className="fab fa-linkedin" /> LinkedIn</a>
+                  <a href="https://www.facebook.com/eyad.alkamy" target="_blank" rel="noopener noreferrer" className="gf-soc-btn facebook"><i className="fab fa-facebook" /> Facebook</a>
+                  <a href="https://www.instagram.com/eyad_elalkamy/" target="_blank" rel="noopener noreferrer" className="gf-soc-btn instagram"><i className="fab fa-instagram" /> Instagram</a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -386,8 +547,12 @@ export default function GitFekraLanding() {
           <span className="gf-kicker">{t.contact_kicker}</span>
           <h2>{t.contact_title}</h2>
           <p>{t.contact_body}</p>
-          <a href={`mailto:${CONTACT_EMAIL}`} className="gf-btn gf-btn-paper">{t.contact_cta}</a>
-          <div className="gf-contact-email" dir="ltr">{CONTACT_EMAIL}</div>
+          <div className="gf-contact-actions">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="gf-btn gf-btn-ink">
+              <i className="fas fa-envelope" /> {t.contact_cta}
+            </a>
+            <div className="gf-contact-email" dir="ltr">{CONTACT_EMAIL}</div>
+          </div>
         </div>
       </section>
 

@@ -341,11 +341,12 @@ function AdminRoute({ isLoggedIn, role, permission, children }) {
 
 function AppContent() {
   const location = useLocation()
+  const cleanPath = location.pathname.replace(/\/+$/, '') || '/'
   const { user, isLoggedIn, loading, logout } = useAuth()
   const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig, isCompanySite } = useTenant()
-  const isLoginPage = location.pathname === '/login' || (!isLoggedIn && !isCompanySite && location.pathname === '/')
-  const isExamTaking = location.pathname === '/exam-taking'
-  const isPublicReportPage = location.pathname === '/public-report'
+  const isLoginPage = cleanPath === '/login' || (!isLoggedIn && !isCompanySite && cleanPath === '/')
+  const isExamTaking = cleanPath === '/exam-taking'
+  const isPublicReportPage = cleanPath === '/public-report'
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
@@ -572,11 +573,11 @@ function AppContent() {
   // and friends aren't unmounted whenever AppContent re-renders.
   const role = user?.role
   const isStaff = isLoggedIn && (role === 'admin' || role === 'assistant' || role === 'super_admin')
-  const isControlPanelRoute = location.pathname.startsWith('/control-panel')
+  const isControlPanelRoute = cleanPath.startsWith('/control-panel')
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
-  const isRegisterPage = location.pathname === '/register'
-  const isCreditsPage = location.pathname === '/credits'
+  const isRegisterPage = cleanPath === '/register'
+  const isCreditsPage = cleanPath === '/credits' || cleanPath === '/company'
   // The GitFekra landing is shown ONLY to logged-out visitors on the default
   // tenant. Logged-in users (admins/super-admins/students of the default
   // tenant) get their normal dashboard, so they can still reach the panel.
@@ -645,7 +646,8 @@ function AppContent() {
 
             {/* Public report without login gating */}
             <Route path="/public-report" element={<PublicReport />} />
-            <Route path="/credits" element={<Credits />} />
+            <Route path="/credits" element={<GitFekraLanding />} />
+            <Route path="/company" element={<GitFekraLanding />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>

@@ -51,6 +51,25 @@ const BRAND_OVERRIDES = [
       logo_url: '/images/Power Logo.png',
     },
   },
+  {
+    key: 'math',
+    match: (t) =>
+      t.slug === 'math' ||
+      t.slug === 'sherif-math' ||
+      t.slug === 'belqadar' ||
+      t.slug === 'belqadar-math' ||
+      t.slug === 'mahmoud-belqadar' ||
+      t.config?.subject === 'math' ||
+      (t.slug || '').includes('math') ||
+      (t.slug || '').includes('belqadar'),
+    apply: {
+      name: 'سنتر البلقدار',
+      slug: 'belqadar-math',
+      primary_color: '#c8a951',
+      secondary_color: '#141210',
+      logo_url: '/images/logo elbeliqdar cropped.png',
+    },
+  },
 ]
 
 /* Mutates+returns the resolved tenant row with the first matching brand
@@ -78,6 +97,9 @@ export function remapAvailableTenants(allTenants) {
     if (t.slug === 'cyber' || t.slug === 'power-platform' || t.slug === 'sherif-programming' || t.slug === 'mohamed-abdella') {
       return { slug: 'power-platform', name: 'منصة باور' }
     }
+    if (t.slug === 'sherif-math' || t.slug === 'math' || t.slug === 'belqadar' || t.slug === 'belqadar-math' || t.slug === 'mahmoud-belqadar') {
+      return { slug: 'belqadar-math', name: 'سنتر البلقدار' }
+    }
     return t
   })
 }
@@ -89,7 +111,7 @@ export function getTenantFolder(tenant) {
   const slug = tenant?.slug || ''
   if (subject === 'chemistry' || slug === 'mona-chem') return 'chemistry'
   if (subject === 'physics' || slug === 'sherif-physics') return 'physics'
-  if (subject === 'math' || subject === 'mathematics' || slug?.includes('math')) return 'math'
+  if (subject === 'math' || subject === 'mathematics' || slug?.includes('math') || slug?.includes('belqadar')) return 'math'
   if (subject === 'biology' || slug?.includes('bio')) return 'biology'
   if (subject === 'science' || slug?.includes('science')) return 'science'
   if (subject === 'geology' || slug?.includes('geo')) return 'geology'

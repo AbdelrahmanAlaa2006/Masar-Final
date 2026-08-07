@@ -3,6 +3,12 @@
   "redirects": [
     {
       "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.gitfekra.com" }],
+      "destination": "https://gitfekra.com/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.mrmohamedabdella.com" }],
       "destination": "https://mrmohamedabdella.com/$1",
       "permanent": true

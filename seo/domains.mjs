@@ -25,7 +25,7 @@ export const DEVELOPERS = [
     name: 'Abdelrahman Alaa',
     alternateName: ['عبدالرحمن علاء', 'عبد الرحمن علاء', 'Abdelrahman Alaa'],
     jobTitle: 'Software Engineer & Cybersecurity Specialist',
-    image: 'https://github.com/AbdelrahmanAlaa2006.png',
+    image: '/images/Abdelrahman%20Photo%20Facebook.jpg',
     affiliation: {
       '@type': 'EducationalOrganization',
       name: 'Faculty of Computers and Data Science, Alexandria University',
@@ -38,7 +38,7 @@ export const DEVELOPERS = [
       'Full-Stack SaaS Engineering',
       'React',
       'Node.js',
-      'Multi-Tenant SaaS Systems',
+      'Scalable Web Platform Engineering',
       'Web Security',
       'Computer Science',
       'Data Science',
@@ -55,7 +55,7 @@ export const DEVELOPERS = [
     name: 'Eyad Elalkamy',
     alternateName: ['إياد العلقامي', 'إياد عاطف العلقامي', 'Eyad Atef Elalkamy'],
     jobTitle: 'Software Engineer & Cybersecurity Specialist',
-    image: 'https://github.com/eyadelalkamy-oss.png',
+    image: '/images/Eyad%20Photo%20Instagram.jpg',
     affiliation: {
       '@type': 'EducationalOrganization',
       name: 'Faculty of Computers and Data Science, Alexandria University',
@@ -82,20 +82,49 @@ export const DEVELOPERS = [
 ]
 
 export const DOMAINS = {
+  // Primary agency domain
+  gitfekra: {
+    hosts: ['gitfekra.com', 'www.gitfekra.com'],
+    lang: 'ar',
+    title: 'GitFekra — جِت فِكرة | نبني لكل مدرّس منصته التعليمية الخاصة',
+    description:
+      'شركة برمجيات متخصصة في بناء وتطوير المنصات التعليمية المستقلة للمدرّسين — حماية مشفرة ضد التسريب، امتحانات وتصحيح تلقائي، حضور، مدفوعات، ومتابعة أولياء الأمور.',
+    keywords:
+      'GitFekra, جِت فِكرة, برمجة منصات تعليمية, منصة تعليمية للمدرسين, عمل منصة تعليمية, حماية فيديوهات المدرسين, موقع تعليمي للمدرس, منصة سنتر, EdTech Egypt, Software Agency, Abdelrahman Alaa, Eyad Elalkamy',
+    author: 'GitFekra — جِت فِكرة',
+    canonical: 'https://gitfekra.com/',
+    ogImage: 'https://gitfekra.com/images/gitfekra-og.png',
+    themeColor: '#d4af37',
+    favicon: '/favicon.svg',
+    faviconType: 'image/svg+xml',
+    siteName: 'GitFekra — جِت فِكرة',
+    jsonLd: {
+      org: {
+        name: 'GitFekra',
+        alternateName: ['جِت فِكرة', 'GitFekra Software Engineering'],
+        logo: 'https://gitfekra.com/favicon.svg',
+        description: 'شركة برمجيات متخصصة في بناء وتطوير المنصات التعليمية المستقلة للمدرّسين والمراكز التعليمية.',
+        telephone: '',
+        addressLocality: 'Alexandria',
+        addressRegion: 'Alexandria',
+      },
+    },
+  },
+
   // Fallback used for the base index.html (preview deploys, *.vercel.app,
   // localhost, and any host without its own entry). Deliberately brand-neutral
   // so an unknown host never advertises a specific teacher.
   default: {
     hosts: [],
     lang: 'ar',
-    title: 'منصة تعليمية — GitFekra',
+    title: 'GitFekra — جِت فِكرة | منصات تعليمية متكاملة للمدرّسين',
     description:
       'منصات تعليمية متكاملة للمدرسين: محاضرات وفيديوهات وامتحانات وواجبات ومتابعة دقيقة لأداء كل طالب.',
     keywords: 'منصة تعليمية, تعليم أونلاين, محاضرات, امتحانات إلكترونية, متابعة الطلاب, GitFekra',
     author: 'GitFekra',
-    canonical: '',
+    canonical: 'https://gitfekra.com/',
     ogImage: '',
-    themeColor: '#7c3aed',
+    themeColor: '#d4af37',
     favicon: '/favicon.svg',
     faviconType: 'image/svg+xml',
     siteName: 'GitFekra',

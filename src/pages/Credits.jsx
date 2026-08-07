@@ -8,10 +8,10 @@ const DEVELOPERS_DATA = [
     nameAr: 'عبدالرحمن علاء',
     role: 'Software Engineer & Cybersecurity Specialist',
     roleAr: 'مهندس برمجيات ومتخصص أمن سيبراني',
-    image: 'https://github.com/AbdelrahmanAlaa2006.png',
+    image: '/images/Abdelrahman%20Photo%20Facebook.jpg',
     education: 'Faculty of Computers and Data Science, Alexandria University',
     educationAr: 'طالب أمن سيبراني — كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية',
-    bio: 'Architected the core multi-tenant backend engine, high-performance database layer, web security protocols, and cloud infrastructure for the GitFekra platform.',
+    bio: 'Architected the core backend engine, high-performance database layer, web security protocols, and cloud infrastructure for the GitFekra platform.',
     bioAr: 'تطوير وتصميم المعمارية البرمجية لمنظومة جِت فِكرة، وإدارة أمن البيانات وقواعد البيانات والأنظمة السحابية عالية الأداء.',
     links: {
       github: 'https://github.com/AbdelrahmanAlaa2006',
@@ -25,7 +25,7 @@ const DEVELOPERS_DATA = [
     nameAr: 'إياد العلقامي',
     role: 'Software Engineer & Cybersecurity Specialist',
     roleAr: 'مهندس برمجيات ومتخصص أمن سيبراني',
-    image: 'https://github.com/eyadelalkamy-oss.png',
+    image: '/images/Eyad%20Photo%20Instagram.jpg',
     education: 'Faculty of Computers and Data Science, Alexandria University',
     educationAr: 'طالب أمن سيبراني — كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية',
     bio: 'Designed and built the user experiences, interactive student interfaces, responsive real-time dashboards, and client security & performance optimizations.',
@@ -128,7 +128,7 @@ export default function Credits() {
             <span className="tech-tag"><i className="fas fa-user-graduate"></i> كلية الحاسبات وعلوم البيانات — جامعة الإسكندرية</span>
             <span className="tech-tag"><i className="fas fa-user-lock"></i> Cybersecurity & Information Security</span>
             <span className="tech-tag"><i className="fab fa-react"></i> GitFekra SaaS Platform Engine</span>
-            <span className="tech-tag"><i className="fas fa-cubes"></i> Multi-Tenant Architecture</span>
+            <span className="tech-tag"><i className="fas fa-cubes"></i> Scalable Cloud Infrastructure</span>
             <span className="tech-tag"><i className="fas fa-shield-cat"></i> Web Security & RLS</span>
           </div>
         </section>

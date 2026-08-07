@@ -40,7 +40,7 @@ function jsonLdBlock(cfg) {
       name: dev.name,
       alternateName: dev.alternateName,
       jobTitle: dev.jobTitle,
-      ...(dev.image ? { image: dev.image } : {}),
+      ...(dev.image ? { image: dev.image.startsWith('http') ? dev.image : `${base.replace(/\/$/, '')}${dev.image}` } : {}),
       ...(dev.affiliation ? { affiliation: dev.affiliation, alumniOf: dev.affiliation } : {}),
       knowsAbout: dev.knowsAbout,
       sameAs: dev.sameAs,

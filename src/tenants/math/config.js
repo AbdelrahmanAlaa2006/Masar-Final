@@ -1,46 +1,46 @@
 export const themeConfig = {
   themeClass: 'aa-math-theme',
   canvasFont: 'italic "Cinzel", serif',
-  primaryColor: '#2563eb',
-  secondaryColor: '#3b82f6',
-  particleColors: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8', '#1e40af'],
+  primaryColor: '#c8a951',
+  secondaryColor: '#141210',
+  particleColors: ['#c8a951', '#e0c878', '#b08d2f', '#d4af37', '#8a6d1f', '#f5e6a8'],
   formulas: ['π', 'σ', '∑', '√', '∫', '∞', 'f(x)', 'x²', 'a²+b²=c²', 'sin(θ)', 'cos(θ)', 'tan(θ)'],
   getLineColor: (theme, alpha) => {
     return theme === 'dark'
-      ? `rgba(96, 165, 250, ${alpha * 0.22})`
-      : `rgba(37, 99, 219, ${alpha * 0.15})`
+      ? `rgba(200, 169, 81, ${alpha * 0.25})`
+      : `rgba(176, 141, 47, ${alpha * 0.18})`
   },
   drawCustomShape: () => false,
   generateCustomShape: () => 'formula',
-  logoUrl: null,
+  logoUrl: '/images/logo elbeliqdar cropped.png',
   branding: {
-    brand_short: { ar: 'منصة الرياضيات', en: 'Math Platform' },
-    hero_title_a: { ar: 'علم الرياضيات', en: 'Mathematics Science' },
-    hero_title_b: { ar: 'الأرقام بلغة الفهم', en: 'Numbers made easy' },
+    brand_short: { ar: 'سنتر البلقدار', en: 'El-Belqadar Center' },
+    hero_title_a: { ar: 'سنتر البلقدار', en: 'El-Belqadar Center' },
+    hero_title_b: { ar: 'للرياضيات والإحصاء', en: 'Math & Statistics' },
     hero_sub: {
-      ar: 'منصة تعليمية متخصصة في الرياضيات - شرح مبسط وتطبيقات عملية تجعلك تتفوق في المعادلات وتتقن الحساب هندسياً وجبرياً.',
-      en: 'An educational platform specializing in mathematics - simplified explanations and practical applications that help you master equations.'
+      ar: 'منصة تعليمية متخصصة في الرياضيات والإحصاء للثانوية العامة — شرح وافٍ وتمارين تطبيقية وامتحانات دورية تقودك للتفوق.',
+      en: 'Specialized education platform for secondary Mathematics and Statistics — comprehensive explanations, practical drills, and regular exams.'
     }
   },
   teacher: {
-    name: { ar: 'محمد علي', en: 'Mohamed Ali' },
-    role: { ar: 'مدرّس الرياضيات القدير', en: 'Senior Mathematics Teacher' },
+    name: { ar: 'محمود البلقدار', en: 'Mahmoud El-Belqadar' },
+    role: { ar: 'مدرّس الرياضيات والإحصاء', en: 'Mathematics & Statistics Teacher' },
     bio: {
-      ar: 'شرح مبسط لقواعد الحساب، الجبر، والهندسة بأساليب حديثة وحلول ذكية تؤهلك للتفوق والدرجة النهائية.',
-      en: 'Simplified explanations of calculus, algebra, and geometry with modern techniques and smart solutions.'
+      ar: 'شرح مبسط لقواعد التفاضل والتكامل، الجبر والهندسة الفراغية، والإحصاء بأساليب حديثة وحلول ذكية.',
+      en: 'Clear, modern explanations of calculus, algebra, solid geometry, and statistics with smart problem-solving techniques.'
     },
     quote: {
-      ar: '«الرياضيات هي مفتاح كل العلوم، وفهمها يفتح لك أبواب المستقبل.»',
-      en: '“Mathematics is the key to all sciences, and understanding it opens the doors to the future.”'
+      ar: '«الرياضيات هي لغة العقل والمنطق، والتفوق فيها يبدأ من الفهم السليم.»',
+      en: '“Mathematics is the language of logic, and excellence begins with clear understanding.”'
     },
-    image_base: '/images/profile.png',
-    image_hover: '/images/me.png',
-    experience: { ar: '+15', en: '+15' },
-    students_count: { ar: '+4,000', en: '+4,000' },
+    image_base: '/images/Mr Mahmoud Elbeliqdar image Without BG.png',
+    image_hover: '/images/Mr Mahmoud Elbeliqdar image Without BG.png',
+    experience: { ar: '+12', en: '+12' },
+    students_count: { ar: '+3,500', en: '+3,500' },
     satisfaction: { ar: '99%', en: '99%' },
-    target_stage: { ar: 'الإعدادية والثانوية', en: 'Prep & Secondary' },
+    target_stage: { ar: 'الثانوية العامة (علمي وأدبي)', en: 'General Secondary' },
     target_stage_label: { ar: 'المراحل التي يدرّسها', en: 'Stages he teaches' },
-    learning_system: { ar: 'أونلاين تفاعلي', en: 'Online Interactive' }
+    learning_system: { ar: 'أونلاين وحضوري', en: 'Online & In-Center' }
   },
   socials: {
     facebook: 'https://www.facebook.com',
@@ -50,13 +50,13 @@ export const themeConfig = {
     tiktok: 'https://www.tiktok.com'
   },
   location: {
-    kicker: { ar: 'زورنا في مقرنا', en: 'Visit our center' },
+    kicker: { ar: 'زورنا في السنتر', en: 'Visit our center' },
     title: { ar: 'موقع السنتر', en: 'Our Location' },
     description: {
       ar: 'مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب.',
       en: 'Our main center for lectures and student follow-up.'
     },
-    address: { ar: 'دمنهور، البحيرة', en: 'Damanhour, Beheira' },
+    address: { ar: 'الإسكندرية / دمنهور', en: 'Alexandria / Damanhour' },
     country: { ar: 'جمهورية مصر العربية', en: 'Egypt' },
     map_iframe_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000',
     phone: '+20 100 000 0000',
