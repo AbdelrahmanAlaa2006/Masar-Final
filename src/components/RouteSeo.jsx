@@ -72,7 +72,8 @@ export default function RouteSeo() {
         el.setAttribute('rel', 'canonical')
         document.head.appendChild(el)
       }
-      el.setAttribute('href', `https://${host}${path === '/' ? '/' : path}`)
+      const canonicalPath = (path === '/' || path === '/login') ? '/' : path
+      el.setAttribute('href', `https://${host}${canonicalPath}`)
     } else if (existingCanonical) {
       existingCanonical.remove()
     }

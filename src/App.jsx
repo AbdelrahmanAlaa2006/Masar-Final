@@ -599,7 +599,7 @@ function AppContent() {
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : <ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+            <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : isLoggedIn ? <Home /> : <Login />} />
             <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
             <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
             <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
