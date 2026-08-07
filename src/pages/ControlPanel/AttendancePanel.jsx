@@ -497,12 +497,58 @@ export default function AttendancePanel({ onBack, flash }) {
     }
   }
 
+  const openStudentDetailsForStudent = async (student) => {
+    if (!student) return
+    try {
+      const token = student.barcode_token || student.qr_token || student.id
+      let studentData = await getStudentIdentityByQr(token, tenantId).catch(() => null)
+      if (!studentData) {
+        studentData = {
+          student_id: student.id,
+          name: student.name,
+          phone: student.phone,
+          grade: student.grade,
+          group_name: student.group || student.group_name || '',
+          enrollment_type: student.enrollment_type || 'CENTER',
+          status: student.status || 'active',
+          flags: student.flags || [],
+          warnings: []
+        }
+      }
+
+      const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+      const lastPayIso = studentData.last_payment?.created_at
+      const lastPayDesc = studentData.last_payment?.description || ''
+      const currentMonthName = ARABIC_MONTHS[new Date().getMonth()]
+      const paidThisMonth = (() => {
+        if (lastPayDesc.includes(currentMonthName)) return true
+        if (!lastPayIso) return false
+        const d = new Date(lastPayIso), now = new Date()
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      })()
+      const monthlyFee = Number(feesByGrade[studentData.grade || student.grade]) || 0
+      let discount = 0
+      try { discount = Number(await getStudentDiscount(studentData.student_id || student.id)) || 0 } catch { discount = 0 }
+      studentData.monthly_fee = monthlyFee
+      studentData.discount = discount
+      studentData.paid_this_month = paidThisMonth
+      studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
+
+      setScannedStudent(studentData)
+    } catch (err) {
+      console.error('Failed to load student info popup:', err)
+    }
+  }
+
   // Single status change (saves immediately to the database)
   const handleStatusChange = async (studentId, status) => {
     if (!selectedSessionId || selectedSessionId === 'new') {
       flash('يرجى إنشاء حصة أو اختيار حصة مسجلة لتسجيل الحضور', 'warning')
       return
     }
+
+    const student = students.find(s => s.id === studentId)
+    if (!student) return
 
     // Only skip if the student already has an explicitly saved record with the
     // same status. When there is NO record yet (the student has never been
@@ -511,11 +557,11 @@ export default function AttendancePanel({ onBack, flash }) {
     const hasExistingRecord = Object.prototype.hasOwnProperty.call(attendanceRecords, studentId)
     if (hasExistingRecord && attendanceRecords[studentId] === status) {
       flash('لا يوجد تغيير - حالة الحضور محفوظة بالفعل', 'info')
+      if (status === 'present') {
+        openStudentDetailsForStudent(student)
+      }
       return
     }
-
-    const student = students.find(s => s.id === studentId)
-    if (!student) return
 
     setSavingStudents(prev => ({ ...prev, [studentId]: true }))
     
@@ -539,6 +585,9 @@ export default function AttendancePanel({ onBack, flash }) {
         created_by: currentUser?.id
       }], sessionTitle)
       
+      if (status === 'present') {
+        openStudentDetailsForStudent(student)
+      }
     } catch (err) {
       console.error(err)
       flash('حدث خطأ أثناء حفظ التحضير: ' + err.message, 'error')

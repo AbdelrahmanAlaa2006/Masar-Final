@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
-import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount } from '@backend/paymentsApi'
+import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount, getStudentDiscount } from '@backend/paymentsApi'
 import { searchStudents } from '@backend/profilesApi'
 import { recordSubscriptionPayment } from '@backend/financeApi'
 import { listBranches } from '@backend/branchesApi'
@@ -15,6 +15,95 @@ import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import BookletsPanel from './ControlPanel/BookletsPanel'
 import './Payments.css'
 
+const ACAD_MONTHS = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس']
+
+const getAcadMonthIdx = (d) => {
+  if (!d || isNaN(new Date(d).getTime())) {
+    const now = new Date()
+    const m = now.getMonth()
+    return m >= 8 ? m - 8 : m + 4
+  }
+  const date = new Date(d)
+  const m = date.getMonth()
+  return m >= 8 ? m - 8 : m + 4
+}
+
+const getPackageNameForIdx = (idx) => {
+  const mName = ACAD_MONTHS[(idx % 12 + 12) % 12]
+  return `اشتراك شهر ${mName}`
+}
+
+const isPackagePaidForStudent = (studentId, pkgName, payments, monthDue) => {
+  if (!studentId || !pkgName) return false
+  const monthName = pkgName.replace('اشتراك شهر ', '').trim()
+  const paidSoFar = (payments || [])
+    .filter(p =>
+      p.student_id === studentId &&
+      p.status === 'approved' &&
+      ((p.package_name || '').trim() === pkgName.trim() ||
+       (p.package_name || '').includes(monthName) ||
+       (p.billing_period || '').includes(monthName))
+    )
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+
+  return monthDue > 0 ? paidSoFar >= monthDue : paidSoFar > 0
+}
+
+const determineSmartDefaultMonth = (studentObj, payments, monthDue) => {
+  const now = new Date()
+  const currentAcadIdx = getAcadMonthIdx(now)
+
+  if (!studentObj) return getPackageNameForIdx(currentAcadIdx)
+
+  // Find all approved monthly subscription payments for this student
+  const studentApprovedPayments = (payments || []).filter(
+    p => p.student_id === studentObj.id && p.status === 'approved'
+  )
+
+  const monthlyPayRecords = studentApprovedPayments.filter(p =>
+    ACAD_MONTHS.some(m => (p.package_name || '').includes(m) || (p.billing_period || '').includes(m))
+  )
+
+  // 1. If student has NO previous monthly subscription payments (first-time payment):
+  //    ALWAYS default to current calendar month (e.g. August).
+  if (monthlyPayRecords.length === 0) {
+    const currentPkg = getPackageNameForIdx(currentAcadIdx)
+    if (!isPackagePaidForStudent(studentObj.id, currentPkg, payments, monthDue)) {
+      return currentPkg
+    }
+  }
+
+  // 2. If student HAS previous monthly payment records, check from their earliest paid month up to current month
+  let earliestPaidAcadIdx = currentAcadIdx
+  monthlyPayRecords.forEach(p => {
+    ACAD_MONTHS.forEach((m, idx) => {
+      if ((p.package_name || '').includes(m) || (p.billing_period || '').includes(m)) {
+        if (idx < earliestPaidAcadIdx) earliestPaidAcadIdx = idx
+      }
+    })
+  })
+
+  const startAcadIdx = Math.min(earliestPaidAcadIdx, currentAcadIdx)
+  const numMonths = (currentAcadIdx - startAcadIdx + 12) % 12 + 1
+
+  for (let i = 0; i < numMonths; i++) {
+    const idx = (startAcadIdx + i) % 12
+    const pkg = getPackageNameForIdx(idx)
+    if (!isPackagePaidForStudent(studentObj.id, pkg, payments, monthDue)) {
+      return pkg
+    }
+  }
+
+  for (let i = numMonths; i < 12; i++) {
+    const idx = (startAcadIdx + i) % 12
+    const pkg = getPackageNameForIdx(idx)
+    if (!isPackagePaidForStudent(studentObj.id, pkg, payments, monthDue)) {
+      return pkg
+    }
+  }
+
+  return getPackageNameForIdx(currentAcadIdx)
+}
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -780,8 +869,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   }
 
   // When a student is picked in the cash modal, auto-fill the amount to his due
-  // (grade fee - his discount) and load his current discount — the admin/assistant
-  // doesn't retype it, and it stays consistent with what the student pays online.
+  // (grade fee - his discount), load his current discount, and intelligently set
+  // the default payment month to his earliest unpaid/due month.
   useEffect(() => {
     if (!cashStudentId) return
     const stud = studentsList.find(s => s.id === cashStudentId)
@@ -793,11 +882,14 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       if (cancelled) return
       setCashDiscount(String(disc))
       const fee = parseFloat(feeInputs[stud.grade]) || 0
-      if (fee > 0) setCashAmount(String(Math.max(0, fee - disc)))
+      const due = Math.max(0, fee - disc)
+      if (fee > 0) setCashAmount(String(due))
+
+      const smartPkg = determineSmartDefaultMonth(stud, payments, due)
+      setCashPackageName(smartPkg)
     })()
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashStudentId, studentsList])
+  }, [cashStudentId, studentsList, feeInputs, payments])
 
   const cashStudentObj = studentsList.find(s => s.id === cashStudentId)
   const cashFee = cashStudentObj ? (parseFloat(feeInputs[cashStudentObj.grade]) || 0) : 0
@@ -898,7 +990,6 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const handleResolve = async (paymentId, status, studentId) => {
     if (!adminId) return
-    // Prevent approving a duplicate payment for a month the student already paid.
     if (status === 'approved') {
       const thisPay = payments.find(p => p.id === paymentId)
       const month = (thisPay?.package_name || '').trim()
@@ -920,14 +1011,12 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       
       notify(status === 'approved' ? 'تم قبول الدفع وتفعيل حساب الطالب بنجاح! 🎉' : 'تم رفض طلب الدفع بنجاح.', 'success')
       
-      // Clear notes input
       setNotesMap(prev => {
         const next = { ...prev }
         delete next[paymentId]
         return next
       })
 
-      // Refresh data
       onRefresh()
     } catch (err) {
       console.error('Resolve payment error:', err)
@@ -937,21 +1026,10 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     }
   }
 
-  // Lock background body scroll when admin manual cash payment modal is open
-  useEffect(() => {
-    if (showCashModal) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [showCashModal])
-
   // Derive available packages list
   const availablePackages = useMemo(() => {
     return [
+      'اشتراك شهر أغسطس',
       'اشتراك شهر سبتمبر',
       'اشتراك شهر أكتوبر',
       'اشتراك شهر نوفمبر',
@@ -963,7 +1041,6 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       'اشتراك شهر مايو',
       'اشتراك شهر يونيو',
       'اشتراك شهر يوليو',
-      'اشتراك شهر أغسطس',
       'اشتراك الترم الأول',
       'اشتراك الترم الثاني',
       'اشتراك السنة كاملة'
@@ -998,15 +1075,24 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     setCashAmount('')
     setStudentSearchQuery('')
     setCashDate(new Date().toISOString().split('T')[0])
-    if (availablePackages.length > 0) {
-      setCashPackageName(availablePackages[0])
-    } else {
-      setCashPackageName('اشتراك شهر أكتوبر')
-    }
+    const currentPkg = getPackageNameForIdx(getAcadMonthIdx(new Date()))
+    setCashPackageName(currentPkg)
     setShowCashModal(true)
-    // The student list loads via the debounced search effect (keyed on the
-    // open modal + search query).
   }
+
+  // Lock background body scroll when admin manual cash payment modal is open
+  useEffect(() => {
+    if (showCashModal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showCashModal])
+
+
 
   const handleSaveCash = async (e) => {
     e.preventDefault()
@@ -1910,19 +1996,35 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                         overscrollBehavior: 'contain'
                       }}
                     >
-                      {availablePackages.map(p => (
-                        <div
-                          key={p}
-                          onClick={() => {
-                            setCashPackageName(p)
-                            setShowAdminPkgDropdown(false)
-                          }}
-                          className="paypg-modal-student-item"
-                          style={{ borderBottom: 'none' }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{p}</span>
-                        </div>
-                      ))}
+                      {availablePackages.map(p => {
+                        const isPaid = isPackagePaidForStudent(cashStudentId, p, payments, cashDue)
+                        return (
+                          <div
+                            key={p}
+                            onClick={() => {
+                              if (isPaid) return
+                              setCashPackageName(p)
+                              setShowAdminPkgDropdown(false)
+                            }}
+                            className="paypg-modal-student-item"
+                            style={{
+                              borderBottom: 'none',
+                              opacity: isPaid ? 0.6 : 1,
+                              cursor: isPaid ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: isPaid ? 'var(--cp-text-muted, #94a3b8)' : 'inherit' }}>{p}</span>
+                            {isPaid && (
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', padding: '2px 8px', borderRadius: 999, background: 'rgba(239, 68, 68, 0.1)' }}>
+                                تم السداد
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </>
                 )}

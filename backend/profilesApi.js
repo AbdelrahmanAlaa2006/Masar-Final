@@ -203,7 +203,7 @@ export async function getStudentCount() {
 export async function searchStudents(term = '', limit = 12) {
   let query = supabase
     .from('profiles')
-    .select('id, name, phone, grade, "group", avatar_url')
+    .select('id, name, phone, grade, "group", avatar_url, created_at')
     .eq('role', 'student')
     .order('name', { ascending: true })
     .limit(limit)
