@@ -19,6 +19,68 @@
 
 export const DEFAULT_KEY = 'default'
 
+export const DEVELOPERS = [
+  {
+    key: 'abdelrahman',
+    name: 'Abdelrahman Alaa',
+    alternateName: ['عبدالرحمن علاء', 'عبد الرحمن علاء', 'Abdelrahman Alaa'],
+    jobTitle: 'Software Engineer & Cybersecurity Specialist',
+    image: 'https://github.com/AbdelrahmanAlaa2006.png',
+    affiliation: {
+      '@type': 'EducationalOrganization',
+      name: 'Faculty of Computers and Data Science, Alexandria University',
+      alternateName: ['كلية الحاسبات وعلوم البيانات - جامعة الإسكندرية', 'Alexandria University', 'FCDS Alexandria'],
+    },
+    knowsAbout: [
+      'Cybersecurity',
+      'Information Security',
+      'Software Architecture',
+      'Full-Stack SaaS Engineering',
+      'React',
+      'Node.js',
+      'Multi-Tenant SaaS Systems',
+      'Web Security',
+      'Computer Science',
+      'Data Science',
+    ],
+    sameAs: [
+      'https://github.com/AbdelrahmanAlaa2006',
+      'https://www.linkedin.com/in/abdelrahman-alaa2006',
+      'https://www.facebook.com/abdelrahman.alaa.988711',
+      'https://www.instagram.com/abd_elrahman_alaa3/',
+    ],
+  },
+  {
+    key: 'eyad',
+    name: 'Eyad Elalkamy',
+    alternateName: ['إياد العلقامي', 'إياد عاطف العلقامي', 'Eyad Atef Elalkamy'],
+    jobTitle: 'Software Engineer & Cybersecurity Specialist',
+    image: 'https://github.com/eyadelalkamy-oss.png',
+    affiliation: {
+      '@type': 'EducationalOrganization',
+      name: 'Faculty of Computers and Data Science, Alexandria University',
+      alternateName: ['كلية الحاسبات وعلوم البيانات - جامعة الإسكندرية', 'Alexandria University', 'FCDS Alexandria'],
+    },
+    knowsAbout: [
+      'Cybersecurity',
+      'Frontend Architecture',
+      'Software Engineering',
+      'React',
+      'UI/UX Security',
+      'Web Performance',
+      'Cloud Applications',
+      'Computer Science',
+      'Data Science',
+    ],
+    sameAs: [
+      'https://github.com/eyadelalkamy-oss',
+      'https://www.linkedin.com/in/eyad-atef-elalkamy-709615385',
+      'https://www.facebook.com/eyad.alkamy',
+      'https://www.instagram.com/eyad_elalkamy/',
+    ],
+  },
+]
+
 export const DOMAINS = {
   // Fallback used for the base index.html (preview deploys, *.vercel.app,
   // localhost, and any host without its own entry). Deliberately brand-neutral

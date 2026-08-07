@@ -30,7 +30,7 @@ import { useTenant } from '../contexts/TenantContext'
    NOTE: a single hardcoded host here used to delete the canonical on every
    OTHER custom domain, which would have de-indexed each new teacher site. */
 const PRODUCTION_HOSTS = ['mrmohamedabdella.com', 'mrkhalidelsharif.com']
-const PUBLIC_PATHS = ['/', '/login', '/register']
+const PUBLIC_PATHS = ['/', '/login', '/register', '/credits']
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1'
 
 function upsertMeta(name, content) {
@@ -93,6 +93,11 @@ export default function RouteSeo() {
               title: 'إنشاء حساب — منصة باور | مستر محمد عبداللاه',
               description:
                 'أنشئ حسابك في منصة باور لمستر محمد عبداللاه وابدأ تعلم البرمجة والذكاء الاصطناعي أونلاين — Join Mr Mohamed Abdella’s programming & AI platform.'
+            },
+            '/credits': {
+              title: 'فريق التطوير والهندسة البرمجية — منصة باور',
+              description:
+                'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة باور (Abdelrahman Alaa & Eyad Elalkamy) والمعمارية المستخدمة في إدارة المنظومة التعليمية.'
             }
           }
         : isEldad
@@ -109,6 +114,11 @@ export default function RouteSeo() {
               title: 'إنشاء حساب — الضاد | لغة عربية البكالوريا المصرية',
               description:
                 'أنشئ حسابك في منصة الضاد للأستاذ خالد الشريف وابدأ رحلتك في لغة عربية البكالوريا المصرية — نحو وبلاغة وأدب ونصوص بأسلوب مبسّط.'
+            },
+            '/credits': {
+              title: 'فريق التطوير والهندسة البرمجية — منصة الضاد',
+              description:
+                'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة الضاد (Abdelrahman Alaa & Eyad Elalkamy) والمعمارية المستخدمة في إدارة المنظومة التعليمية.'
             }
           }
         : {
@@ -117,6 +127,10 @@ export default function RouteSeo() {
             '/register': {
               title: `إنشاء حساب — ${tenantName}`,
               description: `أنشئ حسابك في ${tenantName} وابدأ رحلتك الدراسية أونلاين.`
+            },
+            '/credits': {
+              title: `فريق التطوير والمهندسين — ${tenantName}`,
+              description: `تعرّف على المهندسين ومطوري البنية البرمجية لمنصة ${tenantName} (Abdelrahman Alaa & Eyad Elalkamy).`
             }
           }
 

@@ -39,6 +39,7 @@ const FinanceReport = lazy(() => import('./pages/FinanceReport'))
 const FinanceGroupReport = lazy(() => import('./pages/FinanceGroupReport'))
 // GitFekra company website — shown on the default tenant only.
 const GitFekraLanding = lazy(() => import('./pages/company/GitFekraLanding'))
+const Credits = lazy(() => import('./pages/Credits'))
 
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
@@ -575,12 +576,13 @@ function AppContent() {
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
   const isRegisterPage = location.pathname === '/register'
+  const isCreditsPage = location.pathname === '/credits'
   // The GitFekra landing is shown ONLY to logged-out visitors on the default
   // tenant. Logged-in users (admins/super-admins/students of the default
   // tenant) get their normal dashboard, so they can still reach the panel.
   const showCompanyLanding = isCompanySite && !isLoggedIn
   // The landing has its own header/footer — suppress the educational chrome.
-  const showHeaderFooter = !isLoginPage && !isRegisterPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage && !showCompanyLanding
+  const showHeaderFooter = !isLoginPage && !isRegisterPage && !isCreditsPage && !isExamTaking && !isUnapprovedStudent && !isPublicReportPage && !showCompanyLanding
 
   return (
     <div className={`app ${isLoginPage ? 'login-page' : ''}`}>
@@ -643,6 +645,7 @@ function AppContent() {
 
             {/* Public report without login gating */}
             <Route path="/public-report" element={<PublicReport />} />
+            <Route path="/credits" element={<Credits />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>

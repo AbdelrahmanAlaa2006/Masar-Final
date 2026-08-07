@@ -18,7 +18,7 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DOMAINS, DEFAULT_KEY } from '../seo/domains.mjs'
+import { DOMAINS, DEFAULT_KEY, DEVELOPERS } from '../seo/domains.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(ROOT, 'dist')
@@ -26,10 +26,42 @@ const DIST = join(ROOT, 'dist')
 const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 function jsonLdBlock(cfg) {
-  if (!cfg.jsonLd) return ''
-  const base = cfg.canonical || '/'
-  const { person, org } = cfg.jsonLd
+  const base = cfg.canonical || 'https://mrmohamedabdella.com/'
+  const { person, org } = cfg.jsonLd || {}
   const blocks = []
+
+  // Developer Person Entities (Abdelrahman Alaa & Eyad Elalkamy)
+  const developerIds = DEVELOPERS.map((dev) => {
+    const devId = `${base}#developer-${dev.key}`
+    blocks.push({
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      '@id': devId,
+      name: dev.name,
+      alternateName: dev.alternateName,
+      jobTitle: dev.jobTitle,
+      ...(dev.image ? { image: dev.image } : {}),
+      ...(dev.affiliation ? { affiliation: dev.affiliation, alumniOf: dev.affiliation } : {}),
+      knowsAbout: dev.knowsAbout,
+      sameAs: dev.sameAs,
+      url: `${base}credits`,
+    })
+    return { '@id': devId }
+  })
+
+  // SoftwareApplication / WebApplication Entity
+  blocks.push({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    '@id': `${base}#software`,
+    name: 'GitFekra Educational SaaS Platform',
+    applicationCategory: 'EducationalApplication',
+    operatingSystem: 'Web, Mobile Web',
+    author: developerIds,
+    creator: developerIds,
+    publisher: org ? { '@id': `${base}#organization` } : { '@type': 'Organization', name: 'GitFekra' },
+    url: base,
+  })
 
   if (person) {
     blocks.push({
@@ -46,6 +78,7 @@ function jsonLdBlock(cfg) {
       ...(person.sameAs?.length ? { sameAs: person.sameAs } : {}),
     })
   }
+
   if (org) {
     blocks.push({
       '@context': 'https://schema.org',
@@ -69,9 +102,9 @@ function jsonLdBlock(cfg) {
             },
           }
         : {}),
-      ...(person?.sameAs?.length ? { sameAs: person.sameAs } : {}),
     })
   }
+
   blocks.push({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -79,7 +112,7 @@ function jsonLdBlock(cfg) {
     name: cfg.siteName || cfg.title,
     url: base,
     inLanguage: ['ar', 'en'],
-    publisher: { '@id': `${base}#organization` },
+    publisher: org ? { '@id': `${base}#organization` } : { '@type': 'Organization', name: 'GitFekra' },
   })
 
   return blocks

@@ -1052,11 +1052,13 @@ export default function Login() {
           {/* Developer credit — moved here from the in-app Footer so it shows on
               the public login page only, not inside the app. */}
           <p className="login-dev-credit" dir="ltr">
-            <i className="fas fa-code"></i>
-            <span>Developed by</span>
-            <strong>Abdelrahman Alaa</strong>
-            <span className="amp">&amp;</span>
-            <strong>Eyad Elalkamy</strong>
+            <a href="/credits" style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }} title="View Developer Credits & Architecture">
+              <i className="fas fa-code"></i>
+              <span>Developed by</span>
+              <strong>Abdelrahman Alaa</strong>
+              <span className="amp">&amp;</span>
+              <strong>Eyad Elalkamy</strong>
+            </a>
           </p>
         </div>
       </footer>
