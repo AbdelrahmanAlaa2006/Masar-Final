@@ -341,11 +341,11 @@ function AdminRoute({ isLoggedIn, role, permission, children }) {
 
 function AppContent() {
   const location = useLocation()
-  const isLoginPage = location.pathname === '/login'
-  const isExamTaking = location.pathname === '/exam-taking'
-  const isPublicReportPage = location.pathname === '/public-report'
   const { user, isLoggedIn, loading, logout } = useAuth()
   const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig, isCompanySite } = useTenant()
+  const isLoginPage = location.pathname === '/login' || (!isLoggedIn && !isCompanySite && location.pathname === '/')
+  const isExamTaking = location.pathname === '/exam-taking'
+  const isPublicReportPage = location.pathname === '/public-report'
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(() => {
     return sessionStorage.getItem('masar-devtools-blocked') === 'true'
   })
