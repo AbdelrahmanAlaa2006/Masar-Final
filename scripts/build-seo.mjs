@@ -183,12 +183,10 @@ const run = async () => {
 
   let count = 0
   for (const [key, cfg] of Object.entries(DOMAINS)) {
-    const html = cleaned.replace('</head>', `${headFor(cfg)}\n</head>`)
-    // The neutral fallback goes to default.html — NOT index.html. Vercel serves
-    // a real dist/index.html for "/" *before* it applies host rewrites, so an
-    // index.html at the root would shadow the per-domain rewrite and every
-    // homepage would serve this neutral head. With no root index.html, "/" has
-    // no filesystem match and falls through to the host rewrites in vercel.json.
+    let html = cleaned.replace('</head>', `${headFor(cfg)}\n</head>`)
+    // Inject initial static H1 tag inside #root so non-JS scrapers (like Bing)
+    // detect an H1 tag before React mounts and hydrates.
+    html = html.replace('<div id="root"></div>', `<div id="root"><h1 style="display:none;">${esc(cfg.title)}</h1></div>`)
     const outName = key === DEFAULT_KEY ? 'default.html' : `${key}.html`
     await writeFile(join(DIST, outName), html, 'utf8')
     count++
