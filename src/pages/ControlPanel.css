@@ -3033,6 +3033,23 @@ body.dark .cp-sa-danger-card {
   to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+@media (max-width: 768px) {
+  .cp-container {
+    padding: 12px !important;
+  }
+  .cp-panel {
+    padding: 1.1rem !important;
+  }
+  .cp-table-wrap, .table-container, .cp-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .cp-portal-modal {
+    padding: 20px 16px !important;
+    max-width: 95vw !important;
+  }
+}
+
 
 
 

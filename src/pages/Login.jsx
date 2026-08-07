@@ -643,10 +643,6 @@ export default function Login() {
               <div className="aa-portrait-img">
                 <img src={teacherImageBase} alt={lang === 'ar' ? `الأستاذ ${teacherName}` : `Mr. ${teacherName}`} className="aa-img-base" />
                 <div className="aa-portrait-vignette" />
-                <div className="aa-portrait-chips">
-                  <div className="aa-chip aa-chip-accent">{lang === 'ar' ? 'اعتماد أكاديمي' : 'Certified Lecturer'}</div>
-                  {teacherExp && <div className="aa-chip">{teacherExp} {lang === 'ar' ? 'سنوات خبرة' : 'years experience'}</div>}
-                </div>
               </div>
               <div className="aa-nameplate">
                 <div className="aa-nameplate-row">
@@ -656,6 +652,19 @@ export default function Login() {
                     <p className="aa-dept">{teacherRole}</p>
                   </div>
                   <div className="aa-grad-icon"><i className="fas fa-graduation-cap"></i></div>
+                </div>
+
+                <div className="aa-portrait-chips">
+                  <span className="aa-chip aa-chip-accent">{lang === 'ar' ? 'اعتماد أكاديمي' : 'Certified Lecturer'}</span>
+                  {teacherExp && (
+                    <span className="aa-chip">
+                      {teacherExp.includes('خبرة') || teacherExp.includes('exp')
+                        ? teacherExp
+                        : (teacherExp.includes('عام') || teacherExp.includes('Year')
+                            ? `${teacherExp} ${lang === 'ar' ? 'خبرة' : 'exp'}`
+                            : `${teacherExp} ${lang === 'ar' ? 'سنوات خبرة' : 'years experience'}`)}
+                    </span>
+                  )}
                 </div>
                 {(teacherTargetStage || teacherLearningSystem) && (
                 <div className="aa-metrics">

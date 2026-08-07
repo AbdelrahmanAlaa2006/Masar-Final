@@ -1072,3 +1072,10 @@ body.dark .ec-footer {
   background: rgba(255, 193, 7, 0.06);
   border-top-color: rgba(255, 193, 7, 0.15);
 }
+
+@media (max-width: 768px) {
+  .exam-actions, .exam-card-actions, .status-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}

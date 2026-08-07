@@ -523,7 +523,7 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             ? 'غير مسموح بالتحضير (طالب أونلاين)'
             : 'غير مسموح بالتحضير (صف دراسي مختلف)'
           return (
-            <div style={{ flexShrink: 0, padding: '14px 30px 20px', borderTop: `1px solid ${dividerColor}` }}>
+            <div style={{ flexShrink: 0, padding: '12px 16px 16px', borderTop: `1px solid ${dividerColor}` }}>
               <button
                 ref={confirmBtnRef}
                 onClick={confirm}

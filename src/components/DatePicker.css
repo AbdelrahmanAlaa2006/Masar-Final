@@ -220,3 +220,25 @@
   color: #fff;
 }
 .dpk-foot-btn.primary:hover { filter: brightness(1.08); }
+
+@media (max-width: 640px) {
+  .dpk-pop {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 320px !important;
+    z-index: 999999 !important;
+    margin: 0 !important;
+    animation: dpkInMobile 0.16s ease-out !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8) !important;
+  }
+}
+
+@keyframes dpkInMobile {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

@@ -808,3 +808,14 @@ body.dark .rp-modal-close {
   border-color: #ef4444;
   color: #ef4444;
 }
+
+@media (max-width: 768px) {
+  .paypg-table-wrap, .paypg-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .paypg-filters, .paypg-filter-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}

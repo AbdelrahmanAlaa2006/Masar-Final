@@ -1234,9 +1234,15 @@ body:not(.dark) .vid-pdf-inline {
   background: #f1f5f9;
 }
 
-/* Dynamic Toggle Button */
 .vid-player-pdf-toggle {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+
+@media (max-width: 768px) {
+  .vid-actions, .video-actions, .card-actions {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
 }
 
