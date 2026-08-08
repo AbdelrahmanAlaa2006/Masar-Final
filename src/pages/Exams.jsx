@@ -14,7 +14,7 @@ import { listExamSharedBlocks, saveExamSharedBlocks } from '@backend/examSharedB
 import { listStudentContentAccess } from '@backend/packagesApi'
 import { listPlaylists } from '@backend/playlistsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
-import { cached, invalidate as invalidateCache, LIST_TTL } from '../utils/cache'
+import { cached, invalidatePrefix, LIST_TTL } from '../utils/cache'
 import { useAuth } from '../contexts/AuthContext'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { notify } from '../utils/notify'
@@ -332,7 +332,7 @@ export default function Exams() {
       if (sharedBlocks) {
         await saveExamSharedBlocks(editExam.id, sharedBlocks)
       }
-      invalidateCache('exams')
+      invalidatePrefix('exams')
       setRows(prev => prev.map(e => e.id === editExam.id ? { ...e, ...updated } : e))
       setEditExam(null)
     } catch (err) {
@@ -345,7 +345,7 @@ export default function Exams() {
     if (!target) return
     try {
       await deleteExam(target.id)
-      invalidateCache('exams')
+      invalidatePrefix('exams')
       setRows(prev => prev.filter(e => e.id !== target.id))
       setConfirmDelete(null)
     } catch (err) {
@@ -357,8 +357,7 @@ export default function Exams() {
   const handleToggleArchive = async (exam) => {
     try {
       await setExamArchived(exam.id, !exam.is_archived)
-      invalidateCache('exams')
-      invalidateCache('exams-lean')
+      invalidatePrefix('exams')
       notify(exam.is_archived ? 'تم إلغاء أرشفة الامتحان بنجاح' : 'تم أرشفة الامتحان بنجاح')
       await refresh()
     } catch (err) {

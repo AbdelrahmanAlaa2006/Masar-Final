@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import './ExamsGroupReport.css'
 import { listStudentsByGrade } from '@backend/profilesApi'
-import { listExams } from '@backend/examsApi'
+import { listExams, uiToDbGrade } from '@backend/examsApi'
 import { supabase } from '@backend/supabase'
 import { listCenterUniqueEvaluations, listCenterGradesForEvaluation } from '@backend/reportsApi'
 import { listBranches } from '@backend/branchesApi'
@@ -116,7 +116,7 @@ export default function ExamsGroupReport() {
     if (reportSource === 'center') {
       return baseList
     }
-    const set = new Set(exams.map(e => e.grade).filter(Boolean))
+    const set = new Set(exams.map(e => uiToDbGrade(e.grade)).filter(Boolean))
     return baseList.filter(g => set.size === 0 || set.has(g))
   }, [exams, reportSource, isGradeEnabled, gradesList])
 
@@ -141,7 +141,7 @@ export default function ExamsGroupReport() {
   }, [currentGrade, reportSource, reportType])
 
   const examsForGrade = useMemo(
-    () => exams.filter(e => e.grade === currentGrade),
+    () => exams.filter(e => uiToDbGrade(e.grade) === currentGrade),
     [exams, currentGrade]
   )
   // All students in the chosen grade — used to derive group chips.

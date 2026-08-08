@@ -101,6 +101,10 @@ export async function getExam(id) {
   return data
 }
 
+export function invalidateExamsCache() {
+  invalidatePrefix('exams')
+}
+
 export async function createExam(input) {
   const payload = {
     number: input.number || null,
@@ -120,6 +124,7 @@ export async function createExam(input) {
     .select()
     .single()
   if (error) throw error
+  invalidateExamsCache()
   return data
 }
 
@@ -143,12 +148,14 @@ export async function updateExam(id, input) {
   const { data, error } = await supabase
     .from('exams').update(patch).eq('id', id).select().single()
   if (error) throw error
+  invalidateExamsCache()
   return data
 }
 
 export async function deleteExam(id) {
   const { error } = await supabase.from('exams').delete().eq('id', id)
   if (error) throw error
+  invalidateExamsCache()
 }
 
 /* Admin: change an exam's availability window after the fact.
@@ -163,6 +170,7 @@ export async function updateExamAvailability(examId, hours) {
     .select('id, available_hours, created_at')
     .single()
   if (error) throw error
+  invalidateExamsCache()
   return data
 }
 
@@ -279,5 +287,6 @@ export async function setExamArchived(id, archived) {
     .select()
     .single()
   if (error) throw error
+  invalidateExamsCache()
   return data
 }

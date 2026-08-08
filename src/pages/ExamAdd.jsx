@@ -5,7 +5,7 @@ import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
-import { invalidate as invalidateCache } from '../utils/cache'
+import { invalidatePrefix } from '../utils/cache'
 import SharedTextBlocksEditor, {
   editorBlocksToPayload,
   validateEditorBlocks,
@@ -327,7 +327,7 @@ export default function ExamAdd() {
         await saveExamSharedBlocks(created.id, payload.blocks)
       }
 
-      invalidateCache('exams')
+      invalidatePrefix('exams')
       setShowSuccess(true)
       setTimeout(() => { navigate('/exams') }, 1200)
     } catch (err) {
