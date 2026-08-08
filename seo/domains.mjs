@@ -24,7 +24,7 @@ export const DEVELOPERS = [
     key: 'abdelrahman',
     name: 'Abdelrahman Alaa',
     alternateName: ['عبدالرحمن علاء', 'عبد الرحمن علاء', 'Abdelrahman Alaa'],
-    jobTitle: 'Software Engineer & Cybersecurity Specialist',
+    jobTitle: 'Cybersecurity Engineer & Full-Stack Web Developer',
     image: '/images/Abdelrahman%20Photo%20Facebook.jpg',
     affiliation: {
       '@type': 'EducationalOrganization',
@@ -33,13 +33,13 @@ export const DEVELOPERS = [
     },
     knowsAbout: [
       'Cybersecurity',
+      'Full-Stack Web Development',
       'Information Security',
       'Software Architecture',
-      'Full-Stack SaaS Engineering',
+      'Database Engineering',
       'React',
       'Node.js',
       'Scalable Web Platform Engineering',
-      'Web Security',
       'Computer Science',
       'Data Science',
     ],
@@ -54,7 +54,7 @@ export const DEVELOPERS = [
     key: 'eyad',
     name: 'Eyad Elalkamy',
     alternateName: ['إياد العلقامي', 'إياد عاطف العلقامي', 'Eyad Atef Elalkamy'],
-    jobTitle: 'Software Engineer & Cybersecurity Specialist',
+    jobTitle: 'Cybersecurity Engineer & UI/UX Designer',
     image: '/images/Eyad%20Photo%20Instagram.jpg',
     affiliation: {
       '@type': 'EducationalOrganization',

@@ -488,18 +488,18 @@ export default function GitFekraLanding() {
               </div>
               <div className="gf-founder-info">
                 <div className="gf-founder-verified">
-                  <i className="fas fa-circle-check" />
-                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Engineer'}</span>
+                  <i className="fas fa-shield-halved" />
+                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Cybersecurity Engineer'}</span>
                 </div>
                 <h3>{lang === 'ar' ? 'عبدالرحمن علاء' : 'Abdelrahman Alaa'}</h3>
-                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس برمجيات وأمن سيبراني — المؤسس' : 'Software Engineer & Cybersecurity Specialist — Co-Founder'}</span>
+                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس أمن سيبراني وتطوير الويب المتكامل (Full-Stack) — المؤسس' : 'Cybersecurity Engineer & Full-Stack Web Developer — Co-Founder'}</span>
                 <p className="gf-founder-edu">
                   <i className="fas fa-graduation-cap" /> {lang === 'ar' ? 'كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية' : 'Faculty of Computers and Data Science, Alexandria University'}
                 </p>
                 <p className="gf-founder-bio">
                   {lang === 'ar'
-                    ? 'المسؤول عن تصميم البنية البرمجية لمنظومة جِت فِكرة، وهندسة قواعد البيانات السحابية عالية الأداء، وأنظمة الحماية والأمن السيبراني.'
-                    : 'Architect of the core backend engine, high-performance database infrastructure, and enterprise cloud security protocols.'}
+                    ? 'المسؤول عن تطوير البنية البرمجية المتكاملة لمنظومة جِت فِكرة (Full-Stack)، وهندسة قواعد البيانات السحابية عالية الأداء، وتطوير الواجهات والأنظمة، وأنظمة الحماية المتقدمة والأمن السيبراني.'
+                    : 'Architect of the end-to-end full-stack web infrastructure, high-performance cloud databases, frontend/backend engineering, and enterprise cybersecurity protocols.'}
                 </p>
                 <div className="gf-founder-socials">
                   <a href="https://github.com/AbdelrahmanAlaa2006" target="_blank" rel="noopener noreferrer" className="gf-soc-btn github"><i className="fab fa-github" /> GitHub</a>
@@ -516,18 +516,18 @@ export default function GitFekraLanding() {
               </div>
               <div className="gf-founder-info">
                 <div className="gf-founder-verified">
-                  <i className="fas fa-circle-check" />
-                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Engineer'}</span>
+                  <i className="fas fa-shield-halved" />
+                  <span>{lang === 'ar' ? 'مهندس معتمد' : 'Verified Cybersecurity Engineer'}</span>
                 </div>
                 <h3>{lang === 'ar' ? 'إياد العلقامي' : 'Eyad Elalkamy'}</h3>
-                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس برمجيات وأمن سيبراني — المؤسس' : 'Software Engineer & Cybersecurity Specialist — Co-Founder'}</span>
+                <span className="gf-founder-role">{lang === 'ar' ? 'مهندس أمن سيبراني وتصميم واجهات وتجربة المستخدم (UI/UX) — المؤسس' : 'Cybersecurity Engineer & UI/UX Designer — Co-Founder'}</span>
                 <p className="gf-founder-edu">
                   <i className="fas fa-graduation-cap" /> {lang === 'ar' ? 'كلية الحاسبات وعلوم البيانات، جامعة الإسكندرية' : 'Faculty of Computers and Data Science, Alexandria University'}
                 </p>
                 <p className="gf-founder-bio">
                   {lang === 'ar'
-                    ? 'المسؤول عن تجربة المستخدم، واجهات الطلاب والمعلمين التفاعلية، وتطوير أداء وأمان الأنظمة المباشرة.'
-                    : 'Leads front-end system design, interactive student dashboards, real-time client performance, and user security.'}
+                    ? 'المسؤول عن تصميم واجهات وتجربة المستخدم (UI/UX)، وابتكار الهوية البصرية والتصاميم التفاعلية للطلاب والمعلمين، وتطوير الواجهات الأمامية الحديثة، وحماية وأمان تجربة المستخدم.'
+                    : 'Leads UI/UX design, interactive interface systems for teachers and students, visual brand aesthetics, frontend web engineering, and client-side security.'}
                 </p>
                 <div className="gf-founder-socials">
                   <a href="https://github.com/eyadelalkamy-oss" target="_blank" rel="noopener noreferrer" className="gf-soc-btn github"><i className="fab fa-github" /> GitHub</a>

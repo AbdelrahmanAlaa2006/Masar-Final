@@ -24,7 +24,6 @@ body {
   background: var(--bg-color);
   color: #1a202c;
   transition: background 0.3s ease, color 0.3s ease;
-  overflow-x: clip;
 }
 
 body,
