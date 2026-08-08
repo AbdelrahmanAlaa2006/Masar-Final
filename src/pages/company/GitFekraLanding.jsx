@@ -352,7 +352,7 @@ export default function GitFekraLanding() {
                 className={`gf-thumb ${i === tourIndex ? 'is-active' : ''}`}
                 onClick={() => setTourIndex(i)}
               >
-                <img src={shot.img} alt="" loading="lazy" />
+                <img src={shot.img} alt={shot.title[lang]} loading="lazy" />
                 <span>{shot.title[lang]}</span>
               </button>
             ))}
@@ -388,7 +388,7 @@ export default function GitFekraLanding() {
                         )}
                       </div>
                       {p.logo && (
-                        <img className="gf-work-badge-logo" src={p.logo} alt="" loading="lazy" />
+                        <img className="gf-work-badge-logo" src={p.logo} alt={p.name[lang]} loading="lazy" />
                       )}
                     </div>
                     <div className="gf-work-titles">

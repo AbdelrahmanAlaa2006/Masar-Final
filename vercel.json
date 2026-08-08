@@ -55,6 +55,11 @@
     { "source": "/robots.txt", "destination": "/robots-default.txt" },
     {
       "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?gitfekra\\.com" }],
+      "destination": "/gitfekra.html"
+    },
+    {
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
       "destination": "/eldad.html"
     },
@@ -63,7 +68,10 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmohamedabdella\\.com" }],
       "destination": "/mohamed-abdella.html"
     },
-    { "source": "/(.*)", "destination": "/default.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/gitfekra.html"
+    }
   ],
   "headers": [
     {
