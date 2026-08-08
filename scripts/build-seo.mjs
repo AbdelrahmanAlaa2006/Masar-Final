@@ -161,7 +161,7 @@ function stripExistingSeo(html) {
     .replace(/\n?[ \t]*<meta\s+name="(description|keywords|author|robots|theme-color|msapplication-TileColor|twitter:[^"]*)"[^>]*>/gi, '')
     .replace(/\n?[ \t]*<meta\s+property="og:[^"]*"[^>]*>/gi, '')
     .replace(/\n?[ \t]*<link\s+rel="canonical"[^>]*>/gi, '')
-    .replace(/\n?[ \t]*<link\s+rel="(icon|apple-touch-icon)"[^>]*>/gi, '')
+    .replace(/\n?[ \t]*<link\s+rel="(icon|apple-touch-icon)"[\s\S]*?\/?>/gi, '')
     .replace(/\n?[ \t]*<script\s+type="application\/ld\+json">[\s\S]*?<\/script>/gi, '')
 }
 
