@@ -3,12 +3,16 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
 import { sendGatewayMessage } from '@backend/parentNotificationsApi'
 import { useTenant } from '../contexts/TenantContext'
+import { useTheme } from '../hooks/useTheme'
 import { GRADE_LABEL } from './ControlPanel/shared'
 import './Report.css' // Reuse general report styles
 
 export default function PublicReport() {
   const navigate = useNavigate()
-  const { tenantId } = useTenant()
+  const { tenantId, tenant, themeConfig } = useTenant()
+  const { isDark, toggleTheme } = useTheme()
+  const [reportTenant, setReportTenant] = useState(null)
+
   const [searchParams, setSearchParams] = useSearchParams()
   const studentId = searchParams.get('id')
   const qrToken = searchParams.get('token')
@@ -102,6 +106,24 @@ export default function PublicReport() {
       fetchSiblings()
     }
   }, [verified, report])
+
+  // Fetch tenant info from report's tenant_id to apply exact tenant colors
+  useEffect(() => {
+    if (report?.tenant_id) {
+      supabase
+        .from('tenants')
+        .select('id, name, primary_color, secondary_color, config')
+        .eq('id', report.tenant_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setReportTenant(data)
+        })
+    }
+  }, [report?.tenant_id])
+
+  const activeTenant = reportTenant || tenant
+  const primaryColor = activeTenant?.primary_color || activeTenant?.config?.theme?.primary || themeConfig?.primaryColor || '#7c3aed'
+  const secondaryColor = activeTenant?.secondary_color || activeTenant?.config?.theme?.secondary || themeConfig?.secondaryColor || '#6366f1'
 
   const navigateToCenter = () => {
     const params = new URLSearchParams(window.location.search)
@@ -412,25 +434,25 @@ export default function PublicReport() {
   // Dynamic student evaluation for performance tab
   const evaluationMessage = useMemo(() => {
     const rate = monthlyStats.attendanceRate
-    const score = Number(monthlyStats.averageScore)
+    const pct = monthlyStats.avgPercentage
     if (filteredAttendance.length === 0 && filteredGrades.length === 0) {
       return 'لا توجد بيانات حضور أو درجات مسجلة في هذا الشهر حالياً.'
     }
     if (rate < 75) {
       return `نلاحظ أن الطالب لديه نسبة غياب ملحوظة هذا الشهر (معدل حضور: ${rate}%). التغيب يؤثر بشكل مباشر على استيعاب الدروس وترابط المنهج الدراسي. نرجو توجيهه للالتزام بالحضور المستمر.`
     }
-    if (score < 15 && score > 0) {
-      return `مستوى درجات الطالب في التقييمات والاختبارات يحتاج إلى تحسين ومتابعة مكثفة (المتوسط العام: ${score}). ننصح بمراجعة الواجبات وحل الاختبارات الإضافية لتقوية نقاط الضعف لديه.`
+    if (pct < 50 && pct > 0) {
+      return `مستوى درجات الطالب في التقييمات والاختبارات يحتاج إلى تحسين ومتابعة مكثفة (المتوسط العام: ${pct}%). ننصح بمراجعة الواجبات وحل الاختبارات الإضافية لتقوية نقاط الضعف لديه.`
     }
-    if (rate >= 85 && score >= 24) {
-      return `أداء الطالب ممتاز ومثالي للغاية هذا الشهر! يظهر التزاماً ممتازاً بالحضور (${rate}%) وتفوقاً دراسياً واضحاً في التقييمات والاختبارات بمتوسط درجات (${score}). استمر في هذا المستوى الرائع!`
+    if (rate >= 80 && pct >= 75) {
+      return `أداء الطالب ممتاز ومثالي للغاية هذا الشهر! يظهر التزاماً متميزاً بالحضور (${rate}%) وتفوقاً دراسياً واضحاً في التقييمات والاختبارات بمتوسط درجات (${pct}%). استمر في هذا المستوى الرائع!`
     }
-    return `أداء الطالب مستقر وجيد جداً بشكل عام. يحتاج فقط إلى التركيز على مراجعة بعض الأخطاء البسيطة في الاختبارات القادمة لتحسين المتوسط العام للدرجات.`
+    return `أداء الطالب مستقر وجيد جداً بشكل عام (بمتوسط درجات ${pct}%). يحتاج فقط إلى التركيز على مراجعة بعض الأخطاء البسيطة في الاختبارات القادمة لتحسين المتوسط العام للدرجات.`
   }, [monthlyStats, filteredAttendance, filteredGrades])
 
   if (error && !verified) {
     return (
-      <main className="cp-page" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+      <main className="cp-page" style={{ direction: 'rtl', fontFamily: "'El Messiri', sans-serif" }}>
         <div className="cp-container" style={{ maxWidth: '500px', margin: '40px auto' }}>
           <div className="cp-empty" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', padding: '30px', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
             <i className="fas fa-circle-exclamation" style={{ fontSize: '2.5rem' }}></i>
@@ -443,7 +465,7 @@ export default function PublicReport() {
 
   if (!verified) {
     return (
-      <main className="cp-page" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif', minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <main className="cp-page" style={{ direction: 'rtl', fontFamily: "'El Messiri', sans-serif", minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="cp-container" style={{ maxWidth: '480px', width: '100%', padding: '0 20px' }}>
           <button 
             onClick={() => navigate('/login')}
@@ -459,7 +481,8 @@ export default function PublicReport() {
               marginBottom: '16px',
               padding: '4px 8px',
               borderRadius: '8px',
-              transition: 'color 0.2s'
+              transition: 'color 0.2s',
+              fontFamily: "'El Messiri', sans-serif"
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--cp-text-muted, #94a3b8)'}
@@ -475,7 +498,8 @@ export default function PublicReport() {
             borderRadius: '24px',
             padding: '40px 32px',
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
-            textAlign: 'center'
+            textAlign: 'center',
+            fontFamily: "'El Messiri', sans-serif"
           }}>
             <div style={{
               width: '70px',
@@ -492,7 +516,7 @@ export default function PublicReport() {
               <i className="fas fa-shield-halved" />
             </div>
 
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '10px', color: '#fff' }}>تأكيد الهوية للاستعلام</h2>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '10px', color: '#fff', fontFamily: "'El Messiri', sans-serif" }}>تأكيد الهوية للاستعلام</h2>
             <p style={{ fontSize: '0.92rem', color: '#cbd5e1', lineHeight: '1.7', marginBottom: '28px' }}>
               يرجى إدخال رقم هاتف ولي الأمر المسجل في المنصة لعرض التقرير وإرساله فوراً إلى واتساب الخاص بك.
             </p>
@@ -526,7 +550,8 @@ export default function PublicReport() {
                       borderRadius: '12px',
                       cursor: 'pointer',
                       width: '100%',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      fontFamily: "'El Messiri', sans-serif"
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.borderColor = '#8b5cf6'}
                     onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
@@ -555,7 +580,8 @@ export default function PublicReport() {
                     fontSize: '0.88rem',
                     fontWeight: 'bold',
                     marginTop: '8px',
-                    textDecoration: 'underline'
+                    textDecoration: 'underline',
+                    fontFamily: "'El Messiri', sans-serif"
                   }}
                 >
                   العودة لإدخال الرقم
@@ -578,7 +604,8 @@ export default function PublicReport() {
                       border: '1px solid var(--cp-input-border)',
                       background: 'var(--cp-bg)',
                       color: 'var(--cp-text-main)',
-                      textAlign: 'center'
+                      textAlign: 'center',
+                      fontFamily: "'El Messiri', sans-serif"
                     }}
                   />
                   <i className="fas fa-phone" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)' }} />
@@ -603,7 +630,8 @@ export default function PublicReport() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    fontFamily: "'El Messiri', sans-serif"
                   }}
                 >
                   {loading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
@@ -620,50 +648,48 @@ export default function PublicReport() {
   return (
     <div className="pr-container">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&display=swap');
+
+        .pr-container, .pr-card, .pr-modal-content, h1, h2, h3, h4, h5, h6, p, span, div, button, input {
+          font-family: 'El Messiri', sans-serif;
+        }
+
+        i, [class*="fa-"], [class^="fa-"], .fa, .fas, .far, .fab, .fa-solid {
+          font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "FontAwesome" !important;
+        }
+
+        html, body {
+          overflow-y: auto !important;
+          overscroll-behavior-y: auto !important;
+          scroll-behavior: smooth;
+        }
+
         .pr-container {
-          background: radial-gradient(circle at top, #1e1b4b 0%, #0f172a 100%);
+          background: ${isDark ? '#0b0f19' : '#f8fafc'};
+          background-image: radial-gradient(circle at top, ${primaryColor}${isDark ? '25' : '15'} 0%, ${isDark ? '#0b0f19' : '#f8fafc'} 80%);
           min-height: 100vh;
-          color: #f8fafc;
-          font-family: 'Tajawal', sans-serif;
+          color: ${isDark ? '#f8fafc' : '#0f172a'};
+          font-family: 'El Messiri', sans-serif;
           direction: rtl;
           position: relative;
-          overflow-x: hidden;
           padding: 20px 16px 80px;
+          transition: background 0.3s ease, color 0.3s ease;
         }
 
-        .pr-glow-1 {
-          position: absolute;
-          top: -100px;
-          right: -100px;
-          width: 400px;
-          height: 400px;
-          background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
-          z-index: 0;
-          pointer-events: none;
-        }
-
-        .pr-glow-2 {
-          position: absolute;
-          bottom: -100px;
-          left: -100px;
-          width: 450px;
-          height: 450px;
-          background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
-          z-index: 0;
-          pointer-events: none;
+        .pr-glow-1, .pr-glow-2 {
+          display: none;
         }
 
         .pr-card {
-          background: rgba(30, 41, 59, 0.5);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: ${isDark ? '#141c2e' : '#ffffff'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
           border-radius: 20px;
           padding: 20px;
           margin-bottom: 20px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+          box-shadow: ${isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 4px 20px rgba(0, 0, 0, 0.05)'};
           position: relative;
           z-index: 1;
+          transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
         }
 
         .pr-month-grid {
@@ -674,30 +700,30 @@ export default function PublicReport() {
         }
 
         .pr-month-btn {
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #cbd5e1;
+          background: ${isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#cbd5e1'};
+          color: ${isDark ? '#cbd5e1' : '#334155'};
           border-radius: 12px;
-          padding: 14px 10px;
-          font-size: 0.95rem;
-          font-weight: 600;
+          padding: 10px 18px;
+          font-size: 0.92rem;
+          font-weight: bold;
+          white-space: nowrap;
           cursor: pointer;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          text-align: center;
+          flex-shrink: 0;
+          transition: all 0.2s;
+          font-family: 'El Messiri', sans-serif;
         }
 
         .pr-month-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.15);
-          color: #fff;
-          transform: translateY(-2px);
+          background: ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
+          color: ${isDark ? '#fff' : '#0f172a'};
         }
 
         .pr-month-btn.active {
-          background: #8b5cf6;
-          border-color: #a78bfa;
-          color: #fff;
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+          background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%) !important;
+          border-color: ${primaryColor} !important;
+          color: #fff !important;
+          box-shadow: 0 4px 12px ${primaryColor}55;
         }
 
         .pr-payment-row {
@@ -706,7 +732,7 @@ export default function PublicReport() {
           align-items: center;
           margin-top: 15px;
           padding-top: 15px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          border-top: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
         }
 
         .pr-badge {
@@ -745,17 +771,17 @@ export default function PublicReport() {
         .pr-stat-val {
           font-size: 1.9rem;
           font-weight: 800;
-          color: #fff;
+          color: ${isDark ? '#fff' : '#0f172a'};
         }
 
         .pr-stat-label {
           font-size: 0.85rem;
-          color: #94a3b8;
+          color: ${isDark ? '#94a3b8' : '#64748b'};
           margin-top: 4px;
         }
 
         .pr-btn-primary {
-          background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+          background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%);
           color: #fff;
           border: none;
           border-radius: 14px;
@@ -765,21 +791,21 @@ export default function PublicReport() {
           width: 100%;
           cursor: pointer;
           transition: all 0.25s;
-          box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+          box-shadow: 0 4px 14px ${primaryColor}4d;
           margin-top: 15px;
         }
 
         .pr-btn-primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
+          box-shadow: 0 6px 20px ${primaryColor}66;
         }
 
         .pr-section-title {
           font-size: 1.15rem;
           font-weight: 700;
           margin-bottom: 15px;
-          color: #fff;
-          border-right: 4px solid #8b5cf6;
+          color: ${isDark ? '#fff' : '#0f172a'};
+          border-right: 4px solid ${primaryColor};
           padding-right: 10px;
         }
 
@@ -794,15 +820,15 @@ export default function PublicReport() {
           justify-content: space-between;
           align-items: center;
           padding: 12px 14px;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: ${isDark ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : '#e2e8f0'};
           border-radius: 12px;
         }
 
         .pr-list-item-title {
           font-weight: 600;
           font-size: 0.92rem;
-          color: #f1f5f9;
+          color: ${isDark ? '#f1f5f9' : '#0f172a'};
         }
 
         .pr-list-item-date {
@@ -836,7 +862,7 @@ export default function PublicReport() {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(15, 23, 42, 0.8);
+          background: ${isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(15, 23, 42, 0.5)'};
           backdrop-filter: blur(8px);
           z-index: 100;
           display: flex;
@@ -847,8 +873,8 @@ export default function PublicReport() {
         }
 
         .pr-modal-content {
-          background: #1e293b;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: ${isDark ? '#1e293b' : '#ffffff'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'};
           border-radius: 24px;
           width: 100%;
           max-width: 600px;
@@ -856,13 +882,13 @@ export default function PublicReport() {
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          box-shadow: ${isDark ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 20px 40px -12px rgba(0, 0, 0, 0.15)'};
           animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .pr-modal-header {
           padding: 20px 24px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -876,8 +902,8 @@ export default function PublicReport() {
 
         .pr-tabs {
           display: flex;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: ${isDark ? 'rgba(255, 255, 255, 0.03)' : '#f1f5f9'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.06)' : '#e2e8f0'};
           border-radius: 12px;
           padding: 4px;
           margin-bottom: 20px;
@@ -887,96 +913,91 @@ export default function PublicReport() {
           flex: 1;
           background: transparent;
           border: none;
-          color: #94a3b8;
-          font-weight: 700;
-          font-size: 0.92rem;
+          color: ${isDark ? '#94a3b8' : '#64748b'};
           padding: 10px;
           border-radius: 8px;
+          font-size: 0.95rem;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
-          font-family: 'Tajawal', sans-serif;
-          text-align: center;
+          font-family: 'El Messiri', sans-serif;
         }
 
         .pr-tab-btn.active {
-          background: #8b5cf6;
+          background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%);
           color: #fff;
+          box-shadow: 0 2px 8px ${primaryColor}4d;
         }
 
         .pr-progress-track {
           width: 100%;
           height: 6px;
-          background: rgba(255, 255, 255, 0.06);
-          border-radius: 3px;
-          margin-top: 8px;
+          background: ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
+          border-radius: 99px;
           overflow: hidden;
+          margin-top: 8px;
         }
 
         .pr-progress-bar {
           height: 100%;
-          border-radius: 3px;
+          border-radius: 99px;
+          transition: width 0.5s ease-out;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-          from { transform: translateY(30px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Selection Options styling */
+        /* Platform Selection Dashboard styling */
         .pr-selection-grid {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
-          margin-top: 25px;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin-top: 24px;
         }
-        @media(min-width: 640px) {
+
+        @media (max-width: 600px) {
           .pr-selection-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
           }
         }
+
         .pr-selection-card {
-          background: rgba(30, 41, 59, 0.45);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
-          padding: 30px 20px;
+          background: ${isDark ? 'rgba(30, 41, 59, 0.45)' : '#ffffff'};
+          border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'};
+          border-radius: 20px;
+          padding: 24px 20px;
           text-align: center;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 16px;
+          justify-content: center;
+          box-shadow: ${isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'};
         }
+
         .pr-selection-card:hover {
-          transform: translateY(-5px);
-          border-color: rgba(139, 92, 246, 0.3);
-          background: rgba(30, 41, 59, 0.6);
-          box-shadow: 0 15px 35px rgba(124, 58, 237, 0.15);
+          transform: translateY(-4px);
+          border-color: ${primaryColor};
+          background: ${isDark ? 'rgba(30, 41, 59, 0.7)' : '#ffffff'};
+          box-shadow: 0 12px 30px ${primaryColor}26;
         }
+
         .pr-selection-icon {
           width: 64px;
           height: 64px;
-          border-radius: 20px;
+          border-radius: 18px;
+          background: ${isDark ? 'rgba(124, 58, 237, 0.1)' : `${primaryColor}15`};
+          border: 1px solid ${primaryColor}33;
+          color: ${primaryColor};
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 1.8rem;
-          background: rgba(124, 58, 237, 0.1);
-          color: #a78bfa;
-          border: 1px solid rgba(124, 58, 237, 0.2);
-          transition: all 0.3s;
+          margin-bottom: 16px;
+          transition: all 0.3s ease;
         }
+
         .pr-selection-card:hover .pr-selection-icon {
           transform: scale(1.1);
-          background: #7c3aed;
+          background: ${primaryColor};
           color: #fff;
         }
 
@@ -1044,80 +1065,101 @@ export default function PublicReport() {
       <div className="pr-glow-2" />
 
       <div style={{ maxWidth: '650px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        {/* Back Button */}
-        {viewType === 'selection' ? (
-          <button 
-            onClick={() => navigate('/login')}
+        {/* Top Header Bar: Back Button & Light/Dark Theme Switcher */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          {viewType === 'selection' ? (
+            <button 
+              onClick={() => navigate('/login')}
+              style={{
+                background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0',
+                borderRadius: '12px',
+                color: isDark ? '#fff' : '#0f172a',
+                padding: '8px 16px',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s',
+                fontFamily: "'El Messiri', sans-serif"
+              }}
+            >
+              <i className="fas fa-arrow-right" />
+              <span>العودة لصفحة الدخول</span>
+            </button>
+          ) : viewType === 'center' ? (
+            <button 
+              onClick={handleCenterBack}
+              style={{
+                background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0',
+                borderRadius: '12px',
+                color: isDark ? '#fff' : '#0f172a',
+                padding: '8px 16px',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s',
+                fontFamily: "'El Messiri', sans-serif"
+              }}
+            >
+              <i className="fas fa-arrow-right" />
+              <span>العودة لخيارات التقارير</span>
+            </button>
+          ) : (
+            <button 
+              onClick={handlePlatformBack}
+              style={{
+                background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0',
+                borderRadius: '12px',
+                color: isDark ? '#fff' : '#0f172a',
+                padding: '8px 16px',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                transition: 'all 0.2s',
+                fontFamily: "'El Messiri', sans-serif"
+              }}
+            >
+              <i className="fas fa-arrow-right" />
+              <span>{platformSubView === 'dashboard' ? 'العودة لخيارات التقارير' : 'العودة لتقارير المنصة'}</span>
+            </button>
+          )}
+
+          {/* Light / Dark Mode Switcher */}
+          <button
+            onClick={toggleTheme}
+            title={isDark ? 'التحويل للوضع النهاري (Light)' : 'التحويل للوضع الليلي (Dark)'}
             style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #cbd5e1',
+              color: isDark ? '#fbbf24' : primaryColor,
               borderRadius: '12px',
-              color: '#fff',
-              padding: '8px 16px',
-              fontSize: '0.9rem',
+              padding: '8px 14px',
+              fontSize: '0.88rem',
+              fontWeight: 'bold',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-              transition: 'background 0.2s',
-              fontFamily: 'Tajawal, sans-serif'
+              gap: '6px',
+              boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s',
+              fontFamily: "'El Messiri', sans-serif"
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
           >
-            <i className="fas fa-arrow-right" />
-            <span>العودة لصفحة الدخول</span>
+            <i className={isDark ? 'fas fa-sun' : 'fas fa-moon'} />
+            <span>{isDark ? 'نهاري' : 'ليلي'}</span>
           </button>
-        ) : viewType === 'center' ? (
-          <button 
-            onClick={handleCenterBack}
-            style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '12px',
-              color: '#fff',
-              padding: '8px 16px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-              transition: 'background 0.2s',
-              fontFamily: 'Tajawal, sans-serif'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-          >
-            <i className="fas fa-arrow-right" />
-            <span>العودة لخيارات التقارير</span>
-          </button>
-        ) : (
-          <button 
-            onClick={handlePlatformBack}
-            style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '12px',
-              color: '#fff',
-              padding: '8px 16px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-              transition: 'background 0.2s',
-              fontFamily: 'Tajawal, sans-serif'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-          >
-            <i className="fas fa-arrow-right" />
-            <span>{platformSubView === 'dashboard' ? 'العودة لخيارات التقارير' : 'العودة لتقارير المنصة'}</span>
-          </button>
-        )}
+        </div>
 
         {/* Sibling Student Selector (Multi-child support) */}
         {verified && siblings.length > 1 && (
@@ -1206,8 +1248,8 @@ export default function PublicReport() {
         {viewType === 'selection' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
-              <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>تقاريري الدراسية</h2>
-              <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
+              <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', marginBottom: '8px' }}>تقاريري الدراسية</h2>
+              <p style={{ fontSize: '0.92rem', color: isDark ? '#94a3b8' : '#64748b' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
             </div>
 
             {/* Student Card Info */}
@@ -1215,24 +1257,25 @@ export default function PublicReport() {
               <div style={{
                 width: '56px',
                 height: '56px',
-                background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
                 color: '#fff',
                 borderRadius: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.4rem',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                boxShadow: `0 4px 14px ${primaryColor}40`
               }}>
                 {report.student_name.charAt(0)}
               </div>
               <div>
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>الطالب الحالي</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                  <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                <div style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', fontWeight: 'bold' }}>الطالب الحالي</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', marginTop: '2px' }}>{report.student_name}</div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: isDark ? '#cbd5e1' : '#475569' }}>
+                  <span><i className="fas fa-graduation-cap" style={{ color: primaryColor, marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
                   {report.group && (
-                    <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                    <span><i className="fas fa-users" style={{ color: secondaryColor, marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
                   )}
                 </div>
               </div>
@@ -1244,8 +1287,8 @@ export default function PublicReport() {
                 <div className="pr-selection-icon">
                   <i className="fas fa-school" />
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '8px 0' }}>تقارير السنتر</h3>
-                <p style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', margin: '8px 0' }}>تقارير السنتر</h3>
+                <p style={{ fontSize: '0.86rem', color: isDark ? '#94a3b8' : '#64748b', lineHeight: '1.6', margin: 0 }}>
                   كشف حضور الحصص، تفاصيل الاشتراكات والمدفوعات، ونتائج درجات الاختبارات والواجبات الميدانية.
                 </p>
               </div>
@@ -1254,8 +1297,8 @@ export default function PublicReport() {
                 <div className="pr-selection-icon">
                   <i className="fas fa-laptop-code" />
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '8px 0' }}>تقارير المنصة التعليمية</h3>
-                <p style={{ fontSize: '0.86rem', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', margin: '8px 0' }}>تقارير المنصة التعليمية</h3>
+                <p style={{ fontSize: '0.86rem', color: isDark ? '#94a3b8' : '#64748b', lineHeight: '1.6', margin: 0 }}>
                   متابعة نسب مشاهدة الفيديوهات، تسليمات الواجبات الإلكترونية، ونتائج امتحانات الأونلاين.
                 </p>
               </div>
@@ -1271,101 +1314,151 @@ export default function PublicReport() {
               <div style={{
                 width: '56px',
                 height: '56px',
-                background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
                 color: '#fff',
                 borderRadius: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.4rem',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                boxShadow: `0 4px 14px ${primaryColor}40`
               }}>
                 {report.student_name.charAt(0)}
               </div>
               <div>
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>تقارير السنتر الموحدة</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                  <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                <div style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', fontWeight: 'bold' }}>تقارير السنتر الموحدة</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', marginTop: '2px' }}>{report.student_name}</div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: isDark ? '#cbd5e1' : '#475569' }}>
+                  <span><i className="fas fa-graduation-cap" style={{ color: primaryColor, marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
                   {report.group && (
-                    <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                    <span><i className="fas fa-users" style={{ color: secondaryColor, marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Month Filter Selector Card */}
-            <div className="pr-card">
-              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>اختر الشهر</div>
-              <div className="pr-month-grid">
-                {ACADEMIC_MONTHS.map(m => (
-                  <button 
-                    key={m.name} 
-                    className={`pr-month-btn ${selectedMonth.name === m.name ? 'active' : ''}`}
-                    onClick={() => setSelectedMonth(m)}
-                  >
-                    {m.name}
-                  </button>
-                ))}
+            {/* Month Filter Selector Card — Horizontal single row pills */}
+            <div className="pr-card" style={{ padding: '18px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>📅 التقرير الشهري</span>
+                <span style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b' }}>اختر الشهر لعرض تفاصيله</span>
+              </div>
+
+              <div 
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  overflowX: 'auto',
+                  overflowY: 'hidden',
+                  WebkitOverflowScrolling: 'touch',
+                  paddingBottom: '6px',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                onWheel={(e) => {
+                  if (e.deltaY !== 0) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+              >
+                {ACADEMIC_MONTHS.map(m => {
+                  const isActive = selectedMonth.name === m.name
+                  return (
+                    <button
+                      key={m.name}
+                      onClick={() => setSelectedMonth(m)}
+                      style={{
+                        background: isActive ? `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` : isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
+                        border: isActive ? `1px solid ${primaryColor}` : isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #cbd5e1',
+                        color: isActive ? '#fff' : isDark ? '#cbd5e1' : '#334155',
+                        borderRadius: '12px',
+                        padding: '10px 18px',
+                        fontSize: '0.92rem',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        boxShadow: isActive ? `0 4px 12px ${primaryColor}55` : 'none',
+                        transition: 'all 0.2s',
+                        fontFamily: "'El Messiri', sans-serif"
+                      }}
+                    >
+                      {m.name}
+                    </button>
+                  )
+                })}
               </div>
 
               {/* Payment Status Info */}
-              <div className="pr-payment-row">
+              <div className="pr-payment-row" style={{ marginTop: '12px', paddingTop: '12px' }}>
                 <div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>حالة الدفع</div>
-                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: isDark ? '#fff' : '#0f172a' }}>حالة الدفع لشهر {selectedMonth.name}</div>
+                  <div style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '2px' }}>
                     المبلغ المدفوع: {monthPayment ? `${monthPayment.amount} ج.م` : '0 ج.م'}
                   </div>
                 </div>
                 {monthPayment ? (
                   monthPayment.status === 'approved' ? (
-                    <span className="pr-badge pr-badge-green">تم الدفع</span>
+                    <span className="pr-badge pr-badge-green"><i className="fas fa-circle-check" style={{ marginInlineEnd: '4px' }} /> تم الدفع</span>
                   ) : monthPayment.status === 'pending' ? (
-                    <span className="pr-badge pr-badge-orange">قيد الانتظار</span>
+                    <span className="pr-badge pr-badge-orange"><i className="fas fa-clock" style={{ marginInlineEnd: '4px' }} /> قيد الانتظار</span>
                   ) : (
-                    <span className="pr-badge pr-badge-red">تم الرفض</span>
+                    <span className="pr-badge pr-badge-red"><i className="fas fa-triangle-exclamation" style={{ marginInlineEnd: '4px' }} /> تم الرفض</span>
                   )
                 ) : (
-                  <span className="pr-badge pr-badge-red">لم يتم الدفع</span>
+                  <span className="pr-badge pr-badge-red"><i className="fas fa-circle-xmark" style={{ marginInlineEnd: '4px' }} /> لم يتم الدفع</span>
                 )}
               </div>
             </div>
 
-            {/* Stat Summary Cards */}
+            {/* Attendance Breakdown Dashboard */}
             <div className="pr-card">
-              <div className="pr-stats-row">
-                <div>
-                  <div className="pr-stat-val" style={{ color: '#34d399' }}>{monthlyStats.attendanceRate}%</div>
-                  <div className="pr-stat-label">معدل الحضور</div>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '14px', color: isDark ? '#fff' : '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-chart-pie" style={{ color: primaryColor }} />
+                تحليل الحضور والغياب لـ شهر {selectedMonth.name}
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ background: isDark ? 'rgba(16, 185, 129, 0.06)' : '#ecfdf5', border: isDark ? '1px solid rgba(16, 185, 129, 0.12)' : '1px solid #a7f3d0', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#059669' }}>{monthlyStats.presentCount}</div>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#065f46', marginTop: '3px' }}>حضور</div>
                 </div>
-                <div>
-                  <div className="pr-stat-val" style={{ color: '#8b5cf6' }}>{monthlyStats.averageScore}</div>
-                  <div className="pr-stat-label">المتوسط العام</div>
+                <div style={{ background: isDark ? 'rgba(245, 158, 11, 0.06)' : '#fffbeb', border: isDark ? '1px solid rgba(245, 158, 11, 0.12)' : '1px solid #fde68a', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#d97706' }}>{monthlyStats.lateCount}</div>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#92400e', marginTop: '3px' }}>متأخر</div>
+                </div>
+                <div style={{ background: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2', border: isDark ? '1px solid rgba(239, 68, 68, 0.12)' : '1px solid #fecaca', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#dc2626' }}>{monthlyStats.absentCount}</div>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#991b1b', marginTop: '3px' }}>غياب</div>
+                </div>
+                <div style={{ background: isDark ? 'rgba(139, 92, 246, 0.06)' : `${primaryColor}10`, border: isDark ? '1px solid rgba(139, 92, 246, 0.12)' : `1px solid ${primaryColor}30`, borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: primaryColor }}>{monthlyStats.excusedCount}</div>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#475569', marginTop: '3px' }}>غياب بعذر</div>
                 </div>
               </div>
 
-              {/* View Full Report Button */}
-              <button 
-                className="pr-btn-primary" 
-                onClick={() => {
-                  setActiveTab('attendance')
-                  setShowFullReportModal(true)
-                }}
-              >
-                عرض التقرير الكامل للسنتر
-              </button>
+              {/* Visual attendance ratio bar */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '6px' }}>
+                  <span>نسبة الالتزام بالحضور</span>
+                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>{monthlyStats.attendanceRate}%</span>
+                </div>
+                <div className="pr-progress-track">
+                  <div className="pr-progress-bar" style={{ width: `${monthlyStats.attendanceRate}%`, background: '#10b981' }} />
+                </div>
+              </div>
             </div>
 
-            {/* Recent Sessions List (Last 5) */}
+            {/* Direct Full Sessions List (All sessions of the month) */}
             <div className="pr-card">
-              <h3 className="pr-section-title">الحصص الأخيرة بالسنتر</h3>
-              {last5Attendance.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+              <h3 className="pr-section-title">📍 سجل الحضور في السنتر</h3>
+              {filteredAttendance.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b', fontSize: '0.9rem' }}>
                   لا توجد حصص مسجلة في شهر {selectedMonth.name} حتى الآن.
                 </div>
               ) : (
                 <div className="pr-list">
-                  {last5Attendance.map(a => {
+                  {filteredAttendance.map(a => {
                     const statusLabel = a.status === 'present' ? 'حضر' : a.status === 'absent' ? 'غاب' : a.status === 'late' ? 'متأخر' : 'معذور'
                     const statusDotClass = a.status === 'present' ? 'pr-dot-green' : a.status === 'absent' ? 'pr-dot-red' : 'pr-dot-orange'
                     return (
@@ -1376,7 +1469,7 @@ export default function PublicReport() {
                         </div>
                         <div className="pr-dot-status">
                           <span className={`pr-dot ${statusDotClass}`} />
-                          <span style={{ color: a.status === 'present' ? '#34d399' : a.status === 'absent' ? '#f87171' : '#fbbf24' }}>
+                          <span style={{ color: a.status === 'present' ? '#10b981' : a.status === 'absent' ? '#ef4444' : '#f59e0b' }}>
                             {statusLabel}
                           </span>
                         </div>
@@ -1387,35 +1480,67 @@ export default function PublicReport() {
               )}
             </div>
 
-            {/* Recent Exams List (Last 5) */}
+            {/* Direct Full Exams List */}
             <div className="pr-card">
-              <h3 className="pr-section-title">الاختبارات الأخيرة بالسنتر</h3>
-              {last5Grades.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+              <h3 className="pr-section-title">📝 درجات الاختبارات والتسميعات بالسنتر</h3>
+              {filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework' || g.type === 'quiz').length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b', fontSize: '0.9rem' }}>
                   لا توجد اختبارات أو واجبات مرصودة في شهر {selectedMonth.name} حتى الآن.
                 </div>
               ) : (
                 <div className="pr-list">
-                  {last5Grades.map(g => (
-                    <div key={g.id} className="pr-list-item">
-                      <div>
-                        <div className="pr-list-item-title">{g.title}</div>
-                        <div className="pr-list-item-date">
-                          {g.type === 'homework' ? 'واجب' : g.type === 'quiz' ? 'تسميع' : 'اختبار'} • {fmtDate(g.created_at)}
+                  {filteredGrades.filter(g => g.type === 'exam' || g.type === 'homework' || g.type === 'quiz').map(g => {
+                    const pct = Math.round((g.score / g.max_score) * 100)
+                    return (
+                      <div key={g.id} className="pr-list-item pr-exam-item">
+                        <div>
+                          <div className="pr-list-item-title">{g.title}</div>
+                          <div className="pr-list-item-date">
+                            {g.type === 'homework' ? 'واجب' : g.type === 'quiz' ? 'تسميع' : 'اختبار'} • {fmtDate(g.created_at)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', textAlign: 'left' }}>
+                          <div style={{ fontWeight: '800', fontSize: '1rem', color: isDark ? '#fff' : '#0f172a', direction: 'ltr' }}>
+                            {g.score} / {g.max_score}
+                          </div>
+                          <div style={{
+                            fontSize: '0.78rem',
+                            fontWeight: 'bold',
+                            color: pct >= 85 ? '#059669' : pct >= 65 ? primaryColor : pct >= 50 ? '#d97706' : '#dc2626',
+                            background: pct >= 85 ? (isDark ? 'rgba(52, 211, 153, 0.12)' : '#ecfdf5') : pct >= 65 ? (isDark ? `${primaryColor}22` : `${primaryColor}12`) : pct >= 50 ? (isDark ? 'rgba(251, 191, 36, 0.12)' : '#fffbeb') : (isDark ? 'rgba(248, 113, 113, 0.12)' : '#fef2f2'),
+                            border: pct >= 85 ? (isDark ? '1px solid rgba(52, 211, 153, 0.25)' : '1px solid #a7f3d0') : pct >= 65 ? `1px solid ${primaryColor}35` : pct >= 50 ? (isDark ? '1px solid rgba(251, 191, 36, 0.25)' : '1px solid #fde68a') : (isDark ? '1px solid rgba(248, 113, 113, 0.25)' : '1px solid #fecaca'),
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            direction: 'ltr'
+                          }}>
+                            {pct}%
+                          </div>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#8b5cf6' }}>
-                          {g.score} / {g.max_score}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
-                          {Math.round((g.score / g.max_score) * 100)}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
+            </div>
+
+            {/* Performance Analysis & Teacher Feedback */}
+            <div className="pr-card">
+              <h3 className="pr-section-title">🌟 التقييم المباشر وملاحظات المعلم</h3>
+              <div style={{
+                background: isDark ? `${primaryColor}15` : `${primaryColor}0c`,
+                border: isDark ? `1px solid ${primaryColor}30` : `1px solid ${primaryColor}25`,
+                borderRadius: '16px',
+                padding: '18px',
+                lineHeight: '1.7',
+                fontSize: '0.92rem',
+                color: isDark ? '#cbd5e1' : '#334155'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#c084fc' : primaryColor, fontWeight: 'bold', marginBottom: '8px', fontSize: '0.98rem' }}>
+                  <i className="fas fa-brain" />
+                  <span>تحليل أداء الطالب لشهر {selectedMonth.name}</span>
+                </div>
+                {evaluationMessage}
+              </div>
             </div>
           </div>
         )}
@@ -1468,7 +1593,7 @@ export default function PublicReport() {
                     fontSize: '1rem',
                     fontWeight: 'bold',
                     cursor: 'pointer',
-                    fontFamily: 'Tajawal, sans-serif',
+                    fontFamily: "'El Messiri', sans-serif",
                     boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)',
                     transition: 'transform 0.2s, box-shadow 0.2s'
                   }}
@@ -1494,8 +1619,8 @@ export default function PublicReport() {
             {platformSubView === 'dashboard' && (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
-                  <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>تقاريري الدراسية</h2>
-                  <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
+                  <h2 style={{ fontSize: '1.7rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', marginBottom: '8px' }}>تقاريري الدراسية</h2>
+                  <p style={{ fontSize: '0.92rem', color: isDark ? '#94a3b8' : '#64748b' }}>استعرض نتائجك وأدائك في الفيديوهات والامتحانات والواجبات</p>
                 </div>
 
                 {/* Student Profile Header Banner */}
@@ -1503,24 +1628,25 @@ export default function PublicReport() {
                   <div style={{
                     width: '56px',
                     height: '56px',
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
                     color: '#fff',
                     borderRadius: '16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '1.4rem',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    boxShadow: `0 4px 14px ${primaryColor}40`
                   }}>
                     {report.student_name.charAt(0)}
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 'bold' }}>الطالب الحالي</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{report.student_name}</div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                      <span><i className="fas fa-graduation-cap" style={{ color: '#8b5cf6', marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
+                    <div style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', fontWeight: 'bold' }}>الطالب الحالي</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a', marginTop: '2px' }}>{report.student_name}</div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.8rem', color: isDark ? '#cbd5e1' : '#475569' }}>
+                      <span><i className="fas fa-graduation-cap" style={{ color: primaryColor, marginInlineEnd: '4px' }} /> {GRADE_LABEL[report.grade] || report.grade}</span>
                       {report.group && (
-                        <span><i className="fas fa-users" style={{ color: '#6366f1', marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
+                        <span><i className="fas fa-users" style={{ color: secondaryColor, marginInlineEnd: '4px' }} /> المجموعة {report.group}</span>
                       )}
                     </div>
                   </div>
@@ -1529,49 +1655,49 @@ export default function PublicReport() {
                 {/* 3 Clickable Dashboard Buttons */}
                 <div style={{ marginTop: '20px' }}>
                   {/* Videos Report */}
-                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('videos')}>
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('videos')} style={{ background: isDark ? 'rgba(30, 41, 59, 0.45)' : '#ffffff', border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', marginBottom: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="pr-plat-icon-box" style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                      <div className="pr-plat-icon-box" style={{ background: isDark ? 'rgba(56, 189, 248, 0.1)' : '#e0f2fe', color: '#0284c7', border: '1px solid rgba(56, 189, 248, 0.25)', width: '48px', height: '48px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
                         <i className="fas fa-play" />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الفيديوهات</div>
-                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: isDark ? '#fff' : '#0f172a' }}>تقرير الفيديوهات</div>
+                        <div style={{ fontSize: '0.82rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</div>
                       </div>
                     </div>
-                    <div className="pr-chevron-box">
+                    <div className="pr-chevron-box" style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}>
                       <i className="fas fa-chevron-left" />
                     </div>
                   </div>
 
                   {/* Exams Report */}
-                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('exams')}>
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('exams')} style={{ background: isDark ? 'rgba(30, 41, 59, 0.45)' : '#ffffff', border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', marginBottom: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="pr-plat-icon-box" style={{ background: 'rgba(167, 139, 250, 0.1)', color: '#a78bfa', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                      <div className="pr-plat-icon-box" style={{ background: isDark ? `${primaryColor}15` : `${primaryColor}10`, color: primaryColor, border: `1px solid ${primaryColor}30`, width: '48px', height: '48px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
                         <i className="fas fa-file-invoice" />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الامتحانات</div>
-                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>نتائجك في الامتحانات السابقة وتحليل أدائك</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: isDark ? '#fff' : '#0f172a' }}>تقرير الامتحانات</div>
+                        <div style={{ fontSize: '0.82rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>نتائجك في الامتحانات السابقة وتحليل أدائك</div>
                       </div>
                     </div>
-                    <div className="pr-chevron-box">
+                    <div className="pr-chevron-box" style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}>
                       <i className="fas fa-chevron-left" />
                     </div>
                   </div>
 
                   {/* Homeworks Report */}
-                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('homeworks')}>
+                  <div className="pr-plat-dashboard-card" onClick={() => navigateToPlatformSub('homeworks')} style={{ background: isDark ? 'rgba(30, 41, 59, 0.45)' : '#ffffff', border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', marginBottom: '14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="pr-plat-icon-box" style={{ background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', border: '1px solid rgba(45, 212, 191, 0.2)' }}>
+                      <div className="pr-plat-icon-box" style={{ background: isDark ? 'rgba(45, 212, 191, 0.1)' : '#ccfbf1', color: '#0d9488', border: '1px solid rgba(45, 212, 191, 0.25)', width: '48px', height: '48px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
                         <i className="fas fa-book-open" />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>تقرير الواجبات</div>
-                        <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '4px' }}>درجاتك في الواجبات ومتابعة تسليماتك</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: isDark ? '#fff' : '#0f172a' }}>تقرير الواجبات</div>
+                        <div style={{ fontSize: '0.82rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>درجاتك في الواجبات ومتابعة تسليماتك</div>
                       </div>
                     </div>
-                    <div className="pr-chevron-box">
+                    <div className="pr-chevron-box" style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}>
                       <i className="fas fa-chevron-left" />
                     </div>
                   </div>
@@ -1582,9 +1708,9 @@ export default function PublicReport() {
             {/* PLATFORM REPORTS: VIDEOS DETAIL VIEW */}
             {platformSubView === 'videos' && (
               <div>
-                <h3 className="pr-section-title" style={{ borderRightColor: '#38bdf8' }}>تقرير الفيديوهات التعليمية</h3>
+                <h3 className="pr-section-title" style={{ borderRightColor: '#0284c7', color: isDark ? '#fff' : '#0f172a' }}>تقرير الفيديوهات التعليمية</h3>
                 {platformData.videos.length === 0 ? (
-                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فيديوهات مسجلة للمرحلة الدراسية للطالب.</div>
+                  <div style={{ padding: '30px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b' }}>لا توجد فيديوهات مسجلة للمرحلة الدراسية للطالب.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {platformData.videos.map(v => {
@@ -1606,14 +1732,14 @@ export default function PublicReport() {
                       return (
                         <div key={v.id} className="pr-card">
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{v.title}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: isDark ? '#fff' : '#0f172a' }}>{v.title}</div>
                             <span className={`pr-badge ${badgeClass}`} style={{ whiteSpace: 'nowrap' }}>{statusLabel}</span>
                           </div>
-                          <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                          <div style={{ fontSize: '0.82rem', color: isDark ? '#94a3b8' : '#64748b' }}>
                             المشاهدة الفعلية: {Math.floor(watchedSecs / 60)} دقيقة / {Math.ceil(totalSecs / 60)} دقيقة
                           </div>
                           <div className="pr-progress-track" style={{ height: '8px', marginTop: '10px' }}>
-                            <div className="pr-progress-bar" style={{ width: `${progress}%`, background: progress >= 90 ? '#10b981' : '#38bdf8' }} />
+                            <div className="pr-progress-bar" style={{ width: `${progress}%`, background: progress >= 90 ? '#10b981' : '#0284c7' }} />
                           </div>
                         </div>
                       )
@@ -1626,9 +1752,9 @@ export default function PublicReport() {
             {/* PLATFORM REPORTS: EXAMS DETAIL VIEW */}
             {platformSubView === 'exams' && (
               <div>
-                <h3 className="pr-section-title" style={{ borderRightColor: '#a78bfa' }}>تقرير الامتحانات الأونلاين</h3>
+                <h3 className="pr-section-title" style={{ borderRightColor: primaryColor, color: isDark ? '#fff' : '#0f172a' }}>تقرير الامتحانات الأونلاين</h3>
                 {platformData.exams.length === 0 ? (
-                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد امتحانات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
+                  <div style={{ padding: '30px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b' }}>لا توجد امتحانات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {platformData.exams.map(e => {
@@ -1636,7 +1762,7 @@ export default function PublicReport() {
                       return (
                         <div key={e.id} className="pr-card">
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{e.title}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: isDark ? '#fff' : '#0f172a' }}>{e.title}</div>
                             {attempt ? (
                               <span className="pr-badge pr-badge-green">مكتمل</span>
                             ) : (
@@ -1645,15 +1771,15 @@ export default function PublicReport() {
                           </div>
                           {attempt ? (
                             <div style={{ marginTop: '12px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '6px' }}>
                                 <span>الدرجة الحاصل عليها:</span>
-                                <span style={{ fontWeight: 'bold', color: '#a78bfa' }}>{attempt.score} / {attempt.max_score}</span>
+                                <span style={{ fontWeight: 'bold', color: primaryColor }}>{attempt.score} / {attempt.max_score}</span>
                               </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '6px' }}>
                                 <span>النسبة المئوية:</span>
                                 <span>{Math.round((attempt.score / attempt.max_score) * 100)}%</span>
                               </div>
-                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '8px' }}>
+                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #e2e8f0', paddingTop: '8px' }}>
                                 تاريخ المحاولة: {fmtDate(attempt.completed_at || attempt.created_at)}
                               </div>
                             </div>
@@ -1673,9 +1799,9 @@ export default function PublicReport() {
             {/* PLATFORM REPORTS: HOMEWORKS DETAIL VIEW */}
             {platformSubView === 'homeworks' && (
               <div>
-                <h3 className="pr-section-title" style={{ borderRightColor: '#2dd4bf' }}>تقرير الواجبات الإلكترونية</h3>
+                <h3 className="pr-section-title" style={{ borderRightColor: '#0d9488', color: isDark ? '#fff' : '#0f172a' }}>تقرير الواجبات الإلكترونية</h3>
                 {platformData.homeworks.length === 0 ? (
-                  <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>لا توجد واجبات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
+                  <div style={{ padding: '30px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b' }}>لا توجد واجبات إلكترونية مسجلة للمرحلة الدراسية للطالب.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {platformData.homeworks.map(h => {
@@ -1683,7 +1809,7 @@ export default function PublicReport() {
                       return (
                         <div key={h.id} className="pr-card">
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '10px' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff' }}>{h.title}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1rem', color: isDark ? '#fff' : '#0f172a' }}>{h.title}</div>
                             {sub ? (
                               <span className="pr-badge pr-badge-green">تم التسليم</span>
                             ) : (
@@ -1692,19 +1818,19 @@ export default function PublicReport() {
                           </div>
                           {sub ? (
                             <div style={{ marginTop: '12px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '6px' }}>
                                 <span>الدرجة الحاصل عليها:</span>
-                                <span style={{ fontWeight: 'bold', color: '#2dd4bf' }}>
+                                <span style={{ fontWeight: 'bold', color: '#0d9488' }}>
                                   {sub.score !== null && sub.score !== undefined ? `${sub.score} / ${sub.max_score}` : 'بانتظار التصحيح'}
                                 </span>
                               </div>
                               {sub.score !== null && sub.score !== undefined && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '6px' }}>
                                   <span>النسبة المئوية:</span>
                                   <span>{Math.round((sub.score / sub.max_score) * 100)}%</span>
                                 </div>
                               )}
-                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '8px' }}>
+                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '10px', borderTop: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #e2e8f0', paddingTop: '8px' }}>
                                 تاريخ التسليم: {fmtDate(sub.created_at)}
                               </div>
                             </div>
@@ -1731,7 +1857,7 @@ export default function PublicReport() {
         <div className="pr-modal-overlay" onClick={() => setShowFullReportModal(false)}>
           <div className="pr-modal-content" onClick={e => e.stopPropagation()}>
             <div className="pr-modal-header">
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#fff' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: isDark ? '#fff' : '#0f172a' }}>
                 التقرير الكامل لـ شهر {selectedMonth.name}
               </h3>
               <button 
@@ -1739,7 +1865,7 @@ export default function PublicReport() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: isDark ? '#94a3b8' : '#64748b',
                   fontSize: '1.3rem',
                   cursor: 'pointer'
                 }}
@@ -1777,7 +1903,7 @@ export default function PublicReport() {
               {activeTab === 'attendance' && (
                 <div>
                   {filteredAttendance.length === 0 ? (
-                    <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ padding: '30px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b' }}>
                       لا توجد بيانات حضور مسجلة لهذا الشهر.
                     </div>
                   ) : (
@@ -1786,14 +1912,14 @@ export default function PublicReport() {
                         const statusLabel = a.status === 'present' ? 'حضر' : a.status === 'absent' ? 'غاب' : a.status === 'late' ? 'متأخر' : 'معذور'
                         const statusDotClass = a.status === 'present' ? 'pr-dot-green' : a.status === 'absent' ? 'pr-dot-red' : 'pr-dot-orange'
                         return (
-                          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+                          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0', borderRadius: '12px' }}>
                             <div>
-                              <div style={{ fontWeight: 'bold', fontSize: '0.92rem' }}>{a.lesson_title || 'حصة السنتر'}</div>
+                              <div style={{ fontWeight: 'bold', fontSize: '0.92rem', color: isDark ? '#fff' : '#0f172a' }}>{a.lesson_title || 'حصة السنتر'}</div>
                               <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px' }}>{fmtDate(a.date)}</div>
                             </div>
                             <div className="pr-dot-status">
                               <span className={`pr-dot ${statusDotClass}`} />
-                              <span style={{ color: a.status === 'present' ? '#34d399' : a.status === 'absent' ? '#f87171' : '#fbbf24' }}>
+                              <span style={{ color: a.status === 'present' ? '#10b981' : a.status === 'absent' ? '#ef4444' : '#f59e0b' }}>
                                 {statusLabel}
                               </span>
                             </div>
@@ -1809,41 +1935,41 @@ export default function PublicReport() {
               {activeTab === 'exams' && (
                 <div>
                   {/* Summary Stats Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', marginBottom: '20px', textAlign: 'center' }}>
                     <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#38bdf8' }}>{monthlyStats.totalExams}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>إجمالي الاختبارات</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#0284c7' }}>{monthlyStats.totalExams}</div>
+                      <div style={{ fontSize: '0.74rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>إجمالي الاختبارات</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#a78bfa' }}>{monthlyStats.averageScore}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>المتوسط العام</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: primaryColor }}>{monthlyStats.averageScore}</div>
+                      <div style={{ fontSize: '0.74rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>المتوسط العام</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f472b6' }}>{monthlyStats.highestScore}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>أعلى درجة</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#ec4899' }}>{monthlyStats.highestScore}</div>
+                      <div style={{ fontSize: '0.74rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>أعلى درجة</div>
                     </div>
                   </div>
 
                   {monthlyStats.examGradesList.length === 0 ? (
-                    <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ padding: '30px', textAlign: 'center', color: isDark ? '#94a3b8' : '#64748b' }}>
                       لا توجد درجات مرصودة لهذا الشهر.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {monthlyStats.examGradesList.map(g => {
                         const pct = Math.round((g.score / g.max_score) * 100)
-                        const barColor = pct >= 85 ? '#10b981' : pct >= 65 ? '#8b5cf6' : pct >= 50 ? '#f59e0b' : '#ef4444'
+                        const barColor = pct >= 85 ? '#10b981' : pct >= 65 ? primaryColor : pct >= 50 ? '#f59e0b' : '#ef4444'
                         return (
-                          <div key={g.id} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '14px' }}>
+                          <div key={g.id} style={{ padding: '14px', background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0', borderRadius: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div>
-                                <div style={{ fontWeight: 'bold', fontSize: '0.92rem' }}>{g.title}</div>
-                                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.92rem', color: isDark ? '#fff' : '#0f172a' }}>{g.title}</div>
+                                <div style={{ fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '4px' }}>
                                   {g.type === 'homework' ? 'واجب' : g.type === 'quiz' ? 'تسميع' : 'اختبار'} • {fmtDate(g.created_at)}
                                 </div>
                               </div>
                               <div style={{ textAlign: 'left' }}>
-                                <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.95rem' }}>
+                                <div style={{ fontWeight: 'bold', color: isDark ? '#fff' : '#0f172a', fontSize: '0.95rem' }}>
                                   {g.score} / {g.max_score}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: barColor, fontWeight: 'bold', marginTop: '2px' }}>
@@ -1853,7 +1979,7 @@ export default function PublicReport() {
                             </div>
                             
                             {/* Class Average Info */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b' }}>
                               <span>متوسط الفصل: {g.class_average || '—'}</span>
                             </div>
 
@@ -1876,8 +2002,16 @@ export default function PublicReport() {
               {activeTab === 'performance' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* Analysis Box */}
-                  <div style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.15)', borderRadius: '16px', padding: '18px', lineHeight: '1.7', fontSize: '0.92rem', color: '#cbd5e1' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c084fc', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.98rem' }}>
+                  <div style={{
+                    background: isDark ? `${primaryColor}15` : `${primaryColor}0c`,
+                    border: isDark ? `1px solid ${primaryColor}30` : `1px solid ${primaryColor}25`,
+                    borderRadius: '16px',
+                    padding: '18px',
+                    lineHeight: '1.7',
+                    fontSize: '0.92rem',
+                    color: isDark ? '#cbd5e1' : '#334155'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isDark ? '#c084fc' : primaryColor, fontWeight: 'bold', marginBottom: '8px', fontSize: '0.98rem' }}>
                       <i className="fas fa-brain" />
                       <span>تحليل أداء الطالب</span>
                     </div>
@@ -1885,35 +2019,35 @@ export default function PublicReport() {
                   </div>
 
                   {/* Attendance Breakdown Dashboard */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '18px' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: '#fff' }}>
+                  <div style={{ background: isDark ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '18px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: isDark ? '#fff' : '#0f172a' }}>
                       تحليل الحضور والغياب للشهر
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
-                      <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#34d399' }}>{monthlyStats.presentCount}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>حضور</div>
+                      <div style={{ background: isDark ? 'rgba(16, 185, 129, 0.06)' : '#ecfdf5', border: isDark ? '1px solid rgba(16, 185, 129, 0.12)' : '1px solid #a7f3d0', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#059669' }}>{monthlyStats.presentCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: isDark ? '#94a3b8' : '#065f46', marginTop: '3px' }}>حضور</div>
                       </div>
-                      <div style={{ background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#fbbf24' }}>{monthlyStats.lateCount}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>متأخر</div>
+                      <div style={{ background: isDark ? 'rgba(245, 158, 11, 0.06)' : '#fffbeb', border: isDark ? '1px solid rgba(245, 158, 11, 0.12)' : '1px solid #fde68a', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#d97706' }}>{monthlyStats.lateCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: isDark ? '#94a3b8' : '#92400e', marginTop: '3px' }}>متأخر</div>
                       </div>
-                      <div style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f87171' }}>{monthlyStats.absentCount}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>غياب</div>
+                      <div style={{ background: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2', border: isDark ? '1px solid rgba(239, 68, 68, 0.12)' : '1px solid #fecaca', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#dc2626' }}>{monthlyStats.absentCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: isDark ? '#94a3b8' : '#991b1b', marginTop: '3px' }}>غياب</div>
                       </div>
-                      <div style={{ background: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.12)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#a78bfa' }}>{monthlyStats.excusedCount}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>غياب بعذر</div>
+                      <div style={{ background: isDark ? 'rgba(139, 92, 246, 0.06)' : `${primaryColor}10`, border: isDark ? '1px solid rgba(139, 92, 246, 0.12)' : `1px solid ${primaryColor}30`, borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: primaryColor }}>{monthlyStats.excusedCount}</div>
+                        <div style={{ fontSize: '0.75rem', color: isDark ? '#94a3b8' : '#475569', marginTop: '3px' }}>غياب بعذر</div>
                       </div>
                     </div>
                     
                     {/* Visual attendance ratio bar */}
                     {monthlyStats.totalAttendance > 0 && (
                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '6px' }}>
                           <span>نسبة الالتزام بالحضور</span>
-                          <span>{monthlyStats.attendanceRate}%</span>
+                          <span style={{ color: '#10b981', fontWeight: 'bold' }}>{monthlyStats.attendanceRate}%</span>
                         </div>
                         <div className="pr-progress-track">
                           <div className="pr-progress-bar" style={{ width: `${monthlyStats.attendanceRate}%`, background: '#10b981' }} />
@@ -1923,8 +2057,8 @@ export default function PublicReport() {
                   </div>
 
                   {/* Academic Comparison Dashboard */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '18px' }}>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: '#fff' }}>
+                  <div style={{ background: isDark ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0', borderRadius: '16px', padding: '18px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '14px', color: isDark ? '#fff' : '#0f172a' }}>
                       مقارنة أداء الطالب بمتوسط الفصل
                     </h4>
                     
@@ -1932,22 +2066,22 @@ export default function PublicReport() {
                     {monthlyStats.totalExams > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#cbd5e1', marginBottom: '5px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: isDark ? '#cbd5e1' : '#475569', marginBottom: '5px' }}>
                             <span>متوسط درجات الطالب</span>
-                            <span>{monthlyStats.avgPercentage}%</span>
+                            <span style={{ color: primaryColor, fontWeight: 'bold' }}>{monthlyStats.avgPercentage}%</span>
                           </div>
                           <div className="pr-progress-track" style={{ height: '8px' }}>
-                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.avgPercentage}%`, background: '#8b5cf6' }} />
+                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.avgPercentage}%`, background: primaryColor }} />
                           </div>
                         </div>
 
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8', marginBottom: '5px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: isDark ? '#94a3b8' : '#64748b', marginBottom: '5px' }}>
                             <span>متوسط الفصل العام</span>
                             <span>{monthlyStats.classAvgPercentage}%</span>
                           </div>
                           <div className="pr-progress-track" style={{ height: '8px' }}>
-                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.classAvgPercentage}%`, background: '#475569' }} />
+                            <div className="pr-progress-bar" style={{ width: `${monthlyStats.classAvgPercentage}%`, background: isDark ? '#475569' : '#94a3b8' }} />
                           </div>
                         </div>
 
@@ -1957,11 +2091,11 @@ export default function PublicReport() {
                           padding: '10px 12px', 
                           borderRadius: '8px', 
                           fontSize: '0.8rem', 
-                          fontWeight: 'bold',
+                          fontWeight: 'bold', 
                           textAlign: 'center',
-                          background: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                          color: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? '#34d399' : '#fbbf24',
-                          border: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(245, 158, 11, 0.15)'
+                          background: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? (isDark ? 'rgba(16, 185, 129, 0.08)' : '#ecfdf5') : (isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb'),
+                          color: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? '#059669' : '#d97706',
+                          border: monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage ? (isDark ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid #a7f3d0') : (isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fde68a')
                         }}>
                           {monthlyStats.avgPercentage >= monthlyStats.classAvgPercentage 
                             ? `الطالب يتفوق على متوسط الفصل بمقدار +${monthlyStats.avgPercentage - monthlyStats.classAvgPercentage}% ✨`
@@ -1978,23 +2112,23 @@ export default function PublicReport() {
 
                   {/* Participation and Behavior List */}
                   <div>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '12px', color: '#fff' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '12px', color: isDark ? '#fff' : '#0f172a' }}>
                       النقاط والملاحظات السلوكية
                     </h4>
                     {filteredGrades.filter(g => g.type === 'behavior' || g.type === 'participation').length === 0 ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem', border: '1px dashed rgba(255,255,255,0.06)', borderRadius: '12px' }}>
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem', border: isDark ? '1px dashed rgba(255,255,255,0.06)' : '1px dashed #cbd5e1', borderRadius: '12px' }}>
                         لا توجد ملاحظات سلوكية أو نقاط تفاعل مسجلة هذا الشهر.
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {filteredGrades.filter(g => g.type === 'behavior' || g.type === 'participation').map(g => (
-                          <div key={g.id} style={{ display: 'flex', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '12px' }}>
+                          <div key={g.id} style={{ display: 'flex', gap: '12px', padding: '12px', background: isDark ? 'rgba(255,255,255,0.01)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #e2e8f0', borderRadius: '12px' }}>
                             <div style={{
                               width: '36px',
                               height: '36px',
                               borderRadius: '10px',
-                              background: g.type === 'participation' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                              color: g.type === 'participation' ? '#34d399' : '#fbbf24',
+                              background: g.type === 'participation' ? (isDark ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5') : (isDark ? 'rgba(245, 158, 11, 0.1)' : '#fffbeb'),
+                              color: g.type === 'participation' ? '#059669' : '#d97706',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2004,12 +2138,12 @@ export default function PublicReport() {
                             </div>
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.88rem' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.88rem', color: isDark ? '#fff' : '#0f172a' }}>
                                   {g.type === 'participation' ? 'مشاركة وتفاعل' : 'تقييم سلوكي'}
                                 </span>
                                 <span style={{ fontSize: '0.74rem', color: '#64748b' }}>{fmtDate(g.created_at)}</span>
                               </div>
-                              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '3px' }}>
+                              <div style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#64748b', marginTop: '3px' }}>
                                 {g.title} {g.notes ? `• ${g.notes}` : ''}
                               </div>
                             </div>
@@ -2023,19 +2157,19 @@ export default function PublicReport() {
             </div>
 
             {/* Modal Footer */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', textAlign: 'left', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ padding: '16px 24px', borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e2e8f0', textAlign: 'left', background: isDark ? 'rgba(255,255,255,0.01)' : '#f8fafc' }}>
               <button 
                 onClick={() => setShowFullReportModal(false)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #cbd5e1',
                   borderRadius: '10px',
-                  color: '#fff',
+                  color: isDark ? '#fff' : '#0f172a',
                   padding: '8px 20px',
                   fontSize: '0.9rem',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  fontFamily: 'Tajawal, sans-serif'
+                  fontFamily: "'El Messiri', sans-serif"
                 }}
               >
                 إغلاق
