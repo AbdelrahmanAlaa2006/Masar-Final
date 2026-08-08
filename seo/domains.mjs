@@ -93,7 +93,7 @@ export const DOMAINS = {
       'GitFekra, جِت فِكرة, برمجة منصات تعليمية, منصة تعليمية للمدرسين, عمل منصة تعليمية, حماية فيديوهات المدرسين, موقع تعليمي للمدرس, منصة سنتر, EdTech Egypt, Software Agency, Abdelrahman Alaa, Eyad Elalkamy',
     author: 'GitFekra — جِت فِكرة',
     canonical: 'https://gitfekra.com/',
-    ogImage: 'https://gitfekra.com/images/gitfekra-og.png',
+    ogImage: '',
     themeColor: '#d4af37',
     favicon: '/favicon.svg',
     faviconType: 'image/svg+xml',
@@ -102,7 +102,6 @@ export const DOMAINS = {
       org: {
         name: 'GitFekra',
         alternateName: ['جِت فِكرة', 'GitFekra Software Engineering'],
-        logo: 'https://gitfekra.com/favicon.svg',
         description: 'شركة برمجيات متخصصة في بناء وتطوير المنصات التعليمية المستقلة للمدرّسين والمراكز التعليمية.',
         telephone: '',
         addressLocality: 'Alexandria',
