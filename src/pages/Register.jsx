@@ -143,7 +143,7 @@ export default function Register() {
 
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? null : dbLogo)
   const brandShort = isDefaultTenant 
     ? (lang === 'ar' ? 'جِت فِكرة' : 'GitFekra') 
     : getLocalized(themeConfig.branding?.brand_short || tenant?.config?.branding?.brand_short, tenantName, tenantName)

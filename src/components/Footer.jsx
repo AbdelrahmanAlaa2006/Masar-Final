@@ -48,7 +48,7 @@ export default function Footer() {
   }, [])
   const isStaff = viewerRole === 'admin' || viewerRole === 'assistant' || viewerRole === 'super_admin'
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? null : dbLogo)
   const hasCustomLogo = !!(themeConfig.logoUrl || dbLogo)
 
   const year = new Date().getFullYear()

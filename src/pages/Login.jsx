@@ -12,7 +12,6 @@ import { listPackages } from '@backend/packagesApi'
 import { useTenant } from '../contexts/TenantContext'
 import { toMapEmbed, toLatLng } from '../utils/mapEmbed'
 const LocationMap = React.lazy(() => import('../components/LocationMap'))
-import masarLogo from '../assets/logo.white.png'
 import './Login.css'        // existing styles (forms, marketing, footer)
 import './login-styles.css'     // new styles (navbar, hero, auth-modal, teacher portrait)
 // Custom theme overrides are now dynamically loaded at runtime inside TenantContext
@@ -84,7 +83,7 @@ export default function Login() {
   const codeLoginEnabled = true
   const isDefaultTenant = !tenantSlug || tenantSlug === 'default'
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  const brandLogo = themeConfig.logoUrl || (isDefaultTenant ? null : dbLogo)
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'ar')
   const [selectedBranch, setSelectedBranch] = useState(0) // active branch in the location section
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')

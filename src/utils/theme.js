@@ -170,28 +170,30 @@ export function applyTenantTheme(tenant, themeConfig) {
   }
   metaTheme.setAttribute('content', primary)
 
-  // Update tab icon (favicon) if a tenant custom logo is provided
+  // Update tab icon (favicon) ONLY if a tenant custom logo or explicit faviconUrl is provided
   const dbLogo = tenant.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const faviconUrl = themeConfig.faviconUrl || dbLogo || themeConfig.logoUrl || '/images/logo.white-favicon.png'
-  
-  if (faviconUrl) {
-    let favicon = document.querySelector('link[rel="icon"]')
-    if (!favicon) {
-      favicon = document.createElement('link')
-      favicon.setAttribute('rel', 'icon')
-      document.head.appendChild(favicon)
-    }
-    favicon.setAttribute('href', faviconUrl)
-    favicon.removeAttribute('type')
+  const faviconUrl = themeConfig.faviconUrl || dbLogo || themeConfig.logoUrl || null
+  const blankFavicon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
 
-    // Also update apple-touch-icon
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+  let favicon = document.querySelector('link[rel="icon"]')
+  if (!favicon) {
+    favicon = document.createElement('link')
+    favicon.setAttribute('rel', 'icon')
+    document.head.appendChild(favicon)
+  }
+  favicon.setAttribute('href', faviconUrl || blankFavicon)
+  favicon.removeAttribute('type')
+
+  let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+  if (faviconUrl) {
     if (!appleIcon) {
       appleIcon = document.createElement('link')
       appleIcon.setAttribute('rel', 'apple-touch-icon')
       document.head.appendChild(appleIcon)
     }
     appleIcon.setAttribute('href', faviconUrl)
+  } else if (appleIcon) {
+    appleIcon.remove()
   }
 }
 

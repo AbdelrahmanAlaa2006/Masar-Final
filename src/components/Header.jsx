@@ -6,7 +6,6 @@ import { useTenant } from '../contexts/TenantContext'
 import { supabase } from '@backend/supabase'
 import Notifications from './Notifications'
 import { cached } from '../utils/cache'
-import masarLogo from '../assets/logo.white.png'
 // getTenantThemeConfig is now dynamically resolved inside TenantContext
 import './Header.css'
 
@@ -37,7 +36,7 @@ export default function Header() {
   const { tenant, tenantSlug, isFeatureEnabled, themeConfig } = useTenant()
   const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? "/images/logo.white.png" : (dbLogo || "/images/logo.white.png"))
+  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? null : dbLogo)
   // A tenant with its own artwork shows the logo bare — no colored chip behind
   // it. The shared fallback logo is white, so it keeps the chip to stay visible.
   const hasOwnLogo = Boolean(themeConfig.logoUrl || dbLogo)
