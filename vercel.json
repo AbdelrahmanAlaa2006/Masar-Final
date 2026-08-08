@@ -23,6 +23,11 @@
   "rewrites": [
     {
       "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "(www\\.)?gitfekra\\.com" }],
+      "destination": "/sitemap-gitfekra.xml"
+    },
+    {
+      "source": "/sitemap.xml",
       "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
       "destination": "/sitemap-eldad.xml"
     },
@@ -32,6 +37,11 @@
       "destination": "/sitemap-mohamed-abdella.xml"
     },
     { "source": "/sitemap.xml", "destination": "/sitemap-default.xml" },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "(www\\.)?gitfekra\\.com" }],
+      "destination": "/robots-gitfekra.txt"
+    },
     {
       "source": "/robots.txt",
       "has": [{ "type": "host", "value": "(www\\.)?mrkhalidelsharif\\.com" }],
