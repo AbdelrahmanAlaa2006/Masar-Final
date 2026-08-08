@@ -592,7 +592,7 @@ function AppContent() {
           screen so animations never distract during a timed exam —
           the seasonal accent classes on <body> still apply, so the
           subtle top tint and selection color remain. */}
-      <SeasonalDecor suppress={isExamTaking} />
+      <SeasonalDecor suppress={isExamTaking || showCompanyLanding} />
       <RouteSeo />
       {showHeaderFooter && <Header />}
 
