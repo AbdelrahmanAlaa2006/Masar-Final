@@ -19,7 +19,7 @@ body {
   margin: 0;
   display: block;
   min-width: 320px;
-  font-family: 'El Messiri', 'Tajawal', 'Cairo', -apple-system, sans-serif;
+  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
   line-height: 1.6;
   background: var(--bg-color);
   color: #1a202c;
@@ -31,11 +31,23 @@ body,
 [dir="ltr"],
 [lang="ar"],
 [lang="en"] {
-  font-family: 'El Messiri', 'Tajawal', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'El Messiri', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'El Messiri', 'Tajawal', 'Cairo', -apple-system, sans-serif;
+h1, h2, h3, h4, h5, h6, p, span, a, button, input, select, textarea, optgroup {
+  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
+}
+
+/* Protect Font Awesome Icons from text font-family overrides */
+i.fa, i.fas, i.far, i.fab, i.fal, i.fad,
+.fa, .fas, .far, .fab, .fal, .fad,
+[class*=" fa-"], [class^="fa-"] {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 5 Free", "FontAwesome" !important;
+  font-style: normal;
+}
+
+i.fab, .fab {
+  font-family: "Font Awesome 6 Brands", "FontAwesome" !important;
 }
 
 button, input, select, textarea, optgroup {
@@ -330,5 +342,103 @@ body.dark .premium-back-btn:hover {
   .premium-back-btn:hover {
     transform: none;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🌟 POLISH SUITE (Theme Transition, Skeleton Loaders,
+   Table Row Hovering, Action Toast Notifications)
+   ────────────────────────────────────────────────────────────── */
+
+/* 1. Enhanced Dark/Light Theme Transition & High Contrast */
+body,
+.card,
+.hdash-card,
+.mh,
+header,
+table,
+tr,
+td,
+th,
+input,
+select {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* 2. Skeleton Pulse Loading States */
+@keyframes skeletonPulse {
+  0%, 100% {
+    opacity: 0.4;
+    background-position: 0% 50%;
+  }
+  50% {
+    opacity: 0.85;
+    background-position: 100% 50%;
+  }
+}
+
+.hdash-skeleton,
+.skeleton-box {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  min-height: 24px;
+}
+
+body:not(.dark) .hdash-skeleton,
+body:not(.dark) .skeleton-box {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.04) 25%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.04) 75%);
+  background-size: 200% 100%;
+}
+
+/* 3. Interactive Table & List Row Hovering */
+table tbody tr {
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+table tbody tr:hover {
+  background-color: var(--primary-soft, rgba(124, 58, 237, 0.06)) !important;
+}
+
+body.dark table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* 4. Action Toast Notification System */
+.toast-notification {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+body:not(.dark) .toast-notification {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.12);
+}
+
+.toast-notification.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
 

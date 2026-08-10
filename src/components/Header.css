@@ -137,6 +137,11 @@ body.dark .mh::before {
     radial-gradient(520px 130px at 88% 100%, var(--primary-soft, var(--primary-glow)), transparent 70%);
 }
 
+.mh,
+.mh *:not(i):not(.fas):not(.far):not(.fab):not(.fa) {
+  font-family: 'El Messiri', 'Cairo', sans-serif !important;
+}
+
 .mh--scrolled {
   box-shadow: var(--mh-shadow-elev);
 }
@@ -620,24 +625,21 @@ body.dark .mh__user {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 40px;
-  padding: 0 14px;
+  height: 38px;
+  padding: 0 16px;
   border-radius: 12px;
-  border: 1px solid transparent;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #fff;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: #dc2626;
+  color: #ffffff !important;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   white-space: nowrap;
   flex: 0 0 auto;
   cursor: pointer;
-  transition: transform .2s ease, box-shadow .25s ease, filter .2s ease;
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .25s ease, background .25s ease, color .25s ease, border-color .25s ease;
   position: relative;
   overflow: hidden;
-  box-shadow:
-    0 8px 18px -8px rgba(220, 38, 38, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .mh__logout::before {
@@ -655,6 +657,8 @@ body.dark .mh__user {
 
 .mh__logout i {
   font-size: 13px;
+  color: #ffffff !important;
+  opacity: 1 !important;
   transition: transform .25s ease;
   position: relative;
   z-index: 1;
@@ -663,15 +667,30 @@ body.dark .mh__user {
 .mh__logout span {
   position: relative;
   z-index: 1;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 800;
   white-space: nowrap;
 }
 
 .mh__logout:hover {
-  transform: translateY(-1px);
-  filter: saturate(1.1);
-  box-shadow:
-    0 12px 24px -10px rgba(220, 38, 38, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 10px 22px -6px rgba(239, 68, 68, 0.55);
+}
+
+.mh__logout:active {
+  transform: scale(0.96);
+}
+
+.mh__logout:hover::before {
+  inset-inline-start: 140%;
+}
+
+.mh__logout:hover i {
+  transform: translateX(-3px);
 }
 
 .mh__logout:hover::before {
@@ -1332,18 +1351,28 @@ body.dark .mh__nav {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-/* Logout button — softer red with stronger shimmer */
+/* Logout button — solid high-contrast red */
 .mh__logout {
   border-radius: 13px;
-  background: linear-gradient(135deg, #f43f5e 0%, #dc2626 100%);
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
   box-shadow:
-    0 10px 22px -10px rgba(220, 38, 38, 0.65),
+    0 8px 20px -8px rgba(220, 38, 38, 0.65),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
+.mh__logout i,
+.mh__logout span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
 .mh__logout:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
   box-shadow:
-    0 14px 28px -12px rgba(244, 63, 94, 0.75),
+    0 12px 26px -8px rgba(239, 68, 68, 0.75),
     inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 

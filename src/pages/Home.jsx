@@ -64,8 +64,8 @@ export default function Home() {
         y: Math.random() * height,
         vx: 0,
         vy: 0,
-        r: 1.0 + Math.random() * 2.0,
-        opacity: 0.2 + Math.random() * 0.4,
+        r: 1.0 + Math.random() * 1.5,
+        opacity: 0.08 + Math.random() * 0.15,
         c: COLORS[Math.floor(Math.random() * COLORS.length)],
       })
     }
@@ -106,8 +106,8 @@ export default function Home() {
             const alpha = 1 - Math.sqrt(d2) / 130
             const currentTheme = localStorage.getItem('theme') || 'light'
             ctx.strokeStyle = themeConfig.getLineColor
-              ? themeConfig.getLineColor(currentTheme, alpha)
-              : `rgba(168, 85, 247, ${alpha * 0.35})`
+              ? themeConfig.getLineColor(currentTheme, alpha * 0.12)
+              : `rgba(168, 85, 247, ${alpha * 0.1})`
             ctx.lineWidth = 1
             ctx.beginPath()
             ctx.moveTo(a.x, a.y)
@@ -147,35 +147,6 @@ export default function Home() {
     }
   }, [themeConfig])
 
-  useEffect(() => {
-    // Show cards on mount with animation
-    const cards = document.querySelectorAll('.card')
-    setTimeout(() => {
-      cards.forEach((card, index) => {
-        setTimeout(() => {
-          card.style.transform = 'translateY(0)'
-          card.style.opacity = '1'
-        }, index * 150)
-      })
-    }, 500)
-
-    // Scroll event listener for cards
-    const handleScroll = () => {
-      cards.forEach(card => {
-        const cardTop = card.getBoundingClientRect().top
-        const cardVisible = 150
-
-        if (cardTop < window.innerHeight - cardVisible) {
-          card.style.transform = 'translateY(0)'
-          card.style.opacity = '1'
-        }
-      })
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
 
   // Per-season greeting copy. Christmas deliberately stays null —
   // the user wants only the three islamic occasions to render a
@@ -209,25 +180,30 @@ export default function Home() {
     ? tenant.config.announcements.filter(a => a && a.text)
     : DEFAULT_ANNOUNCEMENTS
 
+  // Format current live date in Arabic locale for the header badge
+  const formattedDate = new Date().toLocaleDateString('ar-EG', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  // Allowed actions for primary CTA strip
+  const allowedExams = isFeatureEnabled('exams') && (role === 'admin' || hasPermission('exams'))
+  const allowedVideos = isFeatureEnabled('videos') && (role === 'admin' || hasPermission('videos'))
+
   return (
     <main className="home">
       <canvas ref={canvasRef} className="home-constellation" aria-hidden="true" />
 
-      {/* Seasonal greeting banner — only on home, only for Ramadan +
-          the two Eids per the product spec. Christmas has decor but
-          no banner since it isn't a religious occasion in this
-          context. */}
+      {/* Seasonal greeting banner — Ramadan & Eids */}
       {seasonalGreeting && (
         <section
           className={`sb sb-${seasonalTheme.id}`}
           aria-label={seasonalGreeting.ariaLabel}
         >
-          {/* Background pattern layer */}
           <span className="sb-pattern" aria-hidden="true" />
-          {/* Radial glow */}
           <span className="sb-glow" aria-hidden="true" />
-
-          {/* Decorative star */}
           <span className="sb-star" aria-hidden="true">
             <svg viewBox="0 0 80 80" width="52" height="52">
               <g transform="translate(40 40)" fill="currentColor" opacity="0.7">
@@ -237,191 +213,195 @@ export default function Home() {
               </g>
             </svg>
           </span>
-
-          {/* Text column */}
           <div className="sb-text">
             <h3 className="sb-title">{seasonalGreeting.arTitle}</h3>
             <p className="sb-blessing">{seasonalGreeting.arBlessing}</p>
             <span className="sb-en">{seasonalGreeting.en}</span>
           </div>
-
-
         </section>
       )}
 
-      {/* Greeting banner */}
-      <section className="home-greeting animate-fade-up">
-        <h2 className="home-greeting-title">
-          <span className="home-greeting-hi">أهلاً بك،</span>{" "}
-          <span className="home-greeting-name">
-            {role === 'super_admin' ? 'مطورنا العزيز' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
-          </span>
-          {role === 'super_admin' && (
-            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: 'var(--primary)', verticalAlign: 'middle' }}></i>
-          )}
-        </h2>
-        <p className="home-greeting-sub">
-          {role === 'super_admin'
-            ? 'مرحباً بك في لوحة تحكم المطور والـ Super Admin 👋 نتمنى لك تجربة موفّقة!'
-            : (role === 'admin' || role === 'assistant'
-              ? 'مرحبًا بك في لوحة تحكم المنصة التعليمية 👋 نتمنى لك تجربة موفّقة!'
-              : 'نتمنى لك يومًا مليئًا بالتعلم والنجاح ✨')}
-        </p>
-        <div className="home-greeting-shimmer" />
-      </section>
-
-      <div className="home-divider" />
-
-      {/* Role-aware dashboard */}
-      <HomeDashboard role={role} />
-
-      <div className="home-divider" />
-
-      {/* Upcoming news marquee (per-tenant; hidden when the tenant cleared it) */}
-      {marqueeItems.length > 0 && (
-        <>
-          <div className="home-marquee" aria-label="أحدث الإعلانات" dir="ltr">
-            <div className="home-marquee-track">
-              <div className="home-marquee-set">
-                {marqueeItems.map((item, i) => (
-                  <span className="home-marquee-item" key={i}>
-                    <span className="home-marquee-icon">{item.icon}</span>
-                    <span className="home-marquee-text">{item.text}</span>
-                  </span>
-                ))}
-              </div>
-              <div className="home-marquee-set" aria-hidden="true">
-                {marqueeItems.map((item, i) => (
-                  <span className="home-marquee-item" key={i}>
-                    <span className="home-marquee-icon">{item.icon}</span>
-                    <span className="home-marquee-text">{item.text}</span>
-                  </span>
-                ))}
-              </div>
+      {/* ──────────────────────────────────────────────────────────────
+         1. INTEGRATED SAAS WORKSPACE HEADER
+         ────────────────────────────────────────────────────────────── */}
+      <header className="home-hero-bar">
+        <div className="home-hero-bar-main">
+          <div className="home-hero-bar-identity">
+            <div className="home-hero-bar-meta">
+              <span className="home-hero-role-chip">
+                {role === 'super_admin' ? 'Super Admin' : (role === 'admin' || role === 'assistant' ? 'إدارة المنصة' : 'لوحة الطالب')}
+              </span>
+              <span className="home-hero-date-chip">
+                <i className="far fa-calendar-alt" style={{ marginInlineEnd: 6 }} />
+                {formattedDate}
+              </span>
             </div>
-          </div>
-
-          <div className="home-divider" />
-        </>
-      )}
-
-      {/* Hero Section */}
-      <section className="hero animate-fade-up" style={{ animationDelay: '0.1s' }}>
-        <div className="hero-title-container">
-          <h1>
-            {role === 'super_admin'
-              ? 'لوحة المطور والتحكم العام'
-              : (role === 'admin' || role === 'assistant'
-                ? `لوحة إدارة ${brandName}`
-                : (tenant?.config?.branding?.hero_title || `طور مهاراتك مع منصة ${brandName}`))}
-          </h1>
-          <div className="hero-title-accent" />
-        </div>
-        <p>
-          {role === 'super_admin'
-            ? 'إدارة حسابات المدرسين، متابعة المنصات الفعالة، والتحكم الشامل وتصفير بيانات التجارب.'
-            : (role === 'admin' || role === 'assistant'
-              ? 'تابع أداء الطلاب، أدِر الواجبات والامتحانات والفيديوهات، وتحكم في كل ما يخص المنصة من مكان واحد.'
-              : (tenant?.config?.branding?.hero_subtitle || 'أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.'))}
-        </p>
-        <a
-          href={role === 'super_admin' ? '/control-panel' : '#cards'}
-          className="hero-btn"
-          onClick={(e) => {
-            if (role === 'super_admin') {
-              e.preventDefault()
-              navigate('/control-panel')
-            } else {
-              handleHeroClick(e)
-            }
-          }}
-        >
-          <span>
-            {role === 'super_admin'
-              ? 'انتقل للوحة التحكم'
-              : (role === 'admin' || role === 'assistant' ? 'انتقل إلى الإدارة' : 'ابدأ التعلم الآن')}
-          </span>
-          <i className="fas fa-arrow-left hero-btn-arrow" />
-        </a>
-      </section>
-
-      {role !== 'super_admin' && (
-        <>
-          <div className="home-divider" />
-
-          {/* Cards Section */}
-          <div className="container">
-            <div id="cards" className="cards-grid">
+            <h1 className="home-hero-bar-title">
               {(() => {
-                const visibleCards = [
-                  { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
-                  { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
-                  { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
-                  { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' },
-                  { key: 'payments', route: '/packages', icon: <PackagesIcon />, label: 'باقاتي الدراسية', descAdmin: 'تفعيل باقات الطلاب ومتابعة اشتراكاتهم', descStudent: 'فيديوهات، واجبات، وامتحانات باقاتك المشتركة' }
-                ].filter(c => {
-                  if (!isFeatureEnabled(c.key)) return false
-                  if (role === 'assistant') {
-                    if (c.key === 'reports') return hasPermission('reports')
-                    return hasPermission(c.key)
-                  }
-                  return true
-                });
-
-                return visibleCards.map((card) => {
-                  const isCentered = card.key === 'payments' && visibleCards.length === 5;
-                  return (
-                    <div
-                      key={card.key}
-                      className={`card ${isCentered ? 'card-payments-centered' : ''}`}
-                      onClick={() => goAndTrack(card.key, card.route)}
-                    >
-                      <span className="home-card-icon" aria-hidden="true">{card.icon}</span>
-                      <h2>{card.label}</h2>
-                      <div className="card-title-accent" />
-                      <p>{role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}</p>
-                    </div>
-                  );
-                });
+                const hour = new Date().getHours()
+                const timeGreeting = (hour >= 5 && hour < 12) ? 'صباح الخير،' : 'مساء الخير،'
+                return (
+                  <>
+                    <span className="home-hero-greeting-hi">{timeGreeting}</span>{' '}
+                    <span className="home-hero-greeting-name">
+                      {role === 'super_admin' ? 'مطورنا العزيز' : (username || (role === 'admin' || role === 'assistant' ? 'المشرف' : 'الطالب'))}
+                    </span>
+                  </>
+                )
               })()}
-            </div>
+              {role === 'super_admin' && (
+                <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: 'var(--primary)', verticalAlign: 'middle' }} />
+              )}
+            </h1>
+            <p className="home-hero-bar-sub">
+              {role === 'super_admin'
+                ? 'مرحباً بك في لوحة تحكم المطور والـ Super Admin 👋 نتمنى لك تجربة موفّقة!'
+                : (role === 'admin' || role === 'assistant'
+                  ? `تابع أداء الطلاب وأدِر امتحانات وفيديوهات منصة ${brandName} من مكان واحد.`
+                  : 'أهلاً بك في منصتك التعليمية! استكمل واجباتك وفيديوهاتك بنجاح ✨')}
+            </p>
           </div>
-        </>
-      )}
 
-      <div className="home-divider" />
-
-      {/* Greeting Section */}
-      <section className="greeting-section">
-        <div className="greeting-confetti" aria-hidden="true">
-          <span className="greeting-dot greeting-dot--1" />
-          <span className="greeting-dot greeting-dot--2" />
-          <span className="greeting-dot greeting-dot--3" />
-          <span className="greeting-dot greeting-dot--4" />
-          <span className="greeting-dot greeting-dot--5" />
-          <span className="greeting-dot greeting-dot--6" />
-          <span className="greeting-dot greeting-dot--7" />
-          <span className="greeting-dot greeting-dot--8" />
+          <div className="home-hero-bar-actions">
+            {role === 'student' && (
+              <button className="home-hero-cta-btn home-cta-primary" onClick={(e) => handleHeroClick(e)}>
+                <span>ابدأ التعلم الآن</span>
+                <i className="fas fa-arrow-left" />
+              </button>
+            )}
+            {role === 'super_admin' && (
+              <button className="home-hero-cta-btn home-cta-primary" onClick={() => navigate('/control-panel')}>
+                <span>لوحة التحكم والمطور</span>
+                <i className="fas fa-sliders-h" />
+              </button>
+            )}
+          </div>
         </div>
-        <h2>
-          <span className="name-highlight">
-            {role === 'super_admin'
-              ? 'شكرًا لجهودك يا مطورنا العزيز'
-              : (role === 'admin' || role === 'assistant'
-                ? `شكرًا لجهودك يا ${username || 'المشرف'}`
-                : `يومك سعيد يا ${username || 'الطالب'}`)}
-          </span>
-          {role === 'super_admin' && (
-            <i className="fas fa-laptop-code" style={{ marginInlineStart: '8px', color: 'var(--primary)', verticalAlign: 'middle' }}></i>
-          )}
-        </h2>
-        <div className="greeting-title-accent" />
-        <p>
-          {role === 'super_admin' || role === 'admin' || role === 'assistant'
-            ? 'لأي ملاحظات تقنية أو اقتراحات لتطوير المنصة، تواصل معنا عبر القنوات التالية'
-            : 'لو بتواجهك أي مشاكل أو عندك أي استفسارات أو اقتراحات أو أي حاجة عايزنا نعرفها متترددش إنك تتواصل معانا'}
-        </p>
-      </section>
+      </header>
+
+      {/* ──────────────────────────────────────────────────────────────
+         2. INTEGRATED 2-COLUMN SAAS WORKSPACE GRID
+         ────────────────────────────────────────────────────────────── */}
+      <div className="home-workspace-container">
+        <div className="home-workspace-grid">
+
+          {/* MAIN PRIMARY COLUMN */}
+          <div className="home-main-col">
+
+            {/* Dashboard Overview Deck (Live Content Stats & Student Metrics) */}
+            <div className="home-workspace-block">
+              <div className="home-block-header">
+                <h2 className="home-block-title">
+                  <i className="fas fa-chart-pie" />
+                  <span>نظرة عامة على البيانات</span>
+                </h2>
+              </div>
+              <HomeDashboard role={role} />
+            </div>
+
+            {/* Core Operations Modules Grid */}
+            {role !== 'super_admin' && (
+              <div className="home-workspace-block" id="cards">
+                <div className="home-block-header">
+                  <h2 className="home-block-title">
+                    <i className="fas fa-cubes" />
+                    <span>الأقسام الرئيسية</span>
+                    <span className="home-block-subtitle">— وصول سريع لكافة الوظائف والخدمات</span>
+                  </h2>
+                </div>
+
+                <div className="home-modules-grid">
+                  {(() => {
+                    const visibleCards = [
+                      { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
+                      { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
+                      { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
+                      { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' },
+                      { key: 'payments', route: '/packages', icon: <PackagesIcon />, label: 'باقاتي الدراسية', descAdmin: 'تفعيل باقات الطلاب ومتابعة اشتراكاتهم', descStudent: 'فيديوهات، واجبات، وامتحانات باقاتك المشتركة' },
+                    ].filter((c) => {
+                      if (!isFeatureEnabled(c.key)) return false
+                      if (role === 'assistant') {
+                        if (c.key === 'reports') return hasPermission('reports')
+                        return hasPermission(c.key)
+                      }
+                      return true
+                    })
+
+                    return visibleCards.map((card) => (
+                      <div
+                        key={card.key}
+                        className="home-module-card"
+                        onClick={() => goAndTrack(card.key, card.route)}
+                      >
+                        <div className="home-module-head">
+                          <span className="home-module-icon">{card.icon}</span>
+                          <span className="home-module-arrow">
+                            <i className="fas fa-arrow-left" />
+                          </span>
+                        </div>
+                        <h3 className="home-module-title">{card.label}</h3>
+                        <p className="home-module-desc">
+                          {role === 'admin' || role === 'assistant' ? card.descAdmin : card.descStudent}
+                        </p>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* SIDEBAR COLUMN */}
+          <aside className="home-sidebar-col">
+
+            {/* News & Announcements Widget */}
+            {marqueeItems.length > 0 && (
+              <div className="home-sidebar-widget home-announcements-widget">
+                <div className="home-widget-header">
+                  <h3 className="home-widget-title">
+                    <i className="fas fa-bullhorn" />
+                    <span>أحدث التنبيهات والإعلانات</span>
+                  </h3>
+                </div>
+                <div className="home-announcements-list">
+                  {marqueeItems.map((item, i) => (
+                    <div className="home-announcement-card" key={i}>
+                      <span className="home-announcement-icon">{item.icon}</span>
+                      <div className="home-announcement-content">
+                        <p className="home-announcement-text">{item.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Technical Support & Communication Card */}
+            <div className="home-sidebar-widget home-support-widget">
+              <div className="home-widget-header">
+                <h3 className="home-widget-title">
+                  <i className="fas fa-headset" />
+                  <span>الدعم والتواصل</span>
+                </h3>
+              </div>
+              <p className="home-support-desc">
+                {role === 'super_admin' || role === 'admin' || role === 'assistant'
+                  ? 'لأي ملاحظات تقنية أو استفسارات حول المنصة، يسعدنا تواصلك الدائم معنا.'
+                  : 'لو بتواجهك أي مشكلة أو استفسار، متترددش تواصل مع فريق الدعم.'}
+              </p>
+              <div className="home-support-actions">
+                <a href="mailto:hello@gitfekra.com" className="home-support-btn">
+                  <i className="far fa-envelope" />
+                  <span>تواصل عبر البريد</span>
+                </a>
+              </div>
+            </div>
+
+          </aside>
+
+        </div>
+      </div>
     </main>
   )
 }

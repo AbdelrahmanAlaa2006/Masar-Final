@@ -358,9 +358,9 @@ function StudentDashboard() {
       {/* Live grade-scoped overview — RLS shows only this student's grade. */}
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
-          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات"   value={stats.homeworks} />}
-          {isFeatureEnabled('videos') && <StatCell icon="fa-video"    label="الفيديوهات"   value={stats.videos} />}
-          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt" label="الامتحانات"    value={stats.exams} />}
+          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات" value={stats.homeworks} type="homeworks" />}
+          {isFeatureEnabled('videos') && <StatCell icon="fa-video" label="الفيديوهات" value={stats.videos} type="videos" />}
+          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt" label="الامتحانات" value={stats.exams} type="exams" />}
         </div>
       </WidgetCard>
 
@@ -429,7 +429,7 @@ function ProgressRow({ label, data, accent }) {
     <div className="hdash-progress-row">
       <div className="hdash-progress-head">
         <span>{label}</span>
-        <span className="hdash-progress-count">{done} / {total || '—'}</span>
+        <span className="hdash-progress-count">{done} من {total || '—'}</span>
       </div>
       <div className="hdash-progress-bar">
         <div
@@ -469,10 +469,10 @@ function AdminDashboard({ role }) {
     <section className="hdash hdash-admin">
       <WidgetCard icon="fa-gauge-high" title="نظرة عامة" accent="violet">
         <div className="hdash-stats">
-          <StatCell icon="fa-user-graduate" label="الطلاب" value={stats.students} />
-          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات"  value={stats.homeworks} />}
-          {isFeatureEnabled('videos') && <StatCell icon="fa-video"         label="الفيديوهات"   value={stats.videos} />}
-          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt"      label="الامتحانات"    value={stats.exams} />}
+          <StatCell icon="fa-user-graduate" label="الطلاب" value={stats.students} type="students" />
+          {isFeatureEnabled('homework') && <StatCell icon="fa-clipboard-list" label="الواجبات" value={stats.homeworks} type="homeworks" />}
+          {isFeatureEnabled('videos') && <StatCell icon="fa-video" label="الفيديوهات" value={stats.videos} type="videos" />}
+          {isFeatureEnabled('exams') && <StatCell icon="fa-file-alt" label="الامتحانات" value={stats.exams} type="exams" />}
         </div>
         {error && (
           <div style={{
@@ -490,24 +490,24 @@ function AdminDashboard({ role }) {
       <WidgetCard icon="fa-bolt" title="إجراءات سريعة" accent="amber">
         <div className="hdash-quick">
           {allowedExams && (
-            <Link to="/exams" className="hdash-quick-card-btn hdash-quick-primary">
+            <Link to="/exams" onClick={handleRipple} className="hdash-quick-card-btn hdash-quick-primary">
               <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
               <span className="hdash-quick-text">امتحان جديد</span>
             </Link>
           )}
           {allowedVideos && (
-            <Link to="/videos" className="hdash-quick-card-btn hdash-quick-primary">
+            <Link to="/videos" onClick={handleRipple} className="hdash-quick-card-btn hdash-quick-primary">
               <span className="hdash-quick-icon-chip"><i className="fas fa-plus"></i></span>
               <span className="hdash-quick-text">فيديو جديد</span>
             </Link>
           )}
           {allowedReports && (
-            <Link to="/report" className="hdash-quick-card-btn hdash-quick-ghost">
+            <Link to="/report" onClick={handleRipple} className="hdash-quick-card-btn hdash-quick-ghost">
               <span className="hdash-quick-icon-chip"><i className="fas fa-chart-line"></i></span>
               <span className="hdash-quick-text">التقارير</span>
             </Link>
           )}
-          <Link to="/control-panel" className="hdash-quick-card-btn hdash-quick-ghost">
+          <Link to="/control-panel" onClick={handleRipple} className="hdash-quick-card-btn hdash-quick-ghost">
             <span className="hdash-quick-icon-chip"><i className="fas fa-gear"></i></span>
             <span className="hdash-quick-text">لوحة التحكم</span>
           </Link>
@@ -517,13 +517,68 @@ function AdminDashboard({ role }) {
   )
 }
 
-function StatCell({ icon, label, value }) {
+function handleRipple(e) {
+  const btn = e.currentTarget
+  const rect = btn.getBoundingClientRect()
+  const circle = document.createElement('span')
+  const diameter = Math.max(rect.width, rect.height)
+  const radius = diameter / 2
+
+  circle.style.width = circle.style.height = `${diameter}px`
+  circle.style.left = `${e.clientX - rect.left - radius}px`
+  circle.style.top = `${e.clientY - rect.top - radius}px`
+  circle.classList.add('btn-ripple-wave')
+
+  const existing = btn.getElementsByClassName('btn-ripple-wave')[0]
+  if (existing) existing.remove()
+
+  btn.appendChild(circle)
+  setTimeout(() => circle.remove(), 600)
+}
+
+function CountUp({ end, duration = 800 }) {
+  const [count, setCount] = useState(0)
+  const target = Number(end) || 0
+
+  useEffect(() => {
+    let frameId
+    const startTime = performance.now()
+
+    const update = (now) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      // Smooth easeOutExpo curve
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress)
+      setCount(Math.round(target * ease))
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(update)
+      }
+    }
+
+    frameId = requestAnimationFrame(update)
+    return () => cancelAnimationFrame(frameId)
+  }, [target, duration])
+
+  return <>{count}</>
+}
+
+function StatCell({ icon, label, value, type = 'students', loading = false }) {
   return (
-    <div className="hdash-stat">
+    <div className={`hdash-stat hdash-stat--${type}`}>
       <span className="hdash-stat-accent-bar" aria-hidden="true" />
+      <div className="hdash-stat-watermark" aria-hidden="true">
+        <i className={`fas ${icon}`}></i>
+      </div>
       <div className="hdash-stat-icon"><i className={`fas ${icon}`}></i></div>
       <div className="hdash-stat-info">
-        <div className="hdash-stat-value">{value}</div>
+        <div className="hdash-stat-value">
+          {loading || value === undefined || value === null ? (
+            <div className="hdash-skeleton" style={{ width: 56, height: 28, borderRadius: 6 }} />
+          ) : (
+            <CountUp end={value} />
+          )}
+        </div>
         <div className="hdash-stat-label">{label}</div>
       </div>
     </div>

@@ -118,7 +118,7 @@ export default function Login() {
   const [parentModalError, setParentModalError] = useState('')
   const [childrenList, setChildrenList] = useState([])
 
-  // NEW: teacher portrait hover
+  // Teacher portrait hover
   const [portraitHover, setPortraitHover] = useState(false)
 
   const t = translations[lang]
@@ -314,6 +314,54 @@ export default function Login() {
       setRememberMe(true)
     }
   }, [])
+
+  // Staggered Scroll-Reveal Observer for dynamic landing content
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+          }
+        })
+      },
+      { threshold: 0.05, rootMargin: '0px 0px -20px 0px' }
+    )
+
+    // Observe immediately and after a short tick for dynamic async components
+    const observeAll = () => {
+      const elements = document.querySelectorAll('.reveal-on-scroll')
+      elements.forEach((el) => observer.observe(el))
+    }
+
+    observeAll()
+    const timer = setTimeout(observeAll, 100)
+
+    return () => {
+      clearTimeout(timer)
+      observer.disconnect()
+    }
+  }, [activePackages])
+
+  // Button Ripple Handler
+  const handleBtnRipple = (e) => {
+    const btn = e.currentTarget
+    const rect = btn.getBoundingClientRect()
+    const circle = document.createElement('span')
+    const diameter = Math.max(rect.width, rect.height)
+    const radius = diameter / 2
+
+    circle.style.width = circle.style.height = `${diameter}px`
+    circle.style.left = `${e.clientX - rect.left - radius}px`
+    circle.style.top = `${e.clientY - rect.top - radius}px`
+    circle.classList.add('btn-ripple-wave')
+
+    const existing = btn.getElementsByClassName('btn-ripple-wave')[0]
+    if (existing) existing.remove()
+
+    btn.appendChild(circle)
+    setTimeout(() => circle.remove(), 600)
+  }
 
   // Particle canvas background
   useEffect(() => {
@@ -614,13 +662,14 @@ export default function Login() {
             </h1>
             <p className="aa-sub">{heroSub}</p>
             <div className="aa-cta-row">
-              <button className="aa-btn aa-btn-primary aa-btn-lg" onClick={() => openAuth(true)}>
+              <button className="aa-btn aa-btn-primary aa-btn-lg" onClick={(e) => { handleBtnRipple(e); openAuth(true) }}>
                 {t.cta_primary} <span>{Arrow}</span>
               </button>
-              <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={() => openAuth(false)}>
+              <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={(e) => { handleBtnRipple(e); openAuth(false) }}>
                 {t.cta_secondary}
               </button>
-              <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={() => {
+              <button className="aa-btn aa-btn-outline aa-btn-lg" onClick={(e) => {
+                handleBtnRipple(e);
                 setParentPhoneInput(''); setParentModalError(''); setChildrenList([]); setShowParentModal(true);
               }} style={{ background: 'var(--primary-soft, rgba(99, 102, 241, 0.1))', borderColor: 'var(--primary, rgba(99, 102, 241, 0.25))', color: 'var(--primary, #a78bfa)' }}>
                 <i className="fas fa-chart-line" style={{ marginInlineEnd: 8 }}></i>
@@ -629,7 +678,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Teacher portrait (hover/active swap) */}
+          {/* Teacher portrait */}
           {showSection('teacher') && (
           <div className="aa-portrait-wrap">
             <div
@@ -690,7 +739,7 @@ export default function Login() {
 
       {/* ─────────── ABOUT TEACHER ─────────── */}
       {showSection('about') && (
-      <section id="about" className="login-about">
+      <section id="about" className="login-about reveal-on-scroll">
         <div className="section-inner about-grid">
           <div className="about-text">
             <span className="about-kicker">
@@ -756,7 +805,7 @@ export default function Login() {
 
       {/* ─────────── PACKAGES SHOWCASE SECTION ─────────── */}
       {showSection('packages') && activePackages.length > 0 && (
-        <section id="packages" className="login-packages-showcase">
+        <section id="packages" className="login-packages-showcase reveal-on-scroll">
           <div className="section-inner">
             <h2 className="section-heading">
               {lang === 'ar' ? 'الباقات المتاحة حالياً 📦' : 'Currently Available Packages 📦'}
@@ -774,8 +823,7 @@ export default function Login() {
                 return (
                   <div 
                     key={pkg.id} 
-                    className="landing-package-card"
-                    style={{ animationDelay: `${idx * 0.1}s` }}
+                    className={`landing-package-card reveal-on-scroll reveal-delay-${(idx % 3) + 1}`}
                   >
                     <div className="landing-package-image" style={{ background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
                       {pkg.thumbnail ? (
@@ -805,7 +853,7 @@ export default function Login() {
                           <span className="price-curr">{lang === 'ar' ? ' ج.م' : ' EGP'}</span>
                         </div>
                         <button 
-                          onClick={() => handleBuyClick(pkg)}
+                          onClick={(e) => { handleBtnRipple(e); handleBuyClick(pkg); }}
                           className="landing-package-btn"
                         >
                           {lang === 'ar' ? 'اشترك الآن 🚀' : 'Subscribe Now 🚀'}
@@ -822,13 +870,13 @@ export default function Login() {
 
       {/* ─────────── MARKETING SECTIONS ─────────── */}
       {showSection('features') && (
-      <section id="features" className="login-features">
+      <section id="features" className="login-features reveal-on-scroll">
         <div className="section-inner">
           <h2 className="section-heading">{lang === 'ar' ? `لماذا ${brandShort}؟` : `Why ${brandShort}?`}</h2>
           <p className="section-sub">{lang === 'ar' ? 'كل ما تحتاجه لرحلة تعليمية ناجحة في مكان واحد' : 'Everything you need for a successful learning journey in one place'}</p>
           <div className="features-grid">
             {features.map((f, i) => (
-              <div key={i} className="feature-card">
+              <div key={i} className={`feature-card reveal-on-scroll reveal-delay-${(i % 4) + 1}`}>
                 <div className="feature-icon"><i className={`fas ${f.icon}`}></i></div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
@@ -840,13 +888,13 @@ export default function Login() {
       )}
 
       {showSection('steps') && (
-      <section className="login-steps">
+      <section className="login-steps reveal-on-scroll">
         <div className="section-inner">
           <h2 className="section-heading">{lang === 'ar' ? 'كيف تبدأ؟' : 'How to Get Started?'}</h2>
           <p className="section-sub">{lang === 'ar' ? 'ثلاث خطوات بسيطة تفصلك عن رحلتك التعليمية' : 'Three simple steps to begin your learning journey'}</p>
           <div className="steps-grid">
             {steps.map((s, i) => (
-              <div key={i} className="step-card">
+              <div key={i} className={`step-card reveal-on-scroll reveal-delay-${i + 1}`}>
                 <div className="step-number">{s.n}</div>
                 <h3>{s.title}</h3>
                 <p>{s.desc}</p>
@@ -858,7 +906,7 @@ export default function Login() {
       )}
 
       {showSection('location') && hasLocationData && (
-      <section className="login-location" id="location">
+      <section className="login-location reveal-on-scroll" id="location">
         <div className="loc-bg-grid" aria-hidden="true"></div>
         <div className="loc-bg-blob loc-bg-blob--a" aria-hidden="true"></div>
         <div className="loc-bg-blob loc-bg-blob--b" aria-hidden="true"></div>

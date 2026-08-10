@@ -562,41 +562,38 @@ body:not(.dark) .login:hover {
 .auth-modal .input-wrapper input[type="password"],
 .auth-modal .input-wrapper input {
   width: 100%;
-  padding: 14px 48px 14px 56px;
-  border-radius: 14px;
-  border: 2px solid var(--input-border);
-  background-color: var(--input-bg);
+  height: 48px;
+  padding: 0 48px 0 52px;
+  border-radius: 12px;
+  border: 1.5px solid var(--input-border, rgba(0, 0, 0, 0.12));
+  background-color: var(--input-bg, rgba(255, 255, 255, 0.9));
   outline: none;
-  font-size: 14px;
+  font-size: 14.5px;
+  font-weight: 500;
   color: var(--input-text);
-  box-shadow: none;
-  transform: none;
-  transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .input-wrapper input::placeholder {
-  color: var(--card-muted);
+  color: var(--card-muted, rgba(100, 116, 139, 0.6));
 }
 
 .login .input-wrapper input:hover,
 .auth-modal .input-wrapper input:hover {
-  border-color: var(--input-border-hover);
-  background-color: var(--input-bg-focus);
+  border-color: var(--primary, #7c3aed);
+  background-color: var(--input-bg-focus, #ffffff);
 }
 
 .login .input-wrapper input:focus,
 .auth-modal .input-wrapper input:focus {
-  border-color: var(--input-border-focus);
-  background-color: var(--input-bg-focus);
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 
-    0 12px 24px -8px var(--primary-soft),
-    0 0 0 4px var(--input-ring),
-    0 4px 12px var(--input-glow);
+  border-color: var(--primary, #7c3aed);
+  background-color: var(--input-bg-focus, #ffffff);
+  box-shadow: 0 0 0 4px var(--primary-soft, rgba(124, 58, 237, 0.18)), 0 8px 20px -4px rgba(0, 0, 0, 0.08);
 }
 
 .input-wrapper:focus-within i {
-  color: var(--input-border-focus);
+  color: var(--primary, #7c3aed);
 }
 
 .login .input-wrapper select,
