@@ -29,7 +29,7 @@ import { useTenant } from '../contexts/TenantContext'
    be production. Keep in sync with seo/domains.mjs + vercel.json.
    NOTE: a single hardcoded host here used to delete the canonical on every
    OTHER custom domain, which would have de-indexed each new teacher site. */
-const PRODUCTION_HOSTS = ['mrmohamedabdella.com', 'mrkhalidelsharif.com']
+const PRODUCTION_HOSTS = ['gitfekra.com', 'mrmohamedabdella.com', 'mrkhalidelsharif.com', 'mrmahmoudelbeliqdar.com']
 const PUBLIC_PATHS = ['/', '/login', '/register', '/credits']
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1'
 
@@ -130,8 +130,8 @@ export default function RouteSeo() {
               description: `أنشئ حسابك في ${tenantName} وابدأ رحلتك الدراسية أونلاين.`
             },
             '/credits': {
-              title: `فريق التطوير والمهندسين — ${tenantName}`,
-              description: `تعرّف على المهندسين ومطوري البنية البرمجية لمنصة ${tenantName} (Abdelrahman Alaa & Eyad Elalkamy).`
+              title: `فريق هندسة البرمجيات — عبدالرحمن علاء وإياد العلقامي | Abdelrahman Alaa & Eyad Elalkamy`,
+              description: `الصفحة الرسمية لمهندسي البرمجيات والأمن السيبراني عبدالرحمن علاء وإياد العلقامي (Abdelrahman Alaa & Eyad Elalkamy) — مطوري بنية منصات GitFekra التعليمية.`
             }
           }
 
