@@ -235,11 +235,31 @@ export default function SuperAdminPanel({ onBack, flash }) {
         .order('name')
       if (tErr) throw tErr
 
-      // 3. Fetch all profiles to calculate user counts
-      const { data: profilesList, error: pErr } = await supabase
-        .from('profiles')
-        .select('id, tenant_id, role, name, phone, created_at')
-      if (pErr) throw pErr
+      // 3. Fetch all profiles to calculate user counts (paginated to bypass Supabase 1000 row REST limit)
+      let profilesList = []
+      let page = 0
+      const PAGE_SIZE = 1000
+      let fetchMore = true
+
+      while (fetchMore) {
+        const { data: chunk, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, tenant_id, role, name, phone, created_at')
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+        if (pErr) throw pErr
+
+        if (chunk && chunk.length > 0) {
+          profilesList = profilesList.concat(chunk)
+          if (chunk.length < PAGE_SIZE) {
+            fetchMore = false
+          } else {
+            page++
+          }
+        } else {
+          fetchMore = false
+        }
+      }
 
       // 4. Fetch DB diagnostics stats (head count only, lightweight)
       const [vCount, eCount, hCount, attCount, subCount, pCount] = await Promise.all([
