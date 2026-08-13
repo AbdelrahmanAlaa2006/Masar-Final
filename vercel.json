@@ -18,12 +18,6 @@
       "has": [{ "type": "host", "value": "www.mrkhalidelsharif.com" }],
       "destination": "https://mrkhalidelsharif.com/$1",
       "permanent": true
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.mrmahmoudelbeliqdar.com" }],
-      "destination": "https://mrmahmoudelbeliqdar.com/$1",
-      "permanent": true
     }
   ],
   "rewrites": [
