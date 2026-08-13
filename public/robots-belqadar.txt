@@ -1,4 +1,4 @@
-# gitfekra.com — GitFekra | جِت فِكرة
+# mrmahmoudelbeliqdar.com — سنتر البلقدار | Mr Mahmoud Elbeliqdar
 # Public pages are crawlable; the student/admin app areas are not.
 
 User-agent: *
@@ -25,4 +25,4 @@ Disallow: /exams-group-report
 Disallow: /homework-group-report
 Disallow: /public-report
 
-Sitemap: https://gitfekra.com/sitemap.xml
+Sitemap: https://mrmahmoudelbeliqdar.com/sitemap.xml

@@ -203,4 +203,41 @@ export const DOMAINS = {
       },
     },
   },
+
+  'belqadar-math': {
+    hosts: ['mrmahmoudelbeliqdar.com', 'www.mrmahmoudelbeliqdar.com'],
+    lang: 'ar',
+    title: 'سنتر البلقدار — أ. محمود البلقدار | الرياضيات والماث',
+    description:
+      'منصة أستاذ محمود البلقدار التعليمية (سنتر البلقدار) — شرح الرياضيات والماث لطلاب المراحل الثانوية والإعدادية ونظام البكالوريا المصرية الجديد، مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
+    keywords:
+      'محمود البلقدار, أستاذ محمود البلقدار, مستر محمود البلقدار, سنتر البلقدار, محمود بلقدار, Mahmoud Elbeliqdar, Mr Mahmoud Elbeliqdar, belqadar-math, رياضيات, ماث, البكالوريا المصرية, منصة تعليمية, تعليم أونلاين, رياضة ثانوي, تفاضل وتكامل, جبر وهندسة فراغية, استاتيكا وديناميكا',
+    author: 'أ. محمود البلقدار — Mr Mahmoud Elbeliqdar',
+    canonical: 'https://mrmahmoudelbeliqdar.com/',
+    ogImage: 'https://mrmahmoudelbeliqdar.com/images/og-belqadar.png',
+    themeColor: '#c8a951',
+    favicon: '/images/logo elbeliqdar cropped.png',
+    faviconType: 'image/png',
+    siteName: 'سنتر البلقدار — أ. محمود البلقدار',
+    jsonLd: {
+      person: {
+        name: 'Mahmoud Elbeliqdar',
+        alternateName: ['محمود البلقدار', 'أستاذ محمود البلقدار', 'أ. محمود البلقدار', 'مستر محمود البلقدار', 'Mr Mahmoud Elbeliqdar', 'Mahmoud Belqadar'],
+        jobTitle: 'Mathematics Teacher — Egyptian Baccalaureate & Secondary Education',
+        image: 'https://mrmahmoudelbeliqdar.com/images/logo%20elbeliqdar%20cropped.png',
+        knowsAbout: ['Mathematics', 'Math', 'Calculus', 'Algebra', 'Geometry', 'Dynamics', 'Statics', 'Egyptian Baccalaureate curriculum', 'الرياضيات', 'الماث'],
+        sameAs: [],
+      },
+      org: {
+        name: 'سنتر البلقدار',
+        alternateName: ['Belqadar Math', 'منصة سنتر البلقدار للرياضيات'],
+        logo: 'https://mrmahmoudelbeliqdar.com/images/logo%20elbeliqdar%20cropped.png',
+        description:
+          'منصة تعليمية متخصصة في تدريس الرياضيات والماث لطلاب المرحلة الثانوية ونظام البكالوريا المصرية الجديد مع امتحانات وتصحيح إلكتروني ومتابعة لأولياء الأمور.',
+        telephone: '',
+        addressLocality: 'Egypt',
+        addressRegion: '',
+      },
+    },
+  },
 }

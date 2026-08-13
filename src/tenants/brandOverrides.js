@@ -59,6 +59,8 @@ const BRAND_OVERRIDES = [
       t.slug === 'belqadar' ||
       t.slug === 'belqadar-math' ||
       t.slug === 'mahmoud-belqadar' ||
+      t.domain === 'mrmahmoudelbeliqdar.com' ||
+      (t.domain || '').includes('mrmahmoudelbeliqdar') ||
       t.config?.subject === 'math' ||
       (t.slug || '').includes('math') ||
       (t.slug || '').includes('belqadar'),

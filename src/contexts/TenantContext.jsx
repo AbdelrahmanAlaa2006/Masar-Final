@@ -86,7 +86,7 @@ export function TenantProvider({ children }) {
         if (candidate === 'power-platform' || candidate === 'sherif-programming') {
           querySlug = 'mohamed-abdella'
         }
-        if (candidate === 'math' || candidate === 'belqadar' || candidate === 'belqadar-math' || candidate === 'mahmoud-belqadar') {
+        if (candidate === 'math' || candidate === 'belqadar' || candidate === 'belqadar-math' || candidate === 'mahmoud-belqadar' || candidate === 'mrmahmoudelbeliqdar.com' || candidate.includes('mrmahmoudelbeliqdar')) {
           querySlug = 'sherif-math'
         }
 
