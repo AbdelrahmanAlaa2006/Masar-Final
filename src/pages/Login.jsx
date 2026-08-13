@@ -370,22 +370,22 @@ export default function Login() {
     const ctx = canvas.getContext('2d')
     let width = 0, height = 0, raf = 0
     const mouse = { x: -9999, y: -9999, active: false }
-    const COLORS = themeConfig.particleColors
+    const COLORS = themeConfig?.particleColors || ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
     const COUNT = Math.max(12, Math.floor((window.innerWidth * window.innerHeight) / 80000))
     const particles = []
     const resize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight }
     resize()
 
-    const FORMULAS = themeConfig.formulas
+    const FORMULAS = themeConfig?.formulas || []
 
     for (let i = 0; i < COUNT; i++) {
       let type = 'circle'
       let text = ''
       
-      const customShape = themeConfig.generateCustomShape()
+      const customShape = themeConfig?.generateCustomShape ? themeConfig.generateCustomShape() : 'circle'
       if (customShape !== 'circle') {
         type = customShape
-        if (customShape === 'formula') {
+        if (customShape === 'formula' && FORMULAS.length > 0) {
           text = FORMULAS[Math.floor(Math.random() * FORMULAS.length)]
         }
       }
@@ -427,7 +427,7 @@ export default function Login() {
           const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy
           if (d2 < 130 * 130) {
             const alpha = 1 - Math.sqrt(d2) / 130
-            ctx.strokeStyle = themeConfig.getLineColor(theme, alpha)
+            ctx.strokeStyle = themeConfig?.getLineColor ? themeConfig.getLineColor(theme, alpha) : `rgba(168, 85, 247, ${alpha * 0.1})`
             ctx.lineWidth = 1
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
           }
@@ -436,10 +436,10 @@ export default function Login() {
       for (const p of particles) {
         ctx.fillStyle = p.c; ctx.strokeStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = theme === 'dark' ? 10 : 0
         
-        const didDraw = themeConfig.drawCustomShape(ctx, p, p.r)
+        const didDraw = themeConfig?.drawCustomShape ? themeConfig.drawCustomShape(ctx, p, p.r) : false
         if (!didDraw) {
-          if (p.type === 'formula') {
-            const fontSpec = themeConfig.canvasFont || 'Tajawal, sans-serif'
+          if (p.type === 'formula' && p.text) {
+            const fontSpec = themeConfig?.canvasFont || 'Tajawal, sans-serif'
             let fullFont = `${Math.round(p.r * 6.5)}px ${fontSpec}`
             if (fontSpec.startsWith('italic ')) {
               fullFont = `italic ${Math.round(p.r * 6.5)}px ${fontSpec.substring(7)}`

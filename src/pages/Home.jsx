@@ -48,7 +48,7 @@ export default function Home() {
     let width = 0, height = 0, raf = 0
     const mouse = { x: -9999, y: -9999, active: false }
 
-    const COLORS = themeConfig.particleColors || ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
+    const COLORS = themeConfig?.particleColors || ['#7c3aed', '#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981']
     const COUNT = Math.max(25, Math.floor((window.innerWidth * window.innerHeight) / 38000))
     const particles = []
 
@@ -105,7 +105,7 @@ export default function Home() {
           if (d2 < 130 * 130) {
             const alpha = 1 - Math.sqrt(d2) / 130
             const currentTheme = localStorage.getItem('theme') || 'light'
-            ctx.strokeStyle = themeConfig.getLineColor
+            ctx.strokeStyle = themeConfig?.getLineColor
               ? themeConfig.getLineColor(currentTheme, alpha * 0.12)
               : `rgba(168, 85, 247, ${alpha * 0.1})`
             ctx.lineWidth = 1
