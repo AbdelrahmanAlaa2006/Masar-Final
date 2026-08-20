@@ -819,3 +819,244 @@ body.dark .rp-modal-close {
     gap: 8px !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ── Modern Redesigned Admin Payments Dashboard ──
+   ═══════════════════════════════════════════════════════════ */
+
+.pay-top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pay-title-group h1 {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin: 0 0 6px 0;
+  color: var(--cp-text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-title-group p {
+  font-size: 0.9rem;
+  color: var(--cp-text-muted);
+  margin: 0;
+}
+
+.pay-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pay-btn-primary-glow {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+  transition: all 0.2s ease !important;
+}
+
+.pay-btn-primary-glow:hover {
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* ── Modern KPI Cards Grid ── */
+.pay-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pay-kpi-card {
+  background: var(--cp-card-bg);
+  border: 1px solid var(--cp-card-border);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--cp-card-shadow);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pay-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.pay-kpi-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.pay-kpi-val {
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 3px;
+  letter-spacing: -0.5px;
+}
+
+.pay-kpi-lbl {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--cp-text-muted);
+}
+
+/* ── 2-Tier Toolbar Box ── */
+.pay-toolbar-box {
+  background: var(--cp-card-bg);
+  border: 1px solid var(--cp-card-border);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--cp-card-shadow);
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pay-toolbar-tier1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pay-segmented-tabs {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+body:not(.dark) .pay-segmented-tabs {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.pay-seg-tab {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--cp-text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.pay-seg-tab:hover {
+  color: var(--cp-text-main);
+}
+
+.pay-seg-tab.active {
+  background: var(--cp-card-bg);
+  color: var(--cp-text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.pay-seg-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.pay-seg-tab.active .pay-seg-count {
+  background: rgba(91, 194, 231, 0.18);
+  color: #5bc2e7;
+}
+
+.pay-toolbar-tier2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cp-divider);
+  align-items: center;
+}
+
+.pay-filter-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pay-filter-control label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--cp-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pay-filter-control select,
+.pay-filter-control input {
+  height: 40px;
+  font-size: 0.88rem;
+  border-radius: 10px;
+}
+
+/* ── Modern Table Presentation ── */
+.pay-table-wrap {
+  background: var(--cp-card-bg);
+  border: 1px solid var(--cp-card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--cp-card-shadow);
+}
+
+.pay-table-header-bar {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--cp-divider);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pay-student-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+

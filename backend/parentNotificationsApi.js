@@ -263,6 +263,19 @@ export async function clearPendingQueue(tenantId) {
   return true
 }
 
+// Delete a specific notification by its ID
+export async function deleteNotification(notificationId) {
+  if (!notificationId) throw new Error('Notification ID is required')
+
+  const { data, error } = await supabase
+    .from('unified_notifications')
+    .delete()
+    .eq('id', notificationId)
+
+  if (error) throw error
+  return true
+}
+
 // Update gateway configuration inside the tenant's config column
 export async function updateGatewayConfig(tenantId, newGatewaySettings) {
   if (!tenantId) throw new Error('Tenant ID is required')

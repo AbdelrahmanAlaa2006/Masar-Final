@@ -79,7 +79,7 @@ export default function Exams() {
   const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   const [currentLevel, setCurrentLevel] = useState(() => {
-    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
+    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.role !== 'super_admin' && user.grade) {
       return dbToUiGrade(user.grade)
     }
     return null

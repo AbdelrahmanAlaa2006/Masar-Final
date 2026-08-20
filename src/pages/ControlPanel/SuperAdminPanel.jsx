@@ -17,6 +17,7 @@ import { DEFAULT_ANNOUNCEMENTS } from '../../utils/announcements'
    what gives a button-created tenant a real theme without any code change. */
 const SUBJECT_OPTIONS = [
   { value: 'arabic', label: 'لغة عربية / عام (الثيم الافتراضي)' },
+  { value: 'primary-multi', label: 'تأسيس ومواد المرحلة الابتدائية (متعدد المواد)' },
   { value: 'chemistry', label: 'كيمياء' },
   { value: 'physics', label: 'فيزياء' },
   { value: 'math', label: 'رياضيات' },
@@ -136,6 +137,14 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [newAdminPassword, setNewAdminPassword] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // Add Admin to existing Tenant modal states
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false)
+  const [addAdminTenant, setAddAdminTenant] = useState(null)
+  const [addAdminName, setAddAdminName] = useState('')
+  const [addAdminPhone, setAddAdminPhone] = useState('')
+  const [addAdminPassword, setAddAdminPassword] = useState('')
+  const [addingAdmin, setAddingAdmin] = useState(false)
+
   // Manage Tenant & User states
   const [selectedTenantForManage, setSelectedTenantForManage] = useState(null)
   const [editName, setEditName] = useState('')
@@ -184,7 +193,52 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [savingTenant, setSavingTenant] = useState(false)
   const [userRoleUpdating, setUserRoleUpdating] = useState(null)
   const [searchUserQuery, setSearchUserQuery] = useState('')
-  const [activeSubSection, setActiveSubSection] = useState(null)
+  const [activeMainTab, setActiveMainTab] = useState('tenants')
+  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'table'
+  const [manageActiveTab, setManageActiveTab] = useState('branding')
+  const [tenantFilterCategory, setTenantFilterCategory] = useState('all')
+
+  // Resolve tenant logo from config, db, or static fallbacks
+  const resolveTenantLogo = (t) => {
+    if (!t) return null
+    if (t.logo_url && typeof t.logo_url === 'string' && t.logo_url.trim()) return t.logo_url
+    if (t.config?.branding?.logo && typeof t.config.branding.logo === 'string' && t.config.branding.logo.trim()) return t.config.branding.logo
+    if (t.config?.logo_url && typeof t.config.logo_url === 'string' && t.config.logo_url.trim()) return t.config.logo_url
+
+    const slug = (t.slug || '').toLowerCase()
+    const name = (t.name || '').toLowerCase()
+
+    if (slug.includes('mohamed-abdella') || slug.includes('power') || slug.includes('cyber') || slug.includes('prog') || name.includes('باور') || name.includes('عبدالله') || name.includes('عبد الله')) {
+      return '/images/Power Logo.png'
+    }
+    if (slug.includes('english') || slug.includes('waled') || slug.includes('sherif-english') || name.includes('miracle') || name.includes('انجليزي') || name.includes('إنجليزي')) {
+      return '/images/Logo The Miracle.png'
+    }
+    if (slug.includes('eldad') || slug.includes('khalid') || name.includes('الضاد')) {
+      return '/images/Logo Eldad Arabic Without BG.png'
+    }
+    if (slug.includes('belqadar') || slug.includes('mahmoud') || name.includes('البلقدار')) {
+      return '/images/logo elbeliqdar cropped.png'
+    }
+    if (slug.includes('elsharawy') || slug.includes('elshaarawy') || name.includes('الشعراوي')) {
+      return '/images/Elshaarawy Logo.png'
+    }
+
+    return null
+  }
+
+  // Quick helper to copy tenant login link
+  const handleCopyTenantLink = (slug, domain) => {
+    const url = domain ? `https://${domain}` : `${window.location.origin}/login?tenant=${slug}`
+    navigator.clipboard.writeText(url)
+    flash(`تم نسخ رابط منصة (${slug}) بنجاح!`, 'success')
+  }
+
+  // Quick helper to preview tenant in new tab
+  const handlePreviewTenant = (slug, domain) => {
+    const url = domain ? `https://${domain}` : `/login?tenant=${slug}`
+    window.open(url, '_blank')
+  }
 
   // Database diagnostics state
   const [dbStats, setDbStats] = useState({
@@ -208,13 +262,33 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [searchPlatformQuery, setSearchPlatformQuery] = useState('')
 
   const filteredTenants = useMemo(() => {
-    if (!searchPlatformQuery.trim()) return tenants
-    const query = searchPlatformQuery.toLowerCase().trim()
-    return tenants.filter(t => 
-      (t.name || '').toLowerCase().includes(query) || 
-      (t.slug || '').toLowerCase().includes(query)
-    )
-  }, [tenants, searchPlatformQuery])
+    let list = tenants
+    if (searchPlatformQuery.trim()) {
+      const query = searchPlatformQuery.toLowerCase().trim()
+      list = list.filter(t => 
+        (t.name || '').toLowerCase().includes(query) || 
+        (t.slug || '').toLowerCase().includes(query)
+      )
+    }
+
+    if (tenantFilterCategory === 'primary') {
+      list = list.filter(t => {
+        const stages = t.config?.stages || []
+        const hasPrimary = stages.some(s => s.id === 'primary' && s.enabled !== false)
+        return hasPrimary || t.config?.subject === 'primary-multi'
+      })
+    } else if (tenantFilterCategory === 'prep-sec') {
+      list = list.filter(t => {
+        const stages = t.config?.stages || []
+        const hasPrepSec = stages.some(s => (s.id === 'preparatory' || s.id === 'secondary' || s.id === 'baccalaureate') && s.enabled !== false)
+        return hasPrepSec || t.config?.subject !== 'primary-multi'
+      })
+    } else if (tenantFilterCategory === 'top-students') {
+      list = [...list].sort((a, b) => (b.studentsCount || 0) - (a.studentsCount || 0))
+    }
+
+    return list
+  }, [tenants, searchPlatformQuery, tenantFilterCategory])
 
 
   // Load SaaS summary data and db diagnostics
@@ -314,10 +388,10 @@ export default function SuperAdminPanel({ onBack, flash }) {
     return () => { active = false }
   }, [])
 
-  // Scroll to top on active sub-section change (e.g. going to Seasonal Themes)
+  // Scroll to top on active tab change
   useEffect(() => {
     window.scrollTo(0, 0)
-  }, [activeSubSection])
+  }, [activeMainTab])
 
   // Global counts memo
   const globalStats = useMemo(() => {
@@ -704,6 +778,61 @@ export default function SuperAdminPanel({ onBack, flash }) {
     }
   }
 
+  // Open modal to add a brand-new admin directly to any selected tenant
+  const handleOpenAddAdmin = (tenant) => {
+    setAddAdminTenant(tenant)
+    setAddAdminName('')
+    setAddAdminPhone('')
+    setAddAdminPassword('')
+    setShowAddAdminModal(true)
+  }
+
+  // Create brand new admin user server-side for the chosen tenant
+  const handleAddAdminSubmit = async (e) => {
+    e.preventDefault()
+    if (!addAdminTenant) return
+    const name = addAdminName.trim()
+    const phone = addAdminPhone.trim()
+    const pwd = addAdminPassword.trim()
+
+    if (!name || !phone) {
+      flash('اسم ورقم هاتف المدير مطلوبان', 'warning')
+      return
+    }
+    if (pwd.length < 6) {
+      flash('كلمة المرور يجب ألا تقل عن 6 أحرف', 'warning')
+      return
+    }
+
+    setAddingAdmin(true)
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('create-tenant-admin', {
+        body: {
+          tenant_id: addAdminTenant.id,
+          admin_name: name,
+          admin_phone: phone,
+          admin_password: pwd,
+        },
+      })
+      if (fnError || fnData?.error) {
+        throw new Error(fnData?.error || fnError?.message || 'فشل إنشاء حساب المدير')
+      }
+
+      flash(`تم إنشاء حساب المدير (${name}) لمنصة (${addAdminTenant.name}) بنجاح!`, 'success')
+      setShowAddAdminModal(false)
+      setAddAdminName('')
+      setAddAdminPhone('')
+      setAddAdminPassword('')
+      setAddAdminTenant(null)
+      fetchStats()
+    } catch (err) {
+      console.error(err)
+      flash('فشل إنشاء حساب المدير: ' + (err.message || 'خطأ غير متوقع'), 'error')
+    } finally {
+      setAddingAdmin(false)
+    }
+  }
+
   // Filtered users memo for the selected tenant modal
   const filteredUsers = useMemo(() => {
     if (!selectedTenantForManage) return []
@@ -717,105 +846,60 @@ export default function SuperAdminPanel({ onBack, flash }) {
     )
   }, [profiles, selectedTenantForManage, searchUserQuery])
 
-  if (activeSubSection === 'business') {
-    return (
-      <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <i className="fas fa-briefcase" style={{ color: '#10b981' }}></i>
-              <span>إدارة الأعمال والمالية</span>
-            </h2>
-            <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>حسابات الشركة: الإيرادات والمصروفات والعقود والاشتراكات ومؤشرات الأداء — منفصلة تماماً عن حسابات المدرسين</p>
-          </div>
-          <div>
-            <button onClick={() => setActiveSubSection(null)} className="cp-btn cp-btn-secondary">
-              رجوع للوحة السوبر أدمن
-            </button>
-          </div>
-        </div>
-        <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل لوحة الأعمال...</p></div>}>
-          <BusinessPanel flash={flash} />
-        </Suspense>
-      </div>
-    )
-  }
-
-  if (activeSubSection === 'violations') {
-    return (
-      <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <i className="fas fa-shield-halved" style={{ color: '#ef4444' }}></i>
-              <span>سجلات الحماية الأمنية</span>
-            </h2>
-            <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>استعرض تفاصيل محاولات اختراق الحماية ومحاولات فتح أدوات المطور (DevTools) المسجلة أوتوماتيكيًا.</p>
-          </div>
-          <div>
-            <button onClick={() => setActiveSubSection(null)} className="cp-btn cp-btn-secondary">
-              رجوع للوحة السوبر أدمن
-            </button>
-          </div>
-        </div>
-        <DevToolsViolationsPanel onBack={() => setActiveSubSection(null)} flash={flash} />
-      </div>
-    )
-  }
-
-  if (activeSubSection === 'seasons') {
-    return (
-      <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <i className="fas fa-moon" style={{ color: 'var(--primary, #7c3aed)' }}></i>
-              <span>السمات الموسمية</span>
-            </h2>
-            <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>التحكم في تزيين المنصات التلقائي وإجبار سمة معينة أو تعطيل التزيين لكافة المدرسين</p>
-          </div>
-          <div>
-            <button onClick={() => setActiveSubSection(null)} className="cp-btn cp-btn-secondary">
-              رجوع للوحة السوبر أدمن
-            </button>
-          </div>
-        </div>
-        <SeasonalThemePanel />
-      </div>
-    )
-  }
-
   return (
-    <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
+    <div className="cp-panel-container" style={{ direction: 'rtl', fontFamily: 'Tajawal, sans-serif', maxWidth: '100%' }}>
       
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <i className="fas fa-user-ninja" style={{ color: '#ec4899' }}></i>
             <span>لوحة المطور والـ Super Admin</span>
           </h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>إدارة منصات المدرسين ومراقبة حجم قاعدة البيانات وإجراء عمليات الصيانة الشاملة</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', margin: '6px 0 0' }}>إدارة منصات المدرسين ومراقبة حجم قاعدة البيانات والأمان والعمليات المالية</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            onClick={() => setShowCreateModal(true)} 
-            className="cp-btn cp-btn-primary" 
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--primary, #7c3aed)', color: '#fff', height: '42px' }}
-          >
-            <i className="fas fa-plus"></i>
-            <span>إنشاء منصة جديدة</span>
-          </button>
+          {activeMainTab === 'tenants' && (
+            <button 
+              onClick={() => setShowCreateModal(true)} 
+              className="cp-btn cp-btn-primary" 
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--primary, #7c3aed)', color: '#fff', height: '42px', fontWeight: 700 }}
+            >
+              <i className="fas fa-plus"></i>
+              <span>إنشاء منصة جديدة</span>
+            </button>
+          )}
           <button onClick={onBack} className="cp-btn cp-btn-secondary" style={{ height: '42px' }}>
             رجوع للوحة التحكم
           </button>
         </div>
       </div>
 
+      {/* Main Top Navigation Tabs */}
+      <div className="cp-sa-nav-bar">
+        {[
+          { id: 'tenants', label: `المنصات والمدرسين (${tenants.length})`, icon: 'fa-cubes' },
+          { id: 'database', label: 'صيانة وقاعدة البيانات', icon: 'fa-server' },
+          { id: 'business', label: 'إدارة الأعمال والمالية', icon: 'fa-briefcase' },
+          { id: 'security', label: 'سجلات الحماية والأمان', icon: 'fa-shield-halved' },
+          { id: 'themes', label: 'السمات الموسمية', icon: 'fa-moon' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`cp-sa-nav-tab ${activeMainTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveMainTab(tab.id)}
+          >
+            <i className={`fas ${tab.icon}`}></i>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="cp-empty">
           <i className="fas fa-spinner fa-spin"></i>
-          <p>جاري تحميل إحصائيات النظام ومجموعات المدرسين...</p>
+          <p>جاري تحميل بيانات النظام...</p>
         </div>
       ) : error ? (
         <div className="cp-empty" style={{ color: '#ef4444' }}>
@@ -824,163 +908,603 @@ export default function SuperAdminPanel({ onBack, flash }) {
         </div>
       ) : (
         <>
-          {/* Global Statistics Cards */}
-          <div className="cp-sa-stats-grid">
-            <div className="cp-sa-stat-card cp-sa-violet">
-              <div className="cp-sa-stat-icon">
-                <i className="fas fa-cubes"></i>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.tenants}</div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المنصات الفعالة</div>
-              </div>
-            </div>
-
-            <div className="cp-sa-stat-card cp-sa-emerald">
-              <div className="cp-sa-stat-icon">
-                <i className="fas fa-graduation-cap"></i>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.students}</div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>إجمالي الطلاب</div>
-              </div>
-            </div>
-
-            <div className="cp-sa-stat-card cp-sa-amber">
-              <div className="cp-sa-stat-icon">
-                <i className="fas fa-users-cog"></i>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.assistants}</div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المساعدين المشتركين</div>
-              </div>
-            </div>
-
-            <div className="cp-sa-stat-card cp-sa-rose">
-              <div className="cp-sa-stat-icon">
-                <i className="fas fa-user-tie"></i>
-              </div>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.admins}</div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المشرفين والمعلمين</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="cp-sa-grid">
-            
-            {/* Left Side: Tenants Management List */}
+          {/* TAB 1: TENANTS & TEACHERS MANAGEMENT */}
+          {activeMainTab === 'tenants' && (
             <div>
-              {/* Header and Platform Search */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>المنصات والمدرسين المشتركين ({filteredTenants.length})</h3>
-                <div className="cp-search" style={{ margin: 0, maxWidth: '280px', width: '100%' }}>
-                  <i className="fas fa-search" style={{ right: '12px' }}></i>
-                  <input
-                    type="text"
-                    placeholder="البحث باسم المنصة أو المعرف..."
-                    value={searchPlatformQuery}
-                    onChange={(e) => setSearchPlatformQuery(e.target.value)}
-                    style={{ padding: '8px 12px 8px 36px', fontSize: '0.88rem' }}
-                  />
-                  {searchPlatformQuery && (
-                    <button onClick={() => setSearchPlatformQuery('')} className="cp-search-clear" style={{ left: '6px' }}>
-                      <i className="fas fa-times"></i>
-                    </button>
-                  )}
+              {/* Global Statistics Cards */}
+              <div className="cp-sa-stats-grid">
+                <div className="cp-sa-stat-card cp-sa-violet">
+                  <div className="cp-sa-stat-icon">
+                    <i className="fas fa-cubes"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.tenants}</div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المنصات الفعالة</div>
+                  </div>
+                </div>
+
+                <div className="cp-sa-stat-card cp-sa-emerald">
+                  <div className="cp-sa-stat-icon">
+                    <i className="fas fa-graduation-cap"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.students}</div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>إجمالي الطلاب</div>
+                  </div>
+                </div>
+
+                <div className="cp-sa-stat-card cp-sa-amber">
+                  <div className="cp-sa-stat-icon">
+                    <i className="fas fa-users-cog"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.assistants}</div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المساعدين المشتركين</div>
+                  </div>
+                </div>
+
+                <div className="cp-sa-stat-card cp-sa-rose">
+                  <div className="cp-sa-stat-icon">
+                    <i className="fas fa-user-tie"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-color)' }}>{globalStats.admins}</div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المشرفين والمعلمين</div>
+                  </div>
                 </div>
               </div>
-              
-              {/* Desktop View (Table) */}
-              <div className="cp-sa-desktop-view">
+
+              {/* Toolbar: Filters & View Switcher */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                flexWrap: 'wrap',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  {/* Category Filter Pills */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '4px',
+                    background: 'var(--cp-card-bg)',
+                    padding: '4px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--cp-divider)'
+                  }}>
+                    {[
+                      { id: 'all', label: `الكل (${tenants.length})` },
+                      { id: 'primary', label: 'ابتدائي' },
+                      { id: 'prep-sec', label: 'إعدادي/ثانوي' },
+                      { id: 'top-students', label: 'الأعلى طلاباً 🏆' },
+                    ].map(pill => {
+                      const isActive = tenantFilterCategory === pill.id
+                      return (
+                        <button
+                          key={pill.id}
+                          type="button"
+                          onClick={() => setTenantFilterCategory(pill.id)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            fontSize: '0.82rem',
+                            fontWeight: isActive ? 800 : 600,
+                            background: isActive ? 'var(--primary, #7c3aed)' : 'transparent',
+                            color: isActive ? '#fff' : 'var(--cp-text-muted)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {pill.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="cp-search" style={{ margin: 0, width: '250px' }}>
+                    <i className="fas fa-search" style={{ right: '12px', fontSize: '0.82rem' }}></i>
+                    <input
+                      type="text"
+                      placeholder="بحث بالاسم أو المعرف..."
+                      value={searchPlatformQuery}
+                      onChange={(e) => setSearchPlatformQuery(e.target.value)}
+                      style={{ padding: '8px 36px 8px 30px', fontSize: '0.84rem', height: '38px', borderRadius: '10px' }}
+                    />
+                    {searchPlatformQuery && (
+                      <button onClick={() => setSearchPlatformQuery('')} className="cp-search-clear" style={{ left: '6px' }}>
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* View Switcher Controls (Desktop) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '0.84rem', color: 'var(--cp-text-muted)' }}>
+                    تم العثور على <strong>{filteredTenants.length}</strong> منصة
+                  </span>
+                  
+                  <div className="cp-sa-view-toggle">
+                    <button
+                      type="button"
+                      className={`cp-sa-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                      onClick={() => setViewMode('grid')}
+                      title="عرض شبكة البطاقات"
+                    >
+                      <i className="fas fa-grid-2"></i>
+                      <span>بطاقات</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`cp-sa-view-btn ${viewMode === 'table' ? 'active' : ''}`}
+                      onClick={() => setViewMode('table')}
+                      title="عرض الجدول المنسق"
+                    >
+                      <i className="fas fa-table-list"></i>
+                      <span>جدول</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* VIEW 1: MODERN CARDS GRID */}
+              {viewMode === 'grid' && (
+                <div className="cp-sa-cards-grid">
+                  {filteredTenants.map((t) => {
+                    const resolvedLogo = resolveTenantLogo(t)
+                    return (
+                      <div key={t.id} className="cp-sa-tenant-card">
+                        {/* Header: Logo + Title + Links */}
+                        <div>
+                          <div className="cp-sa-tenant-card-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                              <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '14px',
+                                background: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                border: '1.5px solid var(--cp-divider)',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+                                padding: '3px',
+                                flexShrink: 0
+                              }}>
+                                {resolvedLogo ? (
+                                  <img src={resolvedLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                  <div style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    borderRadius: '10px',
+                                    background: `linear-gradient(135deg, ${t.primary_color || '#7c3aed'}, ${t.secondary_color || '#06b6d4'})`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#fff',
+                                    fontSize: '18px'
+                                  }}>
+                                    <i className="fas fa-server"></i>
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <h4 style={{ margin: '0 0 2px', fontSize: '1.02rem', fontWeight: 800, color: 'var(--cp-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {t.name}
+                                </h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  <code className="cp-sa-color-badge" style={{ fontSize: '0.75rem', padding: '2px 6px' }}>{t.slug}</code>
+                                  {t.domain && (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{t.domain}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyTenantLink(t.slug, t.domain)}
+                                title="نسخ رابط المنصة"
+                                style={{
+                                  background: 'rgba(124, 58, 237, 0.08)',
+                                  border: '1px solid rgba(124, 58, 237, 0.2)',
+                                  color: 'var(--primary, #7c3aed)',
+                                  cursor: 'pointer',
+                                  padding: '6px 8px',
+                                  borderRadius: '8px',
+                                  fontSize: '0.82rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <i className="fas fa-copy"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePreviewTenant(t.slug, t.domain)}
+                                title="معاينة المنصة"
+                                style={{
+                                  background: 'rgba(6, 182, 212, 0.08)',
+                                  border: '1px solid rgba(6, 182, 212, 0.2)',
+                                  color: '#06b6d4',
+                                  cursor: 'pointer',
+                                  padding: '6px 8px',
+                                  borderRadius: '8px',
+                                  fontSize: '0.82rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <i className="fas fa-arrow-up-right-from-square"></i>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Stats Metrics Grid */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 1fr)',
+                            gap: '8px',
+                            background: 'var(--cp-bg)',
+                            borderRadius: '14px',
+                            padding: '12px 10px',
+                            margin: '14px 0',
+                            border: '1px solid var(--cp-divider)'
+                          }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary, #7c3aed)' }}>{t.studentsCount}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>الطلاب</div>
+                            </div>
+                            <div style={{ textAlign: 'center', borderRight: '1px solid var(--cp-divider)', borderLeft: '1px solid var(--cp-divider)' }}>
+                              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981' }}>{t.assistantsCount}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المساعدين</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f59e0b' }}>{t.adminsCount}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 600 }}>المشرفين</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Footer */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleOpenAddAdmin(t)}
+                            className="cp-btn"
+                            style={{
+                              padding: '8px 10px',
+                              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                              color: '#10b981',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              borderRadius: '10px',
+                              fontSize: '0.82rem',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              height: '38px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <i className="fas fa-user-plus" style={{ fontSize: '0.75rem' }}></i>
+                            <span>+ مدير</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => openManageTenant(t)}
+                            className="cp-btn"
+                            style={{
+                              padding: '8px 10px',
+                              background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%)',
+                              color: 'var(--primary, #7c3aed)',
+                              border: '1px solid rgba(124, 58, 237, 0.3)',
+                              borderRadius: '10px',
+                              fontSize: '0.82rem',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              height: '38px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <i className="fas fa-gears" style={{ fontSize: '0.75rem' }}></i>
+                            <span>إدارة وتخصيص</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedTenantForWipe(t)
+                              setShowWipeModal(true)
+                            }}
+                            title="تصفير بيانات المنصة"
+                            style={{
+                              padding: '8px 10px',
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              color: '#ef4444',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              borderRadius: '10px',
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              height: '38px'
+                            }}
+                          >
+                            <i className="fas fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* VIEW 2: CLEAN FULL-WIDTH DATA TABLE */}
+              {viewMode === 'table' && (
                 <div className="cp-sa-table-card">
-                  <div className="cp-sa-table-wrapper">
+                  <div className="cp-sa-table-wrapper" style={{ maxHeight: '650px' }}>
                     <table className="cp-sa-table">
                       <colgroup>
                         <col style={{ width: '32%' }} />
-                        <col style={{ width: '22%' }} />
-                        <col style={{ width: '10%' }} />
-                        <col style={{ width: '10%' }} />
-                        <col style={{ width: '10%' }} />
-                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '18%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '26%' }} />
                       </colgroup>
                       <thead>
                         <tr style={{ background: 'rgba(99, 102, 241, 0.03)' }}>
-                          <th style={{ textAlign: 'right' }}>اسم المنصة</th>
-                          <th style={{ textAlign: 'right' }}>المعرف السريع (Slug)</th>
-                          <th style={{ textAlign: 'center' }}>الطلاب</th>
-                          <th style={{ textAlign: 'center' }}>المساعدين</th>
-                          <th style={{ textAlign: 'center' }}>المشرفين</th>
-                          <th style={{ textAlign: 'center' }}>خيارات التحكم والصيانة</th>
+                          <th style={{ textAlign: 'right', padding: '16px 20px' }}>اسم المنصة والمعلم</th>
+                          <th style={{ textAlign: 'right', padding: '16px 18px' }}>المعرف السريع (Slug)</th>
+                          <th style={{ textAlign: 'center', padding: '16px 12px' }}>الطلاب</th>
+                          <th style={{ textAlign: 'center', padding: '16px 12px' }}>المساعدين</th>
+                          <th style={{ textAlign: 'center', padding: '16px 12px' }}>المشرفين</th>
+                          <th style={{ textAlign: 'center', padding: '16px 20px' }}>خيارات التحكم والصيانة</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredTenants.map((t) => (
-                          <tr key={t.id}>
-                            <td style={{ fontWeight: 700 }}>{t.name}</td>
-                            <td>
-                              <code className="cp-sa-color-badge">{t.slug}</code>
-                            </td>
-                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--primary, #7c3aed)' }}>{t.studentsCount}</td>
-                            <td style={{ textAlign: 'center', color: '#10b981', fontWeight: 'bold' }}>{t.assistantsCount}</td>
-                            <td style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 'bold' }}>{t.adminsCount}</td>
-                            <td style={{ textAlign: 'center' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                                <button
-                                  onClick={() => openManageTenant(t)}
-                                  className="cp-btn"
-                                  style={{
-                                    padding: '6px 12px',
-                                    background: 'rgba(99, 102, 241, 0.08)',
-                                    color: '#6366f1',
-                                    border: '1px solid rgba(99, 102, 241, 0.2)',
-                                    borderRadius: '8px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
+                        {filteredTenants.map((t) => {
+                          const resolvedLogo = resolveTenantLogo(t)
+                          return (
+                            <tr key={t.id}>
+                              <td style={{ textAlign: 'right', padding: '14px 20px' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px', textAlign: 'right' }}>
+                                  <div style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    background: '#ffffff',
+                                    display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    transition: 'all 0.2s'
-                                  }}
-                                >
-                                  <i className="fas fa-gears"></i>
-                                  <span>إدارة</span>
-                                </button>
-                                
-                                <button
-                                  onClick={() => {
-                                    setSelectedTenantForWipe(t)
-                                    setShowWipeModal(true)
-                                  }}
-                                  className="cp-btn"
-                                  style={{
-                                    padding: '6px 12px',
-                                    background: 'rgba(239, 68, 68, 0.08)',
-                                    color: '#ef4444',
-                                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                                    borderRadius: '8px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    transition: 'all 0.2s'
-                                  }}
-                                >
-                                  <i className="fas fa-trash-can"></i>
-                                  <span>تصفير</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    overflow: 'hidden',
+                                    border: '1.5px solid var(--cp-divider)',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                                    padding: '3px'
+                                  }}>
+                                    {resolvedLogo ? (
+                                      <img src={resolvedLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                    ) : (
+                                      <div style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        borderRadius: '8px',
+                                        background: `linear-gradient(135deg, ${t.primary_color || '#7c3aed'}, ${t.secondary_color || '#06b6d4'})`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#fff',
+                                        fontSize: '15px'
+                                      }}>
+                                        <i className="fas fa-server"></i>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: '0.96rem', fontWeight: 800, color: 'var(--cp-text-main)', lineHeight: 1.3 }}>{t.name}</div>
+                                    {t.domain ? (
+                                      <div style={{ fontSize: '0.76rem', color: 'var(--cp-text-muted)', direction: 'ltr', textAlign: 'right', marginTop: '2px' }}>
+                                        {t.domain}
+                                      </div>
+                                    ) : (
+                                      <div style={{ fontSize: '0.76rem', color: 'var(--cp-text-muted)', marginTop: '2px' }}>
+                                        منصة تعليمية
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right', padding: '14px 18px' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                  <code className="cp-sa-color-badge" style={{ fontSize: '0.82rem', padding: '4px 8px' }}>{t.slug}</code>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyTenantLink(t.slug, t.domain)}
+                                    title="نسخ رابط المنصة"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--cp-text-muted)',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      fontSize: '0.85rem',
+                                      display: 'inline-flex',
+                                      alignItems: 'center'
+                                    }}
+                                  >
+                                    <i className="fas fa-copy"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePreviewTenant(t.slug, t.domain)}
+                                    title="معاينة المنصة"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--primary, #7c3aed)',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      fontSize: '0.85rem',
+                                      display: 'inline-flex',
+                                      alignItems: 'center'
+                                    }}
+                                  >
+                                    <i className="fas fa-arrow-up-right-from-square"></i>
+                                  </button>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '14px 8px' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '34px',
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  background: 'rgba(124, 58, 237, 0.1)',
+                                  color: 'var(--primary, #7c3aed)',
+                                  fontWeight: 800,
+                                  fontSize: '0.9rem'
+                                }}>
+                                  {t.studentsCount}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '14px 8px' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '34px',
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  background: 'rgba(16, 185, 129, 0.1)',
+                                  color: '#10b981',
+                                  fontWeight: 800,
+                                  fontSize: '0.9rem'
+                                }}>
+                                  {t.assistantsCount}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '14px 8px' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '34px',
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  background: 'rgba(245, 158, 11, 0.1)',
+                                  color: '#f59e0b',
+                                  fontWeight: 800,
+                                  fontSize: '0.9rem'
+                                }}>
+                                  {t.adminsCount}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '14px 20px' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
+                                  <button
+                                    onClick={() => handleOpenAddAdmin(t)}
+                                    className="cp-btn"
+                                    style={{
+                                      padding: '6px 12px',
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      color: '#10b981',
+                                      border: '1px solid rgba(16, 185, 129, 0.28)',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 'bold',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      whiteSpace: 'nowrap',
+                                      lineHeight: 1,
+                                      height: '34px'
+                                    }}
+                                    title="إضافة حساب مدير جديد لهذه المنصة"
+                                  >
+                                    <i className="fas fa-user-plus" style={{ fontSize: '0.75rem' }}></i>
+                                    <span>+ مدير</span>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => openManageTenant(t)}
+                                    className="cp-btn"
+                                    style={{
+                                      padding: '6px 12px',
+                                      background: 'rgba(99, 102, 241, 0.12)',
+                                      color: '#6366f1',
+                                      border: '1px solid rgba(99, 102, 241, 0.28)',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 'bold',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      whiteSpace: 'nowrap',
+                                      lineHeight: 1,
+                                      height: '34px'
+                                    }}
+                                  >
+                                    <i className="fas fa-gears" style={{ fontSize: '0.75rem' }}></i>
+                                    <span>إدارة</span>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      setSelectedTenantForWipe(t)
+                                      setShowWipeModal(true)
+                                    }}
+                                    className="cp-btn"
+                                    style={{
+                                      padding: '6px 12px',
+                                      background: 'rgba(239, 68, 68, 0.12)',
+                                      color: '#ef4444',
+                                      border: '1px solid rgba(239, 68, 68, 0.28)',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 'bold',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      whiteSpace: 'nowrap',
+                                      lineHeight: 1,
+                                      height: '34px'
+                                    }}
+                                    title="تصفير بيانات المنصة"
+                                  >
+                                    <i className="fas fa-trash-can" style={{ fontSize: '0.75rem' }}></i>
+                                    <span>تصفير</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
                         {filteredTenants.length === 0 && (
                           <tr>
                             <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--cp-text-muted)' }}>
                               <i className="fas fa-search-minus" style={{ fontSize: '24px', marginBottom: '8px', display: 'block', opacity: 0.6 }}></i>
-                              <span>لا توجد منصات تطابق البحث حالياً.</span>
+                              <span>لا توجد منصات تطابق البحث أو الفلتر حالياً.</span>
                             </td>
                           </tr>
                         )}
@@ -988,253 +1512,182 @@ export default function SuperAdminPanel({ onBack, flash }) {
                     </table>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
+          )}
 
-              {/* Mobile View (Responsive Cards) */}
-              <div className="cp-sa-mobile-view">
-                <div className="cp-sa-mobile-stack">
-                  {filteredTenants.map((t) => (
-                    <div key={t.id} className="cp-sa-mobile-card">
-                      <div className="cp-sa-mobile-card-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: `linear-gradient(135deg, ${t.primary_color || '#7c3aed'}, ${t.secondary_color || '#06b6d4'})`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            fontSize: '14px'
-                          }}>
-                            <i className="fas fa-server"></i>
+          {/* TAB 2: DATABASE USAGE & MAINTENANCE CENTER */}
+          {activeMainTab === 'database' && (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: '24px', alignItems: 'start' }}>
+              <div>
+                {/* Database Metrics Grid */}
+                <div className="cp-sa-sidebar-card" style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <i className="fas fa-database" style={{ color: '#06b6d4' }}></i>
+                      <span>إحصائيات استهلاك قاعدة البيانات والمحتوى</span>
+                    </h3>
+                    <button onClick={() => fetchStats()} className="cp-btn cp-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+                      <i className="fas fa-arrows-rotate"></i>
+                      <span>تحديث الأرقام</span>
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const maxRecords = Math.max(dbStats.videos, dbStats.exams + dbStats.homeworks, dbStats.attempts + dbStats.submissions, dbStats.payments, 10)
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '18px' }}>
+                        <div style={{ background: 'var(--cp-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--cp-divider)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px' }}>
+                            <span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>الفيديوهات والملفات</span>
+                            <strong style={{ color: '#6366f1' }}>{dbStats.videos} سجل</strong>
                           </div>
-                          <h4 className="cp-sa-mobile-card-title">{t.name}</h4>
+                          <div className="cp-sa-progress-bar-container">
+                            <div className="cp-sa-progress-bar-fill" style={{ width: `${(dbStats.videos / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #6366f1, #7c3aed)' }} />
+                          </div>
                         </div>
-                        <code className="cp-sa-color-badge">{t.slug}</code>
-                      </div>
 
-                      <div className="cp-sa-mobile-stats-grid">
-                        <div className="cp-sa-mobile-stat-box">
-                          <span className="cp-sa-mobile-stat-val" style={{ color: 'var(--primary, #7c3aed)' }}>{t.studentsCount}</span>
-                          <span className="cp-sa-mobile-stat-lbl">الطلاب</span>
+                        <div style={{ background: 'var(--cp-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--cp-divider)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px' }}>
+                            <span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>الامتحانات والواجبات</span>
+                            <strong style={{ color: '#10b981' }}>{dbStats.exams + dbStats.homeworks} سجل</strong>
+                          </div>
+                          <div className="cp-sa-progress-bar-container">
+                            <div className="cp-sa-progress-bar-fill" style={{ width: `${((dbStats.exams + dbStats.homeworks) / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #10b981, #059669)' }} />
+                          </div>
                         </div>
-                        <div className="cp-sa-mobile-stat-box" style={{ borderRight: '1px solid var(--cp-divider)', borderLeft: '1px solid var(--cp-divider)' }}>
-                          <span className="cp-sa-mobile-stat-val" style={{ color: '#10b981' }}>{t.assistantsCount}</span>
-                          <span className="cp-sa-mobile-stat-lbl">المساعدين</span>
-                        </div>
-                        <div className="cp-sa-mobile-stat-box">
-                          <span className="cp-sa-mobile-stat-val" style={{ color: '#f59e0b' }}>{t.adminsCount}</span>
-                          <span className="cp-sa-mobile-stat-lbl">المشرفين</span>
-                        </div>
-                      </div>
 
-                      <div className="cp-sa-mobile-card-actions">
-                        <button
-                          onClick={() => openManageTenant(t)}
-                          className="cp-btn"
-                          style={{
-                            padding: '10px',
-                            background: 'rgba(99, 102, 241, 0.08)',
-                            color: '#6366f1',
-                            border: '1px solid rgba(99, 102, 241, 0.2)',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 'bold',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            height: '44px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <i className="fas fa-gears"></i>
-                          <span>إدارة</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTenantForWipe(t)
-                            setShowWipeModal(true)
-                          }}
-                          className="cp-btn"
-                          style={{
-                            padding: '10px',
-                            background: 'rgba(239, 68, 68, 0.08)',
-                            color: '#ef4444',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 'bold',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            height: '44px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <i className="fas fa-trash-can"></i>
-                          <span>تصفير</span>
-                        </button>
+                        <div style={{ background: 'var(--cp-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--cp-divider)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px' }}>
+                            <span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>إجابات وحلول الطلاب</span>
+                            <strong style={{ color: '#f59e0b' }}>{dbStats.attempts + dbStats.submissions} حلّ</strong>
+                          </div>
+                          <div className="cp-sa-progress-bar-container">
+                            <div className="cp-sa-progress-bar-fill" style={{ width: `${((dbStats.attempts + dbStats.submissions) / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #f59e0b, #d97706)' }} />
+                          </div>
+                        </div>
+
+                        <div style={{ background: 'var(--cp-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--cp-divider)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px' }}>
+                            <span style={{ color: 'var(--cp-text-muted)', fontWeight: 600 }}>إيصالات وعمليات الدفع</span>
+                            <strong style={{ color: '#ec4899' }}>{dbStats.payments} إيصال</strong>
+                          </div>
+                          <div className="cp-sa-progress-bar-container">
+                            <div className="cp-sa-progress-bar-fill" style={{ width: `${(dbStats.payments / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #ec4899, #db2777)' }} />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {filteredTenants.length === 0 && (
-                    <div className="cp-sa-mobile-card" style={{ padding: '32px', textAlign: 'center', color: 'var(--cp-text-muted)', borderStyle: 'dashed' }}>
-                      <i className="fas fa-search-minus" style={{ fontSize: '24px', marginBottom: '8px', display: 'block', opacity: 0.6 }}></i>
-                      <span>لا توجد منصات تطابق البحث حالياً.</span>
-                    </div>
-                  )}
+                    )
+                  })()}
+                </div>
+
+                {/* Per-Tenant Quick Maintenance Table */}
+                <div className="cp-sa-table-card">
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: '0 0 16px', color: 'var(--cp-text-main)' }}>
+                    صيانة وتصفير منصات المدرسين الفردية
+                  </h4>
+                  <div className="cp-sa-table-wrapper" style={{ maxHeight: '360px' }}>
+                    <table className="cp-sa-table">
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'right' }}>المنصة</th>
+                          <th style={{ textAlign: 'right' }}>المعرف</th>
+                          <th style={{ textAlign: 'center' }}>الطلاب</th>
+                          <th style={{ textAlign: 'center' }}>إجراء الصيانة</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tenants.map(t => (
+                          <tr key={t.id}>
+                            <td style={{ fontWeight: 700 }}>{t.name}</td>
+                            <td><code className="cp-sa-color-badge">{t.slug}</code></td>
+                            <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary, #7c3aed)' }}>{t.studentsCount || 0}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  setSelectedTenantForWipe(t)
+                                  setShowWipeModal(true)
+                                }}
+                                className="cp-btn"
+                                style={{
+                                  padding: '6px 14px',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#ef4444',
+                                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                                  borderRadius: '8px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 'bold',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <i className="fas fa-trash-can" style={{ marginInlineEnd: '6px' }}></i>
+                                <span>تصفير بيانات هذه المنصة</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger Zone: Global Database Wipe */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="cp-sa-danger-card" style={{ padding: '24px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
+                    <i className="fas fa-dumpster-fire"></i>
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444', margin: '0 0 10px' }}>تصفير وتفريغ قاعدة البيانات الشامل</h3>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.6' }}>
+                    أداة تنظيف وتفريغ قاعدة البيانات بشكل آمن. ستقوم بمسح جميع حسابات الطلاب والمساعدين، وجميع الواجبات، التقييمات، والامتحانات للتخلص من بيانات التجارب والبدء من جديد.
+                  </p>
+                  
+                  <button 
+                    onClick={() => {
+                      setSelectedTenantForWipe(null)
+                      setShowWipeModal(true)
+                    }}
+                    className="cp-btn cp-btn-danger"
+                    style={{ width: '100%', padding: '12px 14px', background: '#ef4444', color: '#fff', fontWeight: 'bold', justifyContent: 'center', borderRadius: 12, height: '44px', cursor: 'pointer' }}
+                  >
+                    تفريغ شامل لكافة المنصات (Global Wipe)
+                  </button>
+                </div>
+
+                <div className="cp-sa-sidebar-card">
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: '0 0 10px', color: 'var(--cp-text-main)' }}>معلومات حساب المطور</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 6px' }}>البريد الإلكتروني الحالي:</p>
+                  <strong style={{ fontSize: '0.9rem', color: 'var(--primary, #7c3aed)', display: 'block', wordBreak: 'break-all' }}>{currentUserEmail || 'جاري التحميل...'}</strong>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Right Side: Security Wiping Tool */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* Database Usage Statistics */}
-              <div className="cp-sa-sidebar-card">
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fas fa-server" style={{ color: '#06b6d4' }}></i>
-                  <span>مراقبة حجم قاعدة البيانات</span>
-                </h3>
-                
-                {(() => {
-                  const maxRecords = Math.max(dbStats.videos, dbStats.exams + dbStats.homeworks, dbStats.attempts + dbStats.submissions, dbStats.payments, 10)
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--cp-text-muted)' }}>الملفات والفيديوهات</span>
-                          <strong style={{ color: 'var(--cp-text-main)' }}>{dbStats.videos} سجل</strong>
-                        </div>
-                        <div className="cp-sa-progress-bar-container">
-                          <div className="cp-sa-progress-bar-fill" style={{ width: `${(dbStats.videos / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #6366f1, #7c3aed)' }} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--cp-text-muted)' }}>الامتحانات والواجبات</span>
-                          <strong style={{ color: 'var(--cp-text-main)' }}>{dbStats.exams + dbStats.homeworks} سجل</strong>
-                        </div>
-                        <div className="cp-sa-progress-bar-container">
-                          <div className="cp-sa-progress-bar-fill" style={{ width: `${((dbStats.exams + dbStats.homeworks) / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #10b981, #059669)' }} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--cp-text-muted)' }}>المحاولات والحلول</span>
-                          <strong style={{ color: 'var(--cp-text-main)' }}>{dbStats.attempts + dbStats.submissions} حلّ</strong>
-                        </div>
-                        <div className="cp-sa-progress-bar-container">
-                          <div className="cp-sa-progress-bar-fill" style={{ width: `${((dbStats.attempts + dbStats.submissions) / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #f59e0b, #d97706)' }} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--cp-text-muted)' }}>إيصالات المدفوعات</span>
-                          <strong style={{ color: 'var(--cp-text-main)' }}>{dbStats.payments} إيصال</strong>
-                        </div>
-                        <div className="cp-sa-progress-bar-container">
-                          <div className="cp-sa-progress-bar-fill" style={{ width: `${(dbStats.payments / maxRecords) * 100}%`, background: 'linear-gradient(90deg, #ec4899, #db2777)' }} />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Database Wipe Tool Widget */}
-              <div className="cp-sa-danger-card">
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
-                  <i className="fas fa-dumpster-fire"></i>
-                </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444', margin: '0 0 10px' }}>صيانة وقاعدة البيانات</h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.6' }}>
-                  أداة تنظيف وتفريغ قاعدة البيانات بشكل آمن. ستقوم بمسح جميع حسابات الطلاب والمساعدين، وجميع الواجبات، التقييمات، والامتحانات للتخلص من بيانات التجارب والبدء من جديد.
-                </p>
-                
-                <button 
-                  onClick={() => {
-                    setSelectedTenantForWipe(null)
-                    setShowWipeModal(true)
-                  }}
-                  className="cp-btn cp-btn-danger"
-                  style={{ width: '100%', padding: '12px 14px', background: '#ef4444', color: '#fff', fontWeight: 'bold', justifyContent: 'center', borderRadius: 12, height: '44px', cursor: 'pointer' }}
-                >
-                  تفريغ شامل لكافة المنصات (Global Wipe)
-                </button>
-              </div>
-
-              {/* Business Management Widget */}
-              <div className="cp-sa-sidebar-card">
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
-                  <i className="fas fa-briefcase"></i>
-                </div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--text-color)', margin: '0 0 8px' }}>إدارة الأعمال والمالية</h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.5' }}>
-                  حسابات الشركة الكاملة: الإيرادات والمصروفات والعقود والاشتراكات ومؤشرات الأداء والتقارير — منفصلة تماماً عن حسابات المدرسين.
-                </p>
-                <button
-                  onClick={() => setActiveSubSection('business')}
-                  className="cp-btn cp-btn-secondary"
-                  style={{ width: '100%', justifyContent: 'center', border: '1px solid #10b981', color: '#10b981', height: '44px', cursor: 'pointer' }}
-                >
-                  فتح لوحة الأعمال
-                </button>
-              </div>
-
-              {/* Security Violations Widget */}
-              <div className="cp-sa-sidebar-card">
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
-                  <i className="fas fa-shield-halved"></i>
-                </div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--text-color)', margin: '0 0 8px' }}>سجلات الحماية الأمنية</h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.5' }}>
-                  عرض محاولات اختراق أدوات المطور (DevTools) المسجلة أوتوماتيكياً لحماية محتوى منصات المدرسين.
-                </p>
-                <button 
-                  onClick={() => setActiveSubSection('violations')}
-                  className="cp-btn cp-btn-secondary"
-                  style={{ width: '100%', justifyContent: 'center', border: '1px solid #ef4444', color: '#ef4444', height: '44px', cursor: 'pointer' }}
-                >
-                  عرض سجلات الاختراق
-                </button>
-              </div>
-
-              {/* Seasonal Themes Manager Widget */}
-              <div className="cp-sa-sidebar-card">
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(124, 58, 237, 0.1)', color: 'var(--primary, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '16px' }}>
-                  <i className="fas fa-moon"></i>
-                </div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'var(--text-color)', margin: '0 0 8px' }}>السمات الموسمية</h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: '1.5' }}>
-                  التحكم في تزيين المنصة التلقائي (رمضان، الأعياد، الشتاء) وإجبار سمة معينة أو تعطيل التزيين لكافة المدرسين.
-                </p>
-                <button 
-                  onClick={() => setActiveSubSection('seasons')}
-                  className="cp-btn cp-btn-secondary"
-                  style={{ width: '100%', justifyContent: 'center', border: '1px solid var(--primary, #7c3aed)', color: 'var(--primary, #7c3aed)', height: '44px', cursor: 'pointer' }}
-                >
-                  إدارة السمات الموسمية
-                </button>
-              </div>
-
-              {/* General diagnostics */}
-              <div className="cp-sa-sidebar-card">
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0 0 12px' }}>معلومات الاتصال بالمطور</h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', margin: '0 0 6px' }}>بريدك الإلكتروني المسجل بالمطور:</p>
-                <strong style={{ fontSize: '0.9rem', color: 'var(--cp-text-main)', display: 'block', wordBreak: 'break-all' }}>{currentUserEmail || 'جاري التحميل...'}</strong>
-              </div>
-
+          {/* TAB 3: BUSINESS & FINANCE MANAGEMENT */}
+          {activeMainTab === 'business' && (
+            <div>
+              <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل لوحة الأعمال والمالية...</p></div>}>
+                <BusinessPanel flash={flash} />
+              </Suspense>
             </div>
+          )}
 
-          </div>
+          {/* TAB 4: SECURITY & DEVTOOLS VIOLATIONS */}
+          {activeMainTab === 'security' && (
+            <div>
+              <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل سجلات الحماية والأمان...</p></div>}>
+                <DevToolsViolationsPanel flash={flash} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 5: SEASONAL THEMES MANAGER */}
+          {activeMainTab === 'themes' && (
+            <div>
+              <SeasonalThemePanel flash={flash} />
+            </div>
+          )}
         </>
       )}
 
@@ -1515,7 +1968,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
       {/* Manage Tenant Modal */}
       {selectedTenantForManage && createPortal(
         <div className="cp-portal-overlay">
-          <div className="cp-portal-modal" style={{ maxWidth: '760px' }}>
+          <div className="cp-portal-modal" style={{ maxWidth: '820px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <button 
               onClick={() => setSelectedTenantForManage(null)}
               style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: 'var(--cp-text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
@@ -1523,497 +1976,728 @@ export default function SuperAdminPanel({ onBack, flash }) {
               <i className="fas fa-times"></i>
             </button>
 
-            <h3 style={{ fontSize: '1.3rem', fontWeight: 'bold', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fas fa-sliders-h" style={{ color: 'var(--primary, #7c3aed)' }}></i>
-              <span>إدارة منصة ({selectedTenantForManage.name})</span>
-            </h3>
+            {/* Modal Header */}
+            <div style={{ marginBottom: '16px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: `linear-gradient(135deg, ${selectedTenantForManage.primary_color || '#7c3aed'}, ${selectedTenantForManage.secondary_color || '#06b6d4'})`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: '15px'
+                }}>
+                  <i className="fas fa-sliders-h"></i>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>إدارة وتخصيص ({selectedTenantForManage.name})</h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>المعرف: <code className="cp-sa-color-badge">{selectedTenantForManage.slug}</code></span>
+                </div>
+              </div>
+            </div>
 
-            {/* 1. Edit Tenant Settings Form */}
-            <form onSubmit={handleUpdateTenant} style={{ borderBottom: '1px solid var(--cp-divider)', paddingBottom: '24px', marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '14px', color: 'var(--primary, #7c3aed)' }}>إعدادات الهوية والنطاق</h4>
+            {/* Navigation Tabs Bar */}
+            <div style={{
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              paddingBottom: '10px',
+              marginBottom: '16px',
+              borderBottom: '1px solid var(--cp-divider)',
+              flexShrink: 0
+            }}>
+              {[
+                { id: 'branding', label: 'الهوية والألوان', icon: 'fa-palette' },
+                { id: 'teacher', label: 'المعلم والواجهة', icon: 'fa-chalkboard-user' },
+                { id: 'stages', label: 'المراحل والصفوف', icon: 'fa-layer-group' },
+                { id: 'features', label: 'الميزات المفعلة', icon: 'fa-toggle-on' },
+                { id: 'team', label: 'المدراء والمستخدمين', icon: 'fa-users-gear' },
+              ].map(tab => {
+                const isActive = manageActiveTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setManageActiveTab(tab.id)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      border: isActive ? '1px solid var(--primary, #7c3aed)' : '1px solid transparent',
+                      background: isActive ? 'rgba(124, 58, 237, 0.12)' : 'var(--cp-card-bg)',
+                      color: isActive ? 'var(--primary, #7c3aed)' : 'var(--cp-text-muted)',
+                      fontWeight: isActive ? 800 : 600,
+                      fontSize: '0.84rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <i className={`fas ${tab.icon}`} style={{ fontSize: '0.85rem' }}></i>
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Modal Body Container with Scroll */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '2px' }} className="cp-sa-table-wrapper">
               
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المنصة *</label>
-                  <input 
-                    type="text"
-                    required
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>النطاق المخصص (Domain)</label>
-                  <input 
-                    type="text"
-                    value={editDomain}
-                    onChange={(e) => setEditDomain(e.target.value.toLowerCase().trim())}
-                    placeholder="مثال: subdomain.domain.com"
-                    className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }}
-                  />
-                </div>
-              </div>
-
-              {/* Theme & identity customization (persisted in config JSONB) */}
-              <h4 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '4px 0 14px', color: 'var(--primary, #7c3aed)' }}>تخصيص الهوية والمحتوى</h4>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>المادة الدراسية (الثيم)</label>
-                  <select value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}>
-                    {SUBJECT_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المعلم</label>
-                  <input type="text" value={editTeacherName} onChange={(e) => setEditTeacherName(e.target.value)}
-                    placeholder="مثال: الأستاذ أحمد محمد" className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>وصف المعلم / التخصص</label>
-                  <input type="text" value={editTeacherRole} onChange={(e) => setEditTeacherRole(e.target.value)}
-                    placeholder="مثال: مدرّس الفيزياء للثانوية العامة" className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero - السطر الأول)</label>
-                  <input type="text" value={editHeroTitle} onChange={(e) => setEditHeroTitle(e.target.value)}
-                    placeholder="مثال: اللغة العربية" className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (Hero - السطر الثاني / الفرعي)</label>
-                  <input type="text" value={editHeroTitleB} onChange={(e) => setEditHeroTitleB(e.target.value)}
-                    placeholder="مثال: لغة الضاد بطعم جديد" className="cp-input"
-                    style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>الوصف التعريفي للمنصة</label>
-                <textarea value={editHeroSub} onChange={(e) => setEditHeroSub(e.target.value)} rows={2}
-                  placeholder="وصف قصير يظهر في الصفحة الرئيسية أسفل العنوان" className="cp-input"
-                  style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
-              </div>
-
-              {/* Detailed teacher profile (login landing page) */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-chalkboard-user" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                بيانات المعلم التفصيلية (صفحة الهبوط)
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                {TEACHER_EXTRA_DEFS.map(f => (
-                  <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
-                    {f.textarea ? (
-                      <textarea value={editTeacherExtra[f.key] || ''} rows={2}
-                        onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder || ''}
-                        className="cp-input"
-                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
-                    ) : f.upload ? (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {editTeacherExtra[f.key] && <img src={editTeacherExtra[f.key]} alt="" style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--cp-divider)' }} />}
-                        <input type="text" value={editTeacherExtra[f.key] || ''} dir="ltr"
-                          onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
-                          placeholder="ارفع صورة أو الصق رابطاً" className="cp-input"
-                          style={{ flex: 1, padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                        <label className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
-                          <i className={`fas ${uploadingImage === f.key ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
-                          <span>رفع</span>
-                          <input type="file" accept="image/*" hidden disabled={uploadingImage === f.key}
-                            onChange={(e) => handleImageUpload(e, f.key, (url) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: url })))} />
-                        </label>
+              {/* Form wrapping settings tabs (branding, teacher, stages, features) */}
+              {manageActiveTab !== 'team' && (
+                <form id="manage-tenant-form" onSubmit={handleUpdateTenant} style={{ padding: '4px 2px' }}>
+                  
+                  {/* TAB 1: BRANDING & THEME */}
+                  {manageActiveTab === 'branding' && (
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '14px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-palette" style={{ marginInlineEnd: 6 }} /> البيانات الأساسية والألوان
+                      </h4>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المنصة *</label>
+                          <input 
+                            type="text"
+                            required
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>النطاق المخصص (Domain)</label>
+                          <input 
+                            type="text"
+                            value={editDomain}
+                            onChange={(e) => setEditDomain(e.target.value.toLowerCase().trim())}
+                            placeholder="مثال: subdomain.domain.com"
+                            className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }}
+                          />
+                        </div>
                       </div>
-                    ) : (
-                      <input type="text" value={editTeacherExtra[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
-                        onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder || ''}
-                        className="cp-input"
-                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
 
-              {/* Center / location details (login landing page) */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-location-dot" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                بيانات المقر والموقع (قسم الموقع في صفحة الهبوط)
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                {LOCATION_DEFS.map(f => (
-                  <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
-                    {f.textarea ? (
-                      <textarea value={editLocation[f.key] || ''} rows={2}
-                        onChange={(e) => setEditLocation(prev => ({ ...prev, [f.key]: e.target.value }))}
-                        className="cp-input"
-                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
-                    ) : (
-                      <input type="text" value={editLocation[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
-                        onChange={(e) => setEditLocation(prev => ({ ...prev, [f.key]: e.target.value }))}
-                        className="cp-input"
-                        style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اللون الأساسي (Primary Color)</label>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              type="color"
+                              value={editPrimaryColor}
+                              onChange={(e) => setEditPrimaryColor(e.target.value)}
+                              style={{ width: '38px', height: '38px', padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                            />
+                            <code className="cp-sa-color-badge">{editPrimaryColor}</code>
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اللون الفرعي (Secondary Color)</label>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              type="color"
+                              value={editSecondaryColor}
+                              onChange={(e) => setEditSecondaryColor(e.target.value)}
+                              style={{ width: '38px', height: '38px', padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                            />
+                            <code className="cp-sa-color-badge">{editSecondaryColor}</code>
+                          </div>
+                        </div>
+                      </div>
 
-              {/* Multiple branches/locations — all fields optional; an empty
-                  field simply doesn't render, an empty branch is removed. */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '8px' }}>
-                {editLocBranches.map((branch, bi) => (
-                  <div key={bi} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>
-                        <i className="fas fa-building" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                        المقر {bi + 1}{branch.name ? ` — ${branch.name}` : ''}
-                      </span>
+                      {/* Logo Uploader */}
+                      <div style={{ marginBottom: '18px' }}>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>شعار المنصة (Logo)</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {editLogoUrl && <img src={editLogoUrl} alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--cp-divider)', background: '#fff' }} />}
+                          <input type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)} dir="ltr"
+                            placeholder="ارفع صورة من جهازك أو الصق رابطاً" className="cp-input"
+                            style={{ flex: 1, padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                          <label className="cp-btn cp-btn-secondary" style={{ padding: '9px 14px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <i className={`fas ${uploadingImage === 'logo' ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                            <span>رفع شعار</span>
+                            <input type="file" accept="image/*" hidden disabled={uploadingImage === 'logo'}
+                              onChange={(e) => handleImageUpload(e, 'logo', (url) => setEditLogoUrl(url))} />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Hero Titles & Announcements */}
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, margin: '20px 0 12px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-bullhorn" style={{ marginInlineEnd: 6 }} /> نصوص الواجهة وشريط الإعلانات
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (السطر الأول)</label>
+                          <input type="text" value={editHeroTitle} onChange={(e) => setEditHeroTitle(e.target.value)}
+                            placeholder="مثال: اللغة العربية" className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>عنوان الصفحة الرئيسية (السطر الثاني)</label>
+                          <input type="text" value={editHeroTitleB} onChange={(e) => setEditHeroTitleB(e.target.value)}
+                            placeholder="مثال: لغة الضاد بطعم جديد" className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '14px' }}>
+                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>الوصف التعريفي للمنصة</label>
+                        <textarea value={editHeroSub} onChange={(e) => setEditHeroSub(e.target.value)} rows={2}
+                          placeholder="وصف قصير يظهر في الصفحة الرئيسية أسفل العنوان" className="cp-input"
+                          style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                        {editAnnouncements.map((a, ai) => (
+                          <div key={ai} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input type="text" value={a.icon} maxLength={4}
+                              onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, icon: e.target.value } : x))}
+                              placeholder="🎁" className="cp-input"
+                              style={{ width: '58px', textAlign: 'center', padding: '9px 6px', fontSize: '0.9rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                            <input type="text" value={a.text}
+                              onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, text: e.target.value } : x))}
+                              placeholder="نص الإعلان" className="cp-input"
+                              style={{ flex: 1, padding: '9px 12px', fontSize: '0.84rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                            <button type="button"
+                              onClick={() => setEditAnnouncements(prev => prev.filter((_, i) => i !== ai))}
+                              style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', width: 36, height: 36, borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
+                              title="حذف الإعلان">
+                              <i className="fas fa-trash-can" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                       <button type="button"
-                        onClick={() => setEditLocBranches(prev => prev.filter((_, i) => i !== bi))}
-                        style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', padding: '5px 12px', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <i className="fas fa-trash-can" /> حذف المقر
+                        onClick={() => setEditAnnouncements(prev => [...prev, { icon: '', text: '' }])}
+                        style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '9px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <i className="fas fa-plus" /> إضافة إعلان للشريط العلوي
+                      </button>
+
+                      {/* Social Media & Contact */}
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, margin: '20px 0 12px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-share-nodes" style={{ marginInlineEnd: 6 }} /> وسائل التواصل والمساعدة
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '18px' }}>
+                        {[
+                          { key: 'facebook', icon: 'fab fa-facebook-f', label: 'Facebook' },
+                          { key: 'youtube', icon: 'fab fa-youtube', label: 'YouTube' },
+                          { key: 'instagram', icon: 'fab fa-instagram', label: 'Instagram' },
+                          { key: 'telegram', icon: 'fab fa-telegram-plane', label: 'Telegram' },
+                          { key: 'whatsapp', icon: 'fab fa-whatsapp', label: 'WhatsApp' },
+                        ].map(s => (
+                          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className={s.icon} style={{ width: 18, textAlign: 'center', color: 'var(--cp-text-muted)' }} />
+                            <input type="text" value={editSocials[s.key]} dir="ltr"
+                              onChange={(e) => setEditSocials(prev => ({ ...prev, [s.key]: e.target.value }))}
+                              placeholder={`رابط ${s.label}`} className="cp-input"
+                              style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Advanced theme tokens */}
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, margin: '20px 0 10px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-sliders" style={{ marginInlineEnd: 6 }} /> تخصيص الثيم المتقدم (خلفيات وكروت)
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                        {THEME_TOKEN_DEFS.map(tk => (
+                          <div key={tk.key}>
+                            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 'bold', marginBottom: '2px' }}>{tk.label}</label>
+                            {tk.hint && <div style={{ fontSize: '0.68rem', color: 'var(--cp-text-muted)', marginBottom: '4px', lineHeight: 1.3 }}>{tk.hint}</div>}
+                            {tk.type === 'color' ? (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input type="color" value={editTheme[tk.key] || tk.fallback}
+                                  onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                                  style={{ width: '34px', height: '34px', padding: 0, border: 'none', borderRadius: '6px', cursor: 'pointer' }} />
+                                <input type="text" value={editTheme[tk.key]} dir="ltr" placeholder={tk.fallback}
+                                  onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                                  className="cp-input"
+                                  style={{ flex: 1, padding: '7px 9px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                              </div>
+                            ) : (
+                              <input type="text" value={editTheme[tk.key]} dir="ltr"
+                                placeholder="#0f0f23 أو gradient"
+                                onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
+                                className="cp-input"
+                                style={{ width: '100%', padding: '8px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: TEACHER & LANDING PAGE */}
+                  {manageActiveTab === 'teacher' && (
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '14px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-chalkboard-user" style={{ marginInlineEnd: 6 }} /> بيانات المعلم وصفحة تسجيل الدخول
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المعلم *</label>
+                          <input type="text" value={editTeacherName} onChange={(e) => setEditTeacherName(e.target.value)}
+                            placeholder="مثال: الأستاذ أحمد محمد" className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>وصف المعلم / التخصص</label>
+                          <input type="text" value={editTeacherRole} onChange={(e) => setEditTeacherRole(e.target.value)}
+                            placeholder="مثال: مدرّس أول الفيزياء للثانوية العامة" className="cp-input"
+                            style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                        </div>
+                      </div>
+
+                      {/* Detailed Teacher Profile Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                        {TEACHER_EXTRA_DEFS.map(f => (
+                          <div key={f.key} style={f.textarea ? { gridColumn: isMobile ? 'auto' : 'span 2' } : undefined}>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px' }}>{f.label}</label>
+                            {f.textarea ? (
+                              <textarea value={editTeacherExtra[f.key] || ''} rows={2}
+                                onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                placeholder={f.placeholder || ''}
+                                className="cp-input"
+                                style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', resize: 'vertical' }} />
+                            ) : f.upload ? (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {editTeacherExtra[f.key] && <img src={editTeacherExtra[f.key]} alt="" style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--cp-divider)' }} />}
+                                <input type="text" value={editTeacherExtra[f.key] || ''} dir="ltr"
+                                  onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                  placeholder="ارفع صورة أو الصق رابطاً" className="cp-input"
+                                  style={{ flex: 1, padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                                <label className="cp-btn cp-btn-secondary" style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
+                                  <i className={`fas ${uploadingImage === f.key ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
+                                  <span>رفع</span>
+                                  <input type="file" accept="image/*" hidden disabled={uploadingImage === f.key}
+                                    onChange={(e) => handleImageUpload(e, f.key, (url) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: url })))} />
+                                </label>
+                              </div>
+                            ) : (
+                              <input type="text" value={editTeacherExtra[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
+                                onChange={(e) => setEditTeacherExtra(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                placeholder={f.placeholder || ''}
+                                className="cp-input"
+                                style={{ width: '100%', padding: '10px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Login landing sections toggles */}
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, margin: '20px 0 10px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-eye" style={{ marginInlineEnd: 6 }} /> أقسام صفحة الهبوط (تسجيل الدخول)
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                        {LOGIN_SECTION_DEFS.map(s => (
+                          <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editLoginSections[s.key] ? 'rgba(99, 102, 241, 0.05)' : 'transparent' }}>
+                            <input type="checkbox" checked={!!editLoginSections[s.key]}
+                              onChange={(e) => setEditLoginSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                              style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16, cursor: 'pointer' }} />
+                            <span>{s.label}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Branches / locations */}
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, margin: '20px 0 10px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-location-dot" style={{ marginInlineEnd: 6 }} /> الفروع والمقرات السناتر
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
+                        {editLocBranches.map((branch, bi) => (
+                          <div key={bi} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>
+                                <i className="fas fa-building" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
+                                المقر {bi + 1}{branch.name ? ` — ${branch.name}` : ''}
+                              </span>
+                              <button type="button"
+                                onClick={() => setEditLocBranches(prev => prev.filter((_, i) => i !== bi))}
+                                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', padding: '5px 12px', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <i className="fas fa-trash-can" /> حذف المقر
+                              </button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+                              {BRANCH_DEFS.map(f => (
+                                <div key={f.key}>
+                                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 'bold', marginBottom: '4px', color: 'var(--cp-text-muted)' }}>{f.label}</label>
+                                  <input type="text" value={branch[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
+                                    onChange={(e) => setEditLocBranches(prev => prev.map((b, i) => i === bi ? { ...b, [f.key]: e.target.value } : b))}
+                                    className="cp-input"
+                                    style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button"
+                        onClick={() => setEditLocBranches(prev => [...prev, {}])}
+                        style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '10px', borderRadius: '10px', fontSize: '0.84rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <i className="fas fa-plus" /> إضافة فرع / سنتر جديد
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-                      {BRANCH_DEFS.map(f => (
-                        <div key={f.key}>
-                          <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 'bold', marginBottom: '4px', color: 'var(--cp-text-muted)' }}>{f.label}</label>
-                          <input type="text" value={branch[f.key] || ''} dir={f.ltr ? 'ltr' : undefined}
-                            onChange={(e) => setEditLocBranches(prev => prev.map((b, i) => i === bi ? { ...b, [f.key]: e.target.value } : b))}
-                            className="cp-input"
-                            style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button"
-                onClick={() => setEditLocBranches(prev => [...prev, {}])}
-                style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '10px', borderRadius: '10px', fontSize: '0.84rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <i className="fas fa-plus" /> إضافة مقر / فرع جديد
-              </button>
-              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '-12px 0 20px', lineHeight: 1.5 }}>
-                جميع الحقول اختيارية — الحقل الفارغ لا يظهر للطالب، وإذا لم يوجد أي مقر يختفي قسم الموقع بالكامل من صفحة الهبوط.
-              </p>
+                  )}
 
-              {/* Student-facing contact channels (footer + help page) */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-headset" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                قنوات تواصل الطلاب (تظهر في الفوتر وصفحة المساعدة)
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                <input type="text" value={editContactPhone} onChange={(e) => setEditContactPhone(e.target.value)}
-                  placeholder="رقم الهاتف" className="cp-input" dir="ltr"
-                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                <input type="text" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)}
-                  placeholder="البريد الإلكتروني" className="cp-input" dir="ltr"
-                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                <input type="text" value={editContactAddress} onChange={(e) => setEditContactAddress(e.target.value)}
-                  placeholder="العنوان" className="cp-input"
-                  style={{ padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-              </div>
+                  {/* TAB 3: STAGES & GRADES */}
+                  {manageActiveTab === 'stages' && (
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '14px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-layer-group" style={{ marginInlineEnd: 6 }} /> تحديد المادة والمراحل الدراسية المفعلة
+                      </h4>
 
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-share-nodes" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                روابط السوشيال ميديا (تظهر للطلاب فقط)
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                {[
-                  { key: 'facebook', icon: 'fab fa-facebook-f', label: 'Facebook' },
-                  { key: 'youtube', icon: 'fab fa-youtube', label: 'YouTube' },
-                  { key: 'instagram', icon: 'fab fa-instagram', label: 'Instagram' },
-                  { key: 'telegram', icon: 'fab fa-telegram-plane', label: 'Telegram' },
-                  { key: 'whatsapp', icon: 'fab fa-whatsapp', label: 'WhatsApp' },
-                ].map(s => (
-                  <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className={s.icon} style={{ width: 18, textAlign: 'center', color: 'var(--cp-text-muted)' }} />
-                    <input type="text" value={editSocials[s.key]} dir="ltr"
-                      onChange={(e) => setEditSocials(prev => ({ ...prev, [s.key]: e.target.value }))}
-                      placeholder={`رابط ${s.label}`} className="cp-input"
-                      style={{ flex: 1, padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                  </div>
-                ))}
-              </div>
-
-              {/* Home page announcements strip */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-bullhorn" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                شريط إعلانات الصفحة الرئيسية
-              </h5>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
-                {editAnnouncements.map((a, ai) => (
-                  <div key={ai} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input type="text" value={a.icon} maxLength={4}
-                      onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, icon: e.target.value } : x))}
-                      placeholder="🎁" className="cp-input"
-                      style={{ width: '58px', textAlign: 'center', padding: '9px 6px', fontSize: '0.9rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                    <input type="text" value={a.text}
-                      onChange={(e) => setEditAnnouncements(prev => prev.map((x, i) => i === ai ? { ...x, text: e.target.value } : x))}
-                      placeholder="نص الإعلان" className="cp-input"
-                      style={{ flex: 1, padding: '9px 12px', fontSize: '0.84rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                    <button type="button"
-                      onClick={() => setEditAnnouncements(prev => prev.filter((_, i) => i !== ai))}
-                      style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', width: 36, height: 36, borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
-                      title="حذف الإعلان">
-                      <i className="fas fa-trash-can" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button"
-                onClick={() => setEditAnnouncements(prev => [...prev, { icon: '', text: '' }])}
-                style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px dashed rgba(16, 185, 129, 0.4)', color: '#10b981', padding: '9px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <i className="fas fa-plus" /> إضافة إعلان
-              </button>
-              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
-                احذف جميع الإعلانات لإخفاء الشريط بالكامل من الصفحة الرئيسية.
-              </p>
-
-              {/* Logo + advanced theme tokens */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-palette" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                الشعار والمظهر المتقدم (خلفيات وكروت)
-              </h5>
-              <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px', fontSize: '0.78rem', lineHeight: 1.7, color: 'var(--cp-text-muted)' }}>
-                <strong style={{ color: 'var(--cp-text-main)' }}><i className="fas fa-circle-info" style={{ marginInlineEnd: 6, color: '#3b82f6' }} />كيف تلوّن المنصة بالكامل؟</strong>
-                <div style={{ marginTop: 6 }}>
-                  الألوان هنا تغيّر شكل التطبيق كله لهذه المنصة فقط: الصفحات، البطاقات، النصوص، وصفحة تسجيل الدخول — بدون أي برمجة.
-                  استخدم <strong>«اللون الأساسي/الثانوي»</strong> بالأعلى للأزرار والعناصر المميّزة، وحقول <strong>«المظهر المتقدم»</strong> بالأسفل للخلفيات والكروت والنصوص.
-                  <br />• لكل وضع (فاتح/داكن) خلفية + كرت + نص منفصل — اختر ألواناً متباينة (خلفية داكنة ↔ نص فاتح) لتظل الكتابة واضحة.
-                  <br />• أي حقل تتركه فارغاً يعود للافتراضي المحسوب تلقائياً من اللون الأساسي.
-                </div>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>شعار المنصة (Logo)</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {editLogoUrl && <img src={editLogoUrl} alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--cp-divider)', background: '#fff' }} />}
-                  <input type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)} dir="ltr"
-                    placeholder="ارفع صورة من جهازك أو الصق رابطاً" className="cp-input"
-                    style={{ flex: 1, padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                  <label className="cp-btn cp-btn-secondary" style={{ padding: '9px 14px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <i className={`fas ${uploadingImage === 'logo' ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
-                    <span>رفع من الجهاز</span>
-                    <input type="file" accept="image/*" hidden disabled={uploadingImage === 'logo'}
-                      onChange={(e) => handleImageUpload(e, 'logo', (url) => setEditLogoUrl(url))} />
-                  </label>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                {THEME_TOKEN_DEFS.map(tk => (
-                  <div key={tk.key}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '2px' }}>{tk.label}</label>
-                    {tk.hint && <div style={{ fontSize: '0.68rem', color: 'var(--cp-text-muted)', marginBottom: '6px', lineHeight: 1.4 }}>{tk.hint}</div>}
-                    {tk.type === 'color' ? (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <input type="color" value={editTheme[tk.key] || tk.fallback}
-                          onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
-                          style={{ width: '36px', height: '36px', padding: 0, border: 'none', borderRadius: '6px', cursor: 'pointer' }} />
-                        <input type="text" value={editTheme[tk.key]} dir="ltr" placeholder={tk.fallback}
-                          onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
-                          className="cp-input"
-                          style={{ flex: 1, padding: '8px 10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                      <div style={{ marginBottom: '20px', maxWidth: '400px' }}>
+                        <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px' }}>المادة الدراسية للمنصة (تحدد الثيم والتخصص)</label>
+                        <select value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="cp-input"
+                          style={{ width: '100%', padding: '10px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}>
+                          {SUBJECT_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       </div>
-                    ) : (
-                      <input type="text" value={editTheme[tk.key]} dir="ltr"
-                        placeholder="#0f0f23 أو linear-gradient(135deg, #0f0f23, #1a1a2e)"
-                        onChange={(e) => setEditTheme(prev => ({ ...prev, [tk.key]: e.target.value }))}
-                        className="cp-input"
-                        style={{ width: '100%', padding: '10px', fontSize: '0.8rem', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '-10px 0 20px', lineHeight: 1.5 }}>
-                اترك أي حقل فارغاً لاستخدام الافتراضي المحسوب من اللون الأساسي.
-              </p>
 
-              {/* Stages & grades */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-layer-group" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                المراحل والصفوف الدراسية المتاحة
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                {editStages.map((stage, si) => (
-                  <div key={stage.id} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '12px', opacity: stage.enabled === false ? 0.55 : 1 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', marginBottom: '10px' }}>
-                      <input type="checkbox" checked={stage.enabled !== false}
-                        onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si ? { ...s, enabled: e.target.checked } : s))}
-                        style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16 }} />
-                      <span>{stage.name}</span>
-                    </label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {(stage.grades || []).map((g, gi) => (
-                        <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input type="checkbox" checked={g.enabled !== false} disabled={stage.enabled === false}
-                            onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
-                              ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, enabled: e.target.checked } : gr) }
-                              : s))}
-                            style={{ accentColor: '#10b981', width: 14, height: 14 }} />
-                          <input type="text" value={g.name} disabled={stage.enabled === false}
-                            onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
-                              ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, name: e.target.value } : gr) }
-                              : s))}
-                            className="cp-input"
-                            style={{ flex: 1, padding: '6px 8px', fontSize: '0.78rem', border: '1px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
-                        </div>
-                      ))}
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                        {editStages.map((stage, si) => (
+                          <div key={stage.id} style={{ border: '1px solid var(--cp-divider)', borderRadius: '12px', padding: '14px', background: stage.enabled !== false ? 'rgba(99, 102, 241, 0.02)' : 'transparent', opacity: stage.enabled === false ? 0.55 : 1 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', marginBottom: '12px' }}>
+                              <input type="checkbox" checked={stage.enabled !== false}
+                                onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si ? { ...s, enabled: e.target.checked } : s))}
+                                style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16 }} />
+                              <span>{stage.name}</span>
+                            </label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {(stage.grades || []).map((g, gi) => (
+                                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input type="checkbox" checked={g.enabled !== false} disabled={stage.enabled === false}
+                                    onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
+                                      ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, enabled: e.target.checked } : gr) }
+                                      : s))}
+                                    style={{ accentColor: '#10b981', width: 14, height: 14 }} />
+                                  <input type="text" value={g.name} disabled={stage.enabled === false}
+                                    onChange={(e) => setEditStages(prev => prev.map((s, i) => i === si
+                                      ? { ...s, grades: s.grades.map((gr, j) => j === gi ? { ...gr, name: e.target.value } : gr) }
+                                      : s))}
+                                    className="cp-input"
+                                    style={{ flex: 1, padding: '6px 8px', fontSize: '0.8rem', border: '1px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: FEATURES TOGGLES */}
+                  {manageActiveTab === 'features' && (
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '6px', color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-toggle-on" style={{ marginInlineEnd: 6 }} /> التحكم في الميزات والأقسام المتاحة
+                      </h4>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                        إلغاء تفعيل أي ميزة <strong>يُخفيها تماماً</strong> من المنصة (القائمة الجانبية، الصفحة الرئيسية، والروابط) للطلاب.
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
+                        {FEATURE_DEFS.map(f => {
+                          const isChecked = !!editFeatures[f.key]
+                          return (
+                            <label key={f.key} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              fontSize: '0.84rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              padding: '12px 14px',
+                              border: isChecked ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--cp-divider)',
+                              borderRadius: '12px',
+                              background: isChecked ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                              transition: 'all 0.2s ease'
+                            }}>
+                              <input type="checkbox" checked={isChecked}
+                                onChange={(e) => setEditFeatures(prev => ({ ...prev, [f.key]: e.target.checked }))}
+                                style={{ accentColor: '#10b981', width: 18, height: 18, cursor: 'pointer' }} />
+                              <span style={{ color: isChecked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)' }}>{f.label}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sticky Footer Save Button for Tabs 1-4 */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--cp-divider)' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>
+                      <i className="fas fa-info-circle" style={{ marginInlineEnd: '6px', color: 'var(--primary)' }}></i>
+                      اضغط حفظ لتثبيت كافة تعديلات المنصة فوراً.
+                    </span>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTenantForManage(null)}
+                        className="cp-btn cp-btn-secondary"
+                        style={{ padding: '8px 18px', height: '40px', fontSize: '0.84rem' }}
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingTenant}
+                        className="cp-btn cp-btn-primary"
+                        style={{ padding: '8px 22px', background: 'var(--primary, #7c3aed)', color: '#fff', fontWeight: 'bold', height: '40px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}
+                      >
+                        {savingTenant ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                        <span>{savingTenant ? 'جاري الحفظ...' : 'حفظ التعديلات'}</span>
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </form>
+              )}
 
-              {/* Login landing sections */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 10px' }}>
-                <i className="fas fa-eye" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                أقسام صفحة الهبوط (تسجيل الدخول)
-              </h5>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                {LOGIN_SECTION_DEFS.map(s => (
-                  <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editLoginSections[s.key] ? 'rgba(99, 102, 241, 0.05)' : 'transparent' }}>
-                    <input type="checkbox" checked={!!editLoginSections[s.key]}
-                      onChange={(e) => setEditLoginSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
-                      style={{ accentColor: 'var(--primary, #7c3aed)', width: 16, height: 16, cursor: 'pointer' }} />
-                    <span>{s.label}</span>
-                  </label>
-                ))}
-              </div>
-
-              {/* Feature toggles */}
-              <h5 style={{ fontSize: '0.88rem', fontWeight: 800, margin: '0 0 6px' }}>
-                <i className="fas fa-toggle-on" style={{ marginInlineEnd: 6, color: 'var(--primary)' }} />
-                ميزات المنصة المفعّلة
-              </h5>
-              <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
-                إلغاء تفعيل أي ميزة <strong>يُخفيها تماماً</strong> من المنصة (القائمة، الصفحة الرئيسية، والروابط) — لا يظهر الطالب أنها ممنوعة، بل تختفي كأنها غير موجودة.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
-                {FEATURE_DEFS.map(f => (
-                  <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', padding: '8px 10px', border: '1px solid var(--cp-divider)', borderRadius: '10px', background: editFeatures[f.key] ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
-                    <input type="checkbox" checked={!!editFeatures[f.key]}
-                      onChange={(e) => setEditFeatures(prev => ({ ...prev, [f.key]: e.target.checked }))}
-                      style={{ accentColor: '#10b981', width: 16, height: 16, cursor: 'pointer' }} />
-                    <span>{f.label}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '16px', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اللون الأساسي</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input 
-                      type="color"
-                      value={editPrimaryColor}
-                      onChange={(e) => setEditPrimaryColor(e.target.value)}
-                      style={{ width: '36px', height: '36px', padding: 0, border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                    />
-                    <code className="cp-sa-color-badge">{editPrimaryColor}</code>
+              {/* TAB 5: ADMINS & USERS MANAGEMENT */}
+              {manageActiveTab === 'team' && (
+                <div style={{ padding: '4px 2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--primary, #7c3aed)' }}>
+                        <i className="fas fa-users-gear" style={{ marginInlineEnd: 6 }} /> إدارة صلاحيات المستخدمين والمدراء
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddAdmin(selectedTenantForManage)}
+                        className="cp-btn"
+                        style={{
+                          padding: '7px 14px',
+                          fontSize: '0.82rem',
+                          fontWeight: 'bold',
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#fff',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                        }}
+                      >
+                        <i className="fas fa-user-plus"></i>
+                        <span>+ إضافة مدير جديد</span>
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative', maxWidth: isMobile ? '100%' : '260px', width: '100%' }}>
+                      <input 
+                        type="text"
+                        placeholder="البحث باسم المستخدم أو الهاتف..."
+                        value={searchUserQuery}
+                        onChange={(e) => setSearchUserQuery(e.target.value)}
+                        className="cp-input"
+                        style={{ width: '100%', padding: '9px 12px 9px 34px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', background: 'var(--cp-input-bg)', color: 'var(--cp-input-text)' }}
+                      />
+                      <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '12px' }}></i>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', marginBottom: '6px' }}>اللون الفرعي</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input 
-                      type="color"
-                      value={editSecondaryColor}
-                      onChange={(e) => setEditSecondaryColor(e.target.value)}
-                      style={{ width: '36px', height: '36px', padding: 0, border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                    />
-                    <code className="cp-sa-color-badge">{editSecondaryColor}</code>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', paddingTop: isMobile ? '8px' : '18px' }}>
-                  <button
-                    type="submit"
-                    disabled={savingTenant}
-                    className="cp-btn cp-btn-primary"
-                    style={{ width: isMobile ? '100%' : 'auto', padding: '10px 20px', background: 'var(--primary, #7c3aed)', color: '#fff', fontWeight: 'bold', height: '44px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    {savingTenant ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-                    <span style={{ marginInlineStart: '6px' }}>حفظ التعديلات</span>
-                  </button>
-                </div>
-              </div>
-            </form>
 
-            {/* 2. User Management list */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 'bold', margin: 0, color: 'var(--primary, #7c3aed)' }}>إدارة صلاحيات المستخدمين</h4>
-                <div style={{ position: 'relative', maxWidth: isMobile ? '100%' : '240px', width: '100%' }}>
-                  <input 
-                    type="text"
-                    placeholder="البحث باسم المستخدم أو رقم الهاتف..."
-                    value={searchUserQuery}
-                    onChange={(e) => setSearchUserQuery(e.target.value)}
-                    className="cp-input"
-                    style={{ width: '100%', padding: '8px 12px 8px 30px', fontSize: '0.82rem', border: '1.5px solid var(--cp-input-border)', background: 'var(--cp-input-bg)', color: 'var(--cp-input-text)' }}
-                  />
-                  <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '12px' }}></i>
-                </div>
-              </div>
-
-              {filteredUsers.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', border: '1px dashed var(--cp-divider)', borderRadius: '16px', color: 'var(--cp-text-muted)' }}>
-                  <i className="fas fa-users-slash" style={{ fontSize: '24px', marginBottom: '8px', display: 'block', opacity: 0.6 }}></i>
-                  <span>لا يوجد مستخدمين مسجلين يطابقون البحث.</span>
-                </div>
-              ) : (
-                <div style={{ border: '1px solid var(--cp-divider)', borderRadius: '14px', overflow: 'hidden', background: 'var(--cp-card-bg)' }}>
-                  <div style={{ maxHeight: '240px', overflowY: 'auto' }} className="cp-sa-table-wrapper">
-                    <table style={{ width: '100%', fontSize: '0.88rem', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: 'rgba(99, 102, 241, 0.03)', borderBottom: '1px solid var(--cp-divider)' }}>
-                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>الاسم</th>
-                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>رقم الهاتف</th>
-                          <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>الصلاحية الحالية</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredUsers.map(u => (
-                          <tr key={u.id} style={{ borderBottom: '1px solid var(--cp-divider)' }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 600 }}>{u.name}</td>
-                            <td style={{ padding: '10px 14px', color: 'var(--cp-text-muted)', direction: 'ltr', textAlign: 'right' }}>{u.phone}</td>
-                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                              <select
-                                value={u.role}
-                                onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
-                                disabled={userRoleUpdating === u.id}
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: '8px',
-                                  border: '1.5px solid var(--cp-input-border)',
-                                  background: 'var(--cp-input-bg)',
-                                  color: 'var(--cp-input-text)',
-                                  fontSize: '0.8rem',
-                                  fontWeight: '500',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <option value="student">طالب</option>
-                                <option value="assistant">مساعد</option>
-                                <option value="admin">مشرف/معلم</option>
-                                <option value="super_admin">سوبر أدمن</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {filteredUsers.length === 0 ? (
+                    <div style={{ padding: '32px', textAlign: 'center', border: '1px dashed var(--cp-divider)', borderRadius: '16px', color: 'var(--cp-text-muted)' }}>
+                      <i className="fas fa-users-slash" style={{ fontSize: '28px', marginBottom: '10px', display: 'block', opacity: 0.6 }}></i>
+                      <span>لا يوجد مستخدمين مسجلين يطابقون البحث في هذه المنصة.</span>
+                    </div>
+                  ) : (
+                    <div style={{ border: '1px solid var(--cp-divider)', borderRadius: '14px', overflow: 'hidden', background: 'var(--cp-card-bg)' }}>
+                      <div style={{ maxHeight: '360px', overflowY: 'auto' }} className="cp-sa-table-wrapper">
+                        <table style={{ width: '100%', fontSize: '0.88rem', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(99, 102, 241, 0.04)', borderBottom: '1px solid var(--cp-divider)' }}>
+                              <th style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>الاسم</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>رقم الهاتف</th>
+                              <th style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>الصلاحية الحالية</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredUsers.map(u => (
+                              <tr key={u.id} style={{ borderBottom: '1px solid var(--cp-divider)' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 600 }}>{u.name}</td>
+                                <td style={{ padding: '12px 14px', color: 'var(--cp-text-muted)', direction: 'ltr', textAlign: 'right' }}>{u.phone}</td>
+                                <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                                    disabled={userRoleUpdating === u.id}
+                                    style={{
+                                      padding: '6px 14px',
+                                      borderRadius: '8px',
+                                      border: '1.5px solid var(--cp-input-border)',
+                                      background: 'var(--cp-input-bg)',
+                                      color: 'var(--cp-input-text)',
+                                      fontSize: '0.82rem',
+                                      fontWeight: '600',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <option value="student">طالب</option>
+                                    <option value="assistant">مساعد</option>
+                                    <option value="admin">مشرف/معلم</option>
+                                    <option value="super_admin">سوبر أدمن</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Add New Admin to Tenant Modal */}
+      {showAddAdminModal && addAdminTenant && createPortal(
+        <div className="cp-portal-overlay">
+          <div className="cp-portal-modal" style={{ maxWidth: '480px' }}>
+            <button 
+              onClick={() => {
+                setShowAddAdminModal(false)
+                setAddAdminName('')
+                setAddAdminPhone('')
+                setAddAdminPassword('')
+                setAddAdminTenant(null)
+              }}
+              style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: 'var(--cp-text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.1rem'
+              }}>
+                <i className="fas fa-user-shield"></i>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>إضافة مدير جديد للمنصة</h3>
+                <span style={{ fontSize: '0.82rem', color: 'var(--primary, #7c3aed)', fontWeight: 600 }}>{addAdminTenant.name} ({addAdminTenant.slug})</span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: 'var(--cp-text-muted)', lineHeight: '1.5', margin: '12px 0 20px' }}>
+              سيتم إنشاء حساب مدير بصلاحية كاملة (Admin) على منصة <strong>({addAdminTenant.name})</strong> مباشرة وبدون الحاجة لترقية حساب طالب سابق.
+            </p>
+
+            <form onSubmit={handleAddAdminSubmit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>اسم المدير *</label>
+                <input 
+                  type="text"
+                  required
+                  value={addAdminName}
+                  onChange={(e) => setAddAdminName(e.target.value)}
+                  placeholder="مثال: أ. محمد أحمد"
+                  className="cp-input"
+                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)' }}
+                  disabled={addingAdmin}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>رقم الهاتف (لتسجيل الدخول) *</label>
+                <input 
+                  type="tel"
+                  required
+                  value={addAdminPhone}
+                  onChange={(e) => setAddAdminPhone(e.target.value.replace(/\s+/g, ''))}
+                  placeholder="01012345678"
+                  className="cp-input"
+                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr', textAlign: 'right' }}
+                  disabled={addingAdmin}
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px' }}>كلمة المرور *</label>
+                <input 
+                  type="text"
+                  required
+                  minLength={6}
+                  value={addAdminPassword}
+                  onChange={(e) => setAddAdminPassword(e.target.value)}
+                  placeholder="6 أحرف أو أرقام على الأقل"
+                  className="cp-input"
+                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--cp-input-border)', color: 'var(--cp-input-text)', background: 'var(--cp-input-bg)', direction: 'ltr' }}
+                  disabled={addingAdmin}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={addingAdmin}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    height: '46px',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                  }}
+                >
+                  {addingAdmin ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-user-plus"></i>}
+                  <span>{addingAdmin ? 'جاري إنشاء الحساب...' : 'إنشاء حساب المدير الآن'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddAdminModal(false)
+                    setAddAdminName('')
+                    setAddAdminPhone('')
+                    setAddAdminPassword('')
+                    setAddAdminTenant(null)
+                  }}
+                  disabled={addingAdmin}
+                  className="cp-btn cp-btn-secondary"
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    height: '46px'
+                  }}
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         </div>,
         document.body

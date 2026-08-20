@@ -136,7 +136,7 @@ export default function Homework() {
   const filteredLevels = useMemo(() => Object.keys(levelsMeta), [levelsMeta])
 
   const [grade, setGrade] = useState(() => {
-    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.grade) {
+    if (user && user.role !== 'admin' && user.role !== 'assistant' && user.role !== 'super_admin' && user.grade) {
       return dbToUiGrade(user.grade)
     }
     return null

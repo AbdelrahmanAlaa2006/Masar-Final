@@ -80,6 +80,25 @@ export const PLATFORMS = [
     logo: '/images/Logo Eldad Arabic Without BG.png',
     url: 'https://mrkhalidelsharif.com/login',
   },
+  {
+    id: 'elsharawy-primary',
+    status: 'live',
+    name: { ar: 'الشعراوي (صانع الأبطال)', en: 'Elshaarawy Platform' },
+    owner: { ar: 'أ. الشعراوي', en: 'Mr. Elshaarawy' },
+    subject: {
+      ar: 'مختلف مواد المرحلة الابتدائية والتأسيس',
+      en: 'Primary Stage Multi-Subject & Foundation',
+    },
+    blurb: {
+      ar: 'منصة تعليمية متكاملة لتدريس وتأسيس مختلف مواد المرحلة الابتدائية وصناعة الأبطال بأسلوب تفاعلي مبسط.',
+      en: 'A comprehensive primary stage platform teaching multiple subjects with an engaging, interactive approach.',
+    },
+    accent: '#a86e28',
+    image: '/images/ELshaarawy Teacher Image.png',
+    imagePosition: 'center 15%',
+    logo: '/images/Elshaarawy Logo.png',
+    url: '/login?tenant=elsharawy',
+  },
 ]
 
 // What GitFekra delivers with every platform — rendered as numbered rows.

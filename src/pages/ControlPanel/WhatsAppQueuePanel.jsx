@@ -8,7 +8,8 @@ import {
   sendGatewayMessage,
   buildWaMeLink,
   markNotificationManuallySent,
-  clearPendingQueue
+  clearPendingQueue,
+  deleteNotification
 } from '@backend/parentNotificationsApi'
 import { isGatewayConfigured, getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp, pairWhatsApp } from '@backend/whatsappGatewayApi'
 import { useTenant } from '../../contexts/TenantContext'
@@ -35,6 +36,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [clearingPending, setClearingPending] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [processingProgress, setProcessingProgress] = useState('')
 
   // Settings states — only two modes now:
@@ -357,6 +359,31 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
     }
   }
 
+  const handleDeleteRow = async (id, studentName) => {
+    if (!window.confirm(`هل أنت متأكد من حذف هذا الإشعار الخاص بالطالب (${studentName || 'المحدد'}) من قائمة الانتظار؟`)) {
+      return
+    }
+
+    setDeletingId(id)
+    try {
+      await deleteNotification(id)
+      flash('تم حذف الإشعار بنجاح.', 'success')
+      setNotifications(prev => prev.filter(item => item.id !== id))
+      setTotalNotifications(prev => Math.max(0, prev - 1))
+      setSummary(prev => ({
+        ...prev,
+        pending: statusFilter === 'pending' ? Math.max(0, prev.pending - 1) : prev.pending,
+        failed: statusFilter === 'failed' ? Math.max(0, prev.failed - 1) : prev.failed,
+        total: Math.max(0, prev.total - 1)
+      }))
+    } catch (err) {
+      console.error(err)
+      flash('فشل حذف الإشعار: ' + err.message, 'error')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const totalPages = Math.ceil(totalNotifications / limit) || 1
 
   return (
@@ -534,7 +561,7 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                         <th style={{ padding: '14px 16px', fontWeight: 'bold' }}>هاتف ولي الأمر</th>
                         <th style={{ padding: '14px 16px', fontWeight: 'bold' }}>محتوى الرسالة</th>
                         <th style={{ padding: '14px 16px', fontWeight: 'bold', width: '100px', textAlign: 'center' }}>الحالة</th>
-                        <th style={{ padding: '14px 16px', fontWeight: 'bold', width: '90px', textAlign: 'center' }}>إجراء</th>
+                        <th style={{ padding: '14px 16px', fontWeight: 'bold', width: '110px', textAlign: 'center' }}>إجراء</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -562,24 +589,45 @@ export default function WhatsAppQueuePanel({ onBack, flash }) {
                             )}
                           </td>
                           <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                            {(item.status === 'pending' || item.status === 'failed') && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                              {(item.status === 'pending' || item.status === 'failed') && (
+                                <button
+                                  onClick={() => handleManualSendRow(item)}
+                                  style={{ background: 'rgba(37, 211, 102, 0.12)', border: 'none', color: '#25d366', cursor: 'pointer', fontSize: '1rem', borderRadius: 8, padding: '6px 10px' }}
+                                  title="فتح واتساب وإرسال الرسالة يدوياً"
+                                >
+                                  <i className="fab fa-whatsapp" />
+                                </button>
+                              )}
+                              {item.status === 'failed' && (gatewayType === 'whatsapp_cloud' || gatewayType === 'wapilot') && (
+                                <button
+                                  onClick={() => handleRetryRow(item.id)}
+                                  style={{ background: 'transparent', border: 'none', color: '#8c72db', cursor: 'pointer', fontSize: '1rem', padding: '6px 8px' }}
+                                  title="إعادة جدولة الإرسال التلقائي"
+                                >
+                                  <i className="fas fa-arrow-rotate-left" />
+                                </button>
+                              )}
                               <button
-                                onClick={() => handleManualSendRow(item)}
-                                style={{ background: 'rgba(37, 211, 102, 0.12)', border: 'none', color: '#25d366', cursor: 'pointer', fontSize: '1rem', borderRadius: 8, padding: '6px 10px' }}
-                                title="فتح واتساب وإرسال الرسالة يدوياً"
+                                onClick={() => handleDeleteRow(item.id, item.student_name)}
+                                disabled={deletingId === item.id}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  fontSize: '0.85rem',
+                                  borderRadius: 8,
+                                  padding: '6px 9px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title="حذف هذا الإشعار من قائمة الانتظار"
                               >
-                                <i className="fab fa-whatsapp" />
+                                {deletingId === item.id ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-can" />}
                               </button>
-                            )}
-                            {item.status === 'failed' && (gatewayType === 'whatsapp_cloud' || gatewayType === 'wapilot') && (
-                              <button
-                                onClick={() => handleRetryRow(item.id)}
-                                style={{ background: 'transparent', border: 'none', color: '#8c72db', cursor: 'pointer', fontSize: '1rem' }}
-                                title="إعادة جدولة الإرسال التلقائي"
-                              >
-                                <i className="fas fa-arrow-rotate-left" />
-                              </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}

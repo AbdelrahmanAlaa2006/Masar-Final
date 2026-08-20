@@ -325,34 +325,47 @@ export async function getStudentGradesSummary(studentId) {
   })
 }
 
-// Get unique list of past evaluation titles and types for a grade
+// Get unique list of past evaluation titles and types for a grade (sorted newest first)
 export async function listUniqueEvaluations(grade) {
   const { data, error } = await supabase
     .from('grades')
     .select(`
       type,
       title,
+      created_at,
       profiles!student_id (
         grade
       )
     `)
+    .order('created_at', { ascending: false })
 
   if (error) throw error
 
-  const filtered = (data || [])
-    .filter(r => r.profiles?.grade === grade)
-    .map(r => ({ type: r.type, title: r.title }))
+  const filtered = (data || []).filter(r => r.profiles?.grade === grade)
 
-  const seen = new Set()
-  const unique = []
-  filtered.forEach(item => {
-    const key = `${item.type}:${item.title}`
-    if (!seen.has(key)) {
-      seen.add(key)
-      unique.push(item)
+  const map = new Map()
+  filtered.forEach(r => {
+    const rawTitle = (r.title || '').trim()
+    if (!rawTitle) return
+    const key = `${r.type}:${rawTitle}`
+    if (!map.has(key)) {
+      map.set(key, {
+        type: r.type,
+        title: rawTitle,
+        created_at: r.created_at,
+        count: 1
+      })
+    } else {
+      const existing = map.get(key)
+      existing.count += 1
+      if (new Date(r.created_at) > new Date(existing.created_at)) {
+        existing.created_at = r.created_at
+      }
     }
   })
 
+  // Sort strictly by latest created_at descending (newest evaluations at the top)
+  const unique = Array.from(map.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   return unique
 }
 

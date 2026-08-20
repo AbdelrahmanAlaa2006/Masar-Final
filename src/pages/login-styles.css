@@ -109,23 +109,25 @@ body:not(.dark) .aa-nav {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 24px;
-  height: 64px;
+  padding: 8px 24px;
+  min-height: 70px;
+  height: auto;
 }
 
 .aa-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
 .aa-brand-logo {
-  height: 36px;
-  max-height: 36px;
+  height: 52px;
+  max-height: 56px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
 }
 
 .aa-brand-mark {

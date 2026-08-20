@@ -8,10 +8,12 @@ import {
 import { deletePayment, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTenant } from '../../contexts/TenantContext'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import DatePicker from '../../components/DatePicker'
 import MonthPicker from '../../components/MonthPicker'
 import BookletsPanel from './BookletsPanel'
+import { printThermalPaymentReceipt } from '../../utils/paymentReceiptPrint'
 import { GRADE_LABEL } from './shared'
 
 const todayIso = () => new Date().toISOString().split('T')[0]
@@ -48,6 +50,7 @@ const cardStyle = { background: 'var(--cp-card-bg)', border: '1px solid var(--cp
 
 export default function FinancePanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
+  const { tenant } = useTenant()
 
   const [activeTab, setActiveTab] = useState('ledger') // ledger | categories | reports | debts
   const [cashBalance, setCashBalance] = useState(null)
@@ -783,7 +786,7 @@ export default function FinancePanel({ onBack, flash }) {
                       <th style={{ padding: '13px', fontWeight: 'bold', color: '#10b981' }}>وارد</th>
                       <th style={{ padding: '13px', fontWeight: 'bold', color: '#ef4444' }}>منصرف</th>
                       <th style={{ padding: '13px', fontWeight: 'bold' }}>الرصيد</th>
-                      <th style={{ padding: '13px 16px', fontWeight: 'bold', width: '110px' }}></th>
+                      <th style={{ padding: '13px 16px', fontWeight: 'bold', minWidth: '140px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -799,7 +802,47 @@ export default function FinancePanel({ onBack, flash }) {
                         <td style={{ padding: '11px', color: '#ef4444', fontWeight: 'bold' }}>{e.direction === 'out' ? fmtMoney(e.amount) : ''}</td>
                         <td style={{ padding: '11px', fontWeight: 800 }}>{fmtMoney(e.running)}</td>
                         <td style={{ padding: '11px 16px' }}>
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {e.direction === 'in' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  printThermalPaymentReceipt({
+                                    payment: {
+                                      id: e.id,
+                                      amount: e.amount,
+                                      payment_method: e.payment_method || (e.source === 'student_ledger' ? 'دفع نقدي' : 'إيراد نقدي'),
+                                      package_name: e.description,
+                                      description: e.description,
+                                      billing_period: e.description,
+                                      transaction_date: e.transaction_date,
+                                      created_at: e.created_at || e.transaction_date,
+                                      profiles: {
+                                        name: e.student_name || 'طالب'
+                                      }
+                                    },
+                                    tenant,
+                                    adminName: currentUser?.name
+                                  })
+                                }}
+                                className="cp-btn"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.76rem',
+                                  background: 'rgba(16, 185, 129, 0.1)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  cursor: 'pointer'
+                                }}
+                                title="طباعة إيصال دفع حراري لهذه العملية"
+                              >
+                                <i className="fas fa-receipt"></i>
+                                <span>إيصال</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 if (e.source === 'finance_transactions') {

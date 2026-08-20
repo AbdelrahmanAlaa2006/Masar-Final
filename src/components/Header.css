@@ -208,14 +208,17 @@ body.dark .mh::before {
   box-shadow: none !important;
   border-radius: 0;
   overflow: visible;
-  width: 52px;
+  width: auto;
+  max-width: 95px;
   height: 52px;
 }
 .mh__mark--bare::before,
 .mh__mark--bare::after { display: none !important; }
 .mh__mark--bare .mh__mark-img {
-  width: 100%;
+  width: auto;
+  max-width: 95px;
   height: 100%;
+  max-height: 52px;
   object-fit: contain;
 }
 .mh__brand:hover .mh__mark--bare { transform: none; box-shadow: none !important; }

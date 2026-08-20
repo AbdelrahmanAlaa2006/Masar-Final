@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { listPayments, resolvePayment } from '@backend/paymentsApi'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTenant } from '../../contexts/TenantContext'
 import { notify } from '../../utils/notify'
 import { invalidate as invalidateCache } from '../../utils/cache'
+import { printThermalPaymentReceipt } from '../../utils/paymentReceiptPrint'
 import { GRADE_LABEL } from './shared'
 
 const fmtDate = (d) => {
@@ -16,6 +18,7 @@ const fmtDate = (d) => {
 
 export default function PaymentsPanel() {
   const { user } = useAuth()
+  const { tenant } = useTenant()
   const adminId = user?.id || null
 
   const [payments, setPayments] = useState([])
@@ -326,6 +329,38 @@ export default function PaymentsPanel() {
                           </>
                         ) : (
                           <span style={{ fontStyle: 'italic' }}>لا توجد ملاحظات إضافية</span>
+                        )}
+                        {p.status === 'approved' && (
+                          <div style={{ marginTop: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                printThermalPaymentReceipt({
+                                  payment: p,
+                                  tenant,
+                                  adminName: user?.name
+                                })
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: 8,
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                background: 'rgba(16, 185, 129, 0.08)',
+                                color: '#10b981',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontFamily: 'Tajawal'
+                              }}
+                              title="طباعة إيصال دفع حراري"
+                            >
+                              <i className="fas fa-receipt"></i>
+                              <span>طباعة إيصال</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}

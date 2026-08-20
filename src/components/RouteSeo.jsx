@@ -58,6 +58,7 @@ export default function RouteSeo() {
     // Brand overrides normalize the power tenant's visible slug.
     const isPower = tenant.slug === 'power-platform'
     const isEldad = tenant.slug === 'eldad'
+    const isElsharawy = tenant.slug === 'elsharawy' || tenant.slug === 'elshaarawy'
     const host = window.location.hostname.replace(/^www\./, '')
 
     // 1. Robots: public pages indexable, app pages not.
@@ -120,6 +121,27 @@ export default function RouteSeo() {
               title: 'فريق التطوير والهندسة البرمجية — منصة الضاد',
               description:
                 'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة الضاد (Abdelrahman Alaa & Eyad Elalkamy) والمعمارية المستخدمة في إدارة المنظومة التعليمية.'
+            }
+          }
+        : isElsharawy
+        ? {
+            '/': {
+              description:
+                'منصة الشعراوي صانع الأبطال — منصة تعليمية متكاملة لتدريس وتأسيس مختلف مواد المرحلة الابتدائية لجميع الصفوف الابتدائية بشرح تفاعلي وامتحانات ومتابعة مستمرة.'
+            },
+            '/login': {
+              description:
+                'تسجيل الدخول إلى منصة الشعراوي (صانع الأبطال) — تدريس مختلف مواد المرحلة الابتدائية. تابع محاضراتك وواجباتك وامتحاناتك.'
+            },
+            '/register': {
+              title: 'إنشاء حساب — منصة الشعراوي | صانع الأبطال',
+              description:
+                'أنشئ حسابك في منصة الشعراوي صانع الأبطال وابدأ رحلة التفوق في مختلف مواد المرحلة الابتدائية.'
+            },
+            '/credits': {
+              title: 'فريق التطوير والهندسة البرمجية — منصة الشعراوي',
+              description:
+                'تعرّف على فريق الهندسة البرمجية والأمن السيبراني لمنصة الشعراوي (Abdelrahman Alaa & Eyad Elalkamy).'
             }
           }
         : {

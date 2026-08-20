@@ -17,7 +17,9 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const isDifferentGrade = currentGrade && student && (student.grade !== currentGrade)
   // ONLINE students are not part of the center system — no barcode attendance for them
   const isOnlineStudent = student?.enrollment_type === 'ONLINE'
-  const hasWarning = isDifferentGroup || isDifferentGrade || isOnlineStudent
+  const isLate = student?.session_status === 'late'
+  const hasPriorLates = typeof student?.late_count === 'number' && student.late_count > 0
+  const hasWarning = isDifferentGroup || isDifferentGrade || isOnlineStudent || isLate
   const isBlocked = isDifferentGrade || isOnlineStudent
 
   // Attendance figures — newer RPC returns counts; older one only a percentage
@@ -232,27 +234,95 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             width: '64px',
             height: '64px',
             borderRadius: '50%',
-            background: hasWarning
-              ? 'linear-gradient(135deg, #fbbf24, #d97706)'
-              : 'linear-gradient(135deg, var(--secondary, #38bdf8), var(--primary, #8b5cf6))',
+            background: isLate
+              ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+              : hasWarning
+                ? 'linear-gradient(135deg, #fbbf24, #d97706)'
+                : 'linear-gradient(135deg, var(--secondary, #38bdf8), var(--primary, #8b5cf6))',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '1.8rem',
             fontWeight: 'bold',
-            margin: '0 auto 10px'
+            margin: '0 auto 10px',
+            boxShadow: isLate ? '0 0 20px rgba(245, 158, 11, 0.4)' : 'none'
           }}>
-            {student.name.charAt(0)}
+            {isLate ? <i className="fas fa-clock" style={{ fontSize: '1.5rem' }} /> : student.name.charAt(0)}
           </div>
           <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 4px', wordBreak: 'break-word' }}>{student.name}</h3>
-          <p style={{ fontSize: '0.9rem', color: isDark ? '#94a3b8' : '#64748b', margin: 0 }}>
-            {getGradeLabel(student.grade)} | {student.group_name || 'بدون مجموعة'}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+            <span style={{ fontSize: '0.88rem', color: isDark ? '#94a3b8' : '#64748b' }}>
+              {getGradeLabel(student.grade)} | {student.group_name || 'بدون مجموعة'}
+            </span>
+            {isLate && (
+              <span style={{ background: 'rgba(245, 158, 11, 0.18)', border: '1px solid rgba(245, 158, 11, 0.35)', color: '#f59e0b', padding: '2px 10px', borderRadius: '99px', fontSize: '0.78rem', fontWeight: 800 }}>
+                ⏳ تسجيل متأخر
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Scrollable details (only this region scrolls) ── */}
         <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, padding: '18px 30px' }}>
+
+          {/* Late status for current session (Topmost Priority) */}
+          {isLate && (
+            <div style={{
+              background: isDark ? 'rgba(245, 158, 11, 0.18)' : 'rgba(254, 243, 199, 0.95)',
+              border: '1.5px solid #f59e0b',
+              color: isDark ? '#fbbf24' : '#b45309',
+              padding: '14px 16px',
+              borderRadius: '16px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 14px rgba(245, 158, 11, 0.15)'
+            }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#f59e0b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+                <i className="fas fa-clock-rotate-left"></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 2 }}>
+                  ⏳ حالة التحضير: تم تسجيل الطالب (متأخر) عن الحصة
+                </div>
+                <div style={{ fontSize: '0.84rem', opacity: 0.95, lineHeight: 1.4 }}>
+                  {hasPriorLates
+                    ? `تنبيه: سجل الطالب يتضمن (${student.late_count}) مرات تأخير سابقة خلال الفصل الدراسي.`
+                    : 'تم إثبات الحضور مع تسجيل حالة التأخير في كشف الحصة وإشعار ولي الأمر.'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Historical Late Warning Banner if not currently marking late but has repeated past lates */}
+          {!isLate && typeof student.late_count === 'number' && student.late_count >= 2 && (
+            <div style={{
+              background: isDark ? 'rgba(245, 158, 11, 0.14)' : 'rgba(254, 243, 199, 0.85)',
+              border: '1.5px solid #f59e0b',
+              color: isDark ? '#fbbf24' : '#b45309',
+              padding: '12px 16px',
+              borderRadius: '14px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)'
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#f59e0b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>
+                <i className="fas fa-triangle-exclamation"></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: 2 }}>
+                  ⚠️ تنبيه تكرار التأخير: تكرر تأخير الطالب ({student.late_count} مرات سابقة)!
+                </div>
+                <div style={{ fontSize: '0.82rem', opacity: 0.95, lineHeight: 1.4 }}>
+                  هذا الطالب يتأخر بشكل متكرر عن موعد بدء الحصة. يُرجى التنبيه والتشديد عليه.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Warnings Alerts */}
           {isOnlineStudent && (
@@ -330,6 +400,34 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
               ? 'سدّد اشتراك هذا الشهر ✅'
               : `مطلوب الدفع${amountDue > 0 ? ` — ${amountDue} ج.م` : ''} ⚠️`}
           </div>
+
+          {/* Missing Required Exams / Quizzes Alert */}
+          {student.missing_exams && student.missing_exams.length > 0 && (
+            <div style={{
+              background: isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.12)',
+              border: '1.5px solid #ef4444',
+              color: isDark ? '#fca5a5' : '#b91c1c',
+              padding: '12px 16px',
+              borderRadius: '14px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.12)'
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>
+                <i className="fas fa-file-circle-xmark"></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: 2 }}>
+                  ⚠️ تنبيه: لم يؤدِ الامتحان / الكويز المطلوب!
+                </div>
+                <div style={{ fontSize: '0.84rem', opacity: 0.95, lineHeight: 1.4 }}>
+                  الامتحانات المتأخرة: <strong>{student.missing_exams.map(e => e.title).join('، ')}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Warnings & Flags alerts */}
           {(student.warnings.length > 0 || student.flags?.length > 0) && (
@@ -449,10 +547,16 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
                   }} />
                 </div>
                 {hasAttendanceCounts && student.total_sessions > 0 && (
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '0.78rem', flexWrap: 'wrap' }}>
-                    <span style={{ color: '#10b981' }}>حضور: {student.present_count}</span>
-                    <span style={{ color: '#f59e0b' }}>تأخير: {student.late_count}</span>
-                    <span style={{ color: '#ef4444' }}>غياب: {student.absent_count}</span>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                    <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', padding: '4px 10px', borderRadius: '8px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <i className="fas fa-check" /> حضور: {student.present_count}
+                    </span>
+                    <span style={{ background: student.late_count > 0 ? 'rgba(245, 158, 11, 0.18)' : 'rgba(127, 127, 127, 0.08)', color: '#f59e0b', border: student.late_count >= 2 ? '1px solid rgba(245, 158, 11, 0.4)' : 'none', padding: '4px 10px', borderRadius: '8px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <i className="fas fa-clock" /> تأخير: {student.late_count} {student.late_count >= 2 ? '⚠️' : ''}
+                    </span>
+                    <span style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '4px 10px', borderRadius: '8px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <i className="fas fa-xmark" /> غياب: {student.absent_count}
+                    </span>
                   </div>
                 )}
               </div>
@@ -522,13 +626,28 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
           const blockedLabel = isOnlineStudent
             ? 'غير مسموح بالتحضير (طالب أونلاين)'
             : 'غير مسموح بالتحضير (صف دراسي مختلف)'
+          
+          const buttonBg = isBlocked
+            ? undefined
+            : isLate
+              ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+              : undefined
+
+          const buttonText = submitting
+            ? 'جاري الحفظ...'
+            : isBlocked
+              ? blockedLabel
+              : isLate
+                ? 'تأكيد تسجيل تأخير الطالب (Enter)'
+                : 'تسجيل حضور الطالب الآن (Enter)'
+
           return (
             <div style={{ flexShrink: 0, padding: '12px 16px 16px', borderTop: `1px solid ${dividerColor}` }}>
               <button
                 ref={confirmBtnRef}
                 onClick={confirm}
                 disabled={isBlocked || submitting}
-                className={`cp-btn ${isBlocked ? 'cp-btn-secondary' : 'cp-btn-success'}`}
+                className={`cp-btn ${isBlocked ? 'cp-btn-secondary' : isLate ? 'cp-btn-warning' : 'cp-btn-success'}`}
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -541,11 +660,13 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
                   gap: '8px',
                   cursor: (isBlocked || submitting) ? 'not-allowed' : 'pointer',
                   border: 'none',
-                  opacity: (isBlocked || submitting) ? 0.55 : 1
+                  opacity: (isBlocked || submitting) ? 0.55 : 1,
+                  background: buttonBg,
+                  color: '#fff'
                 }}
               >
-                <i className={submitting ? 'fas fa-spinner fa-spin' : (isBlocked ? 'fas fa-ban' : 'fas fa-calendar-check')} />
-                <span>{submitting ? 'جاري الحفظ...' : (isBlocked ? blockedLabel : 'تسجيل حضور الطالب الآن (Enter)')}</span>
+                <i className={submitting ? 'fas fa-spinner fa-spin' : (isBlocked ? 'fas fa-ban' : isLate ? 'fas fa-clock-rotate-left' : 'fas fa-calendar-check')} />
+                <span>{buttonText}</span>
               </button>
             </div>
           )

@@ -447,7 +447,7 @@ export default function ControlPanelIndex() {
   if (user?.role === 'super_admin') {
     return (
       <main className="cp-page">
-        <div className="cp-container">
+        <div className="cp-container" style={{ maxWidth: '1560px', width: '100%' }}>
           <Suspense fallback={<PanelLoader />}>
             <SuperAdminPanel onBack={() => navigate('/')} flash={flash} />
           </Suspense>

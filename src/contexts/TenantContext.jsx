@@ -33,12 +33,15 @@ export function TenantProvider({ children }) {
 
         if (isLocalhost) {
           try {
+            localStorage.removeItem('masar-cache:available-tenants')
             localStorage.removeItem('masar-cache:tenant-config:power-platform')
             localStorage.removeItem('masar-cache:tenant-config:cyber')
             localStorage.removeItem('masar-cache:tenant-config:sherif-programming')
             localStorage.removeItem('masar-cache:tenant-config:mohamed-abdella')
             localStorage.removeItem('masar-cache:tenant-config:math')
             localStorage.removeItem('masar-cache:tenant-config:belqadar-math')
+            localStorage.removeItem('masar-cache:tenant-config:elsharawy')
+            localStorage.removeItem('masar-cache:tenant-config:elshaarawy')
           } catch {}
         }
 
@@ -64,7 +67,7 @@ export function TenantProvider({ children }) {
         // production this list is never rendered (the switcher is gated on
         // isLocalhost below), so skip the query for every cold visitor.
         if (isLocalhost) {
-          const allTenants = await cached('available-tenants', 30 * 60 * 1000, async () => {
+          const allTenants = await cached('available-tenants', 0, async () => {
             const { data } = await supabase
               .from('tenants')
               .select('slug, name')
@@ -89,6 +92,9 @@ export function TenantProvider({ children }) {
         if (candidate === 'math' || candidate === 'belqadar' || candidate === 'belqadar-math' || candidate === 'mahmoud-belqadar' || candidate === 'mrmahmoudelbeliqdar.com' || candidate.includes('mrmahmoudelbeliqdar')) {
           querySlug = 'sherif-math'
         }
+        if (candidate === 'elshaarawy') {
+          querySlug = 'elsharawy'
+        }
 
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
 
@@ -102,6 +108,150 @@ export function TenantProvider({ children }) {
               .maybeSingle()
             if (!error && data) {
               resolvedData = data
+            }
+          }
+
+          if (!resolvedData && (candidate === 'elsharawy' || candidate === 'elshaarawy')) {
+            resolvedData = {
+              id: 'elsharawy-primary-multi',
+              slug: 'elsharawy',
+              name: 'الشعراوي صانع الأبطال',
+              primary_color: '#a86e28',
+              secondary_color: '#175e54',
+              logo_url: '/images/Elshaarawy Logo.png',
+              config: {
+                subject: 'primary-multi',
+                subjects: [
+                  'اللغة العربية',
+                  'الرياضيات',
+                  'العلوم',
+                  'الدراسات الاجتماعية',
+                  'اللغة الإنجليزية'
+                ],
+                theme: {
+                  bg_light: '#f5f1e9',
+                  card_light: '#fdfbf5',
+                  text_light: '#191714',
+                  bg_dark: '#14110e',
+                  card_dark: '#1e1a15',
+                  text_dark: '#ece7dd',
+                  border_accent: 'rgba(168,110,40,0.22)'
+                },
+                teacher: {
+                  name: 'الشعراوي',
+                  role: 'صانع الأبطال — معلم مختلف مواد المرحلة الابتدائية والتأسيس',
+                  bio: 'معلم متخصص في تدريس وتأسيس مختلف مواد المرحلة الابتدائية (اللغة العربية، الرياضيات، العلوم، الدراسات الاجتماعية، واللغة الإنجليزية) بأسلوب شيق ومبتكر يصنع الأبطال ويبني أساساً تعليمياً متميزاً لكل طالب.',
+                  quote: '«صناعة الأبطال تبدأ من التأسيس القوي، الفهم الممتع، وحب المعرفة من الصغر.»',
+                  target_stage: 'المرحلة الابتدائية (تأسيس ومواد متعددة)',
+                  target_stage_label: 'المرحلة والتخصص',
+                  image_base: '/images/ELshaarawy Teacher Image.png',
+                  image_hover: '/images/ELshaarawy Teacher Image.png',
+                  experience: '+10',
+                  students_count: '+2,500',
+                  satisfaction: '99%',
+                  learning_system: 'حضوري وأونلاين تفاعلي'
+                },
+                branding: {
+                  brand_short: 'الشعراوي صانع الأبطال',
+                  hero_title_a: 'منصة الشعراوي',
+                  hero_title_b: 'صانع الأبطال — المرحلة الابتدائية',
+                  hero_sub: 'المنصة التعليمية المتكاملة لتدريس وتأسيس مختلف مواد المرحلة الابتدائية — شرح تفاعلي مبسط، تدريبات مستمرة، ومتابعة دقيقة لصناعة جيل من الأبطال.',
+                  description: 'منصة أستاذ الشعراوي صانع الأبطال لتدريس وتأسيس مختلف مواد المرحلة الابتدائية لجميع الصفوف الابتدائية.'
+                },
+                features: {
+                  videos: true,
+                  exams: true,
+                  homework: true,
+                  payments: true,
+                  reports: true,
+                  chat: true,
+                  notifications: true,
+                  attendance: false,
+                  grades: false,
+                  qr_attendance: false,
+                  branches: true,
+                  groups: true,
+                  parent_portal: true,
+                  student_notes: true,
+                  assistant_accounts: true
+                },
+                stages: [
+                  {
+                    id: 'primary',
+                    name: 'المرحلة الابتدائية',
+                    enabled: true,
+                    grades: [
+                      { id: 'primary-1', name: 'الصف الأول الابتدائي', enabled: true },
+                      { id: 'primary-2', name: 'الصف الثاني الابتدائي', enabled: true },
+                      { id: 'primary-3', name: 'الصف الثالث الابتدائي', enabled: true },
+                      { id: 'primary-4', name: 'الصف الرابع الابتدائي', enabled: true },
+                      { id: 'primary-5', name: 'الصف الخامس الابتدائي', enabled: true },
+                      { id: 'primary-6', name: 'الصف السادس الابتدائي', enabled: true }
+                    ]
+                  },
+                  {
+                    id: 'preparatory',
+                    name: 'المرحلة الإعدادية',
+                    enabled: false,
+                    grades: [
+                      { id: 'first-prep', name: 'الصف الأول الإعدادي', enabled: true },
+                      { id: 'second-prep', name: 'الصف الثاني الإعدادي', enabled: true },
+                      { id: 'third-prep', name: 'الصف الثالث الإعدادي', enabled: true }
+                    ]
+                  },
+                  {
+                    id: 'secondary',
+                    name: 'المرحلة الثانوية',
+                    enabled: false,
+                    grades: [
+                      { id: 'first-sec', name: 'الصف الأول الثانوي', enabled: true },
+                      { id: 'second-sec', name: 'الصف الثاني الثانوي', enabled: true },
+                      { id: 'third-sec', name: 'الصف الثالث الثانوي', enabled: true }
+                    ]
+                  },
+                  {
+                    id: 'baccalaureate',
+                    name: 'مرحلة البكالوريا',
+                    enabled: false,
+                    grades: [
+                      { id: 'bac-1', name: 'البكالوريا المستوى الأول', enabled: true },
+                      { id: 'bac-2', name: 'البكالوريا المستوى الثاني', enabled: true },
+                      { id: 'bac-3', name: 'البكالوريا المستوى الثالث', enabled: true }
+                    ]
+                  }
+                ],
+                login_sections: {
+                  teacher: true,
+                  about: true,
+                  packages: true,
+                  features: true,
+                  steps: true,
+                  location: true
+                },
+                socials: {
+                  facebook: 'https://www.facebook.com',
+                  whatsapp: 'https://wa.me/',
+                  youtube: 'https://www.youtube.com'
+                },
+                contact: {},
+                location: {
+                  description: 'مقر السنتر والمجموعات الدراسية'
+                },
+                announcements: [
+                  {
+                    icon: '📚',
+                    text: 'شرح وتأسيس شامل لمختلف مواد المرحلة الابتدائية بأسلوب ممتع ومبسط'
+                  },
+                  {
+                    icon: '🏆',
+                    text: 'تدريبات واختبارات دورية لصناعة الأبطال وتنمية مهارات التفكير'
+                  },
+                  {
+                    icon: '🎥',
+                    text: 'فيديوهات تفاعلية ومتابعة مستمرة لأداء كل طالب مع ولي الأمر'
+                  }
+                ]
+              }
             }
           }
 

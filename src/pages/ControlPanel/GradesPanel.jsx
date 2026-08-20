@@ -36,6 +36,8 @@ export default function GradesPanel({ onBack, flash }) {
 
   const [activeSubTab, setActiveSubTab] = useState('grade') // 'grade' | 'history'
   const [searchQuery, setSearchQuery] = useState('') // active student name search
+  const [selectedActiveEvaluationKey, setSelectedActiveEvaluationKey] = useState('')
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
   
   // History states
   const [historyEvaluations, setHistoryEvaluations] = useState([])
@@ -157,13 +159,44 @@ export default function GradesPanel({ onBack, flash }) {
           setSessionId('custom')
         }
 
-        // Reset sheet data
-        const initialSheet = {}
-        filtered.forEach(s => {
-          initialSheet[s.id] = { score: '', notes: '' }
-        })
-        setSheetData(initialSheet)
+        // Check for saved local draft
+        const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+        let restored = false
+        try {
+          const rawDraft = localStorage.getItem(draftKey)
+          if (rawDraft) {
+            const parsed = JSON.parse(rawDraft)
+            if (parsed && parsed.sheetData && Object.keys(parsed.sheetData).length > 0) {
+              const hasActualScores = Object.values(parsed.sheetData).some(v => v && (v.score !== '' || (v.notes && v.notes.trim() !== '')))
+              if (hasActualScores) {
+                setSheetData(parsed.sheetData)
+                if (parsed.evalType) setEvalType(parsed.evalType)
+                if (parsed.evalSubject) setEvalSubject(parsed.evalSubject)
+                if (parsed.maxScore) setMaxScore(parsed.maxScore)
+                if (parsed.customTitle) setCustomTitle(parsed.customTitle)
+                if (parsed.sessionId) setSessionId(parsed.sessionId)
+                if (parsed.date) setDate(parsed.date)
+                setHasRestoredDraft(true)
+                restored = true
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error restoring draft:', e)
+        }
 
+        if (!restored) {
+          // Reset sheet data
+          const initialSheet = {}
+          filtered.forEach(s => {
+            initialSheet[s.id] = { score: '', notes: '' }
+          })
+          setSheetData(initialSheet)
+          setHasRestoredDraft(false)
+        }
+
+        setSelectedActiveEvaluationKey('')
+        setEditingEvaluation(null)
         await loadUniqueEvaluationsList(grade)
       } catch (err) {
         console.error(err)
@@ -175,6 +208,135 @@ export default function GradesPanel({ onBack, flash }) {
 
     return () => { active = false }
   }, [grade])
+
+  // Auto-save draft on changes (when not in edit mode or when working on a draft)
+  useEffect(() => {
+    if (editingEvaluation || !tenantId || !grade) return
+
+    const hasContent = Object.values(sheetData).some(v => v && (v.score !== '' || (v.notes && v.notes.trim() !== '')))
+    const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+
+    if (hasContent) {
+      try {
+        const draftObj = {
+          evalType,
+          evalSubject,
+          maxScore,
+          customTitle,
+          sessionId,
+          date,
+          sheetData,
+          savedAt: Date.now()
+        }
+        localStorage.setItem(draftKey, JSON.stringify(draftObj))
+      } catch (e) {
+        console.error('Failed to auto-save grades draft:', e)
+      }
+    }
+  }, [sheetData, evalType, evalSubject, maxScore, customTitle, sessionId, date, tenantId, grade, editingEvaluation])
+
+  const handleClearDraft = () => {
+    const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+    try {
+      localStorage.removeItem(draftKey)
+    } catch (e) {}
+    const blankSheet = {}
+    students.forEach(s => { blankSheet[s.id] = { score: '', notes: '' } })
+    setSheetData(blankSheet)
+    setCustomTitle('')
+    setHasRestoredDraft(false)
+    flash('تم مسح المسودة والبدء من جديد', 'info')
+  }
+
+  // Active session / evaluation changer (like Attendance session switcher)
+  const handleActiveEvaluationChange = async (key) => {
+    setSelectedActiveEvaluationKey(key)
+    if (!key) {
+      // New evaluation mode
+      setEditingEvaluation(null)
+      setCustomTitle('')
+      setEvalSubject('')
+      if (homeworksList.length > 0) {
+        setSessionId(homeworksList[0].id)
+      } else {
+        setSessionId('custom')
+      }
+      setDate(new Date().toISOString().split('T')[0])
+
+      // Check draft
+      const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+      try {
+        const savedDraft = localStorage.getItem(draftKey)
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft)
+          if (parsed && parsed.sheetData) {
+            const hasActualScores = Object.values(parsed.sheetData).some(v => v && (v.score !== '' || (v.notes && v.notes.trim() !== '')))
+            if (hasActualScores) {
+              setSheetData(parsed.sheetData)
+              if (parsed.evalType) setEvalType(parsed.evalType)
+              if (parsed.evalSubject) setEvalSubject(parsed.evalSubject)
+              if (parsed.maxScore) setMaxScore(parsed.maxScore)
+              if (parsed.customTitle) setCustomTitle(parsed.customTitle)
+              if (parsed.sessionId) setSessionId(parsed.sessionId)
+              if (parsed.date) setDate(parsed.date)
+              setHasRestoredDraft(true)
+              return
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      }
+
+      const cleared = {}
+      students.forEach(s => { cleared[s.id] = { score: '', notes: '' } })
+      setSheetData(cleared)
+      setHasRestoredDraft(false)
+      return
+    }
+
+    // Picked an existing evaluation
+    const [type, title] = key.split(':')
+    try {
+      setLoading(true)
+      const data = await listGradesForEvaluation(type, title)
+      setEditingEvaluation({
+        type,
+        title,
+        originalGrades: data
+      })
+
+      setEvalType(type)
+      if (data && data.length > 0) {
+        setMaxScore(data[0].max_score || 10)
+        setEvalSubject(data[0].subject || '')
+        setSessionId(data[0].session_id || 'custom')
+        if (data[0].created_at) {
+          setDate(new Date(data[0].created_at).toISOString().split('T')[0])
+        }
+      }
+
+      const loadedSheet = {}
+      students.forEach(s => {
+        const record = data.find(r => r.student_id === s.id)
+        if (record) {
+          loadedSheet[s.id] = {
+            score: record.score !== null && record.score !== undefined ? String(record.score) : '',
+            notes: record.notes || ''
+          }
+        } else {
+          loadedSheet[s.id] = { score: '', notes: '' }
+        }
+      })
+      setSheetData(loadedSheet)
+      setHasRestoredDraft(false)
+    } catch (err) {
+      console.error(err)
+      flash('فشل تحميل درجات الكشف المحدد', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Helper to auto-generate default title based on selected type, lesson, date, and custom title
   const getAutoTitle = (type, sId, dateVal, customTitleVal) => {
@@ -360,6 +522,11 @@ export default function GradesPanel({ onBack, flash }) {
         flash(`تم تعديل الدرجات وحفظ التغييرات بنجاح.`, 'success')
         setEditingEvaluation(null)
         setCustomTitle('')
+        setSelectedActiveEvaluationKey('')
+
+        const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+        try { localStorage.removeItem(draftKey) } catch (e) {}
+        setHasRestoredDraft(false)
 
         const cleared = {}
         students.forEach(s => { cleared[s.id] = { score: '', notes: '' } })
@@ -426,6 +593,12 @@ export default function GradesPanel({ onBack, flash }) {
       flash(`تم حفظ درجات ${records.length} طلاب بنجاح، وتجري جدولة إشعارات أولياء الأمور.`, 'success')
       
       setCustomTitle('') // Clear custom title after saving
+      setSelectedActiveEvaluationKey('')
+
+      const draftKey = `masaar_grades_draft_${tenantId}_${grade}`
+      try { localStorage.removeItem(draftKey) } catch (e) {}
+      setHasRestoredDraft(false)
+
       // Reload unique evaluations list
       await loadUniqueEvaluationsList(grade)
 
@@ -446,6 +619,7 @@ export default function GradesPanel({ onBack, flash }) {
   // Populate form with history record for editing
   const handleEditHistoryRecord = (record) => {
     const [type, title] = selectedEvaluation.split(':')
+    setSelectedActiveEvaluationKey(selectedEvaluation)
     
     // Find the original record's characteristics
     const firstGraded = historyGrades.find(g => g.score !== null && g.score !== undefined)
@@ -700,6 +874,23 @@ export default function GradesPanel({ onBack, flash }) {
     printWindow.document.close()
   }
 
+  const formatEvaluationLabel = (item) => {
+    if (!item) return ''
+    const title = (item.title || '').trim()
+    const typeLabels = {
+      'homework': 'واجب',
+      'exam': 'امتحان',
+      'quiz': 'تسميع',
+      'participation': 'مشاركة',
+      'behavior': 'سلوك'
+    }
+    const typeLabel = typeLabels[item.type] || item.type
+    if (title.startsWith(typeLabel) || title.startsWith(item.type)) {
+      return title
+    }
+    return `${typeLabel}: ${title}`
+  }
+
   return (
     <div className="cp-panel-container">
       
@@ -764,20 +955,11 @@ export default function GradesPanel({ onBack, flash }) {
               </select>
             ) : (
               <select value={selectedEvaluation} onChange={(e) => setSelectedEvaluation(e.target.value)} className="cp-input" style={{ width: '100%' }}>
-                {historyEvaluations.map(item => {
-                  const typeLabels = {
-                    'homework': 'واجب منزلي',
-                    'exam': 'امتحان',
-                    'quiz': 'تسميع',
-                    'participation': 'مشاركة',
-                    'behavior': 'سلوك'
-                  }
-                  return (
-                    <option key={`${item.type}:${item.title}`} value={`${item.type}:${item.title}`}>
-                      {item.title} ({typeLabels[item.type] || item.type})
-                    </option>
-                  )
-                })}
+                {historyEvaluations.map(item => (
+                  <option key={`${item.type}:${item.title}`} value={`${item.type}:${item.title}`}>
+                    {formatEvaluationLabel(item)}
+                  </option>
+                ))}
               </select>
             )}
           </div>
@@ -786,6 +968,70 @@ export default function GradesPanel({ onBack, flash }) {
 
       {activeSubTab === 'grade' ? (
         <>
+          {/* Active Evaluation / Session Selection Bar */}
+          <div style={{
+            background: 'var(--cp-card-bg)',
+            border: '1px solid var(--cp-card-border)',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            boxShadow: 'var(--cp-card-shadow)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 320px' }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0 }}>
+                <i className="fas fa-layer-group"></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '4px', color: 'var(--cp-text-muted)' }}>
+                  كشف التقييم (جلسة الرصد)
+                </label>
+                <select
+                  value={selectedActiveEvaluationKey}
+                  onChange={(e) => handleActiveEvaluationChange(e.target.value)}
+                  className="cp-input"
+                  style={{ width: '100%', fontWeight: 700, borderColor: selectedActiveEvaluationKey ? '#3b82f6' : 'var(--cp-card-border)' }}
+                >
+                  <option value="">+ رصد كشف تقييم جديد</option>
+                  {historyEvaluations.map(item => (
+                    <option key={`${item.type}:${item.title}`} value={`${item.type}:${item.title}`}>
+                      متابعة كشف: {formatEvaluationLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {hasRestoredDraft && !editingEvaluation && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                color: '#10b981',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                fontSize: '0.85rem',
+                fontWeight: 700
+              }}>
+                <i className="fas fa-floppy-disk"></i>
+                <span>تم استرجاع مسودة الرصد المحفوظة</span>
+                <button
+                  onClick={handleClearDraft}
+                  className="cp-btn"
+                  style={{ padding: '3px 8px', fontSize: '0.78rem', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6 }}
+                >
+                  مسح المسودة
+                </button>
+              </div>
+            )}
+          </div>
+
           {editingEvaluation && (
             <div style={{
               background: 'rgba(245, 158, 11, 0.12)',
@@ -801,11 +1047,12 @@ export default function GradesPanel({ onBack, flash }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fas fa-edit"></i>
-                <span><strong>أنت الآن في وضع تعديل الكشف: </strong> {editingEvaluation.title}</span>
+                <span><strong>أنت الآن في وضع تعديل وإكمال الكشف: </strong> {editingEvaluation.title}</span>
               </div>
               <button
                 onClick={() => {
                   setEditingEvaluation(null)
+                  setSelectedActiveEvaluationKey('')
                   const cleared = {}
                   students.forEach(s => { cleared[s.id] = { score: '', notes: '' } })
                   setSheetData(cleared)

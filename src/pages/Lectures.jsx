@@ -116,7 +116,7 @@ export default function Lectures() {
       setUserRole(u?.role || null)
       setUserId(u?.id || null)
       // auto-select the student's own grade; admins still pick
-      if (u?.role !== 'admin' && u?.grade) {
+      if (u?.role !== 'admin' && u?.role !== 'assistant' && u?.role !== 'super_admin' && u?.grade) {
         setGrade(dbToUiGrade(u.grade))
       }
     } catch {

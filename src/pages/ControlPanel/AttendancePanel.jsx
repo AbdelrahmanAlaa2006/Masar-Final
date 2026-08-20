@@ -21,6 +21,8 @@ import { cached, LIST_TTL, invalidate as invalidateCache } from '../../utils/cac
 import StudentDetailsModal from '../../components/StudentDetailsModal'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
+import { supabase } from '@backend/supabase'
+import { uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 
 const mapArabicKeysToEnglish = (str) => {
   if (!str) return '';
@@ -132,66 +134,229 @@ export default function AttendancePanel({ onBack, flash }) {
 
 
 
-  // Play audio beeps
+  const getAudioContext = () => {
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtxClass) return null
+      const ctx = new AudioCtxClass()
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+      return ctx
+    } catch {
+      return null
+    }
+  }
+
+  // Play a soft, pleasant harmonic tone (avoids harsh raw buzzers)
+  const playTone = (ctx, freq, startTime, duration = 0.2, gainLevel = 0.25, type = 'sine') => {
+    try {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = type
+      osc.frequency.setValueAtTime(freq, startTime)
+      gain.gain.setValueAtTime(0.001, startTime)
+      gain.gain.exponentialRampToValueAtTime(gainLevel, startTime + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(startTime)
+      osc.stop(startTime + duration)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Classic Two-Tone "Ding-Dong" Resonant Chime (🔔 Ding-Dong!)
+  const playBellSound = () => {
+    try {
+      const ctx = getAudioContext()
+      if (!ctx) return
+      const t = ctx.currentTime
+
+      const compressor = ctx.createDynamicsCompressor()
+      compressor.threshold.setValueAtTime(-14, t)
+      compressor.knee.setValueAtTime(8, t)
+      compressor.ratio.setValueAtTime(4, t)
+      compressor.attack.setValueAtTime(0.003, t)
+      compressor.release.setValueAtTime(0.25, t)
+
+      const masterGain = ctx.createGain()
+      masterGain.gain.setValueAtTime(0.85, t)
+
+      compressor.connect(masterGain)
+      masterGain.connect(ctx.destination)
+
+      const playChimeNote = (freq, startTime, duration, peakGain) => {
+        // Fundamental + 2 acoustic partials for rich physical chime resonance
+        const partials = [
+          { f: freq, g: peakGain, d: duration },
+          { f: freq * 1.5, g: peakGain * 0.35, d: duration * 0.7 },
+          { f: freq * 2.0, g: peakGain * 0.20, d: duration * 0.5 }
+        ]
+
+        partials.forEach(({ f, g, d }) => {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(f, startTime)
+
+          gain.gain.setValueAtTime(0.001, startTime)
+          gain.gain.exponentialRampToValueAtTime(g, startTime + 0.008)
+          gain.gain.exponentialRampToValueAtTime(0.0001, startTime + d)
+
+          osc.connect(gain)
+          gain.connect(compressor)
+          osc.start(startTime)
+          osc.stop(startTime + d + 0.05)
+        })
+      }
+
+      // First note: High Ding (784Hz / G5)
+      playChimeNote(784.0, t, 0.75, 0.7)
+      // Second note: Warm Dong (587.3Hz / D5) with rich sustain
+      playChimeNote(587.33, t + 0.28, 1.4, 0.85)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Apple-Pay style clean ascending check-in chime
   const playSuccessBeep = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.setValueAtTime(600, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(850, ctx.currentTime + 0.12)
-      gain.gain.setValueAtTime(0.1, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.12)
+      const ctx = getAudioContext()
+      if (!ctx) return
+      const t = ctx.currentTime
+      playTone(ctx, 659.25, t, 0.12, 0.2, 'sine')       // E5
+      playTone(ctx, 987.77, t + 0.08, 0.22, 0.25, 'sine') // B5
     } catch (e) {
       console.error(e)
     }
   }
 
-  const playWarningBeep = () => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = 'sawtooth'
-      osc.frequency.setValueAtTime(150, ctx.currentTime)
-      osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.25)
-      gain.gain.setValueAtTime(0.15, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.25)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.25)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  // Unified crisp bell chime for missing exams, payment due, and general warnings
+  const playMissingExamAlert = () => playBellSound()
+  const playPaymentDueBell = () => playBellSound()
+  const playWarningBeep = () => playBellSound()
 
-  // Distinct triple "bell" chime for a scanned student who hasn't paid this
-  // month — clearly different from the single success beep (safe student) and
-  // from the harsh warning buzz (errors), so the cashier hears "should pay".
-  const playPaymentDueBell = () => {
+  // Check if student has missing / uncompleted exams or quizzes for their grade (both online & center-based)
+  const checkStudentMissingExams = async (studentId, studentGrade) => {
+    if (!studentId) return []
+    const missing = []
+
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      ;[0, 0.18, 0.36].forEach((t) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.type = 'triangle'
-        osc.frequency.setValueAtTime(1000, ctx.currentTime + t)
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime + t)
-        gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + t + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.15)
-        osc.start(ctx.currentTime + t)
-        osc.stop(ctx.currentTime + t + 0.16)
+      // Build all potential grade aliases
+      const gradeKeys = Array.from(new Set([
+        studentGrade,
+        grade,
+        uiToDbGrade(studentGrade),
+        dbToUiGrade(studentGrade),
+        uiToDbGrade(grade),
+        dbToUiGrade(grade)
+      ].filter(Boolean)))
+
+      // 1. Check Platform Online Exams/Quizzes (exams table)
+      const { data: recentExams, error: examErr } = await supabase
+        .from('exams')
+        .select('id, title, exam_type, created_at, grade, origin')
+        .in('grade', gradeKeys)
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (examErr) {
+        console.warn('Error fetching recent exams:', examErr)
+      } else if (recentExams && recentExams.length > 0) {
+        // Filter out video pre-assessments if any
+        const mainExams = recentExams.filter(e => e.origin !== 'video_quiz')
+        const examIds = mainExams.map(e => e.id)
+
+        if (examIds.length > 0) {
+          const { data: attempts } = await supabase
+            .from('exam_attempts')
+            .select('exam_id, score, submitted_at')
+            .eq('student_id', studentId)
+            .in('exam_id', examIds)
+
+          const attemptedIds = new Set((attempts || []).map(a => a.exam_id))
+          mainExams.forEach(e => {
+            if (!attemptedIds.has(e.id)) {
+              missing.push({
+                id: e.id,
+                title: e.title || 'امتحان إلكتروني',
+                type: e.exam_type || 'exam',
+                created_at: e.created_at
+              })
+            }
+          })
+        }
+      }
+
+      // 2. Check In-Center Quizzes / Evaluations (grades table)
+      const { data: recentCenterGrades } = await supabase
+        .from('grades')
+        .select(`
+          type,
+          title,
+          created_at,
+          profiles!student_id (
+            grade
+          )
+        `)
+        .in('type', ['quiz', 'exam'])
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      const relevantCenterEvals = (recentCenterGrades || [])
+        .filter(g => gradeKeys.includes(g.profiles?.grade))
+
+      // Deduplicate recent evaluation titles
+      const seenEvals = new Set()
+      const uniqueCenterEvals = []
+      relevantCenterEvals.forEach(g => {
+        const key = `${g.type}:${(g.title || '').trim()}`
+        if (!seenEvals.has(key)) {
+          seenEvals.add(key)
+          uniqueCenterEvals.push(g)
+        }
       })
-    } catch (e) {
-      console.error(e)
+
+      // Take up to the 3 most recent unique center evaluations
+      const latestCenterEvals = uniqueCenterEvals.slice(0, 3)
+
+      if (latestCenterEvals.length > 0) {
+        const { data: studentCenterGrades } = await supabase
+          .from('grades')
+          .select('type, title, score')
+          .eq('student_id', studentId)
+          .in('type', ['quiz', 'exam'])
+
+        const studentGradedKeys = new Set(
+          (studentCenterGrades || []).map(g => `${g.type}:${(g.title || '').trim()}`)
+        )
+
+        latestCenterEvals.forEach(evalItem => {
+          const key = `${evalItem.type}:${(evalItem.title || '').trim()}`
+          if (!studentGradedKeys.has(key)) {
+            // Check that we haven't already included this by title
+            const evalTitle = (evalItem.title || '').trim()
+            if (!missing.some(m => m.title === evalTitle)) {
+              missing.push({
+                id: key,
+                title: evalTitle || 'تسميع الحصة السابقة',
+                type: evalItem.type,
+                created_at: evalItem.created_at
+              })
+            }
+          }
+        })
+      }
+
+    } catch (err) {
+      console.error('Error checking missing exams:', err)
     }
+
+    return missing
   }
 
   // 1. Initial Load of Metadata (Branches, Years, Groups)
@@ -497,7 +662,7 @@ export default function AttendancePanel({ onBack, flash }) {
     }
   }
 
-  const openStudentDetailsForStudent = async (student) => {
+  const openStudentDetailsForStudent = async (student, sessionStatus = null) => {
     if (!student) return
     try {
       const token = student.barcode_token || student.qr_token || student.id
@@ -513,6 +678,30 @@ export default function AttendancePanel({ onBack, flash }) {
           status: student.status || 'active',
           flags: student.flags || [],
           warnings: []
+        }
+      }
+
+      const activeStatus = sessionStatus || attendanceRecords[student.id] || null
+      studentData.session_status = activeStatus
+
+      // Ensure historical attendance counts are loaded for complete insights
+      if (typeof studentData.total_sessions !== 'number' || studentData.total_sessions === 0) {
+        try {
+          const { data: attHistory } = await supabase
+            .from('attendance_records')
+            .select('status')
+            .eq('student_id', studentData.student_id || student.id)
+          
+          if (attHistory && attHistory.length > 0) {
+            studentData.total_sessions = attHistory.length
+            studentData.present_count = attHistory.filter(a => a.status === 'present').length
+            studentData.late_count = attHistory.filter(a => a.status === 'late').length
+            studentData.absent_count = attHistory.filter(a => a.status === 'absent').length
+            studentData.attended_sessions = studentData.present_count + studentData.late_count
+            studentData.attendance_percentage = Math.round((studentData.attended_sessions / studentData.total_sessions) * 100)
+          }
+        } catch (e) {
+          console.error(e)
         }
       }
 
@@ -534,6 +723,21 @@ export default function AttendancePanel({ onBack, flash }) {
       studentData.paid_this_month = paidThisMonth
       studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
 
+      // Check missing exams
+      const missingExams = await checkStudentMissingExams(studentData.student_id || student.id, studentData.grade || student.grade)
+      studentData.missing_exams = missingExams
+
+      // Audio notification hierarchy:
+      // 1. Late student -> Ding-Dong bell alert
+      // 2. Missing exam -> Ding-Dong bell alert
+      // 3. Unpaid subscription -> Ding-Dong bell alert
+      // 4. Normal / Paid / On-time Present -> Pleasant success chime
+      if (activeStatus === 'late' || missingExams.length > 0 || !paidThisMonth) {
+        playBellSound()
+      } else {
+        playSuccessBeep()
+      }
+
       setScannedStudent(studentData)
     } catch (err) {
       console.error('Failed to load student info popup:', err)
@@ -550,15 +754,11 @@ export default function AttendancePanel({ onBack, flash }) {
     const student = students.find(s => s.id === studentId)
     if (!student) return
 
-    // Only skip if the student already has an explicitly saved record with the
-    // same status. When there is NO record yet (the student has never been
-    // marked) we must allow saving — even for 'absent' — so the record is
-    // persisted and the parent notification goes out.
     const hasExistingRecord = Object.prototype.hasOwnProperty.call(attendanceRecords, studentId)
     if (hasExistingRecord && attendanceRecords[studentId] === status) {
       flash('لا يوجد تغيير - حالة الحضور محفوظة بالفعل', 'info')
-      if (status === 'present') {
-        openStudentDetailsForStudent(student)
+      if (status === 'present' || status === 'late') {
+        openStudentDetailsForStudent(student, status)
       }
       return
     }
@@ -585,8 +785,8 @@ export default function AttendancePanel({ onBack, flash }) {
         created_by: currentUser?.id
       }], sessionTitle)
       
-      if (status === 'present') {
-        openStudentDetailsForStudent(student)
+      if (status === 'present' || status === 'late') {
+        openStudentDetailsForStudent(student, status)
       }
     } catch (err) {
       console.error(err)
@@ -783,10 +983,21 @@ export default function AttendancePanel({ onBack, flash }) {
       studentData.paid_this_month = paidThisMonth
       studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
 
-      // Payment-aware scan chime: paid this month -> default success beep (safe);
-      // otherwise the distinct triple bell so the cashier knows he should pay.
-      if (paidThisMonth) playSuccessBeep()
-      else playPaymentDueBell()
+      // Check missing required exams / quizzes
+      const missingExams = await checkStudentMissingExams(studentData.student_id, studentData.grade)
+      studentData.missing_exams = missingExams
+
+      // Audio notification hierarchy:
+      // 1. Missing exam -> Urgent missing exam alert
+      // 2. Unpaid subscription -> Triple bell
+      // 3. Normal / Paid -> Pleasant success chime
+      if (missingExams.length > 0) {
+        playMissingExamAlert()
+      } else if (!paidThisMonth) {
+        playPaymentDueBell()
+      } else {
+        playSuccessBeep()
+      }
 
       const isDifferentGrade = studentData.grade !== grade
       const isOnlineStudent = studentData.enrollment_type === 'ONLINE'
@@ -1745,8 +1956,11 @@ export default function AttendancePanel({ onBack, flash }) {
               }]
             })
 
-            // 2. Set status to present locally
-            handleStatusChange(stud.student_id, 'present')
+            const targetStatus = stud.session_status === 'late' ? 'late' : 'present'
+            const statusArabic = targetStatus === 'late' ? 'تأخير' : 'حضور'
+
+            // 2. Set status locally
+            handleStatusChange(stud.student_id, targetStatus)
             
             // 3. Save to database immediately
             if (selectedSessionId && selectedSessionId !== 'new') {
@@ -1758,8 +1972,8 @@ export default function AttendancePanel({ onBack, flash }) {
                   student_name: stud.name,
                   parent_phone: stud.parent_phone,
                   session_id: selectedSessionId,
-                  status: 'present',
-                  notes: 'حضر عن طريق مسح الكارت الذكي (مجموعة مختلفة)',
+                  status: targetStatus,
+                  notes: 'عن طريق مسح الكارت الذكي',
                   created_by: currentUser?.id
                 }], sessionTitle)
               } catch (e) {
@@ -1767,7 +1981,7 @@ export default function AttendancePanel({ onBack, flash }) {
               }
             }
 
-            flash(`تم تسجيل حضور: ${stud.name}`, 'success')
+            flash(`تم تسجيل ${statusArabic}: ${stud.name}`, 'success')
           }}
         />
       )}

@@ -11,7 +11,7 @@ export default function Report() {
   const [currentUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('masar-user')) || null } catch { return null }
   })
-  const isStudent = currentUser?.role !== 'admin' && currentUser?.role !== 'assistant'
+  const isStudent = currentUser?.role !== 'admin' && currentUser?.role !== 'assistant' && currentUser?.role !== 'super_admin'
   const studentGradeLabel = GRADE_LABEL[currentUser?.grade] || ''
   const [studentInput, setStudentInput] = useState('')
   const [selectedStudent, setSelectedStudent] = useState(null)

@@ -73,7 +73,7 @@ export default function ExamTaking() {
 
         // Safety Check for Students: verify remaining attempts on refresh or direct URL access
         const role = u?.role || 'student'
-        if (role !== 'admin' && role !== 'assistant') {
+        if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
           // Fetch student's submitted attempts
           const attempts = await listAttemptsForStudent(sid)
           const submittedCount = attempts.filter(

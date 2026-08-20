@@ -240,4 +240,41 @@ export const DOMAINS = {
       },
     },
   },
+
+  elsharawy: {
+    hosts: ['elsharawy.masaar.app'],
+    lang: 'ar',
+    title: 'الشعراوي — صانع الأبطال | مختلف مواد المرحلة الابتدائية',
+    description:
+      'منصة أستاذ الشعراوي التعليمية (صانع الأبطال) — تدريس وتأسيس مختلف مواد المرحلة الابتدائية بشرح تفاعلي وامتحانات ومتابعة أولياء الأمور.',
+    keywords:
+      'الشعراوي, أستاذ الشعراوي, مستر الشعراوي, صانع الأبطال, منصة الشعراوي, Elshaarawy, Elsharawy, المرحلة الابتدائية, تأسيس ابتدائي, لغة عربية ابتدائي, رياضيات ابتدائي, علوم ابتدائي, دراسات ابتدائي, إنجليزي ابتدائي, منصة تعليمية',
+    author: 'أ. الشعراوي — Mr Elshaarawy',
+    canonical: 'https://gitfekra.com/login?tenant=elsharawy',
+    ogImage: '',
+    themeColor: '#a86e28',
+    favicon: '/images/Elshaarawy Logo.png',
+    faviconType: 'image/png',
+    siteName: 'الشعراوي — صانع الأبطال',
+    jsonLd: {
+      person: {
+        name: 'Elshaarawy',
+        alternateName: ['الشعراوي', 'أستاذ الشعراوي', 'أ. الشعراوي', 'مستر الشعراوي', 'Mr Elshaarawy', 'صانع الأبطال'],
+        jobTitle: 'Primary Stage Multi-Subject Teacher & Foundation Specialist',
+        image: '/images/ELshaarawy Teacher Image.png',
+        knowsAbout: ['Primary Education', 'Arabic', 'Mathematics', 'Science', 'Social Studies', 'English', 'المرحلة الابتدائية', 'تأسيس الأطفال'],
+        sameAs: [],
+      },
+      org: {
+        name: 'منصة الشعراوي صانع الأبطال',
+        alternateName: ['Elshaarawy Platform', 'صانع الأبطال'],
+        logo: '/images/Elshaarawy Logo.png',
+        description:
+          'منصة تعليمية متخصصة في تدريس مختلف مواد المرحلة الابتدائية والتأسيس الشامل للطلاب مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
+        telephone: '',
+        addressLocality: 'Egypt',
+        addressRegion: '',
+      },
+    },
+  },
 }

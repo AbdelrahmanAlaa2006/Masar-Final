@@ -496,7 +496,9 @@ function AppContent() {
     return <PageLoader />
   }
 
-  const isUserGradeDisabled = isLoggedIn && user && user.role !== 'admin' && user.role !== 'assistant' && user.grade && !isGradeEnabled(user.grade)
+  const role = user?.role
+  const isStaff = isLoggedIn && (role === 'admin' || role === 'assistant' || role === 'super_admin')
+  const isUserGradeDisabled = isLoggedIn && user && !isStaff && user.grade && !isGradeEnabled(user.grade)
 
   if (isUserGradeDisabled && !isLoginPage && !isPublicReportPage) {
     return (
@@ -571,8 +573,6 @@ function AppContent() {
   // Use the hoisted ProtectedRoute / AdminRoute below directly — passing
   // auth as props keeps the component reference stable so ExamTaking
   // and friends aren't unmounted whenever AppContent re-renders.
-  const role = user?.role
-  const isStaff = isLoggedIn && (role === 'admin' || role === 'assistant' || role === 'super_admin')
   const isControlPanelRoute = cleanPath.startsWith('/control-panel')
 
   const isUnapprovedStudent = user && user.role === 'student' && user.is_approved === false
