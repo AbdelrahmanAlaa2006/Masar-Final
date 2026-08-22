@@ -180,7 +180,7 @@ async function logAudit(actorId, action, { id, updates = null } = {}) {
 export async function recordSubscriptionPayment({
   studentId,
   amount,
-  billingPeriod,        // e.g. «اشتراك شهر يوليو»
+  billingPeriod,        // e.g. «اشتراك شهر أغسطس»
   monthlyDue,           // fee − discount for this student (computed by caller)
   paymentMethod = 'Cash',
   transactionDate = null,
@@ -207,29 +207,90 @@ export async function recordSubscriptionPayment({
     resolved_by: adminId,
   }
 
-  // 1) Auto-create the month's charge once (so the remainder is tracked).
+  // 1) Canonical Subscription Obligation Management & Safe Scoped Reconciliation
   if (billingPeriod && Number(monthlyDue) > 0) {
-    const { data: existingCharge } = await supabase
+    const dueAmount = Number(monthlyDue)
+
+    // Query all existing ledger entries for this student & billing period
+    const { data: existingRows, error: fetchErr } = await supabase
       .from('student_ledger')
-      .select('id')
+      .select('id, type, amount, status, billing_period, description')
       .eq('student_id', studentId)
-      .eq('type', 'charge')
-      .eq('billing_period', billingPeriod)
-      .limit(1)
-    if (!existingCharge || existingCharge.length === 0) {
+      .or(`billing_period.eq.${billingPeriod},and(billing_period.is.null,description.eq.${billingPeriod})`)
+
+    if (fetchErr) throw fetchErr
+
+    const rows = existingRows || []
+    const chargeRows = rows.filter(r => r.type === 'charge' && r.status === 'approved')
+    const paymentRows = rows.filter(r => r.type === 'payment' && r.status === 'approved')
+    const paidSoFar = paymentRows.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+
+    if (chargeRows.length === 0) {
+      // No charge exists yet: create single canonical charge
       const { error: chargeError } = await supabase
         .from('student_ledger')
         .insert({
           ...base,
           type: 'charge',
-          amount: Number(monthlyDue),
+          amount: dueAmount,
           description: billingPeriod,
         })
       if (chargeError) throw chargeError
+    } else {
+      // One or more charges already exist for this specific period
+      const primaryCharge = chargeRows[0]
+
+      // Check if period is open / partially paid vs fully settled
+      const currentChargeAmount = Number(primaryCharge.amount || 0)
+      const isSettled = currentChargeAmount > 0 && paidSoFar >= currentChargeAmount
+
+      if (!isSettled && currentChargeAmount !== dueAmount) {
+        // Open/partially settled obligation: update primary charge amount to true canonical due
+        const { error: updateErr } = await supabase
+          .from('student_ledger')
+          .update({
+            amount: dueAmount,
+            billing_period: billingPeriod,
+            description: billingPeriod,
+          })
+          .eq('id', primaryCharge.id)
+        if (updateErr) throw updateErr
+      } else if (!primaryCharge.billing_period) {
+        // Ensure billing_period is normalized on legacy row
+        await supabase
+          .from('student_ledger')
+          .update({ billing_period: billingPeriod })
+          .eq('id', primaryCharge.id)
+      }
+
+      // If duplicate charges exist for this exact student & period, safely remove redundant duplicates
+      if (chargeRows.length > 1) {
+        const duplicateIds = chargeRows.slice(1).map(r => r.id)
+        const { error: delErr } = await supabase
+          .from('student_ledger')
+          .delete()
+          .in('id', duplicateIds)
+          .eq('student_id', studentId)
+          .eq('type', 'charge')
+        if (delErr) {
+          console.warn('Failed to clean up verified duplicate charge rows:', delErr)
+        }
+      }
+    }
+
+    // 2) Authoritative Server-side Overpayment & Settlement Validation
+    const effectiveCharge = dueAmount
+    const remainingBeforeThisPayment = Math.max(0, effectiveCharge - paidSoFar)
+
+    if (remainingBeforeThisPayment <= 0) {
+      throw new Error(`هذا الاشتراك مسدد بالكامل بالفعل (${paidSoFar} ج.م مسددة من أصل ${effectiveCharge} ج.م).`)
+    }
+    if (value > remainingBeforeThisPayment) {
+      throw new Error(`المبلغ المدخل (${value} ج.م) يتجاوز المبلغ المتبقي على هذا الاشتراك (${remainingBeforeThisPayment} ج.م).`)
     }
   }
 
-  // 2) Record the (partial) payment itself.
+  // 3) Record the (partial) payment itself.
   const { data, error } = await supabase
     .from('student_ledger')
     .insert({
@@ -263,14 +324,22 @@ export async function recordSubscriptionPayment({
 // Paid-so-far for one student & billing period (drives the "remaining" hint).
 export async function getBillingPeriodPaid(studentId, billingPeriod) {
   if (!studentId || !billingPeriod) return 0
+  const monthName = billingPeriod.replace('اشتراك شهر ', '').trim()
   const { data, error } = await supabase
     .from('student_ledger')
-    .select('amount, type')
+    .select('amount, type, status, billing_period, description')
     .eq('student_id', studentId)
-    .eq('billing_period', billingPeriod)
     .eq('status', 'approved')
   if (error) throw error
-  return (data || []).reduce((sum, r) => r.type === 'payment' ? sum + Number(r.amount || 0) : sum, 0)
+  return (data || [])
+    .filter(r =>
+      r.type === 'payment' &&
+      ((r.billing_period || '').trim() === billingPeriod.trim() ||
+       (r.billing_period || '').includes(monthName) ||
+       (r.description || '').trim() === billingPeriod.trim() ||
+       (r.description || '').includes(monthName))
+    )
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0)
 }
 
 // ── Reports ─────────────────────────────────────────────────────────────────

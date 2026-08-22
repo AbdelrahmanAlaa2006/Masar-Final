@@ -34,19 +34,24 @@ const getPackageNameForIdx = (idx) => {
   return `اشتراك شهر ${mName}`
 }
 
-const isPackagePaidForStudent = (studentId, pkgName, payments, monthDue) => {
-  if (!studentId || !pkgName) return false
+const getPackagePaidAmount = (studentId, pkgName, payments) => {
+  if (!studentId || !pkgName) return 0
   const monthName = pkgName.replace('اشتراك شهر ', '').trim()
-  const paidSoFar = (payments || [])
+  return (payments || [])
     .filter(p =>
       p.student_id === studentId &&
       p.status === 'approved' &&
       ((p.package_name || '').trim() === pkgName.trim() ||
        (p.package_name || '').includes(monthName) ||
+       (p.billing_period || '').trim() === pkgName.trim() ||
        (p.billing_period || '').includes(monthName))
     )
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+}
 
+const isPackagePaidForStudent = (studentId, pkgName, payments, monthDue) => {
+  if (!studentId || !pkgName) return false
+  const paidSoFar = getPackagePaidAmount(studentId, pkgName, payments)
   return monthDue > 0 ? paidSoFar >= monthDue : paidSoFar > 0
 }
 
@@ -796,7 +801,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     }
   }
 
-  const [activeTab, setActiveTab] = useState('pending') // 'pending' is default for immediate attention, can switch to 'all', 'approved', 'rejected'
+  const [activeTab, setActiveTab] = useState('approved') // 'approved' is default, can switch to 'pending', 'rejected', 'all'
   const [searchQuery, setSearchQuery] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
   const [branchFilter, setBranchFilter] = useState('all')
@@ -860,10 +865,13 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     setSavingDiscount(true)
     try {
       await setStudentDiscount(cashStudentId, d)
-      // Reflect the new discount in the due amount immediately.
+      // Reflect the new discount in the due amount and remaining balance immediately.
       const stud = studentsList.find(s => s.id === cashStudentId)
       const fee = stud ? (parseFloat(feeInputs[stud.grade]) || 0) : 0
-      if (fee > 0) setCashAmount(String(Math.max(0, fee - d)))
+      const due = Math.max(0, fee - d)
+      const paid = getPackagePaidAmount(cashStudentId, cashPackageName, payments)
+      const rem = Math.max(0, due - paid)
+      setCashAmount(rem > 0 ? String(rem) : '')
       notify('تم حفظ الخصم الاستثنائي للطالب (' + d + ' ج.م).', 'success')
     } catch (err) {
       notify('تعذر حفظ الخصم: ' + (err.message || ''), 'danger')
@@ -872,9 +880,9 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     }
   }
 
-  // When a student is picked in the cash modal, auto-fill the amount to his due
-  // (grade fee - his discount), load his current discount, and intelligently set
-  // the default payment month to his earliest unpaid/due month.
+  // When a student is picked in the cash modal, auto-fill the amount to his remaining balance
+  // (grade fee - his discount - paid so far for smart month), load his current discount,
+  // and intelligently set the default payment month to his earliest unpaid/due month.
   useEffect(() => {
     if (!cashStudentId) return
     const stud = studentsList.find(s => s.id === cashStudentId)
@@ -887,10 +895,12 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       setCashDiscount(String(disc))
       const fee = parseFloat(feeInputs[stud.grade]) || 0
       const due = Math.max(0, fee - disc)
-      if (fee > 0) setCashAmount(String(due))
 
       const smartPkg = determineSmartDefaultMonth(stud, payments, due)
       setCashPackageName(smartPkg)
+      const paid = getPackagePaidAmount(stud.id, smartPkg, payments)
+      const rem = Math.max(0, due - paid)
+      setCashAmount(rem > 0 ? String(rem) : '')
     })()
     return () => { cancelled = true }
   }, [cashStudentId, studentsList, feeInputs, payments])
@@ -903,12 +913,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const cashDue = Math.max(0, cashFee - (parseFloat(cashDiscount) || 0))
   // Paid so far toward the selected subscription month (from loaded payments).
   const cashPaidSoFar = useMemo(() => {
-    const month = (cashPackageName || '').trim()
-    if (!cashStudentId || !month) return 0
-    return (payments || [])
-      .filter(p => p.student_id === cashStudentId && p.status === 'approved' && (p.package_name || '').trim() === month)
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    return getPackagePaidAmount(cashStudentId, cashPackageName, payments)
   }, [payments, cashStudentId, cashPackageName])
+  const cashRemaining = Math.max(0, cashDue - cashPaidSoFar)
+
+  const handleSelectPackage = (p) => {
+    setCashPackageName(p)
+    setShowAdminPkgDropdown(false)
+    const paid = getPackagePaidAmount(cashStudentId, p, payments)
+    const rem = Math.max(0, cashDue - paid)
+    setCashAmount(rem > 0 ? String(rem) : '')
+  }
 
   // Configuration editing states
   const [showConfigEditor, setShowConfigEditor] = useState(false)
@@ -1104,17 +1119,21 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       notify('الرجاء اختيار الطالب أولاً ⚠️', 'danger')
       return
     }
-    if (!cashAmount || parseFloat(cashAmount) <= 0) {
+    const enteredAmount = parseFloat(cashAmount)
+    if (!enteredAmount || enteredAmount <= 0) {
       notify('الرجاء إدخال مبلغ صالح 💰', 'danger')
       return
     }
-    // Partial payments are allowed: block only when the month is already FULLY
-    // paid (paid so far >= the month's due) — the old hard "paid once" guard
-    // made a 100/150 partial payment impossible to complete later.
     const month = (cashPackageName || '').trim()
-    if (month && cashDue > 0 && cashPaidSoFar >= cashDue) {
-      notify(`هذا الطالب سدّد «${month}» بالكامل (${cashPaidSoFar} ج.م). احذف العملية القديمة أولاً إن أردت تعديلها.`, 'danger')
-      return
+    if (month && cashDue > 0) {
+      if (cashRemaining <= 0) {
+        notify(`هذا الطالب سدّد «${month}» بالكامل (${cashPaidSoFar} ج.م). احذف العملية القديمة أولاً إن أردت تعديلها.`, 'danger')
+        return
+      }
+      if (enteredAmount > cashRemaining) {
+        notify(`المبلغ المدخل (${enteredAmount} ج.م) يتجاوز المبلغ المتبقي على اشتراك «${month}» (${cashRemaining} ج.م).`, 'danger')
+        return
+      }
     }
 
     setSavingCash(true)
@@ -1124,18 +1143,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
       // real transaction date (backdating supported).
       const savedPaymentRecord = await recordSubscriptionPayment({
         studentId: cashStudentId,
-        amount: cashAmount,
+        amount: enteredAmount,
         billingPeriod: month || null,
         monthlyDue: cashDue,
         paymentMethod: 'Cash',
         transactionDate: cashDate,
         adminId: adminId
       })
-      const paid = parseFloat(cashAmount) || 0
-      const remaining = Math.max(0, cashDue - cashPaidSoFar - paid)
+      const remainingAfter = Math.max(0, cashRemaining - enteredAmount)
       notify(
-        remaining > 0
-          ? `تم تسجيل دفعة جزئية (${paid} ج.م) — المتبقي ${remaining} ج.م على «${month}».`
+        remainingAfter > 0
+          ? `تم تسجيل دفعة جزئية (${enteredAmount} ج.م) — المتبقي ${remainingAfter} ج.م على «${month}».`
           : 'تم تسجيل الدفع النقدي وتفعيل حساب الطالب بنجاح! 🎉',
         'success'
       )
@@ -1147,7 +1165,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
           ...savedPaymentRecord,
           package_name: month,
           billing_period: month,
-          profiles: cashStudentObj || { id: cashStudentId }
+          profiles: cashStudentObj || { id: cashStudentId },
+          remaining: remainingAfter
         })
       }
 
@@ -1510,8 +1529,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
             {/* Status Segmented Tabs */}
             <div className="pay-segmented-tabs">
               {[
-                { id: 'pending', label: 'قيد المراجعة', count: stats.pendingCount, icon: 'fa-hourglass-half', color: '#f59e0b' },
                 { id: 'approved', label: 'المقبولة', count: stats.approvedCount, icon: 'fa-circle-check', color: '#10b981' },
+                { id: 'pending', label: 'قيد المراجعة', count: stats.pendingCount, icon: 'fa-hourglass-half', color: '#f59e0b' },
                 { id: 'rejected', label: 'المرفوضة', count: stats.rejectedCount, icon: 'fa-circle-xmark', color: '#ef4444' },
                 { id: 'all', label: 'جميع العمليات', count: stats.totalCount, icon: 'fa-layer-group', color: '#8b5cf6' },
               ].map((tab) => {
@@ -1830,10 +1849,18 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                           <button
                             type="button"
                             onClick={() => {
+                              const stud = p.profiles || studentsList.find(s => s.id === p.student_id)
+                              const grade = stud?.grade || p.profiles?.grade
+                              const fee = grade ? (parseFloat(feeInputs[grade]) || 0) : 0
+                              const disc = Number(stud?.subscription_discount ?? p.profiles?.subscription_discount ?? 0)
+                              const due = Math.max(0, fee - disc)
+                              const paid = getPackagePaidAmount(p.student_id, p.package_name || p.billing_period, payments)
+                              const rem = due > 0 ? Math.max(0, due - paid) : 0
                               printThermalPaymentReceipt({
                                 payment: p,
                                 tenant,
-                                adminName: user?.name
+                                adminName: user?.name,
+                                remaining: rem
                               })
                             }}
                             className="cp-btn cp-btn-ghost"
@@ -1909,7 +1936,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   printThermalPaymentReceipt({
                     payment: lastCompletedPayment,
                     tenant,
-                    adminName: user?.name
+                    adminName: user?.name,
+                    remaining: lastCompletedPayment.remaining
                   })
                 }}
                 className="cp-btn cp-btn-primary"
@@ -2103,8 +2131,12 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     placeholder="مثال: اشتراك شهر أكتوبر"
                     value={cashPackageName}
                     onChange={(e) => {
-                      setCashPackageName(e.target.value)
+                      const val = e.target.value
+                      setCashPackageName(val)
                       setShowAdminPkgDropdown(true)
+                      const paid = getPackagePaidAmount(cashStudentId, val, payments)
+                      const rem = Math.max(0, cashDue - paid)
+                      setCashAmount(rem > 0 ? String(rem) : '')
                     }}
                     onFocus={() => setShowAdminPkgDropdown(true)}
                     className="paypg-admin-input"
@@ -2146,8 +2178,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                             key={p}
                             onClick={() => {
                               if (isPaid) return
-                              setCashPackageName(p)
-                              setShowAdminPkgDropdown(false)
+                              handleSelectPackage(p)
                             }}
                             className="paypg-modal-student-item"
                             style={{

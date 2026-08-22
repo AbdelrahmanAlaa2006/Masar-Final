@@ -29,7 +29,7 @@ export async function listPayments() {
         billing_period,
         resolved_at,
         resolved_by,
-        profiles:student_id ( name, phone, grade, "group", branch_id )
+        profiles:student_id ( name, phone, grade, "group", branch_id, subscription_discount )
       `)
       .eq('type', 'payment')
       .order('created_at', { ascending: false })
@@ -287,20 +287,62 @@ export async function recordCashPayment({ studentId, amount, packageName, adminI
 }
 
 // Admin/assistant: permanently delete a payment/ledger entry (e.g. test data or
+// Permanently delete a payment row from student_ledger (e.g. deleting test data or
 // a mistaken record). RLS on student_ledger is
 //   FOR ALL USING (tenant_id = current_tenant_id() AND has_permission(uid,'payments'))
 // so this ONLY ever deletes a row belonging to the caller's own tenant, and only
 // for staff who hold the 'payments' permission — each tenant owns its own data.
 // Removing the row is real: all totals/balances (attendance debt, parent report,
 // admin stats) are derived from student_ledger, so they drop immediately.
+// If all payments for a subscription billing period are deleted, the matching orphan
+// charge row is also cleaned up so the student is not left with a phantom debt.
 export async function deletePayment(paymentId) {
+  // 1. Fetch the target row before deleting so we know what student & period it belongs to
+  const { data: targetRow, error: fetchErr } = await supabase
+    .from('student_ledger')
+    .select('id, student_id, type, billing_period, description')
+    .eq('id', paymentId)
+    .single()
+
+  if (fetchErr && fetchErr.code !== 'PGRST116') throw fetchErr
+
+  // 2. Delete the target payment row
   const { error } = await supabase
     .from('student_ledger')
     .delete()
     .eq('id', paymentId)
   if (error) throw error
+
+  // 3. If it was a subscription payment, check if any approved payments remain for this period
+  if (targetRow?.student_id) {
+    const studentId = targetRow.student_id
+    const periodKey = targetRow.billing_period || targetRow.description
+
+    if (periodKey) {
+      const { data: remainingPayments } = await supabase
+        .from('student_ledger')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('type', 'payment')
+        .eq('status', 'approved')
+        .or(`billing_period.eq.${periodKey},description.eq.${periodKey}`)
+
+      // If NO payments remain for this billing period (all test/mistaken payments were deleted),
+      // remove the orphan charge row for this period so the student is not left with a ghost debt!
+      if (!remainingPayments || remainingPayments.length === 0) {
+        await supabase
+          .from('student_ledger')
+          .delete()
+          .eq('student_id', studentId)
+          .eq('type', 'charge')
+          .or(`billing_period.eq.${periodKey},description.eq.${periodKey}`)
+      }
+    }
+  }
+
   invalidatePrefix('student-payments-')
   invalidatePrefix('admin-payments')
+  invalidatePrefix('finance')
   return true
 }
 
@@ -328,11 +370,64 @@ export async function upsertSubscriptionFee(grade, amount) {
 
 // Set a single student's exception discount (EGP). Gated to 'payments' staff.
 export async function setStudentDiscount(studentId, amount) {
+  const discountVal = Math.max(0, parseFloat(amount) || 0)
   const { error } = await supabase.rpc('set_student_discount', {
     p_student_id: studentId,
-    p_amount: Math.max(0, parseFloat(amount) || 0),
+    p_amount: discountVal,
   })
   if (error) throw error
+
+  // Safely reconcile any open/unsettled subscription charges for this student
+  // so the displayed debt and remaining balances immediately reflect the new discount.
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('grade')
+      .eq('id', studentId)
+      .single()
+
+    if (profile?.grade) {
+      const fees = await listSubscriptionFees()
+      const baseFee = Number((fees || []).find(f => f.grade === profile.grade)?.amount) || 0
+      const newDue = Math.max(0, baseFee - discountVal)
+
+      // Fetch all ledger rows for this student
+      const { data: ledgerRows } = await supabase
+        .from('student_ledger')
+        .select('id, type, amount, status, billing_period, description')
+        .eq('student_id', studentId)
+        .eq('status', 'approved')
+
+      const rows = ledgerRows || []
+      const chargeRows = rows.filter(r => r.type === 'charge')
+      const paymentRows = rows.filter(r => r.type === 'payment')
+
+      for (const ch of chargeRows) {
+        const periodKey = ch.billing_period || ch.description
+        if (!periodKey) continue
+        const paidForPeriod = paymentRows
+          .filter(p => (p.billing_period === periodKey || p.description === periodKey))
+          .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+
+        // Only reconcile if this period is OPEN (not fully settled at old charge)
+        const oldChargeAmount = Number(ch.amount || 0)
+        const isSettled = oldChargeAmount > 0 && paidForPeriod >= oldChargeAmount
+
+        if (!isSettled && oldChargeAmount !== newDue) {
+          await supabase
+            .from('student_ledger')
+            .update({ amount: newDue })
+            .eq('id', ch.id)
+        }
+      }
+    }
+  } catch (syncErr) {
+    console.warn('Failed to sync open charges on discount update:', syncErr)
+  }
+
+  invalidatePrefix('finance')
+  invalidatePrefix('admin-payments')
+  invalidatePrefix(`student-payments-${studentId}`)
   return true
 }
 

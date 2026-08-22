@@ -44,7 +44,7 @@ function escapeHtml(str) {
  * @param {Object} [options.tenant] - Active tenant branding/name from TenantContext
  * @param {string} [options.adminName] - Current secretary/admin name who handled the receipt
  */
-export function printThermalPaymentReceipt({ payment, student = null, tenant = null, adminName = null }) {
+export function printThermalPaymentReceipt({ payment, student = null, tenant = null, adminName = null, remaining = null }) {
   if (!payment) return
 
   const studentData = payment.profiles || student || {}
@@ -64,6 +64,16 @@ export function printThermalPaymentReceipt({ payment, student = null, tenant = n
   const packageName = payment.package_name || payment.description || payment.billing_period || 'اشتراك شهري'
   const amount = Number(payment.amount || 0).toLocaleString('en-US')
   
+  const remainingBalance = remaining != null ? Number(remaining) : (payment.remaining != null ? Number(payment.remaining) : null)
+
+  // Format document title (used as default PDF filename when saving):
+  // e.g. "إيصال دفع شهر سبتمبر — ahmed atef"
+  let periodLabel = packageName
+  if (periodLabel.startsWith('اشتراك ')) {
+    periodLabel = periodLabel.replace(/^اشتراك\s+/, '')
+  }
+  const receiptTitle = `إيصال دفع ${periodLabel} — ${studentName}`
+
   let methodLabel = 'دفع نقدي'
   if (payment.payment_method === 'InstaPay') methodLabel = 'تحويل InstaPay'
   else if (payment.payment_method === 'Vodafone Cash' || payment.payment_method === 'E-wallet') methodLabel = 'محفظة إلكترونية'
@@ -73,7 +83,7 @@ export function printThermalPaymentReceipt({ payment, student = null, tenant = n
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <title>إيصال دفع — ${escapeHtml(studentName)}</title>
+  <title>${escapeHtml(receiptTitle)}</title>
   <style>
     @page {
       size: 72mm auto;
@@ -266,12 +276,22 @@ export function printThermalPaymentReceipt({ payment, student = null, tenant = n
   </table>
 
   <div class="total-box">
-    <div class="total-label">إجمالي المبلغ المدفوع</div>
+    <div class="total-label">المبلغ المستلم في هذه العملية</div>
     <div class="total-amount">${escapeHtml(amount)} ج.م</div>
+    ${remainingBalance != null && remainingBalance > 0 ? `
+      <div style="margin-top: 6px; padding-top: 5px; border-top: 1px dashed #666; font-size: 11.5px; font-weight: 800; color: #b91c1c; display: flex; justify-content: space-between; align-items: center;">
+        <span>المبلغ المتبقي على الاشتراك:</span>
+        <span style="font-size: 13px;">${escapeHtml(remainingBalance.toLocaleString('en-US'))} ج.م</span>
+      </div>
+    ` : (remainingBalance === 0 ? `
+      <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed #999; font-size: 11px; font-weight: 700; color: #15803d;">
+        ✓ الاشتراك مسدد بالكامل (المتبقي: 0 ج.م)
+      </div>
+    ` : '')}
   </div>
 
-  <div class="status-badge">
-    ✓ تم استلام المبلغ بنجاح وتفعيل الحساب
+  <div class="status-badge" style="color: ${remainingBalance != null && remainingBalance > 0 ? '#b45309' : '#15803d'};">
+    ${remainingBalance != null && remainingBalance > 0 ? '✓ تم استلام الدفعة الجزئية بنجاح' : '✓ تم استلام المبلغ بنجاح وتفعيل الحساب'}
   </div>
 
   <hr class="divider" />
@@ -303,5 +323,6 @@ export function printThermalPaymentReceipt({ payment, student = null, tenant = n
 
   printWindow.document.open()
   printWindow.document.write(html)
+  printWindow.document.title = receiptTitle
   printWindow.document.close()
 }
