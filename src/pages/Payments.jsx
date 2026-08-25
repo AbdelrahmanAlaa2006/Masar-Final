@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadHomeworkSubmission } from '@backend/r2'
 import { submitPayment, listMyPayments, listPayments, resolvePayment, getPaymentSettings, updatePaymentSetting, deletePayment, listSubscriptionFees, upsertSubscriptionFee, setStudentDiscount, getStudentDiscount } from '@backend/paymentsApi'
-import { searchStudents } from '@backend/profilesApi'
+import { searchStudents, listStudents } from '@backend/profilesApi'
 import { recordSubscriptionPayment } from '@backend/financeApi'
 import { listBranches } from '@backend/branchesApi'
 import DatePicker from '../components/DatePicker'
 import { PAYMENT_CONFIG } from '../utils/paymentConfig'
 import { notify } from '../utils/notify'
-import { invalidate as invalidateCache } from '../utils/cache'
+import { invalidate as invalidateCache, invalidatePrefix } from '../utils/cache'
 import { useTenant } from '../contexts/TenantContext'
 import { GRADE_LABEL } from './ControlPanel/shared'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
@@ -238,7 +238,9 @@ export default function Payments() {
       setLoadingHistory(true)
       if (forceRefresh) {
         invalidateCache('admin-payments')
+        invalidatePrefix('admin-payments')
         invalidateCache(`student-payments-${userId}`)
+        invalidatePrefix(`student-payments-${userId}`)
       }
       if (user?.role === 'admin' || user?.role === 'assistant') {
         const data = await listPayments()
@@ -819,11 +821,34 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   // Subscription months (matches the "اشتراك شهر X" package naming) — a payment
   // for August counts toward August's total even if paid in July.
   const SUB_MONTHS = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس']
+  
+  // Full student roster for unpaid (debt) and overpaid (surplus) calculations
+  const [allStudents, setAllStudents] = useState([])
+  const [loadingRoster, setLoadingRoster] = useState(false)
+
+  const loadAllStudents = async () => {
+    try {
+      setLoadingRoster(true)
+      const list = await listStudents()
+      setAllStudents(list || [])
+    } catch (err) {
+      console.error('Failed to load students roster for debt/surplus calculation:', err)
+    } finally {
+      setLoadingRoster(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAllStudents()
+  }, [])
+
   // Groups present in the loaded payments (derived — no extra fetch).
   const groupOptions = useMemo(() => {
-    const set = new Set((payments || []).map(p => p.profiles?.group).filter(Boolean))
+    const fromPayments = (payments || []).map(p => p.profiles?.group).filter(Boolean)
+    const fromRoster = allStudents.map(s => s.group).filter(Boolean)
+    const set = new Set([...fromPayments, ...fromRoster])
     return Array.from(set)
-  }, [payments])
+  }, [payments, allStudents])
 
   // Date range filters
   const getTodayLocalDate = () => {
@@ -832,8 +857,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     const localDate = new Date(d.getTime() - offset * 60 * 1000)
     return localDate.toISOString().split('T')[0]
   }
-  const [startDate, setStartDate] = useState(getTodayLocalDate())
-  const [endDate, setEndDate] = useState(getTodayLocalDate())
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   // Booklet payment modal — reuses the existing BookletsPanel payment workflow
   // (same APIs, services, validation, and business logic; only its location
@@ -1183,22 +1208,25 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const filteredStudents = studentsList
 
   // Base filter — applies day/date, subscription month, grade, branch, group.
-  // Both the totals (stats) and the table read from this, so the "total for a
-  // specific day / month / stage / branch / group" is always in sync.
   const baseFiltered = useMemo(() => {
-    return payments.filter(p => {
-      // Day/range filters use the ACTUAL payment date (transaction_date —
-      // backdated entries included); rows without one fall back to created_at.
-      const effectiveDate = p.transaction_date || p.created_at
+    return (payments || []).filter(p => {
+      if (!p) return false
+      // Day/range filters use the ACTUAL payment date (transaction_date) or created_at
+      const effectiveDateStr = p.transaction_date 
+        ? String(p.transaction_date).split('T')[0] 
+        : (p.created_at ? (() => {
+            const d = new Date(p.created_at)
+            const offset = d.getTimezoneOffset()
+            const localDate = new Date(d.getTime() - offset * 60 * 1000)
+            return localDate.toISOString().split('T')[0]
+          })() : '')
+
       // Specific DAY (by actual payment date). Overrides the range when set.
       if (dayFilter) {
-        if (!effectiveDate) return false
-        const pd = new Date(effectiveDate), d = new Date(dayFilter)
-        if (pd.getFullYear() !== d.getFullYear() || pd.getMonth() !== d.getMonth() || pd.getDate() !== d.getDate()) return false
-      } else if (effectiveDate) {
-        const pDate = new Date(effectiveDate)
-        if (startDate) { const s = new Date(startDate); s.setHours(0, 0, 0, 0); if (pDate < s) return false }
-        if (endDate) { const e = new Date(endDate); e.setHours(23, 59, 59, 999); if (pDate > e) return false }
+        if (!effectiveDateStr || effectiveDateStr !== dayFilter) return false
+      } else {
+        if (startDate && effectiveDateStr && effectiveDateStr < startDate) return false
+        if (endDate && effectiveDateStr && effectiveDateStr > endDate) return false
       }
       // Specific SUBSCRIPTION month (by package name, e.g. "اشتراك شهر أغسطس").
       if (monthFilter !== 'all' && !((p.package_name || '').includes(monthFilter))) return false
@@ -1214,65 +1242,301 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const stats = useMemo(() => {
     let approvedSum = 0, pendingCount = 0, approvedCount = 0, rejectedCount = 0
     baseFiltered.forEach(p => {
+      if (!p) return
       if (p.status === 'pending') pendingCount++
-      else if (p.status === 'approved') { approvedCount++; approvedSum += (p.amount || 0) }
+      else if (p.status === 'approved') { approvedCount++; approvedSum += (Number(p.amount) || 0) }
       else if (p.status === 'rejected') rejectedCount++
     })
     return { approvedSum, pendingCount, approvedCount, rejectedCount, totalCount: baseFiltered.length }
   }, [baseFiltered])
 
+  // Active target month for debt and surplus calculations
+  const activeTargetMonth = useMemo(() => {
+    if (monthFilter !== 'all') return monthFilter
+    return ACAD_MONTHS[getAcadMonthIdx(new Date())] || 'أغسطس'
+  }, [monthFilter])
+
+  // Financial subscription breakdown per student (for debt & surplus lists)
+  const studentFinancialSummary = useMemo(() => {
+    if (!Array.isArray(allStudents)) return []
+    const q = (searchQuery || '').toLowerCase().trim()
+    return allStudents.map(student => {
+      if (!student || !student.id) return null
+
+      // 1. Stage / branch / group filtering check
+      const matchesGrade = gradeFilter === 'all' || student.grade === gradeFilter
+      const matchesBranch = branchFilter === 'all' || student.branch_id === branchFilter
+      const matchesGroup = groupFilter === 'all' || (student.group || '') === groupFilter
+      if (!matchesGrade || !matchesBranch || !matchesGroup) return null
+
+      // Search query filtering
+      if (q) {
+        const name = (student.name || '').toLowerCase()
+        const phone = String(student.phone || '')
+        const parentPhone = String(student.parent_phone || '')
+        const code = student.barcode_token ? String(student.barcode_token).toLowerCase() : ''
+        if (!name.includes(q) && !phone.includes(q) && !parentPhone.includes(q) && !code.includes(q)) {
+          return null
+        }
+      }
+
+      // 2. Compute fee, discount, and due
+      const baseFee = parseFloat(feeInputs?.[student.grade]) || 0
+      const discount = parseFloat(student.subscription_discount) || 0
+      const monthlyDue = Math.max(0, baseFee - discount)
+
+      // 3. Payments made by this student for this month
+      const studentPayments = (payments || []).filter(p => 
+        p && p.student_id === student.id && 
+        p.status === 'approved' &&
+        ((p.package_name || '').includes(activeTargetMonth) || (p.billing_period || '').includes(activeTargetMonth))
+      )
+      const paidAmount = studentPayments.reduce((sum, p) => sum + (Number(p?.amount) || 0), 0)
+
+      // 4. Balance calculations
+      const remainingDue = Math.max(0, monthlyDue - paidAmount)
+      const overpaidAmount = paidAmount > monthlyDue ? (paidAmount - monthlyDue) : 0
+      const isUnpaid = monthlyDue > 0 ? (paidAmount < monthlyDue) : (paidAmount === 0)
+      const isOverpaid = overpaidAmount > 0
+
+      return {
+        student,
+        month: activeTargetMonth,
+        targetPkg: `اشتراك شهر ${activeTargetMonth}`,
+        baseFee,
+        discount,
+        monthlyDue,
+        paidAmount,
+        remainingDue,
+        overpaidAmount,
+        isUnpaid,
+        isOverpaid,
+        studentPayments
+      }
+    }).filter(Boolean)
+  }, [allStudents, payments, feeInputs, activeTargetMonth, gradeFilter, branchFilter, groupFilter, searchQuery])
+
+  const unpaidStudentsList = useMemo(() => {
+    return (studentFinancialSummary || []).filter(item => item && item.isUnpaid)
+  }, [studentFinancialSummary])
+
+  const overpaidStudentsList = useMemo(() => {
+    return (studentFinancialSummary || []).filter(item => item && item.isOverpaid)
+  }, [studentFinancialSummary])
+
+  const totalUnpaidAmount = useMemo(() => {
+    return unpaidStudentsList.reduce((sum, s) => sum + (Number(s?.remainingDue) || 0), 0)
+  }, [unpaidStudentsList])
+
+  const totalOverpaidAmount = useMemo(() => {
+    return overpaidStudentsList.reduce((sum, s) => sum + (Number(s?.overpaidAmount) || 0), 0)
+  }, [overpaidStudentsList])
+
+  const handleQuickPayForStudent = (item) => {
+    setCashStudentId(item.student.id)
+    setCashDiscount(String(item.discount || 0))
+    setCashPackageName(item.targetPkg)
+    setCashAmount(item.remainingDue > 0 ? String(item.remainingDue) : (item.monthlyDue > 0 ? String(item.monthlyDue) : ''))
+    setCashDate(getTodayLocalDate())
+    setShowCashModal(true)
+  }
+
   const filteredPayments = useMemo(() => {
-    let list = baseFiltered
-    if (activeTab !== 'all') list = list.filter(p => p.status === activeTab)
-    if (!searchQuery.trim()) return list
-    const q = searchQuery.toLowerCase().trim()
-    return list.filter((p) => {
-      const name = p.profiles?.name?.toLowerCase() || ''
-      const phone = p.profiles?.phone || ''
-      return name.includes(q) || phone.includes(q)
-    })
+    let result = baseFiltered
+    if (activeTab !== 'all' && activeTab !== 'unpaid' && activeTab !== 'overpaid') {
+      result = result.filter(p => p.status === activeTab)
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter(p => {
+        const studentName = (p.profiles?.name || '').toLowerCase()
+        const studentPhone = p.profiles?.phone || ''
+        const parentPhone = p.profiles?.parent_phone || ''
+        const notes = (p.admin_notes || '').toLowerCase()
+        return studentName.includes(q) || studentPhone.includes(q) || parentPhone.includes(q) || notes.includes(q)
+      })
+    }
+    return result
   }, [baseFiltered, activeTab, searchQuery])
 
-  // Excel/CSV export function
   const handleExportCSV = () => {
-    const headers = ['اسم الطالب', 'المرحلة الدراسية', 'المبلغ (ج.م)', 'طريقة الدفع', 'الباقة المطلوبة', 'تاريخ الطلب', 'الحالة', 'ملاحظات الإدارة']
-    const rows = filteredPayments.map(p => {
-      const studentName = p.profiles?.name || '—'
-      const grade = GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || '—'
-      const amount = p.amount || 0
-      const method = p.payment_method === 'InstaPay' ? 'InstaPay' : p.payment_method === 'Cash' ? 'دفع نقدي' : 'E-wallet'
-      const packageName = p.package_name || '—'
-      const date = fmtDate(p.created_at)
-      const status = p.status === 'pending' ? 'قيد المراجعة' : p.status === 'approved' ? 'مقبول' : 'مرفوض'
-      const notes = p.admin_notes || ''
-      
-      const clean = (val) => {
-        const str = String(val).replace(/"/g, '""')
-        return `"${str}"`
-      }
-      
-      return [
-        clean(studentName),
-        clean(grade),
-        clean(amount),
-        clean(method),
-        clean(packageName),
-        clean(date),
-        clean(status),
-        clean(notes)
-      ].join(',')
-    })
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    let csv = ''
+    if (activeTab === 'unpaid') {
+      csv = '\uFEFF#,"اسم الطالب","المرحلة","المجموعة","هاتف الطالب","هاتف ولي الأمر","المستحق","المسدد","المتبقي المطلوب"\n'
+      unpaidStudentsList.forEach((item, idx) => {
+        csv += `"${idx + 1}","${(item.student?.name || '').replace(/"/g, '""')}","${GRADE_LABEL[item.student?.grade] || item.student?.grade || ''}","${(item.student?.group || '').replace(/"/g, '""')}","${item.student?.phone || ''}","${item.student?.parent_phone || ''}","${item.monthlyDue}","${item.paidAmount}","${item.remainingDue}"\n`
+      })
+    } else if (activeTab === 'overpaid') {
+      csv = '\uFEFF#,"اسم الطالب","المرحلة","المجموعة","هاتف الطالب","هاتف ولي الأمر","قيمة الاشتراك","المسدد","الفائض والزيادة"\n'
+      overpaidStudentsList.forEach((item, idx) => {
+        csv += `"${idx + 1}","${(item.student?.name || '').replace(/"/g, '""')}","${GRADE_LABEL[item.student?.grade] || item.student?.grade || ''}","${(item.student?.group || '').replace(/"/g, '""')}","${item.student?.phone || ''}","${item.student?.parent_phone || ''}","${item.monthlyDue}","${item.paidAmount}","+${item.overpaidAmount}"\n`
+      })
+    } else {
+      csv = '\uFEFF#,"اسم الطالب","المرحلة","المجموعة","المبلغ","وسيلة الدفع","الباقة","تاريخ الدفع","الحالة"\n'
+      filteredPayments.forEach((p, idx) => {
+        csv += `"${idx + 1}","${(p.profiles?.name || '').replace(/"/g, '""')}","${GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || ''}","${(p.profiles?.group || '').replace(/"/g, '""')}","${p.amount}","${p.payment_method}","${p.package_name || p.billing_period || ''}","${p.transaction_date || p.created_at || ''}","${p.status}"\n`
+      })
+    }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `report_payments_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    notify('تم تصدير ملف البيانات بنجاح 📊', 'success')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `payments_report_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handlePrintReport = () => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    let reportTitle = ''
+    let statsSummaryHtml = ''
+    let headersHtml = ''
+    let rowsHtml = ''
+
+    if (activeTab === 'unpaid') {
+      reportTitle = `كشف الطلاب غير المسددين لاشتراك شهر (${activeTargetMonth})`
+      statsSummaryHtml = `
+        <div class="stat-box">إجمالي غير المسددين<div class="stat-val" style="color: #ef4444;">${unpaidStudentsList.length} طالب</div></div>
+        <div class="stat-box">إجمالي المديونيات المطلوبة<div class="stat-val" style="color: #ef4444;">${totalUnpaidAmount} ج.م</div></div>
+        <div class="stat-box">شهر الاشتراك<div class="stat-val">${activeTargetMonth}</div></div>
+      `
+      headersHtml = `
+        <th style="width: 40px;">#</th>
+        <th>اسم الطالب</th>
+        <th style="width: 120px;">المرحلة</th>
+        <th style="width: 100px;">المجموعة</th>
+        <th style="width: 120px;">هاتف الطالب</th>
+        <th style="width: 120px;">هاتف ولي الأمر</th>
+        <th style="width: 90px;">المستحق</th>
+        <th style="width: 90px;">المسدد</th>
+        <th style="width: 110px;">المتبقي المطلوب</th>
+      `
+      rowsHtml = unpaidStudentsList.map((item, idx) => `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: bold;">${item.student.name || '—'}</td>
+          <td style="text-align: center;">${GRADE_LABEL[item.student.grade] || item.student.grade || '—'}</td>
+          <td style="text-align: center;">${item.student.group || '—'}</td>
+          <td style="text-align: center; direction: ltr;">${item.student.phone || '—'}</td>
+          <td style="text-align: center; direction: ltr; font-weight: bold;">${item.student.parent_phone || '—'}</td>
+          <td style="text-align: center;">${item.monthlyDue} ج.م</td>
+          <td style="text-align: center; color: #64748b;">${item.paidAmount} ج.م</td>
+          <td style="text-align: center; font-weight: bold; color: #ef4444;">${item.remainingDue} ج.م</td>
+        </tr>
+      `).join('')
+    } else if (activeTab === 'overpaid') {
+      reportTitle = `كشف الطلاب المسددين بزيادة / الفائض لشهر (${activeTargetMonth})`
+      statsSummaryHtml = `
+        <div class="stat-box">إجمالي الطلاب المسددين بزيادة<div class="stat-val" style="color: #06b6d4;">${overpaidStudentsList.length} طالب</div></div>
+        <div class="stat-box">إجمالي الفائض المدفوع<div class="stat-val" style="color: #06b6d4;">+${totalOverpaidAmount} ج.م</div></div>
+        <div class="stat-box">شهر الاشتراك<div class="stat-val">${activeTargetMonth}</div></div>
+      `
+      headersHtml = `
+        <th style="width: 40px;">#</th>
+        <th>اسم الطالب</th>
+        <th style="width: 120px;">المرحلة</th>
+        <th style="width: 100px;">المجموعة</th>
+        <th style="width: 120px;">هاتف الطالب</th>
+        <th style="width: 120px;">هاتف ولي الأمر</th>
+        <th style="width: 90px;">قيمة الاشتراك</th>
+        <th style="width: 90px;">المسدد</th>
+        <th style="width: 110px;">الفائض والزيادة</th>
+      `
+      rowsHtml = overpaidStudentsList.map((item, idx) => `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: bold;">${item.student.name || '—'}</td>
+          <td style="text-align: center;">${GRADE_LABEL[item.student.grade] || item.student.grade || '—'}</td>
+          <td style="text-align: center;">${item.student.group || '—'}</td>
+          <td style="text-align: center; direction: ltr;">${item.student.phone || '—'}</td>
+          <td style="text-align: center; direction: ltr;">${item.student.parent_phone || '—'}</td>
+          <td style="text-align: center;">${item.monthlyDue} ج.م</td>
+          <td style="text-align: center; font-weight: bold;">${item.paidAmount} ج.م</td>
+          <td style="text-align: center; font-weight: bold; color: #06b6d4;">+${item.overpaidAmount} ج.م</td>
+        </tr>
+      `).join('')
+    } else {
+      reportTitle = `كشف عمليات المدفوعات والاشتراكات`
+      statsSummaryHtml = `
+        <div class="stat-box">إجمالي العمليات<div class="stat-val">${filteredPayments.length}</div></div>
+        <div class="stat-box">المحصل المعتمد<div class="stat-val" style="color: #10b981;">${stats.approvedSum} ج.م</div></div>
+        <div class="stat-box">قيد المراجعة<div class="stat-val" style="color: #f59e0b;">${stats.pendingCount}</div></div>
+      `
+      headersHtml = `
+        <th style="width: 40px;">#</th>
+        <th>اسم الطالب</th>
+        <th style="width: 120px;">المرحلة</th>
+        <th style="width: 100px;">المجموعة</th>
+        <th style="width: 100px;">المبلغ</th>
+        <th style="width: 100px;">وسيلة الدفع</th>
+        <th>الباقة / الشهر</th>
+        <th style="width: 110px;">تاريخ الدفع</th>
+        <th style="width: 90px;">الحالة</th>
+      `
+      const statusLabels = { approved: 'مقبول', pending: 'قيد المراجعة', rejected: 'مرفوض' }
+      rowsHtml = filteredPayments.map((p, idx) => `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: bold;">${p.profiles?.name || '—'}</td>
+          <td style="text-align: center;">${GRADE_LABEL[p.profiles?.grade] || p.profiles?.grade || '—'}</td>
+          <td style="text-align: center;">${p.profiles?.group || '—'}</td>
+          <td style="text-align: center; font-weight: bold; color: #10b981;">${p.amount} ج.م</td>
+          <td style="text-align: center;">${p.payment_method === 'Cash' ? 'نقدي' : p.payment_method === 'InstaPay' ? 'InstaPay' : 'محفظة'}</td>
+          <td style="text-align: center;">${p.package_name || p.billing_period || '—'}</td>
+          <td style="text-align: center; direction: ltr;">${fmtDate(p.created_at)}</td>
+          <td style="text-align: center; font-weight: bold;">${statusLabels[p.status] || p.status}</td>
+        </tr>
+      `).join('')
+    }
+
+    const htmlContent = `
+      <html dir="rtl">
+        <head>
+          <title>${reportTitle}</title>
+          <style>
+            body { font-family: 'Tajawal', Arial, sans-serif; padding: 20px; color: #1e293b; }
+            h1 { text-align: center; font-size: 20px; margin-bottom: 6px; color: #0f172a; }
+            h2 { text-align: center; font-size: 13px; color: #64748b; margin-top: 0; margin-bottom: 20px; font-weight: 500; }
+            .stats-container { display: flex; justify-content: space-around; margin-bottom: 20px; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+            .stat-box { text-align: center; font-size: 12px; color: #64748b; font-weight: bold; }
+            .stat-val { font-size: 16px; font-weight: 800; margin-top: 4px; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            th { background-color: #f1f5f9; padding: 10px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #334155; }
+            td { padding: 8px; border: 1px solid #e2e8f0; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            @media print {
+              @page { size: A4 portrait; margin: 12mm; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <h1>${reportTitle}</h1>
+          <h2>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')} - ${new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</h2>
+          <div class="stats-container">
+            ${statsSummaryHtml}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${headersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
   }
 
   return (
@@ -1290,6 +1554,42 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
           </div>
 
           <div className="pay-top-actions">
+            {/* Quick Unpaid Students List Button */}
+            <button 
+              type="button"
+              onClick={() => setActiveTab('unpaid')}
+              className="cp-btn"
+              style={{
+                height: 42, padding: '0 16px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.88rem', fontWeight: 800,
+                background: activeTab === 'unpaid' ? '#ef4444' : 'rgba(239, 68, 68, 0.1)',
+                color: activeTab === 'unpaid' ? '#fff' : '#ef4444',
+                border: '1px solid ' + (activeTab === 'unpaid' ? '#ef4444' : 'rgba(239, 68, 68, 0.3)'),
+                boxShadow: activeTab === 'unpaid' ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
+              }}
+              title="عرض كشف الطلاب الذين لم يدفعوا اشتراك الشهر أو عليهم متبقي"
+            >
+              <i className="fas fa-user-xmark"></i>
+              <span>كشف غير المسددين ({unpaidStudentsList.length})</span>
+            </button>
+
+            {/* Quick Overpaid Students List Button */}
+            <button 
+              type="button"
+              onClick={() => setActiveTab('overpaid')}
+              className="cp-btn"
+              style={{
+                height: 42, padding: '0 16px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.88rem', fontWeight: 800,
+                background: activeTab === 'overpaid' ? '#06b6d4' : 'rgba(6, 182, 212, 0.1)',
+                color: activeTab === 'overpaid' ? '#fff' : '#06b6d4',
+                border: '1px solid ' + (activeTab === 'overpaid' ? '#06b6d4' : 'rgba(6, 182, 212, 0.3)'),
+                boxShadow: activeTab === 'overpaid' ? '0 4px 12px rgba(6, 182, 212, 0.3)' : 'none'
+              }}
+              title="عرض كشف الطلاب الذين دفعوا زيادة عن المبلغ المطلوب"
+            >
+              <i className="fas fa-hand-holding-dollar"></i>
+              <span>كشف الزيادة والفائض ({overpaidStudentsList.length})</span>
+            </button>
+
             <button 
               type="button"
               onClick={handleOpenCashModal}
@@ -1330,6 +1630,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
             >
               <i className="fas fa-credit-card"></i>
               <span>بيانات التحويل</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={handlePrintReport}
+              className="cp-btn cp-btn-ghost"
+              style={{ height: 42, padding: '0 14px', borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
+              title="طباعة تقرير الكشف الحالي"
+            >
+              <i className="fas fa-print" style={{ color: '#3b82f6' }}></i>
+              <span>طباعة الكشف 🖨️</span>
             </button>
 
             <button 
@@ -1533,6 +1844,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                 { id: 'pending', label: 'قيد المراجعة', count: stats.pendingCount, icon: 'fa-hourglass-half', color: '#f59e0b' },
                 { id: 'rejected', label: 'المرفوضة', count: stats.rejectedCount, icon: 'fa-circle-xmark', color: '#ef4444' },
                 { id: 'all', label: 'جميع العمليات', count: stats.totalCount, icon: 'fa-layer-group', color: '#8b5cf6' },
+                { id: 'unpaid', label: '⚠️ غير المسددين', count: unpaidStudentsList.length, icon: 'fa-user-xmark', color: '#ef4444' },
+                { id: 'overpaid', label: '💰 مسددين بزيادة', count: overpaidStudentsList.length, icon: 'fa-hand-holding-dollar', color: '#06b6d4' },
               ].map((tab) => {
                 const isActive = activeTab === tab.id
                 return (
@@ -1578,12 +1891,15 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               </div>
 
               <button 
-                onClick={onRefresh}
+                onClick={async () => {
+                  onRefresh()
+                  await loadAllStudents()
+                }}
                 className="cp-btn cp-btn-secondary"
                 style={{ height: 42, width: 42, borderRadius: 12, padding: 0, justifyContent: 'center', flexShrink: 0 }}
                 title="تحديث البيانات"
               >
-                <i className={`fas fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
+                <i className={`fas fa-rotate ${loading || loadingRoster ? 'fa-spin' : ''}`}></i>
               </button>
             </div>
 
@@ -1630,7 +1946,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
             <div className="pay-filter-control">
               <label>شهر الاشتراك</label>
               <select className="paypg-admin-input" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} style={{ cursor: 'pointer', fontWeight: 600 }}>
-                <option value="all">كل الشهور</option>
+                <option value="all">كل الشهور (الحالي: {activeTargetMonth})</option>
                 {SUB_MONTHS.map((m) => (<option key={m} value={m}>اشتراك شهر {m}</option>))}
               </select>
             </div>
@@ -1671,21 +1987,269 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
         {/* ─────────── 4. Main Data Table / Report Card ─────────── */}
         <div className="pay-table-wrap">
-          <div className="pay-table-header-bar">
+          <div className="pay-table-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="fas fa-list-check" style={{ color: '#10b981' }}></i>
-              كشف تفاصيل عمليات الدفع والاشتراكات
-              <span className="cp-id-pill cp-id-pill-sm" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 800 }}>
-                {filteredPayments.length} عملية
-              </span>
+              {activeTab === 'unpaid' ? (
+                <>
+                  <i className="fas fa-user-xmark" style={{ color: '#ef4444' }}></i>
+                  كشف الطلاب غير المسددين لاشتراك شهر ({activeTargetMonth})
+                  <span className="cp-id-pill cp-id-pill-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800 }}>
+                    {unpaidStudentsList.length} طالب ({totalUnpaidAmount} ج.م مطلوب)
+                  </span>
+                </>
+              ) : activeTab === 'overpaid' ? (
+                <>
+                  <i className="fas fa-hand-holding-dollar" style={{ color: '#06b6d4' }}></i>
+                  كشف الطلاب المسددين بزيادة / الفائض لشهر ({activeTargetMonth})
+                  <span className="cp-id-pill cp-id-pill-sm" style={{ background: 'rgba(6, 182, 212, 0.1)', color: '#06b6d4', fontWeight: 800 }}>
+                    {overpaidStudentsList.length} طالب (+{totalOverpaidAmount} ج.م فائض)
+                  </span>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-list-check" style={{ color: '#10b981' }}></i>
+                  كشف تفاصيل عمليات الدفع والاشتراكات
+                  <span className="cp-id-pill cp-id-pill-sm" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 800 }}>
+                    {filteredPayments.length} عملية
+                  </span>
+                </>
+              )}
             </div>
+
+            {/* Direct Print Button in Table Header */}
+            <button
+              type="button"
+              onClick={handlePrintReport}
+              className="cp-btn cp-btn-ghost"
+              style={{
+                height: 36, padding: '0 14px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.82rem',
+                borderColor: 'rgba(59, 130, 246, 0.3)', color: '#3b82f6', background: 'rgba(59, 130, 246, 0.06)'
+              }}
+              title="طباعة تقرير الكشف الحالي ورقة A4"
+            >
+              <i className="fas fa-print"></i>
+              <span>طباعة الكشف 🖨️</span>
+            </button>
           </div>
 
-          {loading ? (
+          {loading || loadingRoster ? (
             <div className="paypg-loader" style={{ padding: '60px 0' }}>
               <i className="fas fa-circle-notch fa-spin"></i>
-              <span>جاري تحميل تقرير المدفوعات...</span>
+              <span>جاري تحميل البيانات والحسابات...</span>
             </div>
+          ) : activeTab === 'unpaid' ? (
+            /* ─────────── Unpaid Students Table ─────────── */
+            unpaidStudentsList.length > 0 ? (
+              <div className="cp-table-container">
+                <table className="cp-table">
+                  <thead>
+                    <tr>
+                      <th>الطالب والمرحلة</th>
+                      <th>هاتف ولي الأمر</th>
+                      <th>سعر المرحلة والخصم</th>
+                      <th>المسدد حتى الآن</th>
+                      <th>المتبقي المطلوب</th>
+                      <th>الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unpaidStudentsList.map((item) => (
+                      <tr key={item.student.id}>
+                        {/* Student Info */}
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="pay-student-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f43f5e)' }}>
+                              {(item.student.name || 'ط').trim().charAt(0)}
+                            </div>
+                            <div>
+                              <div className="paypg-student-name" style={{ fontSize: '0.95rem' }}>{item.student.name || '—'}</div>
+                              <div className="paypg-student-meta" style={{ flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                {item.student.phone && (
+                                  <span><i className="fas fa-phone" style={{ fontSize: '0.72rem', opacity: 0.7 }}></i> {item.student.phone}</span>
+                                )}
+                                {item.student.grade && (
+                                  <span className="cp-id-pill cp-id-pill-sm" style={{ fontSize: '0.72rem', padding: '1px 6px' }}>
+                                    {GRADE_LABEL[item.student.grade] || item.student.grade}
+                                  </span>
+                                )}
+                                {item.student.group && (
+                                  <span className="cp-id-pill cp-id-pill-sm" style={{ fontSize: '0.72rem', padding: '1px 6px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                                    {item.student.group}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Guardian Phone */}
+                        <td>
+                          {item.student.parent_phone ? (
+                            <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: 600, color: 'var(--cp-text-main)' }}>
+                              {item.student.parent_phone}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
+                        </td>
+
+                        {/* Monthly Fee & Discount */}
+                        <td>
+                          <div style={{ fontSize: '0.88rem' }}>
+                            <div>سعر المرحلة: <strong>{item.baseFee} ج.م</strong></div>
+                            {item.discount > 0 && (
+                              <div style={{ color: '#10b981', fontSize: '0.8rem' }}>خصم: -{item.discount} ج.م</div>
+                            )}
+                            <div style={{ color: 'var(--cp-text-muted)', fontSize: '0.8rem' }}>المستحق: <strong>{item.monthlyDue} ج.م</strong></div>
+                          </div>
+                        </td>
+
+                        {/* Paid So Far */}
+                        <td>
+                          <span style={{ fontWeight: 700, color: item.paidAmount > 0 ? '#10b981' : '#94a3b8' }}>
+                            {item.paidAmount} ج.م
+                          </span>
+                        </td>
+
+                        {/* Remaining Debt */}
+                        <td>
+                          <span style={{
+                            display: 'inline-flex', padding: '4px 12px', borderRadius: 999, fontSize: '0.85rem', fontWeight: 800,
+                            background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)'
+                          }}>
+                            {item.remainingDue} ج.م مطلوب
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickPayForStudent(item)}
+                              className="cp-btn pay-btn-primary-glow"
+                              style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <i className="fas fa-credit-card"></i>
+                              <span>دفع الآن 💳</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="paypg-empty" style={{ padding: '60px 0' }}>
+                <i className="fas fa-circle-check" style={{ fontSize: '3rem', color: '#10b981', marginBottom: 12 }}></i>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>لا توجد مديونيات أو طلاب غير مسددين! 🎉</h3>
+                <p style={{ margin: 0, color: 'var(--cp-text-muted)', fontSize: '0.9rem' }}>جميع الطلاب مسددين لاشتراك شهر ({activeTargetMonth}) وفقاً للتصفية الحالية.</p>
+              </div>
+            )
+          ) : activeTab === 'overpaid' ? (
+            /* ─────────── Overpaid Students Table ─────────── */
+            overpaidStudentsList.length > 0 ? (
+              <div className="cp-table-container">
+                <table className="cp-table">
+                  <thead>
+                    <tr>
+                      <th>الطالب والمرحلة</th>
+                      <th>هاتف ولي الأمر</th>
+                      <th>قيمة الاشتراك المستحق</th>
+                      <th>إجمالي المسدد</th>
+                      <th>مبلغ الزيادة والفائض</th>
+                      <th>الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overpaidStudentsList.map((item) => (
+                      <tr key={item.student.id}>
+                        {/* Student Info */}
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div className="pay-student-avatar" style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)' }}>
+                              {(item.student.name || 'ط').trim().charAt(0)}
+                            </div>
+                            <div>
+                              <div className="paypg-student-name" style={{ fontSize: '0.95rem' }}>{item.student.name || '—'}</div>
+                              <div className="paypg-student-meta" style={{ flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                {item.student.phone && (
+                                  <span><i className="fas fa-phone" style={{ fontSize: '0.72rem', opacity: 0.7 }}></i> {item.student.phone}</span>
+                                )}
+                                {item.student.grade && (
+                                  <span className="cp-id-pill cp-id-pill-sm" style={{ fontSize: '0.72rem', padding: '1px 6px' }}>
+                                    {GRADE_LABEL[item.student.grade] || item.student.grade}
+                                  </span>
+                                )}
+                                {item.student.group && (
+                                  <span className="cp-id-pill cp-id-pill-sm" style={{ fontSize: '0.72rem', padding: '1px 6px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                                    {item.student.group}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Guardian Phone */}
+                        <td>
+                          {item.student.parent_phone ? (
+                            <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: 600, color: 'var(--cp-text-main)' }}>
+                              {item.student.parent_phone}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
+                        </td>
+
+                        {/* Monthly Due */}
+                        <td>
+                          <strong>{item.monthlyDue} ج.م</strong>
+                        </td>
+
+                        {/* Total Paid */}
+                        <td>
+                          <strong style={{ color: '#10b981' }}>{item.paidAmount} ج.م</strong>
+                        </td>
+
+                        {/* Surplus Amount */}
+                        <td>
+                          <span style={{
+                            display: 'inline-flex', padding: '4px 12px', borderRadius: 999, fontSize: '0.85rem', fontWeight: 800,
+                            background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)'
+                          }}>
+                            +{item.overpaidAmount} ج.م فائض
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchQuery(item.student.name)
+                              setActiveTab('approved')
+                            }}
+                            className="cp-btn cp-btn-ghost"
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          >
+                            <i className="fas fa-receipt"></i>
+                            <span>عرض الدفعات</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="paypg-empty" style={{ padding: '60px 0' }}>
+                <i className="fas fa-hand-holding-dollar" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>لا توجد مبالغ مدفوعة بالزيادة</h3>
+                <p style={{ margin: 0, color: 'var(--cp-text-muted)', fontSize: '0.9rem' }}>جميع المدفوعات مطابقة لقيمة الاشتراك تماماً لشهر ({activeTargetMonth}).</p>
+              </div>
+            )
           ) : filteredPayments.length > 0 ? (
             <div className="cp-table-container">
               <table className="cp-table">

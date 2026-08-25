@@ -195,13 +195,20 @@ export async function recordSubscriptionPayment({
     .eq('id', studentId)
     .single()
 
+  const getTodayDate = () => {
+    const d = new Date()
+    const offset = d.getTimezoneOffset()
+    const localDate = new Date(d.getTime() - offset * 60 * 1000)
+    return localDate.toISOString().split('T')[0]
+  }
+
   const base = {
     student_id: studentId,
     branch_id: studentProfile?.branch_id || null,
     academic_year_id: studentProfile?.academic_year_id || null,
     status: 'approved',
     billing_period: billingPeriod || null,
-    transaction_date: transactionDate || new Date().toISOString().split('T')[0],
+    transaction_date: transactionDate || getTodayDate(),
     created_by: adminId,
     resolved_at: new Date().toISOString(),
     resolved_by: adminId,

@@ -264,6 +264,7 @@ export async function updateStudentProfile(studentId, updates) {
     .update({
       name: updates.name,
       phone: updates.phone,
+      grade: updates.grade,
       branch_id: updates.branch_id || null,
       academic_year_id: updates.academic_year_id || null,
       status: updates.status,

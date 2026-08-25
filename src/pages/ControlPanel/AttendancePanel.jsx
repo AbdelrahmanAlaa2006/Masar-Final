@@ -505,7 +505,9 @@ export default function AttendancePanel({ onBack, flash }) {
     return () => { active = false }
   }, [activeSubTab, selectedSessionId])
 
-  // Filter student list strictly by Group and Search Query (name or phone number)
+  // Filter student list strictly by Group and Search Query (name, phone, parent_phone),
+  // sorted with attendees (present > late > excused) at the top, absent at the bottom,
+  // and alphabetically by name within each status group.
   const filteredStudentsList = useMemo(() => {
     let list = students
     
@@ -521,19 +523,40 @@ export default function AttendancePanel({ onBack, flash }) {
       }
     }
     
-    // 2. Search Query Filter (name, phone, or parent_phone)
+    // 2. Search Query Filter (name, phone, parent_phone, student code/qr)
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       list = list.filter(s => {
         const nameMatch = s.name ? s.name.toLowerCase().includes(q) : false
         const phoneMatch = s.phone ? s.phone.includes(q) : false
         const parentPhoneMatch = s.parent_phone ? s.parent_phone.includes(q) : false
-        return nameMatch || phoneMatch || parentPhoneMatch
+        const codeMatch = s.barcode_token ? s.barcode_token.toLowerCase().includes(q) : false
+        const qrMatch = s.qr_token ? s.qr_token.toLowerCase().includes(q) : false
+        return nameMatch || phoneMatch || parentPhoneMatch || codeMatch || qrMatch
       })
     }
-    
-    return list
-  }, [students, selectedGroupId, groups, searchQuery])
+
+    // 3. Status order: Present (1) -> Late (2) -> Excused (3) -> Absent (4)
+    const statusRank = {
+      present: 1,
+      late: 2,
+      excused: 3,
+      absent: 4
+    }
+
+    return [...list].sort((a, b) => {
+      const statusA = attendanceRecords[a.id] || 'absent'
+      const statusB = attendanceRecords[b.id] || 'absent'
+      const rankA = statusRank[statusA] ?? 4
+      const rankB = statusRank[statusB] ?? 4
+
+      if (rankA !== rankB) {
+        return rankA - rankB
+      }
+
+      return (a.name || '').localeCompare(b.name || '', 'ar', { sensitivity: 'base' })
+    })
+  }, [students, selectedGroupId, groups, searchQuery, attendanceRecords])
 
   // Merged history records: every student in the current group/class merged with their database attendance record
   const mergedHistoryRecords = useMemo(() => {
@@ -569,10 +592,31 @@ export default function AttendancePanel({ onBack, flash }) {
   }, [mergedHistoryRecords])
 
   const searchedHistoryRecords = useMemo(() => {
-    return mergedHistoryRecords.filter(r => {
+    const statusRank = {
+      present: 1,
+      late: 2,
+      excused: 3,
+      absent: 4
+    }
+
+    const filtered = mergedHistoryRecords.filter(r => {
       if (!historySearchQuery.trim()) return true
+      const q = historySearchQuery.trim().toLowerCase()
       const name = r.profiles?.name || ''
-      return name.toLowerCase().includes(historySearchQuery.toLowerCase())
+      const phone = r.profiles?.phone || ''
+      const parentPhone = r.profiles?.parent_phone || ''
+      return name.toLowerCase().includes(q) || phone.includes(q) || parentPhone.includes(q)
+    })
+
+    return [...filtered].sort((a, b) => {
+      const rankA = statusRank[a.status] ?? 4
+      const rankB = statusRank[b.status] ?? 4
+      if (rankA !== rankB) {
+        return rankA - rankB
+      }
+      const nameA = a.profiles?.name || ''
+      const nameB = b.profiles?.name || ''
+      return nameA.localeCompare(nameB, 'ar', { sensitivity: 'base' })
     })
   }, [mergedHistoryRecords, historySearchQuery])
 
@@ -1210,6 +1254,7 @@ export default function AttendancePanel({ onBack, flash }) {
         <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${r.profiles?.name || '—'}</td>
         <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${r.profiles?.group || '—'}</td>
         <td style="padding: 10px; border: 1px solid #ddd; text-align: center; direction: ltr;">${r.profiles?.phone || '—'}</td>
+        <td style="padding: 10px; border: 1px solid #ddd; text-align: center; direction: ltr;">${r.profiles?.parent_phone || '—'}</td>
         <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: ${
           r.status === 'present' ? '#10b981' : r.status === 'absent' ? '#ef4444' : r.status === 'late' ? '#f59e0b' : '#7c3aed'
         }">${statusLabels[r.status] || r.status}</td>
@@ -1248,8 +1293,9 @@ export default function AttendancePanel({ onBack, flash }) {
                 <th style="width: 50px;">#</th>
                 <th>اسم الطالب</th>
                 <th style="width: 100px;">المجموعة</th>
-                <th style="width: 150px;">رقم الهاتف</th>
-                <th style="width: 120px;">حالة الحضور</th>
+                <th style="width: 130px;">رقم الهاتف</th>
+                <th style="width: 130px;">هاتف ولي الأمر</th>
+                <th style="width: 110px;">حالة الحضور</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -1547,8 +1593,8 @@ export default function AttendancePanel({ onBack, flash }) {
             )}
           </div>
 
-          {/* Bulk Action Controls */}
-          {filteredStudentsList.length > 0 && (
+          {/* Bulk Action Controls & Live Search Bar */}
+          {students.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '16px', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--cp-text-muted)' }}>الحضور والغياب للمجموعة:</span>
@@ -1593,8 +1639,32 @@ export default function AttendancePanel({ onBack, flash }) {
                 })()}
               </div>
 
+              {/* Live Search Input for Student Name, Phone, or Code */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '0 1 320px', minWidth: '240px' }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <i className="fas fa-search" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', fontSize: '0.85rem' }} />
+                  <input 
+                    type="text"
+                    placeholder="ابحث باسم الطالب أو هاتفه أو الكود..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="cp-input"
+                    style={{ width: '100%', paddingRight: '34px', paddingLeft: searchQuery ? '30px' : '12px', height: '36px', fontSize: '0.84rem', borderRadius: '8px' }}
+                  />
+                  {searchQuery && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchQuery('')}
+                      style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--cp-text-muted)', cursor: 'pointer', padding: 0 }}
+                    >
+                      <i className="fas fa-times-circle" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {selectedStudentIds.length > 0 && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', animation: 'cpFadeUp 0.2s ease' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', animation: 'cpFadeUp 0.2s ease', width: '100%', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#8b5cf6' }}>نقل جماعي ({selectedStudentIds.length} طلاب):</span>
                   <select 
                     value={transferTargetGroupId} 
@@ -1624,7 +1694,12 @@ export default function AttendancePanel({ onBack, flash }) {
           ) : filteredStudentsList.length === 0 ? (
             <div className="cp-empty">
               <i className="fas fa-users-slash" />
-              <p>لا يوجد طلاب مسجلين في هذا الفرع أو المرحلة حالياً</p>
+              <p>{searchQuery ? `لا توجد نتائج مطابقة لبحثك عن "${searchQuery}"` : 'لا يوجد طلاب مسجلين في هذا الفرع أو المرحلة حالياً'}</p>
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="cp-btn cp-btn-ghost" style={{ marginTop: '10px' }}>
+                  مسح البحث
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ background: 'var(--cp-card-bg)', border: '1px solid var(--cp-card-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--cp-card-shadow)', marginBottom: '24px', opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s ease' }}>
@@ -1635,12 +1710,13 @@ export default function AttendancePanel({ onBack, flash }) {
                       <th style={{ padding: '16px 20px', width: '40px', textAlign: 'center' }}>
                         <input 
                           type="checkbox" 
-                          checked={selectedStudentIds.length === filteredStudentsList.length} 
+                          checked={selectedStudentIds.length === filteredStudentsList.length && filteredStudentsList.length > 0} 
                           onChange={toggleAllStudentsSelection} 
                         />
                       </th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold' }}>اسم الطالب</th>
-                      <th style={{ padding: '16px', fontWeight: 'bold' }}>رقم الهاتف</th>
+                      <th style={{ padding: '16px', fontWeight: 'bold' }}>رقم الطالب</th>
+                      <th style={{ padding: '16px', fontWeight: 'bold' }}>هاتف ولي الأمر</th>
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '100px' }}>المجموعة</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '380px', textAlign: 'center' }}>تسجيل حالة الحضور</th>
                     </tr>
@@ -1666,7 +1742,8 @@ export default function AttendancePanel({ onBack, flash }) {
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{student.phone}</td>
+                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{student.phone || '—'}</td>
+                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{student.parent_phone || '—'}</td>
                           <td style={{ padding: '14px' }}>
                             <span className="cp-id-pill">{student.group || '—'}</span>
                           </td>
@@ -1813,7 +1890,8 @@ export default function AttendancePanel({ onBack, flash }) {
                       <th style={{ padding: '16px 20px', width: '60px', textAlign: 'center' }}>#</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold' }}>اسم الطالب</th>
                       <th style={{ padding: '16px', fontWeight: 'bold', width: '120px' }}>المجموعة</th>
-                      <th style={{ padding: '16px', fontWeight: 'bold', width: '160px' }}>رقم الهاتف</th>
+                      <th style={{ padding: '16px', fontWeight: 'bold', width: '140px' }}>رقم الطالب</th>
+                      <th style={{ padding: '16px', fontWeight: 'bold', width: '140px' }}>هاتف ولي الأمر</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '150px', textAlign: 'center' }}>حالة الحضور</th>
                       <th style={{ padding: '16px 20px', fontWeight: 'bold', width: '100px', textAlign: 'center' }}>الإجراءات</th>
                     </tr>
@@ -1837,6 +1915,7 @@ export default function AttendancePanel({ onBack, flash }) {
                             <span className="cp-id-pill">{record.profiles?.group || '—'}</span>
                           </td>
                           <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{record.profiles?.phone || '—'}</td>
+                          <td style={{ padding: '14px', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{record.profiles?.parent_phone || '—'}</td>
                           <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                             <span style={{
                               display: 'inline-block',

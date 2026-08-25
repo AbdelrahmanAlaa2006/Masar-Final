@@ -2361,9 +2361,12 @@ function EditVideoModal({ video, onCancel, onSave }) {
                       placeholder="مثال: dQw4w9WgXcQ"
                       required
                     />
-                    <small style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                    <small style={{ color: 'var(--text-secondary)', fontSize: 12, display: 'block', marginTop: 4 }}>
                       سيتم استخراج معرّف الفيديو تلقائياً إذا قمت بلصق الرابط بالكامل.
                     </small>
+                    <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                      <strong style={{ color: '#eab308' }}>⚠️ ملاحظة:</strong> اضبط خصوصية الفيديو في يوتيوب على <strong>«غير مدرج» (Unlisted)</strong> ليعمل داخل المنصة.
+                    </div>
                   </div>
                 ) : (
                   <div className="edit-grid" style={{ marginBottom: 12 }}>

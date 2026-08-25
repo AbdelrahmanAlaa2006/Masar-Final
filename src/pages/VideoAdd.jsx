@@ -599,11 +599,14 @@ export default function VideoAdd() {
                             }}
                             maxLength={64}
                           />
-                          <small style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                          <small style={{ color: 'var(--text-muted)', fontSize: 12, display: 'block', marginTop: 4 }}>
                             الجزء من الرابط بعد <code>v=</code> أو بعد <code>youtu.be/</code>. سيتم استخراج المعرّف تلقائياً إذا لصقت الرابط الكامل.
                           </small>
+                          <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                            <strong style={{ color: '#eab308' }}>⚠️ ملاحظة هامة:</strong> يجب ضبط خصوصية الفيديو على يوتيوب كـ <strong>«غير مدرج» (Unlisted)</strong> وليس «خاص» (Private) حتى يعمل مشغل الفيديو في المنصة بدون أن يظهر الفيديو للعامة على يوتيوب.
+                          </div>
                           {part.videoId && !/^[a-zA-Z0-9_-]{11}$/.test(part.videoId) && (
-                            <small style={{ color: '#c53030', fontSize: 12 }}>
+                            <small style={{ color: '#c53030', fontSize: 12, display: 'block', marginTop: 4 }}>
                               المعرّف يجب أن يكون 11 حرفاً.
                             </small>
                           )}

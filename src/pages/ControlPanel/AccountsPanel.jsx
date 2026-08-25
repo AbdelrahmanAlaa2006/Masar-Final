@@ -1083,6 +1083,22 @@ export default function AccountsPanel({ onBack, flash }) {
               </div>
 
               <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>المرحلة الدراسية *</label>
+                <select 
+                  value={editStudent.grade || ''} 
+                  onChange={(e) => setEditStudent({ ...editStudent, grade: e.target.value, selectedGroupId: '', secondaryGroupId: '' })} 
+                  className="cp-input" 
+                  style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} 
+                  required
+                >
+                  <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر المرحلة...</option>
+                  {(gradesList || []).map(g => (
+                    <option key={g.id} value={g.id} style={{ background: '#0f172a', color: '#fff' }}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>حالة الطالب</label>
                 <select value={editStudent.status || 'inactive'} onChange={(e) => setEditStudent({ ...editStudent, status: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <option style={{ background: '#0f172a', color: '#fff' }} value="active">نشط (مفعل)</option>
@@ -1104,7 +1120,7 @@ export default function AccountsPanel({ onBack, flash }) {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>الفرع الدراسي</label>
-                <select value={editStudent.branch_id || ''} onChange={(e) => setEditStudent({ ...editStudent, branch_id: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <select value={editStudent.branch_id || ''} onChange={(e) => setEditStudent({ ...editStudent, branch_id: e.target.value, selectedGroupId: '', secondaryGroupId: '' })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <option style={{ background: '#0f172a', color: '#fff' }} value="">اختر الفرع...</option>
                   {branches.map(b => (
                     <option key={b.id} value={b.id} style={{ background: '#0f172a', color: '#fff' }}>{b.name}</option>
