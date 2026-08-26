@@ -264,7 +264,7 @@ export default function ControlPanelIndex() {
   const [toast, setToast] = useState(null)
   const flash = (msg, kind = 'success') => {
     setToast({ msg, kind })
-    setTimeout(() => setToast(null), 2200)
+    setTimeout(() => setToast(null), 4000)
   }
 
   /* catalog data from Supabase - shared across sub-panels */
@@ -457,8 +457,10 @@ export default function ControlPanelIndex() {
             <i className={`fas ${toast.kind === 'success'
                 ? 'fa-circle-check'
                 : toast.kind === 'warning'
-                  ? 'fa-circle-exclamation'
-                  : 'fa-circle-info'
+                  ? 'fa-triangle-exclamation'
+                  : toast.kind === 'error' || toast.kind === 'danger'
+                    ? 'fa-circle-xmark'
+                    : 'fa-circle-info'
               }`}></i>
             <span>{toast.msg}</span>
           </div>
@@ -859,8 +861,10 @@ export default function ControlPanelIndex() {
           <i className={`fas ${toast.kind === 'success'
               ? 'fa-circle-check'
               : toast.kind === 'warning'
-                ? 'fa-circle-exclamation'
-                : 'fa-circle-info'
+                ? 'fa-triangle-exclamation'
+                : toast.kind === 'error' || toast.kind === 'danger'
+                  ? 'fa-circle-xmark'
+                  : 'fa-circle-info'
             }`}></i>
           <span>{toast.msg}</span>
         </div>

@@ -342,8 +342,35 @@ export async function createStudentByAdmin({
   if (!tenantId) throw new Error('معرف المنصة مطلوب لإتمام التسجيل')
   if (!grade) throw new Error('المرحلة الدراسية مطلوبة لإتمام التسجيل')
 
+  const cleanName = (name || '').trim()
+  const cleanPhone = (phone || '').trim()
+  const cleanParentPhone = (parentPhone || '').trim()
+
+  if (!cleanName) throw new Error('اسم الطالب مطلوب')
+  if (!cleanPhone) throw new Error('رقم هاتف أو كود الطالب مطلوب')
+  if (!cleanParentPhone) throw new Error('رقم هاتف ولي الأمر مطلوب')
+  if (cleanPhone === cleanParentPhone) {
+    throw new Error('رقم هاتف أو كود الطالب لا يمكن أن يكون هو نفسه رقم هاتف ولي الأمر')
+  }
+
+  // 1. Proactively check if a profile with this phone/code already exists in this tenant
+  try {
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, name, phone')
+      .eq('tenant_id', tenantId)
+      .eq('phone', cleanPhone)
+      .maybeSingle()
+
+    if (existingProfile) {
+      throw new Error(`رقم الهاتف أو الكود (${cleanPhone}) مسجل بالفعل للطالب "${existingProfile.name || ''}" في هذه المنصة.`)
+    }
+  } catch (err) {
+    if (err.message && err.message.includes('مسجل بالفعل')) throw err
+  }
+
   const tempClient = getTempClient()
-  const email = phoneToEmail(phone, tenantId)
+  const email = phoneToEmail(cleanPhone, tenantId)
 
   // Fetch active academic year
   let activeYearId = null
@@ -361,18 +388,28 @@ export async function createStudentByAdmin({
     console.error('Failed to fetch active academic year:', err)
   }
 
-  // 1. Sign up in Supabase auth using temp client
-  const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
+  // Try cleaning up any orphaned auth user (if RPC is available) before signup
+  try {
+    await supabase.rpc('cleanup_orphaned_student_auth', {
+      p_phone: cleanPhone,
+      p_tenant_id: tenantId
+    })
+  } catch {}
+
+  let studentId = null
+
+  // 2. Sign up in Supabase auth using temp client
+  let { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
     email,
     password,
     options: {
       data: {
-        name: name.trim(),
-        phone: phone.trim(),
+        name: cleanName,
+        phone: cleanPhone,
         role: 'student',
         grade,
         tenant_id: tenantId,
-        parent_phone: parentPhone ? parentPhone.trim() : '',
+        parent_phone: cleanParentPhone,
         enrollment_type: enrollmentType || 'CENTER',
         branch_id: branchId || null,
         group_id: groupId || null,
@@ -382,22 +419,106 @@ export async function createStudentByAdmin({
     }
   })
 
-  if (signUpError) throw signUpError
-  if (!signUpData.user) throw new Error('فشل إنشاء حساب الطالب في المصادقة')
+  const isAlreadyRegistered = signUpError && (
+    signUpError.message?.toLowerCase().includes('already registered') ||
+    signUpError.message?.toLowerCase().includes('already exists') ||
+    signUpError.code === 'user_already_exists' ||
+    signUpError.status === 422
+  )
+  const hasEmptyIdentities = signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0
 
-  const studentId = signUpData.user.id
+  // If user already exists in auth.users but has no profile (orphan)
+  if (isAlreadyRegistered || hasEmptyIdentities) {
+    // 1) Try cleanup RPC and retry signup once
+    let cleaned = false
+    try {
+      const { data: cleanupRes } = await supabase.rpc('cleanup_orphaned_student_auth', {
+        p_phone: cleanPhone,
+        p_tenant_id: tenantId
+      })
+      cleaned = !!cleanupRes
+    } catch {}
 
-  // 2. Manually upsert profile
+    if (cleaned) {
+      const retry = await tempClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: cleanName,
+            phone: cleanPhone,
+            role: 'student',
+            grade,
+            tenant_id: tenantId,
+            parent_phone: cleanParentPhone,
+            enrollment_type: enrollmentType || 'CENTER',
+            branch_id: branchId || null,
+            group_id: groupId || null,
+            group: groupName || null,
+            academic_year_id: activeYearId
+          }
+        }
+      })
+      if (!retry.error && retry.data?.user) {
+        signUpData = retry.data
+        signUpError = null
+      }
+    }
+
+    // 2) If still not signed up, try signInWithPassword to recover existing auth user and update it
+    if (!signUpData?.user?.id || (signUpData.user.identities && signUpData.user.identities.length === 0)) {
+      try {
+        const { data: signInData } = await tempClient.auth.signInWithPassword({
+          email,
+          password
+        })
+        if (signInData?.user) {
+          studentId = signInData.user.id
+          await tempClient.auth.updateUser({
+            password,
+            data: {
+              name: cleanName,
+              phone: cleanPhone,
+              role: 'student',
+              grade,
+              tenant_id: tenantId,
+              parent_phone: cleanParentPhone,
+              enrollment_type: enrollmentType || 'CENTER',
+              branch_id: branchId || null,
+              group_id: groupId || null,
+              group: groupName || null,
+              academic_year_id: activeYearId
+            }
+          })
+        }
+      } catch {}
+    }
+  }
+
+  if (!studentId) {
+    if (signUpError) {
+      if (isAlreadyRegistered) {
+        throw new Error(`رقم الهاتف أو الكود (${cleanPhone}) مسجل بالفعل كحساب مستخدم في النظام (Auth).`)
+      }
+      throw signUpError
+    }
+    if (!signUpData?.user) {
+      throw new Error('فشل إنشاء حساب الطالب في المصادقة')
+    }
+    studentId = signUpData.user.id
+  }
+
+  // 3. Manually upsert profile
   const { error: profileError } = await supabase
     .from('profiles')
     .upsert({
       id: studentId,
-      name: name.trim(),
-      phone: phone.trim(),
+      name: cleanName,
+      phone: cleanPhone,
       role: 'student',
       tenant_id: tenantId,
       grade: grade,
-      parent_phone: parentPhone ? parentPhone.trim() : '',
+      parent_phone: cleanParentPhone,
       enrollment_type: enrollmentType || 'CENTER',
       branch_id: branchId || null,
       group: groupName || null,
@@ -410,6 +531,9 @@ export async function createStudentByAdmin({
 
   if (profileError) {
     console.error('Profile upsert error:', profileError)
+    if (profileError.message?.includes('profiles_tenant_phone_key') || profileError.message?.includes('profiles_phone_key')) {
+      throw new Error(`رقم الهاتف أو الكود (${cleanPhone}) مسجل بالفعل لطالب آخر في هذه المنصة.`)
+    }
     throw new Error('فشل إنشاء الملف الشخصي للطالب: ' + profileError.message)
   }
 

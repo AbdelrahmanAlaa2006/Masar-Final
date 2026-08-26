@@ -47,6 +47,47 @@ const fmtDateTime = (iso) => {
   }
 }
 
+const formatStudentErrorMessage = (err, { phone = '', parentPhone = '', name = '' } = {}) => {
+  if (!err) return 'حدث خطأ غير متوقع أثناء حفظ البيانات'
+  const msg = err.message || (typeof err === 'string' ? err : '')
+  const lower = msg.toLowerCase()
+
+  if (lower.includes('unique constraint') && (lower.includes('phone_key') || lower.includes('profiles_tenant_phone_key'))) {
+    return `رقم الهاتف أو الكود (${phone || 'المُدخل'}) مسجل بالفعل لطالب آخر في هذه المنصة.`
+  }
+  if (lower.includes('unique constraint') && (lower.includes('barcode') || lower.includes('barcode_token'))) {
+    return 'كود الباركود مسجل بالفعل لطالب آخر في هذه المنصة.'
+  }
+  if (lower.includes('unique constraint') && (lower.includes('qr_token') || lower.includes('qr'))) {
+    return 'رمز QR مسجل بالفعل لطالب آخر في هذه المنصة.'
+  }
+  if (lower.includes('already registered') || lower.includes('user_already_exists') || lower.includes('user already exists')) {
+    return `رقم الهاتف أو الكود (${phone || 'المُدخل'}) مسجل بالفعل كحساب مستخدم في النظام.`
+  }
+  if (lower.includes('password should be at least') || lower.includes('password must be at least')) {
+    return 'كلمة المرور يجب أن تكون 6 أحرف أو أرقام على الأقل.'
+  }
+  if (lower.includes('database error saving new user')) {
+    return `حدث خطأ في قاعدة البيانات أثناء حفظ المستخدم الجديد (قد يكون الكود أو الهاتف "${phone}" مستخدماً بالفعل).`
+  }
+  if (lower.includes('rate limit')) {
+    return 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً، يرجى المحاولة بعد قليل.'
+  }
+  if (lower.includes('failed to fetch') || lower.includes('network error') || lower.includes('networkrequestfailed')) {
+    return 'تعذر الاتصال بالخادم، يرجى التحقق من اتصال الإنترنت والمحاولة مجدداً.'
+  }
+  if (lower.includes('jwt') || lower.includes('token is expired') || lower.includes('invalid claim')) {
+    return 'انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول.'
+  }
+
+  // If the error message is already in Arabic, return it directly
+  if (/[\u0600-\u06FF]/.test(msg)) {
+    return msg
+  }
+
+  return `فشل حفظ البيانات: ${msg}`
+}
+
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
   const { gradesList, tenantId, tenantName, tenant, tenantSlug } = useTenant()
@@ -86,11 +127,13 @@ export default function AccountsPanel({ onBack, flash }) {
   
   const [showEditModal, setShowEditModal] = useState(false)
   const [editStudent, setEditStudent] = useState(null)
+  const [editStudentError, setEditStudentError] = useState('')
   const [deletingStudent, setDeletingStudent] = useState(null)
 
   // Add student modal and state
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAddPassword, setShowAddPassword] = useState(false)
+  const [addStudentError, setAddStudentError] = useState('')
   const [addStudentForm, setAddStudentForm] = useState({
     name: '',
     phone: '',
@@ -280,6 +323,7 @@ export default function AccountsPanel({ onBack, flash }) {
   const handleEditSubmit = async (e) => {
     e.preventDefault()
     if (!editStudent) return
+    setEditStudentError('')
     setBusyId(editStudent.id)
     try {
       const updated = await updateStudentProfile(editStudent.id, editStudent)
@@ -309,10 +353,13 @@ export default function AccountsPanel({ onBack, flash }) {
       flash('تم تحديث بيانات الطالب وحفظ التغييرات بنجاح', 'success')
       setShowEditModal(false)
       setEditStudent(null)
+      setEditStudentError('')
       softRefresh()
     } catch (err) {
       console.error(err)
-      flash('حدث خطأ أثناء تعديل بيانات الطالب: ' + err.message, 'error')
+      const errorMsg = formatStudentErrorMessage(err, { phone: editStudent.phone, name: editStudent.name })
+      setEditStudentError(errorMsg)
+      flash(errorMsg, 'error')
     } finally {
       setBusyId(null)
     }
@@ -343,24 +390,53 @@ export default function AccountsPanel({ onBack, flash }) {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault()
-    if (!addStudentForm.phone.trim()) {
-      flash('رقم هاتف أو كود الطالب مطلوب', 'warning')
+    setAddStudentError('')
+
+    const name = (addStudentForm.name || '').trim()
+    const phone = (addStudentForm.phone || '').trim()
+    const parentPhone = (addStudentForm.parent_phone || '').trim()
+    const password = addStudentForm.password || ''
+
+    if (!name) {
+      const msg = 'الاسم بالكامل مطلوب'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
       return
     }
-    if (!addStudentForm.parent_phone.trim()) {
-      flash('رقم هاتف ولي الأمر مطلوب', 'warning')
+    if (!phone) {
+      const msg = 'رقم هاتف أو كود الطالب مطلوب'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
       return
     }
-    if (addStudentForm.parent_phone.trim().length < 4) {
-      flash('رقم هاتف ولي الأمر غير صحيح (يجب أن يكون 4 أرقام على الأقل)', 'warning')
+    if (!parentPhone) {
+      const msg = 'رقم هاتف ولي الأمر مطلوب'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
       return
     }
-    if (addStudentForm.password.length < 6) {
-      flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'warning')
+    if (parentPhone.length < 4) {
+      const msg = 'رقم هاتف ولي الأمر غير صحيح (يجب أن يكون 4 أرقام على الأقل)'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
+      return
+    }
+    if (phone === parentPhone) {
+      const msg = 'رقم هاتف أو كود الطالب لا يمكن أن يكون هو نفسه رقم هاتف ولي الأمر'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
+      return
+    }
+    if (password.length < 6) {
+      const msg = 'كلمة المرور يجب أن تكون 6 أحرف أو أرقام على الأقل'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
       return
     }
     if (addStudentForm.registerMonthly && !addStudentForm.monthlyMonth) {
-      flash('يجب اختيار شهر الاشتراك للمدفوعات الشهرية', 'warning')
+      const msg = 'يجب اختيار شهر الاشتراك للمدفوعات الشهرية'
+      setAddStudentError(msg)
+      flash(msg, 'warning')
       return
     }
 
@@ -369,11 +445,11 @@ export default function AccountsPanel({ onBack, flash }) {
       const groupObj = addStudentForm.selectedGroupId ? groups.find(g => g.id === addStudentForm.selectedGroupId) : null
       
       await createStudentByAdmin({
-        name: addStudentForm.name,
-        phone: addStudentForm.phone,
-        password: addStudentForm.password,
+        name: name,
+        phone: phone,
+        password: password,
         grade: addStudentForm.grade,
-        parentPhone: addStudentForm.parent_phone,
+        parentPhone: parentPhone,
         enrollmentType: addStudentForm.enrollment_type,
         branchId: addStudentForm.branch_id || null,
         groupId: addStudentForm.selectedGroupId || null,
@@ -390,10 +466,13 @@ export default function AccountsPanel({ onBack, flash }) {
 
       flash('تم إنشاء حساب الطالب وتسجيل المدفوعات المحددة بنجاح', 'success')
       setShowAddModal(false)
+      setAddStudentError('')
       softRefresh()
     } catch (err) {
       console.error(err)
-      flash('فشل إنشاء حساب الطالب: ' + (err.message || ''), 'error')
+      const errorMsg = formatStudentErrorMessage(err, { phone, parentPhone, name })
+      setAddStudentError(errorMsg)
+      flash(errorMsg, 'error')
     } finally {
       setBusyId(null)
     }
@@ -737,6 +816,8 @@ export default function AccountsPanel({ onBack, flash }) {
         </button>
 
         <button className="cp-btn cp-btn-success" onClick={() => {
+          setAddStudentError('');
+          setShowAddPassword(false);
           setAddStudentForm({
             name: '',
             phone: '',
@@ -985,6 +1066,7 @@ export default function AccountsPanel({ onBack, flash }) {
                         <button
                           className="cp-btn cp-btn-info cp-btn-sm"
                           onClick={() => {
+                            setEditStudentError('')
                             const primaryG = student.student_groups?.find(sg => sg.is_primary) || student.student_groups?.[0]
                             const secG = student.student_groups?.find(sg => !sg.is_primary && sg.group_id !== primaryG?.group_id)
                             const curGroupId = primaryG?.group_id || ''
@@ -1071,6 +1153,33 @@ export default function AccountsPanel({ onBack, flash }) {
           <form onSubmit={handleEditSubmit} style={{ background: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px', padding: '30px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', color: '#fff', direction: 'rtl', fontFamily: 'Tajawal, sans-serif' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '10px' }}>تعديل الملف الشخصي للطالب: {editStudent.name}</h3>
             
+            {editStudentError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1.5px solid rgba(239, 68, 68, 0.45)',
+                color: '#fca5a5',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '0.92rem',
+                lineHeight: '1.5'
+              }}>
+                <i className="fas fa-circle-exclamation" style={{ color: '#ef4444', fontSize: '1.25rem', flexShrink: 0 }}></i>
+                <div style={{ flex: 1 }}>{editStudentError}</div>
+                <button
+                  type="button"
+                  onClick={() => setEditStudentError('')}
+                  style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: 4 }}
+                  title="إغلاق التنبيه"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>الاسم بالكامل</label>
@@ -1296,6 +1405,33 @@ export default function AccountsPanel({ onBack, flash }) {
               <i className="fas fa-user-plus" style={{ marginInlineEnd: 8, color: '#10b981' }}></i>
               إضافة طالب جديد
             </h3>
+
+            {addStudentError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1.5px solid rgba(239, 68, 68, 0.45)',
+                color: '#fca5a5',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '0.92rem',
+                lineHeight: '1.5'
+              }}>
+                <i className="fas fa-circle-exclamation" style={{ color: '#ef4444', fontSize: '1.25rem', flexShrink: 0 }}></i>
+                <div style={{ flex: 1 }}>{addStudentError}</div>
+                <button
+                  type="button"
+                  onClick={() => setAddStudentError('')}
+                  style={{ background: 'none', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: 4 }}
+                  title="إغلاق التنبيه"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            )}
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
@@ -1304,7 +1440,7 @@ export default function AccountsPanel({ onBack, flash }) {
               </div>
               
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف الطالب *</label>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 'bold', marginBottom: '6px', color: '#94a3b8' }}>رقم هاتف أو كود الطالب *</label>
                 <input type="text" name="new_student_phone" autoComplete="off" data-lpignore="true" data-1p-ignore="true" value={addStudentForm.phone} onChange={(e) => setAddStudentForm({ ...addStudentForm, phone: e.target.value })} className="cp-input" style={{ width: '100%', background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} required />
               </div>
 

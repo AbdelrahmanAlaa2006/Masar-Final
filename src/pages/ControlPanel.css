@@ -1237,25 +1237,30 @@ body.dark .cp-page::before {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--cp-card-bg);
-  color: var(--cp-text-main);
-  padding: 0.75rem 1.25rem;
-  border-radius: 10px;
-  border: 1px solid var(--cp-back-border);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: var(--cp-card-bg, #1e293b);
+  color: var(--cp-text-main, #f8fafc);
+  padding: 0.85rem 1.4rem;
+  border-radius: 12px;
+  border: 1.5px solid var(--cp-back-border, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2);
   font-family: 'Tajawal', sans-serif;
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
-  gap: 8px;
-  z-index: 2000;
+  gap: 10px;
+  z-index: 1000000;
   animation: cp-toast-in 0.2s ease-out;
+  direction: rtl;
 }
-.cp-toast-success { border-color: #10b981; }
-.cp-toast-success i { color: #10b981; }
-.cp-toast-warning { border-color: #e2873d; }
-.cp-toast-warning i { color: #e2873d; }
+.cp-toast-success { border-color: #10b981; background: #064e3b; color: #a7f3d0; }
+.cp-toast-success i { color: #34d399; font-size: 1.15rem; }
+.cp-toast-warning { border-color: #f59e0b; background: #451a03; color: #fde68a; }
+.cp-toast-warning i { color: #fbbf24; font-size: 1.15rem; }
+.cp-toast-error, .cp-toast-danger { border-color: #ef4444; background: #450a0a; color: #fecaca; }
+.cp-toast-error i, .cp-toast-danger i { color: #f87171; font-size: 1.15rem; }
+.cp-toast-info { border-color: #3b82f6; background: #172554; color: #bfdbfe; }
+.cp-toast-info i { color: #60a5fa; font-size: 1.15rem; }
 
 @keyframes cp-toast-in {
   from { opacity: 0; transform: translate(-50%, 10px); }
