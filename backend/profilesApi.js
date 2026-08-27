@@ -291,12 +291,111 @@ export function invalidateProfile(id) {
 }
 
 export async function getStudentIdentityByQr(qrToken, tenantId) {
-  const { data, error } = await supabase.rpc('get_student_identity', {
-    p_code: qrToken,
-    p_tenant_id: tenantId
-  })
-  if (error) throw error
-  return data
+  if (!qrToken) return null
+
+  const raw = String(qrToken).trim()
+  const clean = raw.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '').replace(/^\*+|\*+$/g, '')
+  const withoutBc = clean.toLowerCase().startsWith('bc-') ? clean.slice(3) : clean
+  const withBc = clean.toLowerCase().startsWith('bc-') ? clean : `BC-${clean}`
+
+  // Build candidate search codes in priority order
+  const candidates = Array.from(new Set([
+    clean,
+    raw,
+    withBc,
+    withoutBc,
+    clean.toLowerCase(),
+    withoutBc.toLowerCase(),
+    withBc.toUpperCase()
+  ])).filter(Boolean)
+
+  // 1. Try standard RPC for all normalized candidate formats
+  for (const cand of candidates) {
+    try {
+      const { data, error } = await supabase.rpc('get_student_identity', {
+        p_code: cand,
+        p_tenant_id: tenantId
+      })
+      if (!error && data && data.student_id) {
+        return data
+      }
+    } catch (e) {
+      // Continue to next candidate
+    }
+  }
+
+  // 2. Direct fallback query against profiles table (by barcode_token, qr_token, phone, or id)
+  try {
+    let query = supabase
+      .from('profiles')
+      .select(`
+        id, name, phone, grade, status, enrollment_type, flags, parent_phone, barcode_token, qr_token,
+        branch:branches(name),
+        academic_year:academic_years(name),
+        student_groups(is_primary, group:groups(name))
+      `)
+      .eq('role', 'student')
+
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId)
+    }
+
+    const orFilters = [
+      `barcode_token.eq.${clean}`,
+      `barcode_token.ilike.%${withoutBc}%`,
+      `qr_token.eq.${clean}`,
+      `phone.eq.${clean}`,
+      `phone.ilike.%${clean}%`
+    ]
+    query = query.or(orFilters.join(','))
+
+    const { data: matchedRows, error: profError } = await query.limit(1)
+    if (!profError && matchedRows && matchedRows.length > 0) {
+      const p = matchedRows[0]
+      // Try RPC with the exact profile's token
+      if (p.barcode_token || p.qr_token) {
+        const { data: rpcData } = await supabase.rpc('get_student_identity', {
+          p_code: p.barcode_token || p.qr_token,
+          p_tenant_id: tenantId
+        })
+        if (rpcData && rpcData.student_id) {
+          return rpcData
+        }
+      }
+
+      // If RPC is unavailable, construct identity directly
+      const primaryGroup = p.student_groups?.find(sg => sg.is_primary) || p.student_groups?.[0]
+      return {
+        student_id: p.id,
+        name: p.name,
+        phone: p.phone,
+        parent_phone: p.parent_phone,
+        grade: p.grade,
+        status: p.status || 'active',
+        enrollment_type: p.enrollment_type || 'CENTER',
+        flags: p.flags || [],
+        branch_name: p.branch?.name || 'الفرع الرئيسي',
+        academic_year_name: p.academic_year?.name || '',
+        group_name: primaryGroup?.group?.name || '',
+        attendance_percentage: null,
+        attended_sessions: 0,
+        present_count: 0,
+        late_count: 0,
+        absent_count: 0,
+        total_sessions: 0,
+        outstanding_balance: 0,
+        last_payment: {},
+        today_attendance: '—',
+        recent_grades: [],
+        notes: [],
+        warnings: []
+      }
+    }
+  } catch (err) {
+    console.error('Fallback student identity lookup error:', err)
+  }
+
+  return null
 }
 
 const phoneToEmail = (phone, tenantId) => {

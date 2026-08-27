@@ -30,14 +30,16 @@ const mapArabicKeysToEnglish = (str) => {
     'لا': 'b',
     'لأ': 't',
     'لإ': 'y',
-    'لآ': 'b'
+    'لآ': 'b',
+    'LA': 'b',
+    'La': 'b'
   };
   const singleKeys = {
     'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p', 'ج': '[', 'د': ']',
     'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k', 'م': 'l', 'ك': ';', 'ط': '\'',
     'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'ى': 'n', 'ة': 'm',
     'أ': 'h', 'إ': 'y', 'آ': 'n',
-    'و': ',', 'ز': '.', 'ظ': '/',
+    'و': ',', 'ز': '.', 'ظ': '/', 'ذ': '`',
     '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
   };
   
@@ -988,7 +990,8 @@ export default function AttendancePanel({ onBack, flash }) {
       // a token: control chars, NBSP/zero-width chars, spaces and Code39 '*'
       // wrappers. Tokens are printable ASCII, so a whitelist is bulletproof;
       // the server normalizes the same way (normalize_scan_code).
-      let scannedToken = mapArabicKeysToEnglish(String(text).trim())
+      const rawText = String(text).trim()
+      let scannedToken = mapArabicKeysToEnglish(rawText)
         .replace(/[^\x20-\x7E]/g, '')
         .replace(/\s+/g, '')
         .replace(/^\*+|\*+$/g, '')
@@ -999,8 +1002,11 @@ export default function AttendancePanel({ onBack, flash }) {
         }
       }
 
-      // Fetch student details from the single DB RPC lookup
-      const studentData = await getStudentIdentityByQr(scannedToken, tenantId)
+      // Fetch student details from the DB (RPC with multi-candidate and profile fallback)
+      let studentData = await getStudentIdentityByQr(scannedToken, tenantId)
+      if (!studentData && rawText && rawText !== scannedToken) {
+        studentData = await getStudentIdentityByQr(rawText, tenantId)
+      }
       if (!studentData) {
         throw new Error('لم يتم العثور على طالب مطابق لهذا الباركود أو البطاقة')
       }
@@ -1495,30 +1501,27 @@ export default function AttendancePanel({ onBack, flash }) {
                 value={scannerText}
                 onChange={(e) => setScannerText(e.target.value)}
                 onKeyDown={(e) => {
-                  // ── Layout-independent physical-key capture ──
-                  // USB barcode scanners are keyboard-wedge devices: they fire
-                  // the same physical keystrokes regardless of the OS keyboard
-                  // layout.  When the layout is Arabic the *characters* in the
-                  // input differ (ؤب- vs BC-), but `e.code` always reflects
-                  // the physical key (KeyB, KeyC, Minus …).  We translate
-                  // e.code → ASCII ourselves so the scanner works on ANY
-                  // keyboard layout without needing the old
-                  // mapArabicKeysToEnglish reverse-mapping.
                   const code = e.code
 
                   // Terminator: Enter or Tab → submit whatever is buffered.
                   if (e.key === 'Enter' || e.key === 'Tab') {
                     e.preventDefault()
-                    // Prefer the physical-key buffer; fall back to the DOM
-                    // value (for manual typing or pasting).
-                    const physicalToken = scannerKeyBuffer.current
-                    const domToken = e.target.value
-                    const lookupValue = physicalToken || domToken
+                    const physicalToken = (scannerKeyBuffer.current || '').trim()
+                    const domToken = (e.target.value || '').trim()
+                    // Choose the most complete candidate
+                    let lookupValue = domToken
+                    if (physicalToken && physicalToken.length >= domToken.length) {
+                      lookupValue = physicalToken
+                    } else if (!lookupValue) {
+                      lookupValue = physicalToken
+                    }
+
                     // Reset both buffers immediately.
                     scannerKeyBuffer.current = ''
                     e.target.value = ''
                     setScannerText('')
-                    if (!lookupValue.trim()) return
+                    if (!lookupValue || !lookupValue.trim()) return
+
                     // Serialize lookups so overlapping scans process in order.
                     scanChainRef.current = scanChainRef.current
                       .then(() => handleQrScanned(lookupValue, true))
@@ -1534,18 +1537,23 @@ export default function AttendancePanel({ onBack, flash }) {
                   } else if (code.startsWith('Digit')) {
                     // Digit0-Digit9 → '0'-'9'
                     ch = code.charAt(5)
-                  } else if (code === 'Minus') {
+                  } else if (code.startsWith('Numpad') && code.length === 7) {
+                    // Numpad0-Numpad9 → '0'-'9'
+                    ch = code.charAt(6)
+                  } else if (code === 'NumpadSubtract' || code === 'Minus') {
                     ch = e.shiftKey ? '_' : '-'
-                  } else if (code === 'Period') {
+                  } else if (code === 'NumpadDecimal' || code === 'Period') {
                     ch = e.shiftKey ? '>' : '.'
+                  } else if (code === 'NumpadDivide' || code === 'Slash') {
+                    ch = e.shiftKey ? '?' : '/'
+                  } else if (code === 'NumpadMultiply') {
+                    ch = '*'
+                  } else if (code === 'NumpadAdd' || code === 'Equal') {
+                    ch = e.shiftKey ? '+' : '='
                   } else if (code === 'Comma') {
                     ch = e.shiftKey ? '<' : ','
-                  } else if (code === 'Slash') {
-                    ch = e.shiftKey ? '?' : '/'
                   } else if (code === 'Semicolon') {
                     ch = e.shiftKey ? ':' : ';'
-                  } else if (code === 'Equal') {
-                    ch = e.shiftKey ? '+' : '='
                   } else if (code === 'Space') {
                     ch = ' '
                   }
@@ -1553,8 +1561,6 @@ export default function AttendancePanel({ onBack, flash }) {
                   if (ch !== null) {
                     scannerKeyBuffer.current += ch
                   }
-                  // Non-printable keys (Shift, Ctrl, CapsLock, etc.) are
-                  // silently ignored — they don't append to the buffer.
                 }}
                 onFocus={() => setScannerFocused(true)}
                 onBlur={() => {
