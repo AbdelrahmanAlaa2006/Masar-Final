@@ -32,7 +32,11 @@ const mapArabicKeysToEnglish = (str) => {
     'لإ': 'y',
     'لآ': 'b',
     'LA': 'b',
-    'La': 'b'
+    'La': 'b',
+    'ﻻ': 'b',
+    'ﻷ': 't',
+    'ﻹ': 'y',
+    'ﻵ': 'b'
   };
   const singleKeys = {
     'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p', 'ج': '[', 'د': ']',
@@ -116,10 +120,12 @@ export default function AttendancePanel({ onBack, flash }) {
   // Physical-key buffer for the barcode scanner.
   // USB barcode scanners are keyboard wedges: they send physical keystrokes.
   // When the OS keyboard layout is Arabic the *characters* differ, but the
-  // KeyboardEvent.code (physical key position) is always the same.  We
+  // KeyboardEvent.code (physical key position) is always the same. We
   // capture codes in a ref buffer and translate them to ASCII ourselves,
   // making the scanner layout-independent.
   const scannerKeyBuffer = useRef('')
+  const lastScanKeyTimeRef = useRef(0)
+  const isManualPasteRef = useRef(false)
 
   // Tabs and History States
   const [activeSubTab, setActiveSubTab] = useState('record') // 'record' | 'history'
@@ -1500,24 +1506,52 @@ export default function AttendancePanel({ onBack, flash }) {
                 type="text" 
                 value={scannerText}
                 onChange={(e) => setScannerText(e.target.value)}
+                onPaste={() => {
+                  // Explicit manual paste (Ctrl+V, context menu, etc.):
+                  // Discard any hardware keystroke buffer and mark manual paste active.
+                  scannerKeyBuffer.current = ''
+                  lastScanKeyTimeRef.current = 0
+                  isManualPasteRef.current = true
+                }}
                 onKeyDown={(e) => {
+                  // Never intercept modifier shortcut keys (Ctrl+V, Ctrl+C, Ctrl+A, Meta+V, Alt, etc.)
+                  if (e.ctrlKey || e.metaKey || e.altKey) {
+                    return
+                  }
+
                   const code = e.code
+
+                  // If user edits manually (Backspace/Delete/Escape), clear hardware buffer
+                  if (code === 'Backspace' || code === 'Delete' || code === 'Escape') {
+                    scannerKeyBuffer.current = ''
+                    lastScanKeyTimeRef.current = 0
+                    isManualPasteRef.current = false
+                    return
+                  }
 
                   // Terminator: Enter or Tab → submit whatever is buffered.
                   if (e.key === 'Enter' || e.key === 'Tab') {
                     e.preventDefault()
                     const physicalToken = (scannerKeyBuffer.current || '').trim()
                     const domToken = (e.target.value || '').trim()
-                    // Choose the most complete candidate
+
+                    // Selection logic:
+                    // 1. If manual paste occurred, use the pasted DOM token.
+                    // 2. Otherwise, if physical hardware buffer has content, use it (layout-independent).
+                    // 3. Fall back to DOM token (e.g. manual typing).
                     let lookupValue = domToken
-                    if (physicalToken && physicalToken.length >= domToken.length) {
+                    if (!isManualPasteRef.current && physicalToken) {
                       lookupValue = physicalToken
-                    } else if (!lookupValue) {
+                    } else if (domToken) {
+                      lookupValue = domToken
+                    } else if (physicalToken) {
                       lookupValue = physicalToken
                     }
 
                     // Reset both buffers immediately.
                     scannerKeyBuffer.current = ''
+                    lastScanKeyTimeRef.current = 0
+                    isManualPasteRef.current = false
                     e.target.value = ''
                     setScannerText('')
                     if (!lookupValue || !lookupValue.trim()) return
@@ -1528,6 +1562,18 @@ export default function AttendancePanel({ onBack, flash }) {
                       .catch(() => {})
                     return
                   }
+
+                  // Active keystroke -> reset paste flag
+                  isManualPasteRef.current = false
+
+                  const now = Date.now()
+                  // Inter-keystroke timeout: USB scanners type the entire token in <100ms.
+                  // If >500ms elapsed since the previous keystroke, any previous partial
+                  // buffer is discarded so stale aborted scans don't contaminate new input.
+                  if (now - lastScanKeyTimeRef.current > 500) {
+                    scannerKeyBuffer.current = ''
+                  }
+                  lastScanKeyTimeRef.current = now
 
                   // Map physical key code → ASCII character.
                   let ch = null
@@ -1562,11 +1608,16 @@ export default function AttendancePanel({ onBack, flash }) {
                     scannerKeyBuffer.current += ch
                   }
                 }}
-                onFocus={() => setScannerFocused(true)}
+                onFocus={() => {
+                  setScannerFocused(true)
+                  isManualPasteRef.current = false
+                }}
                 onBlur={() => {
                   setScannerFocused(false)
                   // Clear the physical buffer on blur to prevent stale data
                   scannerKeyBuffer.current = ''
+                  lastScanKeyTimeRef.current = 0
+                  isManualPasteRef.current = false
                 }}
                 placeholder="انقر هنا لبدء المسح بالباركود مباشرة..."
                 className="cp-input"

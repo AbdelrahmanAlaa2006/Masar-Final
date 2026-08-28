@@ -342,11 +342,15 @@ export async function getStudentIdentityByQr(qrToken, tenantId) {
 
     const orFilters = [
       `barcode_token.eq.${clean}`,
-      `barcode_token.ilike.%${withoutBc}%`,
       `qr_token.eq.${clean}`,
-      `phone.eq.${clean}`,
-      `phone.ilike.%${clean}%`
+      `phone.eq.${clean}`
     ]
+    if (withoutBc && withoutBc.length >= 3) {
+      orFilters.push(`barcode_token.ilike.%${withoutBc}%`)
+    }
+    if (clean && clean.length >= 3) {
+      orFilters.push(`phone.ilike.%${clean}%`)
+    }
     query = query.or(orFilters.join(','))
 
     const { data: matchedRows, error: profError } = await query.limit(1)
