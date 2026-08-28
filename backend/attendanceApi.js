@@ -134,10 +134,17 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
 
   // Fetch updated records first to obtain the database-generated attendance_records IDs
   const sessionIds = [...new Set(records.map(r => r.session_id))]
-  const { data: updatedRecords } = await supabase
+  const studentIds = [...new Set(records.map(r => r.student_id).filter(Boolean))]
+  let attQuery = supabase
     .from('attendance_records')
     .select('*')
     .in('session_id', sessionIds)
+
+  if (studentIds.length > 0) {
+    attQuery = attQuery.in('student_id', studentIds)
+  }
+
+  const { data: updatedRecords } = await attQuery
 
   const activeRecords = updatedRecords || []
 

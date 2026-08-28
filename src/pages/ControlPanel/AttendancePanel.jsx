@@ -263,23 +263,30 @@ export default function AttendancePanel({ onBack, flash }) {
         dbToUiGrade(grade)
       ].filter(Boolean)))
 
-      // 1. Check Platform Online Exams/Quizzes (exams table)
-      const { data: recentExams, error: examErr } = await supabase
-        .from('exams')
-        .select('id, title, exam_type, created_at, grade, origin')
-        .in('grade', gradeKeys)
-        .eq('is_archived', false)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      // 1. Check Platform Online Exams/Quizzes (exams table) - Cached per tenant & grade for 2 min
+      const gradeCacheKey = `recent-exams-grade:${tenantId || 'default'}:${gradeKeys.slice().sort().join('_')}`
+      const recentExams = await cached(gradeCacheKey, 2 * 60 * 1000, async () => {
+        const { data, error } = await supabase
+          .from('exams')
+          .select('id, title, exam_type, created_at, grade, origin')
+          .in('grade', gradeKeys)
+          .eq('is_archived', false)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        if (error) {
+          console.warn('Error fetching recent exams:', error)
+          return []
+        }
+        return data || []
+      })
 
-      if (examErr) {
-        console.warn('Error fetching recent exams:', examErr)
-      } else if (recentExams && recentExams.length > 0) {
+      if (recentExams && recentExams.length > 0) {
         // Filter out video pre-assessments if any
         const mainExams = recentExams.filter(e => e.origin !== 'video_quiz')
         const examIds = mainExams.map(e => e.id)
 
         if (examIds.length > 0) {
+          // Fresh student-specific attempt check (NEVER cached across students)
           const { data: attempts } = await supabase
             .from('exam_attempts')
             .select('exam_id, score, submitted_at')
@@ -300,20 +307,28 @@ export default function AttendancePanel({ onBack, flash }) {
         }
       }
 
-      // 2. Check In-Center Quizzes / Evaluations (grades table)
-      const { data: recentCenterGrades } = await supabase
-        .from('grades')
-        .select(`
-          type,
-          title,
-          created_at,
-          profiles!student_id (
-            grade
-          )
-        `)
-        .in('type', ['quiz', 'exam'])
-        .order('created_at', { ascending: false })
-        .limit(30)
+      // 2. Check In-Center Quizzes / Evaluations (grades table) - Cached per tenant & grade for 2 min
+      const centerCacheKey = `recent-center-evals:${tenantId || 'default'}:${gradeKeys.slice().sort().join('_')}`
+      const recentCenterGrades = await cached(centerCacheKey, 2 * 60 * 1000, async () => {
+        const { data, error } = await supabase
+          .from('grades')
+          .select(`
+            type,
+            title,
+            created_at,
+            profiles!student_id (
+              grade
+            )
+          `)
+          .in('type', ['quiz', 'exam'])
+          .order('created_at', { ascending: false })
+          .limit(30)
+        if (error) {
+          console.warn('Error fetching recent center evaluations:', error)
+          return []
+        }
+        return data || []
+      })
 
       const relevantCenterEvals = (recentCenterGrades || [])
         .filter(g => gradeKeys.includes(g.profiles?.grade))
@@ -768,10 +783,27 @@ export default function AttendancePanel({ onBack, flash }) {
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
       })()
       const monthlyFee = Number(feesByGrade[studentData.grade || student.grade]) || 0
-      let discount = 0
-      try { discount = Number(await getStudentDiscount(studentData.student_id || student.id)) || 0 } catch { discount = 0 }
+      const targetStudentId = studentData.student_id || student.id
+      let discount = null
+
+      // Check if discount is already explicitly present in studentData
+      if (studentData?.subscription_discount !== undefined && studentData?.subscription_discount !== null) {
+        discount = Number(studentData.subscription_discount)
+      }
+      // Check if discount is already in the preloaded students list in memory
+      if (discount === null && Array.isArray(students)) {
+        const preloaded = students.find(s => s.id === targetStudentId)
+        if (preloaded && preloaded.subscription_discount !== undefined && preloaded.subscription_discount !== null) {
+          discount = Number(preloaded.subscription_discount)
+        }
+      }
+      // Fallback: only query network if the field was genuinely missing/unresolved
+      if (discount === null || isNaN(discount)) {
+        try { discount = Number(await getStudentDiscount(targetStudentId)) || 0 } catch { discount = 0 }
+      }
+
       studentData.monthly_fee = monthlyFee
-      studentData.discount = discount
+      studentData.discount = discount || 0
       studentData.paid_this_month = paidThisMonth
       studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
 
@@ -1032,12 +1064,29 @@ export default function AttendancePanel({ onBack, flash }) {
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
       })()
       const monthlyFee = Number(feesByGrade[studentData.grade]) || 0
-      let discount = 0
-      try { discount = Number(await getStudentDiscount(studentData.student_id)) || 0 } catch { discount = 0 }
+      const studentId = studentData.student_id
+      let discount = null
+
+      // Check if discount is already explicitly present in studentData
+      if (studentData?.subscription_discount !== undefined && studentData?.subscription_discount !== null) {
+        discount = Number(studentData.subscription_discount)
+      }
+      // Check if discount is already in the preloaded students list in memory
+      if (discount === null && Array.isArray(students)) {
+        const preloaded = students.find(s => s.id === studentId)
+        if (preloaded && preloaded.subscription_discount !== undefined && preloaded.subscription_discount !== null) {
+          discount = Number(preloaded.subscription_discount)
+        }
+      }
+      // Fallback: only query network if the field was genuinely missing/unresolved
+      if (discount === null || isNaN(discount)) {
+        try { discount = Number(await getStudentDiscount(studentId)) || 0 } catch { discount = 0 }
+      }
+
       studentData.monthly_fee = monthlyFee
-      studentData.discount = discount
+      studentData.discount = discount || 0
       studentData.paid_this_month = paidThisMonth
-      studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - discount)
+      studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - (discount || 0))
 
       // Check missing required exams / quizzes
       const missingExams = await checkStudentMissingExams(studentData.student_id, studentData.grade)
