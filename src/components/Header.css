@@ -165,7 +165,7 @@ body.dark .mh::before {
 .mh__brand {
   display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   text-decoration: none;
   color: inherit;
   outline: none;
@@ -218,7 +218,6 @@ body.dark .mh::before {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-inline-end: 4px;
 }
 .mh__mark--bare::before,
 .mh__mark--bare::after { display: none !important; }
