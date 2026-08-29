@@ -1107,7 +1107,7 @@ body.dark .mh__user {
     display: none;
   }
 
-  .mh__actions>.mh__logout {
+  .mh__actions > .mh__logout {
     display: none;
   }
 
@@ -1116,13 +1116,38 @@ body.dark .mh__user {
   }
 
   .mh__inner {
-    grid-template-columns: 1fr auto;
-    gap: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
     padding: 10px 16px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .mh__brand {
+    gap: 10px;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .mh__mark--bare {
+    min-width: 36px;
+    max-width: 90px;
+    height: 42px;
+    margin-inline-end: 0;
+    flex-shrink: 0;
+  }
+
+  .mh__mark--bare .mh__mark-img {
+    max-width: 90px !important;
+    max-height: 42px !important;
   }
 
   .mh__wordmark {
     display: flex;
+    min-width: 0;
+    flex-shrink: 1;
   }
 
   .mh__brand-tag {
@@ -1130,15 +1155,35 @@ body.dark .mh__user {
   }
 
   .mh__brand-name {
-    font-size: 16px;
-    max-width: 200px;
+    font-size: 15.5px;
+    max-width: 180px;
     width: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mh__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 480px) {
   :root {
-    --mh-h: 72px;
+    --mh-h: 68px;
+  }
+
+  .mh__inner {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .mh__brand {
+    gap: 8px;
+    padding: 2px;
   }
 
   .mh__brand-tag {
@@ -1146,25 +1191,42 @@ body.dark .mh__user {
   }
 
   .mh__mark {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .mh__mark--bare {
+    min-width: 30px;
+    max-width: 75px;
+    height: 36px;
+    margin-inline-end: 0;
+  }
+
+  .mh__mark--bare .mh__mark-img {
+    max-width: 75px !important;
+    max-height: 36px !important;
   }
 
   .mh__mark-letter {
-    font-size: 21px;
+    font-size: 19px;
   }
 
   .mh__brand-name {
-    font-size: 15px;
-    max-width: 170px;
+    font-size: 14px;
+    max-width: 140px;
     width: auto;
+  }
+
+  .mh__actions {
+    gap: 6px;
   }
 
   .mh__icon-btn,
   .mh__burger {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
   }
 }
 
