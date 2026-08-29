@@ -17,11 +17,26 @@
 // predicates exactly.
 const BRAND_OVERRIDES = [
   {
+    key: 'mohamed-yasser',
+    match: (t) =>
+      t.slug === 'mohamed-yasser' ||
+      (t.slug || '').includes('yasser'),
+    apply: {
+      name: 'مستر محمد ياسر',
+      slug: 'mohamed-yasser',
+      primary_color: '#ee7d30',
+      secondary_color: '#1c3257',
+      logo_url: '/images/Logo Mr Mohamed Yasser.png',
+    },
+  },
+  {
     key: 'english',
     match: (t) =>
-      t.slug === 'sherif-english' ||
-      t.slug === 'waled-english' ||
-      t.config?.subject === 'english',
+      t.slug !== 'mohamed-yasser' &&
+      !t.slug?.includes('yasser') &&
+      (t.slug === 'sherif-english' ||
+        t.slug === 'waled-english' ||
+        t.config?.subject === 'english'),
     apply: {
       name: 'The Miracle in English',
       slug: 'waled-english',
@@ -80,7 +95,7 @@ const BRAND_OVERRIDES = [
       (t.slug || '').includes('elsharawy') ||
       (t.slug || '').includes('elshaarawy'),
     apply: {
-      name: 'الشعراوي صانع الأبطال',
+      name: 'منصة الشعراوي',
       slug: 'elsharawy',
       primary_color: '#a86e28',
       secondary_color: '#175e54',
@@ -108,6 +123,9 @@ export function applyBrandOverride(resolvedData) {
    inline `allTenants.map(...)`. */
 export function remapAvailableTenants(allTenants) {
   return (allTenants || []).map((t) => {
+    if (t.slug === 'mohamed-yasser' || t.slug?.includes('yasser')) {
+      return { slug: 'mohamed-yasser', name: 'مستر محمد ياسر' }
+    }
     if (t.slug === 'sherif-english' || t.slug === 'waled-english') {
       return { slug: 'waled-english', name: 'The Miracle in English' }
     }
@@ -118,7 +136,7 @@ export function remapAvailableTenants(allTenants) {
       return { slug: 'belqadar-math', name: 'سنتر البلقدار' }
     }
     if (t.slug === 'elsharawy' || t.slug === 'elshaarawy') {
-      return { slug: 'elsharawy', name: 'الشعراوي صانع الأبطال' }
+      return { slug: 'elsharawy', name: 'منصة الشعراوي' }
     }
     return t
   })
@@ -127,8 +145,10 @@ export function remapAvailableTenants(allTenants) {
 /* Resolves which `src/tenants/<folder>` config+styles chunk to load for a
    tenant. Identical matching to the previous local getTenantFolder(). */
 export function getTenantFolder(tenant) {
-  const subject = tenant?.config?.subject || ''
   const slug = tenant?.slug || ''
+  const subject = tenant?.config?.subject || ''
+  if (slug === 'mohamed-yasser' || slug.includes('yasser')) return 'mohamed-yasser'
+  if (slug === 'elsharawy' || slug === 'elshaarawy' || slug.includes('elsharawy') || slug.includes('elshaarawy')) return 'elsharawy'
   if (subject === 'chemistry' || slug === 'mona-chem') return 'chemistry'
   if (subject === 'physics' || slug === 'sherif-physics') return 'physics'
   if (subject === 'math' || subject === 'mathematics' || slug?.includes('math') || slug?.includes('belqadar')) return 'math'

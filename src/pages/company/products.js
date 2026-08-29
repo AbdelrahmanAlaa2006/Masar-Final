@@ -99,6 +99,25 @@ export const PLATFORMS = [
     logo: '/images/Elshaarawy Logo.png',
     url: '/login?tenant=elsharawy',
   },
+  {
+    id: 'mohamed-yasser-english',
+    status: 'live',
+    name: { ar: 'مستر محمد ياسر (Best of the Best)', en: 'Mr. Mohamed Yasser Platform' },
+    owner: { ar: 'أ. محمد ياسر', en: 'Mr. Mohamed Yasser' },
+    subject: {
+      ar: 'اللغة الإنجليزية — المرحلة الثانوية',
+      en: 'English Language — Secondary Stage',
+    },
+    blurb: {
+      ar: 'منصة متكاملة لتدريس اللغة الإنجليزية بهوية كحلية وبرتقالية مميزة: محاضرات تفاعلية، امتحانات دورية، ومتابعة أولياء الأمور.',
+      en: 'A comprehensive English language platform with a signature navy & orange identity: interactive lectures, regular exams, and real-time parent tracking.',
+    },
+    accent: '#ee7d30',
+    image: '/images/Image Mr Mohamed Yasser.png',
+    imagePosition: 'center 10%',
+    logo: '/images/Logo Mr Mohamed Yasser.png',
+    url: '/login?tenant=mohamed-yasser',
+  },
 ]
 
 // What GitFekra delivers with every platform — rendered as numbered rows.

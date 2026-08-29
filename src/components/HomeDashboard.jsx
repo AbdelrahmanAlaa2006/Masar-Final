@@ -62,6 +62,7 @@ export default function HomeDashboard({ role }) {
      loading — true while the initial fetch is in flight
 */
 function useContentStats({ role, grade }) {
+  const { isFeatureEnabled } = useTenant()
   const [stats,  setStats]  = useState({ students: 0, homeworks: 0, videos: 0, exams: 0 })
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -84,18 +85,29 @@ function useContentStats({ role, grade }) {
           (v) => ({ ok: true, v }),
           (e) => ({ ok: false, label, e })
         )
-        // Share the 60s cache with Videos / Lectures / ControlPanel so
-        // navigating Home → Videos doesn't double-fetch the same lists.
-        // We only need counts here, so use the lean variant for exams.
+        
+        // Zero-Fetch: Only fetch enabled modules
+        const fetchHomework = isFeatureEnabled('homework')
+          ? wrap(cached('homeworks', LIST_TTL, listHomeworks), 'homeworks')
+          : Promise.resolve({ ok: true, v: [] })
+
+        const fetchVideos = isFeatureEnabled('videos')
+          ? wrap(cached('videos', LIST_TTL, listVideos), 'videos')
+          : Promise.resolve({ ok: true, v: [] })
+
+        const fetchExams = isFeatureEnabled('exams')
+          ? wrap(cached('exams-lean', LIST_TTL, () => listExams({ lean: true })), 'exams')
+          : Promise.resolve({ ok: true, v: [] })
+
+        const fetchStudents = (role === 'admin' || role === 'assistant')
+          ? wrap(cached('students-count', LIST_TTL, getStudentCount), 'students')
+          : Promise.resolve({ ok: true, v: 0 })
+
         const [H, V, E, S] = await Promise.all([
-          wrap(cached('homeworks', LIST_TTL, listHomeworks), 'homeworks'),
-          wrap(cached('videos',    LIST_TTL, listVideos),    'videos'),
-          wrap(cached('exams-lean', LIST_TTL, () => listExams({ lean: true })), 'exams'),
-          // We only need the count here — a head-only COUNT query, not the
-          // whole roster. Students aren't allowed to read other profiles → skip.
-          (role === 'admin' || role === 'assistant')
-            ? wrap(cached('students-count', LIST_TTL, getStudentCount), 'students')
-            : Promise.resolve({ ok: true, v: 0 }),
+          fetchHomework,
+          fetchVideos,
+          fetchExams,
+          fetchStudents,
         ])
         if (cancelled) return
 
@@ -126,7 +138,7 @@ function useContentStats({ role, grade }) {
       }
     })()
     return () => { cancelled = true }
-  }, [role, tick, grade])
+  }, [role, tick, grade, isFeatureEnabled])
 
   return { stats, loading, error, refresh }
 }

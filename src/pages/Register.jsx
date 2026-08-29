@@ -63,6 +63,16 @@ export default function Register() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
   }, [lang])
 
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.body.classList.add('dark')
+      document.documentElement.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+      document.documentElement.classList.remove('dark')
+    }
+  }, [theme])
+
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
@@ -124,9 +134,10 @@ export default function Register() {
     return val
   }
 
-  const teacherName = getLocalized(themeConfig.teacher?.name || tenant?.config?.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
-  const teacherRole = getLocalized(themeConfig.teacher?.role || tenant?.config?.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
-  const teacherImageBase = themeConfig.teacher?.image_base || tenant?.config?.teacher?.image_base || "/images/profile.png"
+  const teacherKicker = getLocalized(themeConfig?.teacher?.kicker || tenant?.config?.teacher?.kicker, null, null)
+  const teacherName = getLocalized(themeConfig?.teacher?.name || tenant?.config?.teacher?.name, tenantName, tenantName)
+  const teacherRole = getLocalized(themeConfig?.teacher?.role || tenant?.config?.teacher?.role, '', '')
+  const teacherImageBase = themeConfig?.teacher?.image_base || tenant?.config?.teacher?.image_base || null
   // Optional stat fields must DISAPPEAR when the tenant leaves them empty —
   // never fall back to another tenant's numbers/specialty (this card used to
   // show "+10" years and "البرمجة والذكاء الاصطناعي" for every teacher).
@@ -261,7 +272,7 @@ export default function Register() {
   }
 
   return (
-    <div className={`aa-page ${themeConfig.themeClass || ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`aa-page ${theme} ${themeConfig.themeClass || ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* ─────────── NAVBAR ─────────── */}
       <header className="aa-nav">
         <div className="aa-nav-inner">
@@ -295,17 +306,19 @@ export default function Register() {
 
           {error && <div className="error-message show" style={{ marginBottom: 16 }}>{error}</div>}
 
-          <form onSubmit={handleRegister}>
+          <form onSubmit={handleRegister} autoComplete="off">
             <div className="register-input-group">
               
               <div className="register-input-wrapper register-full-width">
                 <i className="fas fa-user"></i>
                 <input 
                   type="text" 
+                  name="reg_student_name"
                   value={name} 
                   onChange={e => setName(e.target.value)} 
                   required 
                   placeholder={t['student-name']} 
+                  autoComplete="off"
                 />
               </div>
 
@@ -319,12 +332,13 @@ export default function Register() {
                 <i className="fas fa-mobile-screen-button"></i>
                 <input
                   type={codeLoginEnabled ? 'text' : 'tel'}
+                  name="reg_student_phone"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   required
                   placeholder={codeLoginEnabled ? (lang === 'ar' ? 'رقم الهاتف أو الكود' : 'Phone or code') : t.phone}
                   dir="ltr"
-                  autoComplete="tel"
+                  autoComplete="off"
                 />
               </div>
 
@@ -335,6 +349,7 @@ export default function Register() {
                 <i className="fab fa-whatsapp"></i>
                 <input
                   type="tel"
+                  name="reg_parent_phone"
                   value={parentPhone}
                   onChange={e => setParentPhone(e.target.value)}
                   required
@@ -405,11 +420,13 @@ export default function Register() {
                 <i className="fas fa-lock"></i>
                 <input 
                   type={showPassword ? 'text' : 'password'} 
+                  name="reg_new_password"
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
                   required 
                   placeholder={t.password} 
                   minLength="6" 
+                  autoComplete="new-password"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="register-password-toggle">
                   <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
@@ -420,11 +437,13 @@ export default function Register() {
                 <i className="fas fa-lock"></i>
                 <input 
                   type={showConfirmPassword ? 'text' : 'password'} 
+                  name="reg_confirm_password"
                   value={confirmPassword} 
                   onChange={e => setConfirmPassword(e.target.value)} 
                   required 
                   placeholder={t['confirm-password']} 
                   minLength="6" 
+                  autoComplete="new-password"
                 />
                 <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="register-password-toggle">
                   <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
@@ -455,7 +474,7 @@ export default function Register() {
           </div>
 
           <div className="register-teacher-info">
-            <span className="register-teacher-badge">{lang === 'ar' ? 'المعلم المعتمد' : 'Certified Teacher'}</span>
+            <span className="register-teacher-badge">{teacherKicker || (lang === 'ar' ? 'المعلم المعتمد' : 'Certified Teacher')}</span>
             <h3 className="register-teacher-name">{teacherName}</h3>
             <p className="register-teacher-role">{teacherRole}</p>
 

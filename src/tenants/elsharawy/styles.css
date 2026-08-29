@@ -1,0 +1,10 @@
+/* ─────────── ELSHAARAWY PRIMARY THEME (elsharawy) ─────────── */
+
+.aa-elsharawy-theme {
+  --primary: #a86e28;
+  --secondary: #175e54;
+  --primary-glow: rgba(168, 110, 40, 0.35);
+  --primary-soft: rgba(168, 110, 40, 0.12);
+  --btn-from: #a86e28;
+  --btn-to: #c9a24a;
+}

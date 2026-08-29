@@ -1,0 +1,615 @@
+/* ==========================================================================
+   TENANT THEME: MOHAMED YASSER (English — Best of the Best)
+   Theme Class: aa-mohamed-yasser-theme
+   Solid Colors: Deep Navy (#1c3257), Warm Vibrant Orange (#ee7d30),
+                 Dark Slate Navy (#0b121f / #121e33), Paper White (#f8fafc / #ffffff)
+   ========================================================================== */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   1. ROOT VARIABLES (LIGHT MODE)
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme {
+  --primary: #ee7d30 !important;
+  --primary-hover: #df5e19 !important;
+  --secondary: #1c3257 !important;
+  --background: #f8fafc !important;
+  --bg-color: #f8fafc !important;
+  --bg-primary: #f8fafc !important;
+  --bg-secondary: #f8fafc !important;
+  --surface: #ffffff !important;
+  --card: #ffffff !important;
+  --card-bg: #ffffff !important;
+  --cp-card-bg: #ffffff !important;
+  --foreground: #0f1c30 !important;
+  --card-foreground: #0f1c30 !important;
+  --ink: #0f1c30 !important;
+  --text-color: #0f1c30 !important;
+  --muted-foreground: #4b5d78 !important;
+  --border: rgba(28, 50, 87, 0.16) !important;
+  
+  --primary-glow: rgba(238, 125, 48, 0.25) !important;
+  --primary-soft: rgba(238, 125, 48, 0.1) !important;
+  --btn-from: #ee7d30 !important;
+  --btn-to: #ee7d30 !important;
+  --btn-text: #ffffff !important;
+  --btn-shadow: 0 8px 20px rgba(238, 125, 48, 0.25) !important;
+  --btn-shadow-hover: 0 12px 28px rgba(238, 125, 48, 0.38) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   2. ROOT VARIABLES (DARK MODE)
+   ────────────────────────────────────────────────────────────────────────── */
+.dark .aa-mohamed-yasser-theme,
+.dark.aa-mohamed-yasser-theme {
+  --primary: #ee7d30 !important;
+  --primary-hover: #f59e0b !important;
+  --secondary: #1c3257 !important;
+  --background: #0b121f !important;
+  --bg-color: #0b121f !important;
+  --bg-primary: #0b121f !important;
+  --bg-secondary: #0b121f !important;
+  --surface: #121e33 !important;
+  --card: #121e33 !important;
+  --card-bg: #121e33 !important;
+  --cp-card-bg: #121e33 !important;
+  --foreground: #f1f5f9 !important;
+  --card-foreground: #cbd5e1 !important;
+  --ink: #f8fafc !important;
+  --text-color: #f1f5f9 !important;
+  --muted-foreground: #8fa0bd !important;
+  --border: rgba(238, 125, 48, 0.24) !important;
+
+  --primary-glow: rgba(238, 125, 48, 0.35) !important;
+  --primary-soft: rgba(238, 125, 48, 0.15) !important;
+  --btn-from: #ee7d30 !important;
+  --btn-to: #ee7d30 !important;
+  --btn-text: #ffffff !important;
+  --btn-shadow: 0 8px 22px rgba(238, 125, 48, 0.35) !important;
+  --btn-shadow-hover: 0 12px 30px rgba(238, 125, 48, 0.5) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   3. LOGO & BRAND SIZING
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .aa-brand-logo,
+.aa-mohamed-yasser-theme .mh__mark-img,
+.aa-mohamed-yasser-theme .sf-brand-logo-img,
+.aa-mohamed-yasser-theme .footer-logo {
+  object-fit: contain !important;
+  max-height: 80px !important;
+  width: auto !important;
+}
+
+.aa-mohamed-yasser-theme .mh__mark {
+  width: auto !important;
+  min-width: 70px !important;
+  height: 56px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.aa-mohamed-yasser-theme .sf-brand-logo {
+  width: auto !important;
+  height: 64px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   4. SOLID BUTTONS (NO NASTY GRADIENTS)
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .hero-btn,
+.aa-mohamed-yasser-theme .premium-action-btn.btn-primary,
+.aa-mohamed-yasser-theme .aa-btn-primary,
+.aa-mohamed-yasser-theme .location-directions-btn,
+.aa-mohamed-yasser-theme button.btn-primary,
+.aa-mohamed-yasser-theme button.aa-btn-primary,
+.aa-mohamed-yasser-theme .modern-btn,
+.aa-mohamed-yasser-theme button.modern-btn {
+  background: #ee7d30 !important;
+  color: #ffffff !important;
+  border: 1px solid #df5e19 !important;
+  box-shadow: 0 6px 18px rgba(238, 125, 48, 0.28) !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.aa-mohamed-yasser-theme .hero-btn:hover,
+.aa-mohamed-yasser-theme .premium-action-btn.btn-primary:hover,
+.aa-mohamed-yasser-theme .aa-btn-primary:hover,
+.aa-mohamed-yasser-theme .location-directions-btn:hover,
+.aa-mohamed-yasser-theme button.btn-primary:hover,
+.aa-mohamed-yasser-theme button.aa-btn-primary:hover,
+.aa-mohamed-yasser-theme .modern-btn:hover:not(:disabled),
+.aa-mohamed-yasser-theme button.modern-btn:hover:not(:disabled) {
+  background: #df5e19 !important;
+  border-color: #c74817 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(238, 125, 48, 0.42) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Secondary Ghost / Border Buttons */
+.aa-mohamed-yasser-theme .hero-btn--secondary,
+.aa-mohamed-yasser-theme .location-directions-btn--ghost {
+  background: #1c3257 !important;
+  border: 1.5px solid rgba(238, 125, 48, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(28, 50, 87, 0.25) !important;
+}
+
+.aa-mohamed-yasser-theme .hero-btn--secondary:hover,
+.aa-mohamed-yasser-theme .location-directions-btn--ghost:hover {
+  background: #243e6b !important;
+  border-color: #ee7d30 !important;
+  color: #ffffff !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   5. HEADINGS & TITLES (SOLID, CRISP CONTRAST IN BOTH MODES)
+   ────────────────────────────────────────────────────────────────────────── */
+/* LIGHT MODE HEADINGS */
+.aa-mohamed-yasser-theme .section-heading,
+.aa-mohamed-yasser-theme .about-title,
+.aa-mohamed-yasser-theme .feature-card h3,
+.aa-mohamed-yasser-theme .step-card h3,
+.aa-mohamed-yasser-theme .landing-package-body h3,
+.aa-mohamed-yasser-theme .location-info-card h3 {
+  color: #1c3257 !important;
+}
+
+/* DARK MODE HEADINGS */
+.dark .aa-mohamed-yasser-theme .section-heading,
+.dark.aa-mohamed-yasser-theme .section-heading,
+.aa-page.dark.aa-mohamed-yasser-theme .section-heading,
+.dark .aa-mohamed-yasser-theme .about-title,
+.dark.aa-mohamed-yasser-theme .about-title,
+.aa-page.dark.aa-mohamed-yasser-theme .about-title,
+.dark .aa-mohamed-yasser-theme .feature-card h3,
+.dark.aa-mohamed-yasser-theme .feature-card h3,
+.aa-page.dark.aa-mohamed-yasser-theme .feature-card h3,
+.dark .aa-mohamed-yasser-theme .step-card h3,
+.dark.aa-mohamed-yasser-theme .step-card h3,
+.aa-page.dark.aa-mohamed-yasser-theme .step-card h3,
+.dark .aa-mohamed-yasser-theme .landing-package-body h3,
+.dark.aa-mohamed-yasser-theme .landing-package-body h3,
+.aa-page.dark.aa-mohamed-yasser-theme .landing-package-body h3,
+.dark .aa-mohamed-yasser-theme .location-info-card h3,
+.dark.aa-mohamed-yasser-theme .location-info-card h3,
+.aa-page.dark.aa-mohamed-yasser-theme .location-info-card h3 {
+  color: #f8fafc !important;
+}
+
+/* SECTION SUBTITLES & PARAGRAPHS */
+.aa-mohamed-yasser-theme .section-sub,
+.aa-mohamed-yasser-theme .about-bio {
+  color: #4b5d78 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .section-sub,
+.dark.aa-mohamed-yasser-theme .section-sub,
+.aa-page.dark.aa-mohamed-yasser-theme .section-sub,
+.dark .aa-mohamed-yasser-theme .about-bio,
+.dark.aa-mohamed-yasser-theme .about-bio,
+.aa-page.dark.aa-mohamed-yasser-theme .about-bio {
+  color: #cbd5e1 !important;
+}
+
+/* AUTH MODALS */
+.dark .aa-mohamed-yasser-theme .aa-auth-modal,
+.dark.aa-mohamed-yasser-theme .aa-auth-modal,
+.aa-page.dark.aa-mohamed-yasser-theme .aa-auth-modal,
+.dark .aa-mohamed-yasser-theme .auth-card,
+.dark.aa-mohamed-yasser-theme .auth-card,
+.aa-page.dark.aa-mohamed-yasser-theme .auth-card {
+  background: #121e33 !important;
+  border: 1.5px solid rgba(238, 125, 48, 0.3) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-auth-modal h2,
+.dark.aa-mohamed-yasser-theme .aa-auth-modal h2,
+.dark .aa-mohamed-yasser-theme .auth-card h2,
+.dark.aa-mohamed-yasser-theme .auth-card h2 {
+  color: #f8fafc !important;
+  background: none !important;
+  -webkit-text-fill-color: #f8fafc !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   6. CARDS & HOVER EFFECTS
+   ────────────────────────────────────────────────────────────────────────── */
+body:not(.dark).aa-mohamed-yasser-theme .feature-card,
+body:not(.dark).aa-mohamed-yasser-theme .step-card,
+body:not(.dark).aa-mohamed-yasser-theme .location-info-card,
+body:not(.dark).aa-mohamed-yasser-theme .about-stat,
+body:not(.dark).aa-mohamed-yasser-theme .landing-package-card {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(28, 50, 87, 0.12) !important;
+  box-shadow: 0 6px 20px rgba(28, 50, 87, 0.06) !important;
+}
+
+body:not(.dark).aa-mohamed-yasser-theme .feature-card:hover,
+body:not(.dark).aa-mohamed-yasser-theme .step-card:hover,
+body:not(.dark).aa-mohamed-yasser-theme .location-info-card:hover,
+body:not(.dark).aa-mohamed-yasser-theme .about-stat:hover,
+body:not(.dark).aa-mohamed-yasser-theme .landing-package-card:hover {
+  border-color: #ee7d30 !important;
+  box-shadow: 0 14px 32px rgba(28, 50, 87, 0.12), 0 0 0 1px rgba(238, 125, 48, 0.2) !important;
+}
+
+.dark.aa-mohamed-yasser-theme .feature-card,
+.dark .aa-mohamed-yasser-theme .feature-card,
+.dark.aa-mohamed-yasser-theme .step-card,
+.dark .aa-mohamed-yasser-theme .step-card,
+.dark.aa-mohamed-yasser-theme .location-info-card,
+.dark .aa-mohamed-yasser-theme .location-info-card,
+.dark.aa-mohamed-yasser-theme .about-stat,
+.dark .aa-mohamed-yasser-theme .about-stat,
+.dark.aa-mohamed-yasser-theme .landing-package-card,
+.dark .aa-mohamed-yasser-theme .landing-package-card {
+  background: #121e33 !important;
+  border: 1.5px solid rgba(238, 125, 48, 0.22) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+.dark.aa-mohamed-yasser-theme .feature-card:hover,
+.dark .aa-mohamed-yasser-theme .feature-card:hover,
+.dark.aa-mohamed-yasser-theme .step-card:hover,
+.dark .aa-mohamed-yasser-theme .step-card:hover,
+.dark.aa-mohamed-yasser-theme .location-info-card:hover,
+.dark .aa-mohamed-yasser-theme .location-info-card:hover,
+.dark.aa-mohamed-yasser-theme .about-stat:hover,
+.dark .aa-mohamed-yasser-theme .about-stat:hover,
+.dark.aa-mohamed-yasser-theme .landing-package-card:hover,
+.dark .aa-mohamed-yasser-theme .landing-package-card:hover {
+  border-color: #ee7d30 !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(238, 125, 48, 0.25) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   7. QUOTE CARD (SIGNATURE NAVY & ORANGE)
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .about-quote {
+  background: #1c3257 !important;
+  border: 2px solid #ee7d30 !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 40px rgba(28, 50, 87, 0.35), 0 0 18px rgba(238, 125, 48, 0.2) !important;
+}
+
+.aa-mohamed-yasser-theme .about-quote-icon {
+  color: #ee7d30 !important;
+}
+
+.aa-mohamed-yasser-theme .about-quote-author {
+  color: #f8fafc !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   8. FEATURE ICONS & STEP NUMBERS
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .feature-icon,
+.aa-mohamed-yasser-theme .location-info-icon {
+  background: #1c3257 !important;
+  border: 1.5px solid #ee7d30 !important;
+  color: #ee7d30 !important;
+  box-shadow: 0 4px 12px rgba(28, 50, 87, 0.2) !important;
+}
+
+.aa-mohamed-yasser-theme .feature-card:hover .feature-icon,
+.aa-mohamed-yasser-theme .location-info-card:hover .location-info-icon {
+  background: #ee7d30 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.aa-mohamed-yasser-theme .step-number {
+  background: #1c3257 !important;
+  border: 2px solid #ee7d30 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.aa-mohamed-yasser-theme .step-card:hover .step-number {
+  background: #ee7d30 !important;
+  border-color: #1c3257 !important;
+  color: #ffffff !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   9. CHIPS & BADGES
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .aa-chip {
+  background: rgba(28, 50, 87, 0.08) !important;
+  border: 1px solid rgba(28, 50, 87, 0.22) !important;
+  color: #1c3257 !important;
+  font-weight: 600 !important;
+}
+
+.aa-mohamed-yasser-theme .aa-chip-accent {
+  background: rgba(238, 125, 48, 0.12) !important;
+  border: 1px solid rgba(238, 125, 48, 0.35) !important;
+  color: #ee7d30 !important;
+  font-weight: 700 !important;
+}
+
+.dark.aa-mohamed-yasser-theme .aa-chip,
+.dark .aa-mohamed-yasser-theme .aa-chip {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark.aa-mohamed-yasser-theme .aa-chip-accent,
+.dark .aa-mohamed-yasser-theme .aa-chip-accent {
+  background: rgba(238, 125, 48, 0.18) !important;
+  border: 1px solid rgba(238, 125, 48, 0.45) !important;
+  color: #f59e0b !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   10. INPUTS & FORMS
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme input,
+.aa-mohamed-yasser-theme select,
+.aa-mohamed-yasser-theme textarea {
+  border: 1.5px solid rgba(28, 50, 87, 0.2) !important;
+  background-color: #ffffff !important;
+  color: #0f1c30 !important;
+}
+
+.aa-mohamed-yasser-theme input:focus,
+.aa-mohamed-yasser-theme select:focus,
+.aa-mohamed-yasser-theme textarea:focus {
+  border-color: #ee7d30 !important;
+  box-shadow: 0 0 0 3px rgba(238, 125, 48, 0.2) !important;
+}
+
+.dark.aa-mohamed-yasser-theme input,
+.dark .aa-mohamed-yasser-theme input,
+.dark.aa-mohamed-yasser-theme select,
+.dark .aa-mohamed-yasser-theme select,
+.dark.aa-mohamed-yasser-theme textarea,
+.dark .aa-mohamed-yasser-theme textarea {
+  border: 1.5px solid rgba(238, 125, 48, 0.25) !important;
+  background-color: #0d1626 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark.aa-mohamed-yasser-theme input:focus,
+.dark .aa-mohamed-yasser-theme input:focus,
+.dark.aa-mohamed-yasser-theme select:focus,
+.dark .aa-mohamed-yasser-theme select:focus,
+.dark.aa-mohamed-yasser-theme textarea:focus,
+.dark .aa-mohamed-yasser-theme textarea:focus {
+  border-color: #ee7d30 !important;
+  box-shadow: 0 0 0 3px rgba(238, 125, 48, 0.3) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   11. MAP PIN & LOCATION SECTION
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .map-pin__dot {
+  background: #1c3257 !important;
+  border: 2px solid #ee7d30 !important;
+  color: #ee7d30 !important;
+  box-shadow: 0 8px 20px rgba(28, 50, 87, 0.35) !important;
+}
+
+.aa-mohamed-yasser-theme .map-frame {
+  background: #1c3257 !important;
+  border: 2px solid #ee7d30 !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   12. EXPLICIT PAGE BACKGROUNDS
+   ────────────────────────────────────────────────────────────────────────── */
+body.aa-mohamed-yasser-theme,
+.aa-mohamed-yasser-theme .aa-page,
+.aa-mohamed-yasser-theme .videos-page,
+.aa-mohamed-yasser-theme .lec-page,
+.aa-mohamed-yasser-theme .hw-page,
+.aa-mohamed-yasser-theme .exams-container,
+.aa-mohamed-yasser-theme .report-page,
+.aa-mohamed-yasser-theme .cp-page,
+.aa-mohamed-yasser-theme .profile-page,
+.aa-mohamed-yasser-theme .shop-page,
+.aa-mohamed-yasser-theme .packages-page {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  background-image: none !important;
+}
+
+.dark.aa-mohamed-yasser-theme,
+.dark .aa-mohamed-yasser-theme,
+.dark.aa-mohamed-yasser-theme .aa-page,
+.dark .aa-mohamed-yasser-theme .aa-page,
+.dark.aa-mohamed-yasser-theme .videos-page,
+.dark .aa-mohamed-yasser-theme .videos-page,
+.dark.aa-mohamed-yasser-theme .lec-page,
+.dark .aa-mohamed-yasser-theme .lec-page,
+.dark.aa-mohamed-yasser-theme .hw-page,
+.dark .aa-mohamed-yasser-theme .hw-page,
+.dark.aa-mohamed-yasser-theme .exams-container,
+.dark .aa-mohamed-yasser-theme .exams-container,
+.dark.aa-mohamed-yasser-theme .report-page,
+.dark .aa-mohamed-yasser-theme .report-page,
+.dark.aa-mohamed-yasser-theme .cp-page,
+.dark .aa-mohamed-yasser-theme .cp-page,
+.dark.aa-mohamed-yasser-theme .profile-page,
+.dark .aa-mohamed-yasser-theme .profile-page,
+.dark.aa-mohamed-yasser-theme .shop-page,
+.dark .aa-mohamed-yasser-theme .shop-page,
+.dark.aa-mohamed-yasser-theme .packages-page,
+.dark .aa-mohamed-yasser-theme .packages-page {
+  background: #0b121f !important;
+  background-color: #0b121f !important;
+  background-image: none !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   13. PORTRAIT CARD & HERO STYLES (LIGHT & DARK MODES)
+   ────────────────────────────────────────────────────────────────────────── */
+.aa-mohamed-yasser-theme .aa-portrait-img img {
+  object-fit: cover !important;
+  object-position: top center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Light Mode Portrait Card */
+body:not(.dark) .aa-mohamed-yasser-theme .aa-portrait,
+body:not(.dark).aa-mohamed-yasser-theme .aa-portrait,
+.aa-page:not(.dark) .aa-portrait {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(28, 50, 87, 0.16) !important;
+  box-shadow: 0 16px 40px rgba(28, 50, 87, 0.08) !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-portrait-img,
+body:not(.dark).aa-mohamed-yasser-theme .aa-portrait-img,
+.aa-page:not(.dark) .aa-portrait-img {
+  background: #f1f5f9 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-nameplate,
+body:not(.dark).aa-mohamed-yasser-theme .aa-nameplate,
+.aa-page:not(.dark) .aa-nameplate {
+  background: #ffffff !important;
+  border-top: 1px solid rgba(28, 50, 87, 0.1) !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-name,
+body:not(.dark).aa-mohamed-yasser-theme .aa-name,
+.aa-page:not(.dark) .aa-name {
+  color: #1c3257 !important;
+  font-weight: 800 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-kicker,
+body:not(.dark).aa-mohamed-yasser-theme .aa-kicker,
+.aa-page:not(.dark) .aa-kicker {
+  color: #ee7d30 !important;
+  font-weight: 700 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-dept,
+body:not(.dark).aa-mohamed-yasser-theme .aa-dept,
+.aa-page:not(.dark) .aa-dept {
+  color: #4b5d78 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-chip,
+body:not(.dark).aa-mohamed-yasser-theme .aa-chip,
+.aa-page:not(.dark) .aa-chip {
+  background: rgba(28, 50, 87, 0.06) !important;
+  border: 1px solid rgba(28, 50, 87, 0.18) !important;
+  color: #1c3257 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-chip-accent,
+body:not(.dark).aa-mohamed-yasser-theme .aa-chip-accent,
+.aa-page:not(.dark) .aa-chip-accent {
+  background: rgba(238, 125, 48, 0.12) !important;
+  border: 1px solid rgba(238, 125, 48, 0.35) !important;
+  color: #ee7d30 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-metric-label,
+body:not(.dark).aa-mohamed-yasser-theme .aa-metric-label,
+.aa-page:not(.dark) .aa-metric-label {
+  color: #64748b !important;
+  opacity: 0.8 !important;
+}
+
+body:not(.dark) .aa-mohamed-yasser-theme .aa-metric-value,
+body:not(.dark).aa-mohamed-yasser-theme .aa-metric-value,
+.aa-page:not(.dark) .aa-metric-value {
+  color: #1c3257 !important;
+}
+
+/* Dark Mode Portrait Card */
+.dark .aa-mohamed-yasser-theme .aa-portrait,
+.dark.aa-mohamed-yasser-theme .aa-portrait,
+.aa-page.dark .aa-portrait {
+  background: #121e33 !important;
+  border: 1.5px solid rgba(238, 125, 48, 0.28) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-portrait-img,
+.dark.aa-mohamed-yasser-theme .aa-portrait-img,
+.aa-page.dark .aa-portrait-img {
+  background: radial-gradient(circle at 50% 35%, rgba(238, 125, 48, 0.15) 0%, #0b121f 80%) !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-nameplate,
+.dark.aa-mohamed-yasser-theme .aa-nameplate,
+.aa-page.dark .aa-nameplate {
+  background: #121e33 !important;
+  border-top: 1px solid rgba(238, 125, 48, 0.2) !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-name,
+.dark.aa-mohamed-yasser-theme .aa-name,
+.aa-page.dark .aa-name {
+  color: #f8fafc !important;
+  font-weight: 800 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-kicker,
+.dark.aa-mohamed-yasser-theme .aa-kicker,
+.aa-page.dark .aa-kicker {
+  color: #ee7d30 !important;
+  font-weight: 700 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-dept,
+.dark.aa-mohamed-yasser-theme .aa-dept,
+.aa-page.dark .aa-dept {
+  color: #cbd5e1 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-chip,
+.dark.aa-mohamed-yasser-theme .aa-chip,
+.aa-page.dark .aa-chip {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-chip-accent,
+.dark.aa-mohamed-yasser-theme .aa-chip-accent,
+.aa-page.dark .aa-chip-accent {
+  background: rgba(238, 125, 48, 0.18) !important;
+  border: 1px solid rgba(238, 125, 48, 0.45) !important;
+  color: #f59e0b !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-metric-label,
+.dark.aa-mohamed-yasser-theme .aa-metric-label,
+.aa-page.dark .aa-metric-label {
+  color: #8fa0bd !important;
+  opacity: 0.85 !important;
+}
+
+.dark .aa-mohamed-yasser-theme .aa-metric-value,
+.dark.aa-mohamed-yasser-theme .aa-metric-value,
+.aa-page.dark .aa-metric-value {
+  color: #f8fafc !important;
+}
+
+.aa-mohamed-yasser-theme .aa-grad-icon {
+  background: #ee7d30 !important;
+  color: #ffffff !important;
+}

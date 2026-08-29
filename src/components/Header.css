@@ -165,13 +165,14 @@ body.dark .mh::before {
 .mh__brand {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   text-decoration: none;
   color: inherit;
   outline: none;
   border-radius: 14px;
   padding: 4px;
   transition: transform .25s ease;
+  flex-shrink: 0;
 }
 
 .mh__brand:hover {
@@ -199,6 +200,7 @@ body.dark .mh::before {
     0 2px 0 rgba(255, 255, 255, 0.18) inset,
     0 -8px 16px -8px rgba(0, 0, 0, 0.18) inset;
   transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s ease;
+  flex-shrink: 0;
 }
 
 /* Tenant with its own logo artwork: show it bare — no colored chip, gloss or
@@ -206,20 +208,30 @@ body.dark .mh::before {
 .mh__mark--bare {
   background: none !important;
   box-shadow: none !important;
-  border-radius: 0;
-  overflow: visible;
-  width: auto;
-  max-width: 95px;
-  height: 52px;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  width: auto !important;
+  min-width: 44px;
+  max-width: 130px;
+  height: 48px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-inline-end: 4px;
 }
 .mh__mark--bare::before,
 .mh__mark--bare::after { display: none !important; }
 .mh__mark--bare .mh__mark-img {
-  width: auto;
-  max-width: 95px;
-  height: 100%;
-  max-height: 52px;
-  object-fit: contain;
+  position: relative !important;
+  inset: auto !important;
+  width: auto !important;
+  max-width: 130px !important;
+  height: 100% !important;
+  max-height: 48px !important;
+  object-fit: contain !important;
+  display: block !important;
+  pointer-events: none;
 }
 .mh__brand:hover .mh__mark--bare { transform: none; box-shadow: none !important; }
 
@@ -299,29 +311,16 @@ body.dark .mh::before {
   font-size: clamp(14px, 1.15vw, 17px);
   font-weight: 800;
   letter-spacing: 0.2px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  word-break: break-word;
+  color: var(--primary);
   line-height: 1.25;
+  white-space: nowrap;
   width: auto;
-  max-width: 220px;
+  max-width: 280px;
 }
 
 body.dark .mh__brand-name {
-  background: linear-gradient(135deg, #c7d2fe 0%, #ddd6fe 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #f8fafc;
+  -webkit-text-fill-color: #f8fafc;
 }
 
 .mh__brand-tag {

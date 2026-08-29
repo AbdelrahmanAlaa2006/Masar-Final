@@ -50,9 +50,18 @@ const cardStyle = { background: 'var(--cp-card-bg)', border: '1px solid var(--cp
 
 export default function FinancePanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { tenant } = useTenant()
+  const { tenant, isFeatureEnabled } = useTenant()
 
-  const [activeTab, setActiveTab] = useState('ledger') // ledger | categories | reports | debts
+  const availableFinanceTabs = useMemo(() => [
+    { key: 'ledger', icon: 'fa-book', label: 'الدفتر اليومي', enabled: isFeatureEnabled('payment_history') },
+    { key: 'categories', icon: 'fa-tags', label: 'التصنيفات', enabled: isFeatureEnabled('payment_history') },
+    { key: 'reports', icon: 'fa-chart-pie', label: 'التقارير', enabled: isFeatureEnabled('finance_reports') },
+    { key: 'debts', icon: 'fa-hand-holding-dollar', label: 'مديونيات الطلاب', enabled: isFeatureEnabled('student_debts') },
+    { key: 'booklets_manage', icon: 'fa-book-open', label: 'إدارة الملازم', enabled: true },
+    { key: 'booklets_reports', icon: 'fa-file-invoice-dollar', label: 'تقارير الملازم', enabled: isFeatureEnabled('finance_reports') },
+  ].filter(t => t.enabled), [isFeatureEnabled])
+
+  const [activeTab, setActiveTab] = useState(() => availableFinanceTabs[0]?.key || 'ledger')
   const [cashBalance, setCashBalance] = useState(null)
 
   const [showRevertModal, setShowRevertModal] = useState(false)
@@ -567,14 +576,7 @@ export default function FinancePanel({ onBack, flash }) {
 
       {/* Tabs */}
       <div className="cp-subtabs" style={{ display: 'flex', gap: 8, margin: '0 0 24px 0', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '12px', flexWrap: 'wrap' }}>
-        {[
-          ['ledger', 'fa-book', 'الدفتر اليومي'],
-          ['categories', 'fa-tags', 'التصنيفات'],
-          ['reports', 'fa-chart-pie', 'التقارير'],
-          ['debts', 'fa-hand-holding-dollar', 'مديونيات الطلاب'],
-          ['booklets_manage', 'fa-book-open', 'إدارة الملازم'],
-          ['booklets_reports', 'fa-file-invoice-dollar', 'تقارير الملازم'],
-        ].map(([key, icon, label]) => (
+        {availableFinanceTabs.map(({ key, icon, label }) => (
           <button
             key={key}
             className={`cp-btn ${activeTab === key ? 'cp-btn-info-active' : 'cp-btn-info'}`}

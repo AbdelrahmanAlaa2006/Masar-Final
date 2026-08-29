@@ -2,12 +2,15 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { searchStudents } from '@backend/profilesApi'
+import { useTenant } from '../contexts/TenantContext'
 import './Report.css'
 
 import { GRADE_LABEL } from './ControlPanel/shared'
 
 export default function Report() {
   const navigate = useNavigate()
+  const { isFeatureEnabled } = useTenant()
+
   const [currentUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('masar-user')) || null } catch { return null }
   })
@@ -22,9 +25,25 @@ export default function Report() {
   const [pickerQuery, setPickerQuery] = useState('')
   const boxRef = useRef(null)
 
+  const hasOnlineReports = isFeatureEnabled('reports') && 
+    isFeatureEnabled('online_reports') && 
+    (isFeatureEnabled('videos') || isFeatureEnabled('exams') || isFeatureEnabled('homework'))
+
+  const hasCenterReports = isFeatureEnabled('reports') && 
+    isFeatureEnabled('center_reports') && 
+    (isFeatureEnabled('attendance') || isFeatureEnabled('grades') || isFeatureEnabled('payments'))
+
   const [reportSource, setReportSource] = useState(() => {
     return sessionStorage.getItem('masar-report-source') || 'online'
   })
+
+  const activeReportSource = useMemo(() => {
+    if (hasOnlineReports && !hasCenterReports) return 'online'
+    if (!hasOnlineReports && hasCenterReports) return 'center'
+    if (reportSource === 'center' && hasCenterReports) return 'center'
+    if (reportSource === 'online' && hasOnlineReports) return 'online'
+    return hasCenterReports ? 'center' : 'online'
+  }, [hasOnlineReports, hasCenterReports, reportSource])
 
   const changeReportSource = (src) => {
     setReportSource(src)
@@ -232,25 +251,27 @@ export default function Report() {
           </div>
           <div className="cp-header-divider"></div>
 
-          {/* Segmented Control */}
-          <div className="report-toggle-container">
-            <div className="report-toggle">
-              <button 
-                type="button"
-                className={`report-toggle-btn ${reportSource === 'online' ? 'is-active' : ''}`}
-                onClick={() => changeReportSource('online')}
-              >
-                <i className="fas fa-globe"></i> تقارير الأونلاين
-              </button>
-              <button 
-                type="button"
-                className={`report-toggle-btn ${reportSource === 'center' ? 'is-active' : ''}`}
-                onClick={() => changeReportSource('center')}
-              >
-                <i className="fas fa-building"></i> تقارير السنتر
-              </button>
+          {/* Segmented Control — only shown if both Online and Center reports are available */}
+          {hasOnlineReports && hasCenterReports && (
+            <div className="report-toggle-container">
+              <div className="report-toggle">
+                <button 
+                  type="button"
+                  className={`report-toggle-btn ${activeReportSource === 'online' ? 'is-active' : ''}`}
+                  onClick={() => changeReportSource('online')}
+                >
+                  <i className="fas fa-globe"></i> تقارير الأونلاين
+                </button>
+                <button 
+                  type="button"
+                  className={`report-toggle-btn ${activeReportSource === 'center' ? 'is-active' : ''}`}
+                  onClick={() => changeReportSource('center')}
+                >
+                  <i className="fas fa-building"></i> تقارير السنتر
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="cp-target-banner" style={{ marginBottom: 24 }}>
             <div className="cp-avatar cp-avatar-purple">
@@ -274,126 +295,144 @@ export default function Report() {
             </div>
           </div>
 
-          {reportSource === 'online' ? (
+          {activeReportSource === 'online' ? (
             <div className="cp-home-grid">
-              <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('videos')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-play-circle"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الفيديوهات</h3>
-                  <p>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('videos')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-play-circle"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الفيديوهات</h3>
+                    <p>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-purple" onClick={() => goToMyReport('exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-file-alt"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الامتحانات</h3>
-                  <p>نتائجك في الامتحانات السابقة وتحليل أدائك</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goToMyReport('exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-file-alt"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الامتحانات</h3>
+                    <p>نتائجك في الامتحانات السابقة وتحليل أدائك</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-book-open"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير التسميعات</h3>
-                  <p>نتائجك في تسميعات الحفظ وتقييم المتابعة الأسبوعي</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-book-open"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير التسميعات</h3>
+                    <p>نتائجك في تسميعات الحفظ وتقييم المتابعة الأسبوعي</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goToMyReport('homework')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-book-open"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الواجبات</h3>
-                  <p>درجاتك في الواجبات ومتابعة تسليماتك</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('homework') && isFeatureEnabled('homework_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goToMyReport('homework')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-book-open"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الواجبات</h3>
+                    <p>درجاتك في الواجبات ومتابعة تسليماتك</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
           ) : (
             <div className="cp-home-grid">
-              <button className="cp-section-card cp-accent-purple" onClick={() => goToMyReport('center-exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-file-signature"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير امتحانات السنتر</h3>
-                  <p>نتائجك وتقييماتك في امتحانات السنتر الورقية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goToMyReport('center-exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-file-signature"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير امتحانات السنتر</h3>
+                    <p>نتائجك وتقييماتك في امتحانات السنتر الورقية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('center-quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-comment-dots"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير تسميعات السنتر</h3>
-                  <p>درجات التسميع الشفوي والمتابعة بالسنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goToMyReport('center-quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-comment-dots"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير تسميعات السنتر</h3>
+                    <p>درجات التسميع الشفوي والمتابعة بالسنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-orange" onClick={() => goToMyReport('center-grades')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-graduation-cap"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير درجات السنتر الشامل</h3>
-                  <p>ملخص درجاتك في جميع الأنشطة والتقييمات بالسنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('grades') && isFeatureEnabled('grades_reports') && (
+                <button className="cp-section-card cp-accent-orange" onClick={() => goToMyReport('center-grades')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-graduation-cap"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير درجات السنتر الشامل</h3>
+                    <p>ملخص درجاتك في جميع الأنشطة والتقييمات بالسنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goToMyReport('center-attendance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-user-check"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الحضور والغياب</h3>
-                  <p>سجل حضورك وغيابك في مجموعات السنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('attendance') && isFeatureEnabled('attendance_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goToMyReport('center-attendance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-user-check"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الحضور والغياب</h3>
+                    <p>سجل حضورك وغيابك في مجموعات السنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-green" onClick={() => goToMyReport('center-finance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-wallet"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الحسابات والاشتراكات</h3>
-                  <p>سجل دفعاتك المالية والمبالغ المتبقية عليك بالسنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('payments') && isFeatureEnabled('finance_reports') && (
+                <button className="cp-section-card cp-accent-green" onClick={() => goToMyReport('center-finance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-wallet"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الحسابات والاشتراكات</h3>
+                    <p>سجل دفعاتك المالية والمبالغ المتبقية عليك بالسنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -587,27 +626,29 @@ export default function Report() {
           )}
         </div>
 
-        {/* Segmented Control */}
-        <div className="report-toggle-container">
-          <div className="report-toggle">
-            <button 
-              type="button"
-              className={`report-toggle-btn ${reportSource === 'online' ? 'is-active' : ''}`}
-              onClick={() => changeReportSource('online')}
-            >
-              <i className="fas fa-globe"></i> تقارير الأونلاين
-            </button>
-            <button 
-              type="button"
-              className={`report-toggle-btn ${reportSource === 'center' ? 'is-active' : ''}`}
-              onClick={() => changeReportSource('center')}
-            >
-              <i className="fas fa-building"></i> تقارير السنتر
-            </button>
+        {/* Segmented Control — only shown if both Online and Center reports are available */}
+        {hasOnlineReports && hasCenterReports && (
+          <div className="report-toggle-container">
+            <div className="report-toggle">
+              <button 
+                type="button"
+                className={`report-toggle-btn ${activeReportSource === 'online' ? 'is-active' : ''}`}
+                onClick={() => changeReportSource('online')}
+              >
+                <i className="fas fa-globe"></i> تقارير الأونلاين
+              </button>
+              <button 
+                type="button"
+                className={`report-toggle-btn ${activeReportSource === 'center' ? 'is-active' : ''}`}
+                onClick={() => changeReportSource('center')}
+              >
+                <i className="fas fa-building"></i> تقارير السنتر
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {reportSource === 'online' ? (
+        {activeReportSource === 'online' ? (
           <>
             <h2 className="cp-panel-header" style={{ margin: '2rem 0 1rem', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
               <i className="fas fa-user-graduate" style={{ color: '#5bc2e7' }}></i>
@@ -615,70 +656,80 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
-              <button className="cp-section-card cp-accent-blue" onClick={() => goTo('videos')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-play-circle"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الفيديوهات</h3>
-                  <p>تتبع حالة مشاهدة الفيديوهات التعليمية ومدى تقدم الطالب فيها</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goTo('videos')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-play-circle"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الفيديوهات</h3>
+                    <p>تتبع حالة مشاهدة الفيديوهات التعليمية ومدى تقدم الطالب فيها</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-orange" onClick={() => goTo('exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-file-alt"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الامتحانات</h3>
-                  <p>مراجعة نتائج الامتحانات وتحليل أداء الطالب في كل اختبار</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-orange" onClick={() => goTo('exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-file-alt"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الامتحانات</h3>
+                    <p>مراجعة نتائج الامتحانات وتحليل أداء الطالب في كل اختبار</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goTo('quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-book-reader"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير التسميعات</h3>
-                  <p>مراجعة نتائج التسميعات الأسبوعية ومستوى حفظ الطالب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goTo('quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-book-reader"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير التسميعات</h3>
+                    <p>مراجعة نتائج التسميعات الأسبوعية ومستوى حفظ الطالب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goTo('homework')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-book-open"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الواجبات</h3>
-                  <p>متابعة تسليم الواجبات وتحليل أداء الطالب في كل واجب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('homework') && isFeatureEnabled('homework_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goTo('homework')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-book-open"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الواجبات</h3>
+                    <p>متابعة تسليم الواجبات وتحليل أداء الطالب في كل واجب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-purple" onClick={() => goTo('pre-assessment')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-clipboard-check"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير التقييمات قبل الفيديو</h3>
-                  <p>أداء الطالب في الامتحانات والتسميعات المطلوبة قبل مشاهدة كل فيديو</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('pre_assessments') && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goTo('pre-assessment')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-clipboard-check"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير التقييمات قبل الفيديو</h3>
+                    <p>أداء الطالب في الامتحانات والتسميعات المطلوبة قبل مشاهدة كل فيديو</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
 
             <h2 className="cp-panel-header" style={{ margin: '2rem 0 1rem', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -687,70 +738,80 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
-              <button className="cp-section-card cp-accent-purple" onClick={() => goToGroupReport('pre-assessment')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-clipboard-check"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير جماعي للتقييمات قبل الفيديو</h3>
-                  <p>أداء كل الطلاب في الامتحانات والتسميعات المطلوبة قبل مشاهدة الفيديوهات</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('pre_assessments') && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goToGroupReport('pre-assessment')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-clipboard-check"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للتقييمات قبل الفيديو</h3>
+                    <p>أداء كل الطلاب في الامتحانات والتسميعات المطلوبة قبل مشاهدة الفيديوهات</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goToGroupReport('videos')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-line"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير جماعي للفيديوهات</h3>
-                  <p>إحصائيات المشاهدة وتقرير الأداء العام لجميع الطلاب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goToGroupReport('videos')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-line"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للفيديوهات</h3>
+                    <p>إحصائيات المشاهدة وتقرير الأداء العام لجميع الطلاب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-orange" onClick={() => goToGroupReport('exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-pie"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير جماعي للامتحانات</h3>
-                  <p>نتائج وتحليل أداء جميع الطلاب في الامتحانات</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-orange" onClick={() => goToGroupReport('exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-pie"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للامتحانات</h3>
+                    <p>نتائج وتحليل أداء جميع الطلاب في الامتحانات</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goToGroupReport('quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-line"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير جماعي للتسميعات</h3>
-                  <p>نتائج وتحليل أداء جميع الطلاب في التسميعات الأسبوعية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goToGroupReport('quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-line"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للتسميعات</h3>
+                    <p>نتائج وتحليل أداء جميع الطلاب في التسميعات الأسبوعية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-green" onClick={() => goToGroupReport('homework')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-bar"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير جماعي للواجبات</h3>
-                  <p>إحصائيات التسليم وتقرير الأداء العام لجميع الطلاب في الواجبات</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('homework') && isFeatureEnabled('homework_reports') && (
+                <button className="cp-section-card cp-accent-green" onClick={() => goToGroupReport('homework')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-bar"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للواجبات</h3>
+                    <p>إحصائيات التسليم وتقرير الأداء العام لجميع الطلاب في الواجبات</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -761,70 +822,80 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
-              <button className="cp-section-card cp-accent-purple" onClick={() => goTo('center-exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-file-signature"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير امتحانات السنتر</h3>
-                  <p>متابعة درجات الطالب وتقييماته في امتحانات السنتر الورقية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goTo('center-exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-file-signature"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير امتحانات السنتر</h3>
+                    <p>متابعة درجات الطالب وتقييماته في امتحانات السنتر الورقية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goTo('center-quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-comment-dots"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير تسميعات السنتر</h3>
-                  <p>نتائج التسميع الشفوي والمتابعة الأسبوعية للطالب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goTo('center-quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-comment-dots"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير تسميعات السنتر</h3>
+                    <p>نتائج التسميع الشفوي والمتابعة الأسبوعية للطالب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-orange" onClick={() => goTo('center-grades')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-graduation-cap"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير درجات السنتر الشامل</h3>
-                  <p>ملخص جميع الدرجات والتقييمات المسجلة يدوياً للطالب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('grades') && isFeatureEnabled('grades_reports') && (
+                <button className="cp-section-card cp-accent-orange" onClick={() => goTo('center-grades')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-graduation-cap"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير درجات السنتر الشامل</h3>
+                    <p>ملخص جميع الدرجات والتقييمات المسجلة يدوياً للطالب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goTo('center-attendance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-user-check"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الحضور والغياب</h3>
-                  <p>تتبع نسب حضور وغياب الطالب وسجل المجموعات بالسنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('attendance') && isFeatureEnabled('attendance_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goTo('center-attendance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-user-check"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الحضور والغياب</h3>
+                    <p>تتبع نسب حضور وغياب الطالب وسجل المجموعات بالسنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-green" onClick={() => goTo('center-finance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-wallet"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>تقرير الحسابات والاشتراكات</h3>
-                  <p>سجل الرسوم والمدفوعات والمستحقات المالية على الطالب</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('payments') && isFeatureEnabled('finance_reports') && (
+                <button className="cp-section-card cp-accent-green" onClick={() => goTo('center-finance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-wallet"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير الحسابات والاشتراكات</h3>
+                    <p>سجل الرسوم والمدفوعات والمستحقات المالية على الطالب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
 
             <h2 className="cp-panel-header" style={{ margin: '2rem 0 1rem', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -833,70 +904,80 @@ export default function Report() {
             </h2>
 
             <div className="cp-home-grid" style={{ marginBottom: '2.5rem' }}>
-              <button className="cp-section-card cp-accent-purple" onClick={() => goToGroupReport('center-exams')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-pie"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>التقرير الجماعي لامتحانات السنتر</h3>
-                  <p>تحليل نتائج جميع الطلاب في اختبارات السنتر الورقية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-purple" onClick={() => goToGroupReport('center-exams')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-pie"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>التقرير الجماعي لامتحانات السنتر</h3>
+                    <p>تحليل نتائج جميع الطلاب في اختبارات السنتر الورقية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-blue" onClick={() => goToGroupReport('center-quizzes')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-line"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>التقرير الجماعي لتسميعات السنتر</h3>
-                  <p>متابعة ونتائج التسميع الشفوي لجميع الطلاب بالصفوف</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {(isFeatureEnabled('grades') || isFeatureEnabled('exams')) && (isFeatureEnabled('grades_reports') || isFeatureEnabled('exam_reports') || isFeatureEnabled('center_reports')) && (
+                <button className="cp-section-card cp-accent-blue" onClick={() => goToGroupReport('center-quizzes')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-line"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>التقرير الجماعي لتسميعات السنتر</h3>
+                    <p>متابعة ونتائج التسميع الشفوي لجميع الطلاب بالصفوف</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-orange" onClick={() => goToGroupReport('center-grades')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-bar"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>التقرير الجماعي لدرجات السنتر</h3>
-                  <p>عرض شامل وتحليلي للدرجات اليدوية المسجلة بالسنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('grades') && isFeatureEnabled('grades_reports') && (
+                <button className="cp-section-card cp-accent-orange" onClick={() => goToGroupReport('center-grades')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-bar"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>التقرير الجماعي لدرجات السنتر</h3>
+                    <p>عرض شامل وتحليلي للدرجات اليدوية المسجلة بالسنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-teal" onClick={() => goToGroupReport('center-attendance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-line"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>التقرير الجماعي للحضور والغياب</h3>
-                  <p>نسب حضور الطلاب وسجل الحصص العام لمجموعات السنتر</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('attendance') && isFeatureEnabled('attendance_reports') && (
+                <button className="cp-section-card cp-accent-teal" onClick={() => goToGroupReport('center-attendance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-line"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>التقرير الجماعي للحضور والغياب</h3>
+                    <p>نسب حضور الطلاب وسجل الحصص العام لمجموعات السنتر</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
 
-              <button className="cp-section-card cp-accent-green" onClick={() => goToGroupReport('center-finance')}>
-                <div className="cp-section-icon">
-                  <i className="fas fa-chart-pie"></i>
-                </div>
-                <div className="cp-section-body">
-                  <h3>التقرير الجماعي للحسابات والاشتراكات</h3>
-                  <p>متابعة إيرادات ومستحقات السنتر والاشتراكات الشهرية</p>
-                </div>
-                <div className="cp-section-chevron-circle">
-                  <i className="fas fa-chevron-left"></i>
-                </div>
-              </button>
+              {isFeatureEnabled('payments') && isFeatureEnabled('finance_reports') && (
+                <button className="cp-section-card cp-accent-green" onClick={() => goToGroupReport('center-finance')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-chart-pie"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>التقرير الجماعي للحسابات والاشتراكات</h3>
+                    <p>متابعة إيرادات ومستحقات السنتر والاشتراكات الشهرية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
             </div>
           </>
         )}

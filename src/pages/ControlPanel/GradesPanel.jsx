@@ -13,7 +13,7 @@ import { supabase } from '@backend/supabase'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList, tenantId } = useTenant()
+  const { gradesList, tenantId, isFeatureEnabled } = useTenant()
   const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
   const [group, setGroup] = useState('')
   const [groupsList, setGroupsList] = useState([])
@@ -34,7 +34,7 @@ export default function GradesPanel({ onBack, flash }) {
   // Scores sheet states: studentId -> { score: num, notes: string }
   const [sheetData, setSheetData] = useState({})
 
-  const [activeSubTab, setActiveSubTab] = useState('grade') // 'grade' | 'history'
+  const [activeSubTab, setActiveSubTab] = useState(() => isFeatureEnabled('grades_entry') ? 'grade' : 'history') // 'grade' | 'history'
   const [searchQuery, setSearchQuery] = useState('') // active student name search
   const [selectedActiveEvaluationKey, setSelectedActiveEvaluationKey] = useState('')
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
@@ -907,14 +907,16 @@ export default function GradesPanel({ onBack, flash }) {
 
       {/* Tab Switcher */}
       <div className="cp-subtabs" style={{ display: 'flex', gap: 8, margin: '0 0 24px 0', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '12px' }}>
-        <button
-          className={`cp-btn ${activeSubTab === 'grade' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
-          onClick={() => setActiveSubTab('grade')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
-        >
-          <i className="fas fa-file-signature" />
-          رصد درجات جديدة
-        </button>
+        {isFeatureEnabled('grades_entry') && (
+          <button
+            className={`cp-btn ${activeSubTab === 'grade' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
+            onClick={() => setActiveSubTab('grade')}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
+          >
+            <i className="fas fa-file-signature" />
+            رصد درجات جديدة
+          </button>
+        )}
         <button
           className={`cp-btn ${activeSubTab === 'history' ? 'cp-btn-info-active' : 'cp-btn-info'}`}
           onClick={() => setActiveSubTab('history')}
@@ -1334,7 +1336,7 @@ export default function GradesPanel({ onBack, flash }) {
                 </button>
               )}
 
-              {searchedHistoryRows.length > 0 && (
+              {searchedHistoryRows.length > 0 && isFeatureEnabled('grades_export') && (
                 <button 
                   onClick={handlePrintGrades}
                   className="cp-btn cp-btn-info"

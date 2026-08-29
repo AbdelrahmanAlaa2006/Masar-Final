@@ -131,39 +131,40 @@ export default function Login() {
     return val
   }
 
-  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(tenant?.config?.branding?.brand_short || themeConfig.branding?.brand_short, tenantName, tenantName)
-  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(tenant?.config?.branding?.hero_title_a || themeConfig.branding?.hero_title_a, tenantName, tenantName)
-  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(tenant?.config?.branding?.hero_title_b || themeConfig.branding?.hero_title_b, '', '')
-  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(tenant?.config?.branding?.hero_sub || themeConfig.branding?.hero_sub, '', '')
+  const brandShort = isDefaultTenant ? t.brand_short : getLocalized(themeConfig?.branding?.brand_short || tenant?.config?.branding?.brand_short, tenantName, tenantName)
+  const heroTitleA = isDefaultTenant ? t.hero_title_a : getLocalized(themeConfig?.branding?.hero_title_a || tenant?.config?.branding?.hero_title_a, tenantName, tenantName)
+  const heroTitleB = isDefaultTenant ? t.hero_title_b : getLocalized(themeConfig?.branding?.hero_title_b || tenant?.config?.branding?.hero_title_b, '', '')
+  const heroSub = isDefaultTenant ? t.hero_sub : getLocalized(themeConfig?.branding?.hero_sub || tenant?.config?.branding?.hero_sub, '', '')
 
-  const teacherName = getLocalized(tenant?.config?.teacher?.name || themeConfig.teacher?.name, 'عبدالرحمن علاء', 'Abdelrahman Alaa')
-  const teacherRole = getLocalized(tenant?.config?.teacher?.role || themeConfig.teacher?.role, 'مدرّس اللغة العربية', 'Arabic Language Teacher')
+  const teacherKicker = getLocalized(themeConfig?.teacher?.kicker || tenant?.config?.teacher?.kicker, 'الأستاذ المحاضر', 'Lecturer')
+  const teacherName = getLocalized(themeConfig?.teacher?.name || tenant?.config?.teacher?.name, tenantName, tenantName)
+  const teacherRole = getLocalized(themeConfig?.teacher?.role || tenant?.config?.teacher?.role, '', '')
   const teacherBio = getLocalized(
-    tenant?.config?.teacher?.bio || themeConfig.teacher?.bio,
-    'بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع — مش بس حافظ.',
-    'I teach Arabic with a modern, approachable style that brings grammar, syntax, and literature to life. My goal: every student walks out understanding — not just memorising.'
+    themeConfig?.teacher?.bio || tenant?.config?.teacher?.bio,
+    '',
+    ''
   )
   const teacherQuote = getLocalized(
-    tenant?.config?.teacher?.quote || themeConfig.teacher?.quote,
-    '«اللغة العربية مش صعبة — محتاجة بس حد يقدّمها بطريقة صح.»',
-    '“Arabic isn\'t hard — it just needs to be taught the right way.”'
+    themeConfig?.teacher?.quote || tenant?.config?.teacher?.quote,
+    '',
+    ''
   )
-  const teacherImageBase = tenant?.config?.teacher?.image_base || themeConfig.teacher?.image_base || "/images/profile.png"
-  const teacherImageHover = tenant?.config?.teacher?.image_hover || themeConfig.teacher?.image_hover || "/images/me.png"
+  const teacherImageBase = themeConfig?.teacher?.image_base || tenant?.config?.teacher?.image_base || null
+  const teacherImageHover = themeConfig?.teacher?.image_hover || tenant?.config?.teacher?.image_hover || null
   // Optional stat/identity fields: when the tenant leaves them empty they must
   // DISAPPEAR from the UI (no hardcoded default). Each resolves to null unless
   // set, and every render site is guarded so nothing hollow shows.
   const optField = (val) => (val ? getLocalized(val, null, null) : null)
-  const teacherExp = optField(tenant?.config?.teacher?.experience || themeConfig.teacher?.experience)
-  const teacherStudents = optField(tenant?.config?.teacher?.students_count || themeConfig.teacher?.students_count)
-  const teacherSatisfaction = optField(tenant?.config?.teacher?.satisfaction || themeConfig.teacher?.satisfaction)
-  const teacherTargetStage = optField(tenant?.config?.teacher?.target_stage || themeConfig.teacher?.target_stage)
+  const teacherExp = optField(themeConfig?.teacher?.experience || tenant?.config?.teacher?.experience)
+  const teacherStudents = optField(themeConfig?.teacher?.students_count || tenant?.config?.teacher?.students_count)
+  const teacherSatisfaction = optField(themeConfig?.teacher?.satisfaction || tenant?.config?.teacher?.satisfaction)
+  const teacherTargetStage = optField(themeConfig?.teacher?.target_stage || tenant?.config?.teacher?.target_stage)
   const teacherTargetStageLabel = getLocalized(
-    tenant?.config?.teacher?.target_stage_label || themeConfig.teacher?.target_stage_label,
-    'التخصص',
-    'Specialty'
+    themeConfig?.teacher?.target_stage_label || tenant?.config?.teacher?.target_stage_label,
+    'المراحل التي يدرّسها',
+    'Stage taught'
   )
-  const teacherLearningSystem = optField(tenant?.config?.teacher?.learning_system || themeConfig.teacher?.learning_system)
+  const teacherLearningSystem = optField(themeConfig?.teacher?.learning_system || tenant?.config?.teacher?.learning_system)
 
   const socials = {
     facebook: tenant?.config?.socials?.facebook || themeConfig.socials?.facebook || 'https://www.facebook.com',
@@ -468,6 +469,16 @@ export default function Login() {
     }
   }, [theme, tenantSlug, tenant, themeConfig])
 
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.body.classList.add('dark')
+      document.documentElement.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+      document.documentElement.classList.remove('dark')
+    }
+  }, [theme])
+
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
@@ -515,6 +526,16 @@ export default function Login() {
     try {
       const response = await authAPI.login(phone.trim(), password, tenantId)
       if (!response.token || !response.user) throw new Error('Invalid response from server')
+
+      // Center-only tenant check: if student_platform_access is OFF, deny login to student-facing UI
+      if (response.user.role === 'student' && !isFeatureEnabled('student_platform_access')) {
+        setError(lang === 'ar'
+          ? 'حسابك مسجل في نظام إدارة السنتر، ولكن خدمة المنصة أونلاين غير مفعلة لهذا المدرس. يرجى التواصل مع إدارة السنتر.'
+          : 'Your account is registered for center management only. Online student platform is disabled.')
+        setLoading(false)
+        return
+      }
+
       if (rememberMe) localStorage.setItem('masaar-remembered-phone', phone.trim())
       else localStorage.removeItem('masaar-remembered-phone')
       clearFailures()
@@ -615,7 +636,7 @@ export default function Login() {
   const Arrow = lang === 'ar' ? '←' : '→'
 
   return (
-    <div className={`aa-page ${themeConfig.themeClass || ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`aa-page ${theme} ${themeConfig.themeClass || ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <canvas ref={canvasRef} className="aa-particles" aria-hidden="true" />
 
       {/* ─────────── NEW NAVBAR ─────────── */}
@@ -654,7 +675,22 @@ export default function Login() {
         <div className="aa-hero-glow" />
         <div className="aa-hero-inner">
           <div className="aa-hero-text">
-            <span className="aa-badge">✨ {isDefaultTenant ? t.hero_badge : tenantName}</span>
+            <div className="aa-badge" onClick={() => openAuth(true)} role="button" tabIndex={0}>
+              <span className="aa-badge-shimmer-bg" aria-hidden="true" />
+              <span className="aa-badge-emblem" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                  <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                </svg>
+              </span>
+              <span className="aa-badge-label">{isDefaultTenant ? t.hero_badge : teacherName}</span>
+              <span className="aa-badge-cta" aria-hidden="true">
+                <span>{lang === 'ar' ? 'سجل الآن' : 'Join'}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={lang === 'ar' ? "M19 12H5M12 19l-7-7 7-7" : "M5 12h14M12 5l7 7-7 7"} />
+                </svg>
+              </span>
+            </div>
             <h1 className="aa-h1">
               {heroTitleA}
               <br />
@@ -689,13 +725,13 @@ export default function Login() {
               onTouchEnd={() => setPortraitHover(false)}
             >
               <div className="aa-portrait-img">
-                <img src={teacherImageBase} alt={lang === 'ar' ? `الأستاذ ${teacherName}` : `Mr. ${teacherName}`} className="aa-img-base" />
+                <img src={teacherImageBase} alt={teacherName} className="aa-img-base" />
                 <div className="aa-portrait-vignette" />
               </div>
               <div className="aa-nameplate">
                 <div className="aa-nameplate-row">
                   <div>
-                    <div className="aa-kicker">{lang === 'ar' ? 'الأستاذ المحاضر' : 'Lecturer'}</div>
+                    <div className="aa-kicker">{teacherKicker}</div>
                     <h3 className="aa-name">{teacherName}</h3>
                     <p className="aa-dept">{teacherRole}</p>
                   </div>

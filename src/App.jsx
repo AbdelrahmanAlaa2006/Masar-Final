@@ -268,12 +268,104 @@ function PendingApprovalPage() {
   )
 }
 
-/* Hoisted out of AppContent so the component reference is stable across
-   re-renders. */
+function StudentPlatformDisabledPage() {
+  const { tenant } = useTenant()
+  const { logout } = useAuth()
+  const brandName = tenant?.name || 'المنصة التعليمية'
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
+      color: '#fff',
+      padding: '24px',
+      fontFamily: 'Tajawal, sans-serif'
+    }}>
+      <div style={{
+        maxWidth: '520px',
+        width: '100%',
+        background: 'rgba(30, 41, 59, 0.45)',
+        backdropFilter: 'blur(20px)',
+        webkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '24px',
+        padding: '40px 32px',
+        textAlign: 'center',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)'
+      }}>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          background: 'rgba(59, 130, 246, 0.1)',
+          color: '#3b82f6',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '2.5rem',
+          margin: '0 auto 24px'
+        }}>
+          <i className="fas fa-building-columns"></i>
+        </div>
+
+        <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '16px', color: '#fff' }}>
+          نظام إدارة السنتر فقط
+        </h2>
+
+        <p style={{ fontSize: '1rem', lineHeight: '1.8', color: '#cbd5e1', marginBottom: '28px' }}>
+          أهلاً بك في <strong>{brandName}</strong>. حسابك مسجل في قاعدة بيانات السنتر لحصر الحضور والدرجات، ولكن خدمة المنصة الأونلاين للطلاب غير مفعلة لهذا المدرس. يرجى التواصل مع إدارة السنتر للمتابعة.
+        </p>
+
+        <button
+          onClick={() => { logout(); window.location.href = '/login' }}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '12px',
+            border: 'none',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            color: '#fff',
+            fontSize: '1.05rem',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          العودة لصفحة الدخول
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function FeatureRoute({ featureKey, check, children }) {
+  const { isFeatureEnabled } = useTenant()
+  if (check && !check(isFeatureEnabled)) {
+    return <Navigate to="/" replace />
+  }
+  if (featureKey) {
+    if (Array.isArray(featureKey)) {
+      const isAnyEnabled = featureKey.some(k => isFeatureEnabled(k))
+      if (!isAnyEnabled) return <Navigate to="/" replace />
+    } else if (!isFeatureEnabled(featureKey)) {
+      return <Navigate to="/" replace />
+    }
+  }
+  return children
+}
+
 function ProtectedRoute({ isLoggedIn, children }) {
   const { user } = useAuth()
+  const { isFeatureEnabled } = useTenant()
 
   if (!isLoggedIn) return <Navigate to="/login" replace />
+
+  // Center-only tenant check: if student platform access is OFF, show friendly explanation
+  if (user && user.role === 'student' && !isFeatureEnabled('student_platform_access')) {
+    return <StudentPlatformDisabledPage />
+  }
 
   // Guard for newly registered students: show Pending Approval page if not approved
   if (user && user.role === 'student' && user.is_approved === false) {
@@ -299,8 +391,14 @@ function ProtectedRoute({ isLoggedIn, children }) {
 
 function PermissionRoute({ isLoggedIn, permission, children }) {
   const { user, hasPermission } = useAuth()
+  const { isFeatureEnabled } = useTenant()
 
   if (!isLoggedIn) return <Navigate to="/login" replace />
+
+  // Center-only tenant check: if student platform access is OFF, show friendly explanation
+  if (user && user.role === 'student' && !isFeatureEnabled('student_platform_access')) {
+    return <StudentPlatformDisabledPage />
+  }
 
   // Guard for newly registered students
   if (user && user.role === 'student' && user.is_approved === false) {
@@ -600,52 +698,53 @@ function AppContent() {
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : isLoggedIn ? <Home /> : <Login />} />
+            <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : isLoggedIn ? (user?.role === 'student' && !isFeatureEnabled('student_platform_access') ? <StudentPlatformDisabledPage /> : <Home />) : <Login />} />
             <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
             <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
             <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
             {/* Old /lectures URLs redirect to the new /homework page so
                 shared links / browser bookmarks keep working. */}
-            <Route path="/homework" element={isFeatureEnabled('homework') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute> : <Navigate to="/" replace />} />
-            <Route path="/lectures" element={<Navigate to="/homework" replace />} />
-            <Route path="/exams" element={isFeatureEnabled('exams') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute> : <Navigate to="/" replace />} />
-            <Route path="/exam-taking" element={isFeatureEnabled('exams') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute> : <Navigate to="/" replace />} />
-            <Route path="/videos" element={isFeatureEnabled('videos') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute> : <Navigate to="/" replace />} />
-            <Route path="/shop" element={isFeatureEnabled('payments') ? <ProtectedRoute isLoggedIn={isLoggedIn}><Shop /></ProtectedRoute> : <Navigate to="/" replace />} />
-            <Route path="/packages" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Packages /></ProtectedRoute>} />
-            <Route path="/payments" element={isFeatureEnabled('payments') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/homework" element={<FeatureRoute featureKey="homework"><PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute></FeatureRoute>} />
+            <Route path="/lectures" element={<FeatureRoute featureKey="homework"><Navigate to="/homework" replace /></FeatureRoute>} />
+            <Route path="/exams" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute></FeatureRoute>} />
+            <Route path="/exam-taking" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute></FeatureRoute>} />
+            <Route path="/videos" element={<FeatureRoute featureKey="videos"><PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute></FeatureRoute>} />
+            <Route path="/shop" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Shop /></ProtectedRoute></FeatureRoute>} />
+            <Route path="/packages" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Packages /></ProtectedRoute></FeatureRoute>} />
+            <Route path="/payments" element={<FeatureRoute featureKey="payments"><PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute></FeatureRoute>} />
 
-            <Route path="/chat" element={isFeatureEnabled('chat') ? <PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute> : <Navigate to="/" replace />} />
+            <Route path="/chat" element={<FeatureRoute featureKey="chat"><PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute></FeatureRoute>} />
 
-            {/* Student + Admin: solo reports */}
-            <Route path="/videos-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute>} />
-            <Route path="/exams-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute>} />
-            <Route path="/homework-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute>} />
-            <Route path="/grades-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute>} />
-            <Route path="/attendance-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><AttendanceReport /></PermissionRoute>} />
-            <Route path="/finance-report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><FinanceReport /></PermissionRoute>} />
+            {/* Feature-specific Reports: each follows its granular capability toggle */}
+            <Route path="/videos-report" element={<FeatureRoute featureKey="video_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute></FeatureRoute>} />
+            <Route path="/exams-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute></FeatureRoute>} />
+            <Route path="/homework-report" element={<FeatureRoute featureKey="homework_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute></FeatureRoute>} />
+            <Route path="/grades-report" element={<FeatureRoute featureKey="grades_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute></FeatureRoute>} />
+            <Route path="/attendance-report" element={<FeatureRoute featureKey="attendance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><AttendanceReport /></PermissionRoute></FeatureRoute>} />
+            <Route path="/finance-report" element={<FeatureRoute featureKey="finance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><FinanceReport /></PermissionRoute></FeatureRoute>} />
 
             {/* Admin only */}
-            <Route path="/video-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute>} />
-            <Route path="/exam-add" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute>} />
-            <Route path="/report" element={<PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute>} />
-            {/* Staff-only: the report RPCs re-check 'reports'/'videos' server-side. */}
-            <Route path="/pre-assessment-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute>} />
-            <Route path="/videos-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute>} />
-            <Route path="/exams-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute>} />
-            <Route path="/homework-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute>} />
-            <Route path="/grades-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute>} />
-            <Route path="/attendance-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute>} />
-            <Route path="/finance-group-report" element={<AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute>} />
+            <Route path="/video-add" element={<FeatureRoute featureKey="videos"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute></FeatureRoute>} />
+            <Route path="/exam-add" element={<FeatureRoute featureKey="exams"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute></FeatureRoute>} />
+            <Route path="/report" element={<FeatureRoute featureKey="reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute></FeatureRoute>} />
+            
+            {/* Staff-only group reports: each follows its granular capability toggle */}
+            <Route path="/pre-assessment-report" element={<FeatureRoute featureKey="pre_assessments"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/videos-group-report" element={<FeatureRoute featureKey="video_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/exams-group-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/homework-group-report" element={<FeatureRoute featureKey="homework_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/grades-group-report" element={<FeatureRoute featureKey="grades_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/attendance-group-report" element={<FeatureRoute featureKey="attendance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute></FeatureRoute>} />
+            <Route path="/finance-group-report" element={<FeatureRoute featureKey="finance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute></FeatureRoute>} />
             <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
             <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
             <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
             <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
 
-            {/* Public report without login gating */}
-            <Route path="/public-report" element={<PublicReport />} />
+            {/* Public report: general standalone report */}
+            <Route path="/public-report" element={<FeatureRoute featureKey="reports"><PublicReport /></FeatureRoute>} />
             <Route path="/credits" element={<GitFekraLanding />} />
             <Route path="/company" element={<GitFekraLanding />} />
           </Routes>

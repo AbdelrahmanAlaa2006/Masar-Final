@@ -87,8 +87,19 @@ export default function ControlPanelIndex() {
     if (s === 'exams' && !isFeatureEnabled('exams')) return false
     if (s === 'homeworks' && !isFeatureEnabled('homework')) return false
     if (s === 'videos' && !isFeatureEnabled('videos')) return false
-    if (s === 'whatsapp' && !isFeatureEnabled('notifications')) return false
-    if (s === 'announcements' && !isFeatureEnabled('notifications')) return false
+    if (s === 'playlists' && (!isFeatureEnabled('videos') || !isFeatureEnabled('video_playlists'))) return false
+    if (s === 'whatsapp' && (!isFeatureEnabled('notifications') || !isFeatureEnabled('whatsapp_notifications'))) return false
+    if (s === 'announcements' && (!isFeatureEnabled('notifications') || !isFeatureEnabled('announcements'))) return false
+    if (s === 'finance' && (!isFeatureEnabled('payments') || !isFeatureEnabled('payment_history'))) return false
+    if (s === 'packages' && (!isFeatureEnabled('payments') || !isFeatureEnabled('packages_store'))) return false
+    if (s === 'purchases' && (!isFeatureEnabled('payments') || !isFeatureEnabled('purchases_review'))) return false
+    if (s === 'chats' && !isFeatureEnabled('chat')) return false
+    if (s === 'groups' && !isFeatureEnabled('groups')) return false
+    if (s === 'branches' && !isFeatureEnabled('branches')) return false
+    if (s === 'accounts' && !isFeatureEnabled('student_accounts')) return false
+    if (s === 'student_access' && !isFeatureEnabled('student_content_access')) return false
+    if (s === 'resets' && !isFeatureEnabled('student_resets')) return false
+    if (s === 'calendar' && !isFeatureEnabled('videos') && !isFeatureEnabled('exams') && !isFeatureEnabled('homework')) return false
 
     if (user.role === 'admin' || user.role === 'super_admin') return true
     if (s === 'home') return true
@@ -473,7 +484,7 @@ export default function ControlPanelIndex() {
     if (s === 'home') {
       return (
         <div className="cp-home-grid">
-          {hasPermission('attendance') && (
+          {isFeatureEnabled('attendance') && hasPermission('attendance') && (
             <SectionCard
               icon="fa-calendar-check"
               accent="teal"
@@ -482,7 +493,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('attendance')}
             />
           )}
-          {hasPermission('grades') && (
+          {isFeatureEnabled('grades') && hasPermission('grades') && (
             <SectionCard
               icon="fa-star"
               accent="gold"
@@ -491,7 +502,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('grades')}
             />
           )}
-          {hasPermission('videos') && (
+          {isFeatureEnabled('videos') && hasPermission('videos') && (
             <SectionCard
               icon="fa-play-circle"
               accent="blue"
@@ -500,7 +511,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('videos')}
             />
           )}
-          {hasPermission('exams') && (
+          {isFeatureEnabled('exams') && hasPermission('exams') && (
             <SectionCard
               icon="fa-file-alt"
               accent="orange"
@@ -509,7 +520,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('exams')}
             />
           )}
-          {hasPermission('homework') && (
+          {isFeatureEnabled('homework') && hasPermission('homework') && (
             <SectionCard
               icon="fa-book-open"
               accent="purple"
@@ -518,7 +529,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('homeworks')}
             />
           )}
-          {hasPermission('students') && (
+          {isFeatureEnabled('student_accounts') && hasPermission('students') && (
             <SectionCard
               icon="fa-user-check"
               accent="green"
@@ -528,7 +539,7 @@ export default function ControlPanelIndex() {
               badge={pendingStudentsCount}
             />
           )}
-          {hasPermission('students') && (
+          {isFeatureEnabled('groups') && hasPermission('students') && (
             <SectionCard
               icon="fa-user-group"
               accent="indigo"
@@ -537,7 +548,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('groups')}
             />
           )}
-          {hasPermission('whatsapp') && (
+          {isFeatureEnabled('notifications') && isFeatureEnabled('whatsapp_notifications') && hasPermission('whatsapp') && (
             <SectionCard
               icon="fa-comments-dollar"
               accent="teal"
@@ -546,7 +557,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('whatsapp')}
             />
           )}
-          {hasPermission('whatsapp') && (
+          {isFeatureEnabled('notifications') && isFeatureEnabled('announcements') && hasPermission('whatsapp') && (
             <SectionCard
               icon="fa-bullhorn"
               accent="orange"
@@ -555,7 +566,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('announcements')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('payments')) && (
+          {isFeatureEnabled('payments') && isFeatureEnabled('payment_history') && (user?.role === 'admin' || hasPermission('payments')) && (
             <SectionCard
               icon="fa-cash-register"
               accent="green"
@@ -564,7 +575,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('finance')}
             />
           )}
-          {hasPermission('students') && (
+          {isFeatureEnabled('student_resets') && hasPermission('students') && (
             <SectionCard
               icon="fa-key"
               accent="gold"
@@ -574,7 +585,7 @@ export default function ControlPanelIndex() {
               badge={resetRequestsCount}
             />
           )}
-          {hasPermission('students') && (
+          {isFeatureEnabled('chat') && hasPermission('students') && (
             <SectionCard
               icon="fa-comments"
               accent="teal"
@@ -592,7 +603,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('assistants')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('branches:view') || hasPermission('branches:edit')) && (
+          {isFeatureEnabled('branches') && (user?.role === 'admin' || hasPermission('branches:view') || hasPermission('branches:edit')) && (
             <SectionCard
               icon="fa-map-marker-alt"
               accent="violet"
@@ -601,7 +612,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('branches')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
+          {isFeatureEnabled('videos') && isFeatureEnabled('video_playlists') && (user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
             <SectionCard
               icon="fa-list-check"
               accent="indigo"
@@ -610,7 +621,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('playlists')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('payments')) && (
+          {isFeatureEnabled('payments') && isFeatureEnabled('packages_store') && (user?.role === 'admin' || hasPermission('payments')) && (
             <SectionCard
               icon="fa-box-open"
               accent="purple"
@@ -619,7 +630,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('packages')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('payments')) && (
+          {isFeatureEnabled('payments') && isFeatureEnabled('purchases_review') && (user?.role === 'admin' || hasPermission('payments')) && (
             <SectionCard
               icon="fa-receipt"
               accent="gold"
@@ -628,7 +639,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('purchases')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('students')) && (
+          {isFeatureEnabled('student_content_access') && (user?.role === 'admin' || hasPermission('students')) && (
             <SectionCard
               icon="fa-user-lock"
               accent="teal"
@@ -637,7 +648,7 @@ export default function ControlPanelIndex() {
               onClick={() => enterSection('student_access')}
             />
           )}
-          {(user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
+          {(isFeatureEnabled('videos') || isFeatureEnabled('exams') || isFeatureEnabled('homework')) && (user?.role === 'admin' || hasPermission('videos') || hasPermission('exams') || hasPermission('homework')) && (
             <SectionCard
               icon="fa-calendar-alt"
               accent="blue"

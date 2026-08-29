@@ -90,7 +90,7 @@ const formatStudentErrorMessage = (err, { phone = '', parentPhone = '', name = '
 
 export default function AccountsPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList, tenantId, tenantName, tenant, tenantSlug } = useTenant()
+  const { gradesList, tenantId, tenantName, tenant, tenantSlug, isFeatureEnabled } = useTenant()
   const [students, setStudents] = useState([])
   const [branches, setBranches] = useState([])
   const [academicYears, setAcademicYears] = useState([])
@@ -838,9 +838,8 @@ export default function AccountsPanel({ onBack, flash }) {
         </button>
       </div>
 
-      {/* ── Barcode label printing toolbar (thermal / XPrinter) ───────────────
-          Label size is configurable; the four print modes all route through the
-          same thermal-label engine (src/utils/barcodeLabels.js). */}
+      {/* Thermal barcode label printing toolbar (XPrinter / thermal rolls) */}
+      {isFeatureEnabled('barcode_labels_print') && (
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
         <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-color)' }}>
           <i className="fas fa-barcode" style={{ marginInlineEnd: 6, color: '#6366f1' }}></i>
@@ -900,6 +899,7 @@ export default function AccountsPanel({ onBack, flash }) {
           {bulkPrinting ? ' جارٍ التحضير...' : (selectedGrade !== 'all' ? ' طباعة المرحلة' : ' طباعة كل المراحل')}
         </button>
       </div>
+      )}
 
       {/* Export the roster — always follows the filters selected above */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'var(--primary-soft)', border: '1px solid var(--primary-glow)' }}>

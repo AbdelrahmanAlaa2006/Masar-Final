@@ -16,7 +16,8 @@ export function applyTenantTheme(tenant, themeConfig) {
   const tenantThemeClasses = [
     'aa-chem-theme', 'aa-phys-theme', 'aa-math-theme', 'aa-bio-theme',
     'aa-science-theme', 'aa-geo-theme', 'aa-english-theme',
-    'aa-humanities-theme', 'aa-cyber-theme', 'aa-power-theme', 'aa-default-theme'
+    'aa-humanities-theme', 'aa-cyber-theme', 'aa-power-theme',
+    'aa-mohamed-yasser-theme', 'aa-default-theme'
   ]
   tenantThemeClasses.forEach(cls => body.classList.remove(cls))
   if (themeConfig.themeClass) {

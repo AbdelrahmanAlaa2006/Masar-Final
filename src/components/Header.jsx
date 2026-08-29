@@ -34,12 +34,14 @@ const ADMIN_ITEMS = [
 
 export default function Header() {
   const { tenant, tenantSlug, isFeatureEnabled, themeConfig } = useTenant()
-  const brandName = !tenantSlug || tenantSlug === 'default' ? 'مسار' : (tenant?.name || 'مسار')
+  const brandName = !tenantSlug || tenantSlug === 'default'
+    ? 'مسار'
+    : (themeConfig?.branding?.brand_short?.ar || themeConfig?.branding?.brand_short || tenant?.name || 'مسار')
   const dbLogo = tenant?.logo_url && !tenant.logo_url.includes('3081840') ? tenant.logo_url : null
-  const brandLogo = themeConfig.logoUrl || (!tenantSlug || tenantSlug === 'default' ? null : dbLogo)
+  const brandLogo = themeConfig?.logoUrl || (!tenantSlug || tenantSlug === 'default' ? null : dbLogo)
   // A tenant with its own artwork shows the logo bare — no colored chip behind
   // it. The shared fallback logo is white, so it keeps the chip to stay visible.
-  const hasOwnLogo = Boolean(themeConfig.logoUrl || dbLogo)
+  const hasOwnLogo = Boolean(themeConfig?.logoUrl || dbLogo)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)

@@ -11,6 +11,7 @@ const BusinessPanel = lazy(() => import('./BusinessPanel'))
 import { GRADE_LABEL } from './shared'
 import { uploadAvatarImage } from '@backend/r2'
 import { DEFAULT_ANNOUNCEMENTS } from '../../utils/announcements'
+import { getTenantFolder } from '../../tenants/brandOverrides'
 
 /* Subject → theme mapping. getTenantFolder() in src/tenants/brandOverrides.js
    resolves the theme chunk from config.subject, so picking a subject here is
@@ -29,19 +30,7 @@ const SUBJECT_OPTIONS = [
   { value: 'programming', label: 'برمجة وحاسب آلي' },
 ]
 
-/* Feature keys actually consumed by isFeatureEnabled() across the app. */
-const FEATURE_DEFS = [
-  { key: 'videos', label: 'الفيديوهات' },
-  { key: 'exams', label: 'الامتحانات' },
-  { key: 'homework', label: 'الواجبات' },
-  { key: 'payments', label: 'المدفوعات والباقات' },
-  { key: 'reports', label: 'التقارير' },
-  { key: 'chat', label: 'الدردشة' },
-  { key: 'notifications', label: 'الإشعارات' },
-  { key: 'attendance', label: 'الحضور والغياب (سنتر)' },
-  { key: 'grades', label: 'الدرجات والتقييمات (سنتر)' },
-  { key: 'qr_attendance', label: 'بطاقة الباركود الرقمية' },
-]
+import { PLATFORM_FEATURES, FEATURE_CATEGORIES, FEATURE_PRESETS } from '../../config/features'
 
 /* Default stage/grade tree in the exact schema TenantContext.gradesList
    consumes (config.stages). Matches the legacy behavior: prep + secondary
@@ -163,6 +152,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editHeroTitleB, setEditHeroTitleB] = useState('')
   const [editHeroSub, setEditHeroSub] = useState('')
   const [editFeatures, setEditFeatures] = useState({})
+  const [searchFeatureQuery, setSearchFeatureQuery] = useState('')
   const [editLogoUrl, setEditLogoUrl] = useState('')
   const [editTeacherExtra, setEditTeacherExtra] = useState({})
   const [editLocation, setEditLocation] = useState({})
@@ -210,6 +200,9 @@ export default function SuperAdminPanel({ onBack, flash }) {
 
     if (slug.includes('mohamed-abdella') || slug.includes('power') || slug.includes('cyber') || slug.includes('prog') || name.includes('باور') || name.includes('عبدالله') || name.includes('عبد الله')) {
       return '/images/Power Logo.png'
+    }
+    if (slug.includes('yasser') || name.includes('ياسر')) {
+      return '/images/Logo Mr Mohamed Yasser.png'
     }
     if (slug.includes('english') || slug.includes('waled') || slug.includes('sherif-english') || name.includes('miracle') || name.includes('انجليزي') || name.includes('إنجليزي')) {
       return '/images/Logo The Miracle.png'
@@ -547,7 +540,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
   }
 
   // Setup Edit settings states
-  const openManageTenant = (tenant) => {
+  const openManageTenant = async (tenant) => {
     setSelectedTenantForManage(tenant)
     setEditName(tenant.name)
     setEditDomain(tenant.domain || '')
@@ -555,70 +548,117 @@ export default function SuperAdminPanel({ onBack, flash }) {
     setEditSecondaryColor(tenant.secondary_color || '#06b6d4')
     setSearchUserQuery('')
 
-    // Hydrate customization fields from the tenant's config JSONB
+    // Try to load any preconfigured code theme module for this tenant
+    let codeCfg = {}
+    try {
+      const folder = getTenantFolder(tenant)
+      if (folder && folder !== 'default') {
+        const mod = await import(`../../tenants/${folder}/config.js`)
+        codeCfg = mod.default || mod.config || {}
+      }
+    } catch (e) {
+      console.warn('Could not load code config for tenant in SuperAdminPanel', e)
+    }
+
+    // Hydrate customization fields from the tenant's config JSONB with code defaults as fallback
     const cfg = tenant.config || {}
     const asText = (v) => (typeof v === 'object' && v !== null) ? (v.ar || v.en || '') : (v || '')
-    setEditSubject(cfg.subject || 'arabic')
-    setEditTeacherName(asText(cfg.teacher?.name))
-    setEditTeacherRole(asText(cfg.teacher?.role))
-    setEditContactPhone(cfg.contact?.phone || '')
-    setEditContactEmail(cfg.contact?.email || '')
-    setEditContactAddress(cfg.contact?.address || '')
+
+    const resolveField = (dbVal, codeVal, isTeacherName = false) => {
+      if (isTeacherName && dbVal === 'Admin' && codeVal) return asText(codeVal)
+      if (dbVal !== undefined && dbVal !== null && dbVal !== '') return asText(dbVal)
+      return asText(codeVal)
+    }
+
+    setEditSubject(cfg.subject || codeCfg.subject || 'arabic')
+    setEditTeacherName(resolveField(cfg.teacher?.name, codeCfg.teacher?.name, true))
+    setEditTeacherRole(resolveField(cfg.teacher?.role, codeCfg.teacher?.role))
+    setEditContactPhone(cfg.contact?.phone || codeCfg.contact?.phone || '')
+    setEditContactEmail(cfg.contact?.email || codeCfg.contact?.email || '')
+    setEditContactAddress(cfg.contact?.address || codeCfg.contact?.address || '')
+
+    const resolvedSocials = { ...(codeCfg.socials || {}), ...(cfg.socials || {}) }
     setEditSocials({
-      facebook: cfg.socials?.facebook && cfg.socials.facebook !== '#' ? cfg.socials.facebook : '',
-      youtube: cfg.socials?.youtube && cfg.socials.youtube !== '#' ? cfg.socials.youtube : '',
-      instagram: cfg.socials?.instagram && cfg.socials.instagram !== '#' ? cfg.socials.instagram : '',
-      telegram: cfg.socials?.telegram && cfg.socials.telegram !== '#' ? cfg.socials.telegram : '',
-      whatsapp: cfg.socials?.whatsapp && cfg.socials.whatsapp !== '#' ? cfg.socials.whatsapp : ''
+      facebook: resolvedSocials.facebook && resolvedSocials.facebook !== '#' ? resolvedSocials.facebook : '',
+      youtube: resolvedSocials.youtube && resolvedSocials.youtube !== '#' ? resolvedSocials.youtube : '',
+      instagram: resolvedSocials.instagram && resolvedSocials.instagram !== '#' ? resolvedSocials.instagram : '',
+      telegram: resolvedSocials.telegram && resolvedSocials.telegram !== '#' ? resolvedSocials.telegram : '',
+      whatsapp: resolvedSocials.whatsapp && resolvedSocials.whatsapp !== '#' ? resolvedSocials.whatsapp : ''
     })
-    setEditHeroTitle(asText(cfg.branding?.hero_title_a) || asText(cfg.branding?.hero_title))
-    setEditHeroTitleB(asText(cfg.branding?.hero_title_b))
-    setEditHeroSub(asText(cfg.branding?.hero_sub) || asText(cfg.branding?.hero_subtitle))
+
+    setEditHeroTitle(resolveField(cfg.branding?.hero_title_a || cfg.branding?.hero_title, codeCfg.branding?.hero_title_a || codeCfg.branding?.hero_title))
+    setEditHeroTitleB(resolveField(cfg.branding?.hero_title_b, codeCfg.branding?.hero_title_b))
+    setEditHeroSub(resolveField(cfg.branding?.hero_sub || cfg.branding?.hero_subtitle, codeCfg.branding?.hero_sub || codeCfg.branding?.hero_subtitle))
+
     // Feature toggles: missing key = enabled (same default as isFeatureEnabled)
     const feats = {}
-    FEATURE_DEFS.forEach(f => { feats[f.key] = cfg.features?.[f.key] !== false })
+    PLATFORM_FEATURES.forEach(f => {
+      const dbFeat = cfg.features?.[f.key]
+      const codeFeat = codeCfg.features?.[f.key]
+      feats[f.key] = dbFeat !== undefined ? dbFeat !== false : (codeFeat !== undefined ? codeFeat !== false : f.defaultEnabled !== false)
+    })
     setEditFeatures(feats)
 
-    setEditLogoUrl(tenant.logo_url || '')
+    setEditLogoUrl(tenant.logo_url || codeCfg.logoUrl || '')
+
     const teacherExtra = {}
-    TEACHER_EXTRA_DEFS.forEach(f => { teacherExtra[f.key] = asText(cfg.teacher?.[f.key]) })
+    TEACHER_EXTRA_DEFS.forEach(f => {
+      teacherExtra[f.key] = resolveField(cfg.teacher?.[f.key], codeCfg.teacher?.[f.key])
+    })
     setEditTeacherExtra(teacherExtra)
+
     const locationData = {}
-    LOCATION_DEFS.forEach(f => { locationData[f.key] = asText(cfg.location?.[f.key]) })
+    LOCATION_DEFS.forEach(f => {
+      locationData[f.key] = resolveField(cfg.location?.[f.key], codeCfg.location?.[f.key])
+    })
     setEditLocation(locationData)
-    // Branches: existing list, or a single entry migrated from the legacy
-    // top-level location fields so nothing already configured is lost.
-    if (Array.isArray(cfg.location?.branches) && cfg.location.branches.length > 0) {
-      setEditLocBranches(cfg.location.branches.map(b => {
+
+    // Branches: existing list, or codeCfg branches, or migrated legacy
+    const branchesSrc = (Array.isArray(cfg.location?.branches) && cfg.location.branches.length > 0)
+      ? cfg.location.branches
+      : (Array.isArray(codeCfg.location?.branches) && codeCfg.location.branches.length > 0 ? codeCfg.location.branches : null)
+
+    const locObj = (cfg.location && (cfg.location.address || cfg.location.map_iframe_url || cfg.location.phone || cfg.location.directions_link))
+      ? cfg.location
+      : (codeCfg.location || {})
+
+    if (branchesSrc) {
+      setEditLocBranches(branchesSrc.map(b => {
         const entry = {}
         BRANCH_DEFS.forEach(f => { entry[f.key] = asText(b?.[f.key]) })
         return entry
       }))
-    } else if (cfg.location && (cfg.location.address || cfg.location.map_iframe_url || cfg.location.phone)) {
+    } else if (locObj.address || locObj.map_iframe_url || locObj.phone || locObj.directions_link) {
       const legacy = {}
-      BRANCH_DEFS.forEach(f => { legacy[f.key] = asText(cfg.location[f.key]) })
-      if (!legacy.name) legacy.name = asText(cfg.location.title)
+      BRANCH_DEFS.forEach(f => { legacy[f.key] = asText(locObj[f.key]) })
+      if (!legacy.name) legacy.name = asText(locObj.title) || 'المقر الرئيسي (السنتر)'
       setEditLocBranches([legacy])
     } else {
       setEditLocBranches([])
     }
+
     setEditTheme({
-      bg_light: cfg.theme?.bg_light || cfg.bg_color || '',
-      card_light: cfg.theme?.card_light || '',
-      text_light: cfg.theme?.text_light || '',
-      bg_dark: cfg.theme?.bg_dark || '',
-      card_dark: cfg.theme?.card_dark || '',
-      text_dark: cfg.theme?.text_dark || '',
-      border_accent: cfg.theme?.border_accent || ''
+      bg_light: cfg.theme?.bg_light || codeCfg.theme?.bg_light || cfg.bg_color || '',
+      card_light: cfg.theme?.card_light || codeCfg.theme?.card_light || '',
+      text_light: cfg.theme?.text_light || codeCfg.theme?.text_light || '',
+      bg_dark: cfg.theme?.bg_dark || codeCfg.theme?.bg_dark || '',
+      card_dark: cfg.theme?.card_dark || codeCfg.theme?.card_dark || '',
+      text_dark: cfg.theme?.text_dark || codeCfg.theme?.text_dark || '',
+      border_accent: cfg.theme?.border_accent || codeCfg.theme?.border_accent || ''
     })
     const sections = {}
-    LOGIN_SECTION_DEFS.forEach(s => { sections[s.key] = cfg.login_sections?.[s.key] !== false })
+    LOGIN_SECTION_DEFS.forEach(s => {
+      const dbSec = cfg.login_sections?.[s.key]
+      const codeSec = codeCfg.login_sections?.[s.key]
+      sections[s.key] = dbSec !== undefined ? dbSec !== false : (codeSec !== undefined ? codeSec !== false : true)
+    })
     setEditLoginSections(sections)
+
     // Announcements strip: tenant list, or the shared defaults on first edit
     setEditAnnouncements(
       Array.isArray(cfg.announcements)
         ? cfg.announcements.map(a => ({ icon: a?.icon || '', text: a?.text || '' }))
-        : DEFAULT_ANNOUNCEMENTS.map(a => ({ ...a }))
+        : (Array.isArray(codeCfg.announcements) ? codeCfg.announcements : DEFAULT_ANNOUNCEMENTS.map(a => ({ ...a })))
     )
     // Stages: ALWAYS show the full 4-stage template in the editor so the admin
     // can enable any stage later — even a tenant currently limited to one stage
@@ -2400,34 +2440,195 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   {/* TAB 4: FEATURES TOGGLES */}
                   {manageActiveTab === 'features' && (
                     <div>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '6px', color: 'var(--primary, #7c3aed)' }}>
-                        <i className="fas fa-toggle-on" style={{ marginInlineEnd: 6 }} /> التحكم في الميزات والأقسام المتاحة
-                      </h4>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
-                        إلغاء تفعيل أي ميزة <strong>يُخفيها تماماً</strong> من المنصة (القائمة الجانبية، الصفحة الرئيسية، والروابط) للطلاب.
-                      </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '24px' }}>
-                        {FEATURE_DEFS.map(f => {
-                          const isChecked = !!editFeatures[f.key]
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                        <div>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: '0 0 4px', color: 'var(--primary, #7c3aed)' }}>
+                            <i className="fas fa-sliders" style={{ marginInlineEnd: 8 }} />
+                            التحكم في ميزات وباقات المنصة (Granular Capability Entitlements)
+                          </h4>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                            تحكم تفصيلي شامل في كل صفحة وزر وخاصية للمنصة. الميزة المعطلة تختفي تماماً دون أي أخطاء.
+                          </p>
+                        </div>
+
+                        {/* Search Filter */}
+                        <div style={{ position: 'relative', minWidth: '220px' }}>
+                          <input
+                            type="text"
+                            placeholder="بحث في الميزات والصلاحيات..."
+                            value={searchFeatureQuery}
+                            onChange={(e) => setSearchFeatureQuery(e.target.value)}
+                            className="cp-input"
+                            style={{ width: '100%', padding: '8px 12px 8px 32px', fontSize: '0.82rem' }}
+                          />
+                          <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', fontSize: '0.8rem' }} />
+                        </div>
+                      </div>
+
+                      {/* 1-Click Provisioning Presets */}
+                      <div style={{ marginBottom: '20px', padding: '14px', background: 'rgba(124, 58, 237, 0.04)', border: '1px solid rgba(124, 58, 237, 0.15)', borderRadius: '16px' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cp-text-main)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <i className="fas fa-wand-magic-sparkles" style={{ color: 'var(--primary, #7c3aed)' }}></i>
+                          <span>باقات الإعداد السريع (1-Click Presets):</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
+                          {FEATURE_PRESETS.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                setEditFeatures(prev => ({ ...prev, ...preset.features }))
+                                flash(`تم تطبيق قالب: ${preset.nameAr}`, 'info')
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                borderRadius: '12px',
+                                border: `1px solid ${preset.color}40`,
+                                background: `${preset.color}0d`,
+                                textAlign: 'right',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = `${preset.color}1a`
+                                e.currentTarget.style.transform = 'translateY(-1px)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = `${preset.color}0d`
+                                e.currentTarget.style.transform = 'translateY(0)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: preset.color, fontWeight: 800, fontSize: '0.85rem' }}>
+                                <i className={`fas ${preset.icon}`}></i>
+                                <span>{preset.nameAr}</span>
+                              </div>
+                              <span style={{ fontSize: '0.73rem', color: 'var(--cp-text-muted)', lineHeight: 1.4 }}>
+                                {preset.descriptionAr}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Categorized Features Grid */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+                        {FEATURE_CATEGORIES.map((category) => {
+                          const categoryFeatures = PLATFORM_FEATURES.filter(f => {
+                            if (f.category !== category.id) return false
+                            if (!searchFeatureQuery) return true
+                            const q = searchFeatureQuery.trim().toLowerCase()
+                            return (
+                              (f.nameAr && f.nameAr.toLowerCase().includes(q)) ||
+                              (f.nameEn && f.nameEn.toLowerCase().includes(q)) ||
+                              (f.descriptionAr && f.descriptionAr.toLowerCase().includes(q)) ||
+                              (f.key && f.key.toLowerCase().includes(q))
+                            )
+                          })
+
+                          if (categoryFeatures.length === 0) return null
+                          const activeCount = categoryFeatures.filter(f => editFeatures[f.key] !== false).length
+
                           return (
-                            <label key={f.key} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              fontSize: '0.84rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              padding: '12px 14px',
-                              border: isChecked ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--cp-divider)',
-                              borderRadius: '12px',
-                              background: isChecked ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                              transition: 'all 0.2s ease'
-                            }}>
-                              <input type="checkbox" checked={isChecked}
-                                onChange={(e) => setEditFeatures(prev => ({ ...prev, [f.key]: e.target.checked }))}
-                                style={{ accentColor: '#10b981', width: 18, height: 18, cursor: 'pointer' }} />
-                              <span style={{ color: isChecked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)' }}>{f.label}</span>
-                            </label>
+                            <div key={category.id} style={{ border: '1px solid var(--cp-divider)', borderRadius: '16px', padding: '16px', background: 'var(--cp-card-bg, #fff)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--cp-divider)', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.9rem', color: 'var(--cp-text-main)' }}>
+                                  <i className={`fas ${category.icon}`} style={{ color: 'var(--primary, #7c3aed)' }}></i>
+                                  <span>{category.nameAr}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updates = {}
+                                      categoryFeatures.forEach(f => { updates[f.key] = true })
+                                      setEditFeatures(prev => ({ ...prev, ...updates }))
+                                    }}
+                                    style={{ border: 'none', background: 'none', color: '#10b981', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    تفعيل القسم
+                                  </button>
+                                  <span style={{ color: 'var(--cp-divider)' }}>|</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updates = {}
+                                      categoryFeatures.forEach(f => { updates[f.key] = false })
+                                      setEditFeatures(prev => ({ ...prev, ...updates }))
+                                    }}
+                                    style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    تعطيل القسم
+                                  </button>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: activeCount > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)', color: activeCount > 0 ? '#10b981' : '#64748b' }}>
+                                    {activeCount} / {categoryFeatures.length} مفعّل
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '12px' }}>
+                                {categoryFeatures.map((f) => {
+                                  const isParentDisabled = f.parentKey && editFeatures[f.parentKey] === false
+                                  const isChecked = editFeatures[f.key] !== false && !isParentDisabled
+
+                                  return (
+                                    <label
+                                      key={f.key}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '12px',
+                                        padding: '12px 14px',
+                                        border: f.isParent 
+                                          ? (isChecked ? '1.5px solid #8b5cf6' : '1.5px solid var(--cp-divider)')
+                                          : (isChecked ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--cp-divider)'),
+                                        borderRadius: '14px',
+                                        background: f.isParent
+                                          ? (isChecked ? 'rgba(139, 92, 246, 0.06)' : 'var(--cp-bg, #f8fafc)')
+                                          : (isChecked ? 'rgba(16, 185, 129, 0.05)' : 'var(--cp-bg, #f8fafc)'),
+                                        cursor: isParentDisabled ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        userSelect: 'none',
+                                        opacity: isParentDisabled ? 0.55 : 1,
+                                        marginInlineStart: f.parentKey ? '12px' : '0'
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={editFeatures[f.key] !== false}
+                                        disabled={isParentDisabled}
+                                        onChange={(e) => setEditFeatures(prev => ({ ...prev, [f.key]: e.target.checked }))}
+                                        style={{ accentColor: f.isParent ? '#8b5cf6' : '#10b981', width: 18, height: 18, marginTop: '2px', cursor: isParentDisabled ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                      />
+                                      <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                                          {f.parentKey && <span style={{ color: 'var(--cp-text-muted)', fontSize: '0.8rem' }}>└─</span>}
+                                          <i className={`fas ${f.icon}`} style={{ fontSize: '0.85rem', color: isChecked ? (f.isParent ? '#8b5cf6' : '#10b981') : 'var(--cp-text-muted)' }}></i>
+                                          <span style={{ fontSize: '0.86rem', fontWeight: 700, color: isChecked ? 'var(--cp-text-main)' : 'var(--cp-text-muted)' }}>
+                                            {f.nameAr}
+                                          </span>
+                                          {f.isParent && (
+                                            <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '6px', background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', fontWeight: 800 }}>
+                                              رئيسي
+                                            </span>
+                                          )}
+                                          {isParentDisabled && (
+                                            <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 700 }}>
+                                              معطل لتعطيل الرئيسي
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p style={{ fontSize: '0.74rem', color: 'var(--cp-text-muted)', margin: 0, lineHeight: 1.45 }}>
+                                          {f.descriptionAr}
+                                        </p>
+                                      </div>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </div>
                           )
                         })}
                       </div>

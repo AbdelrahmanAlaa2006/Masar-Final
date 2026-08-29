@@ -175,10 +175,12 @@ export default function Home() {
 
 
   // Per-tenant announcements strip: config.announcements overrides the
-  // defaults; an explicit empty array hides the strip entirely.
-  const marqueeItems = Array.isArray(tenant?.config?.announcements)
-    ? tenant.config.announcements.filter(a => a && a.text)
-    : DEFAULT_ANNOUNCEMENTS
+  // defaults; an explicit empty array or notifications=false hides the strip entirely.
+  const marqueeItems = !isFeatureEnabled('notifications')
+    ? []
+    : (Array.isArray(tenant?.config?.announcements)
+      ? tenant.config.announcements.filter(a => a && a.text)
+      : DEFAULT_ANNOUNCEMENTS)
 
   // Format current live date in Arabic locale for the header badge
   const formattedDate = new Date().toLocaleDateString('ar-EG', {

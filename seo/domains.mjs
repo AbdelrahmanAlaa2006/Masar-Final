@@ -277,4 +277,45 @@ export const DOMAINS = {
       },
     },
   },
+
+  'mohamed-yasser': {
+    hosts: ['mohamedyasser.com', 'www.mohamedyasser.com', 'mohamed-yasser.masaar.app'],
+    lang: 'ar',
+    title: 'مستر محمد ياسر — لغة إنجليزية | The more you learn , the more you earn',
+    description:
+      'منصة أستاذ محمد ياسر التعليمية (Best of the Best) — تدريس وتأسيس مادة اللغة الإنجليزية للمرحلة الثانوية بأسلوب تفاعلي، امتحانات دورية، ومتابعة أولياء الأمور.',
+    keywords:
+      'محمد ياسر, مستر محمد ياسر, أستاذ محمد ياسر, Mohamed Yasser, Mr Mohamed Yasser, English with Mohamed Yasser, إنجليزي ثانوي, ثانوية عامة, لغة إنجليزية, جرامر, ترجمة, منصة تعليمية, Best of the Best',
+    author: 'مستر محمد ياسر — Mr Mohamed Yasser',
+    canonical: 'https://gitfekra.com/login?tenant=mohamed-yasser',
+    ogImage: '/images/Logo Mr Mohamed Yasser.png',
+    themeColor: '#ee7d30',
+    favicon: '/images/Logo Mr Mohamed Yasser.png',
+    faviconType: 'image/png',
+    siteName: 'مستر محمد ياسر — Best of the Best',
+    jsonLd: {
+      person: {
+        name: 'Mohamed Yasser',
+        alternateName: ['محمد ياسر', 'مستر محمد ياسر', 'أستاذ محمد ياسر', 'Mr Mohamed Yasser', 'Mohamed Yaser'],
+        jobTitle: 'Senior English Language Teacher — Secondary Stage',
+        image: '/images/Image Mr Mohamed Yasser.png',
+        knowsAbout: ['English Language', 'Grammar', 'English Literature', 'Translation', 'Secondary Stage', 'اللغة الإنجليزية', 'الثانوية العامة'],
+        sameAs: [
+          'https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr',
+          'https://youtube.com/@englishwithmohamedyasser?si=-riciQe2OrXqFAHE',
+          'https://www.tiktok.com/@k.mohamedyaser?_r=1&_t=ZS-99ECH7FA6Oi',
+        ],
+      },
+      org: {
+        name: 'منصة مستر محمد ياسر للغة الإنجليزية',
+        alternateName: ['Mr Mohamed Yasser Platform', 'Best of the Best English'],
+        logo: '/images/Logo Mr Mohamed Yasser.png',
+        description:
+          'منصة تعليمية متخصصة في تدريس وتأسيس مادة اللغة الإنجليزية لطلاب المرحلة الثانوية مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
+        telephone: '+201036836301',
+        addressLocality: 'Alexandria',
+        addressRegion: 'Egypt',
+      },
+    },
+  },
 }

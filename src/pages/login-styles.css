@@ -412,50 +412,175 @@ body:not(.dark) .aa-constellation {
   }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   💎 BESPOKE SOLID LUXURY HERO BADGE
+   Crisp, solid, harmonious colors for every tenant without gradient clashes
+   ────────────────────────────────────────────────────────────── */
 .aa-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--btn-from, #a78bfa);
-  border: 1px solid rgba(99, 102, 241, 0.22);
-  padding: 4px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 22px;
-  backdrop-filter: blur(10px);
-  letter-spacing: 0.2px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 12px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 9999px;
+  margin-bottom: 24px;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  
+  /* Deep smoked obsidian glass */
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 4px 20px -2px rgba(0, 0, 0, 0.4),
+    0 1px 2px 0 rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+  
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .aa-badge:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.12);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  background: rgba(22, 33, 58, 0.9);
+  border-color: var(--primary);
+  box-shadow:
+    0 10px 28px -4px rgba(0, 0, 0, 0.5),
+    0 0 20px -2px var(--primary-glow, rgba(99, 102, 241, 0.3)),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
 }
 
-body:not(.dark) .aa-badge {
-  background: rgba(99, 102, 241, 0.06);
-  color: #6366f1;
-  border-color: rgba(99, 102, 241, 0.2);
+/* Sweeping Light Flare */
+.aa-badge-shimmer-bg {
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  transition: left 0.8s ease;
+  pointer-events: none;
 }
 
-.aa-badge-icon {
-  display: inline-flex;
+.aa-badge:hover .aa-badge-shimmer-bg {
+  left: 200%;
+}
+
+/* Verified Seal / Crest Emblem — PURE PREMIUM SOLID */
+.aa-badge-emblem {
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: var(--primary-soft, rgba(99, 102, 241, 0.18));
-  color: var(--primary, #818cf8);
-  font-size: 11px;
+  background: var(--primary, #3b82f6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 2px 8px var(--primary-glow, rgba(0, 0, 0, 0.25)),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
 }
 
+.aa-badge-emblem svg {
+  display: block;
+}
+
+.aa-badge:hover .aa-badge-emblem {
+  transform: scale(1.08) rotate(6deg);
+}
+
+/* Teacher / Brand Text */
 .aa-badge-label {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.1px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Right (or Left in LTR) Micro Action Tag */
+.aa-badge-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
   font-weight: 700;
-  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  margin-inline-start: 4px;
+  transition: all 0.25s ease;
+}
+
+.aa-badge-cta svg {
+  transition: transform 0.25s ease;
+  display: block;
+}
+
+.aa-badge:hover .aa-badge-cta {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 10px var(--primary-glow, rgba(0, 0, 0, 0.2));
+}
+
+.aa-badge:hover .aa-badge-cta svg {
+  transform: translateX(-3px);
+}
+
+[dir="ltr"] .aa-badge:hover .aa-badge-cta svg {
+  transform: translateX(3px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   LIGHT MODE: Polished Crisp Surface
+   ────────────────────────────────────────────────────────────── */
+body:not(.dark) .aa-badge {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 4px 18px -2px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 #ffffff;
+}
+
+body:not(.dark) .aa-badge:hover {
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow:
+    0 8px 24px -4px rgba(0, 0, 0, 0.1),
+    0 0 16px var(--primary-glow, rgba(0, 0, 0, 0.15)),
+    inset 0 1px 0 #ffffff;
+}
+
+body:not(.dark) .aa-badge .aa-badge-label {
+  color: #0f172a;
+}
+
+body:not(.dark) .aa-badge .aa-badge-cta {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #334155;
+}
+
+body:not(.dark) .aa-badge:hover .aa-badge-cta {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
 }
 
 .aa-h1 {
@@ -472,32 +597,57 @@ body:not(.dark) .aa-badge {
   }
 }
 
-@keyframes textShimmer {
+/* ──────────────────────────────────────────────────────────────
+   ✨ SPECULAR LIGHT BEAM SHIMMER (Apple Keynote / Linear Style)
+   Pure solid primary color with a crisp white light sweep
+   ────────────────────────────────────────────────────────────── */
+@keyframes specularBeam {
   0% {
-    background-position: 0% 50%;
+    background-position: 300% center;
   }
-  50% {
-    background-position: 100% 50%;
+  35% {
+    background-position: 0% center;
   }
   100% {
-    background-position: 0% 50%;
+    background-position: 0% center;
   }
 }
 
 .aa-h1-grad {
-  background: linear-gradient(
-    135deg,
-    var(--btn-from, var(--primary)) 0%,
-    var(--secondary, var(--primary-hover, var(--btn-to))) 35%,
-    var(--btn-to, var(--secondary, var(--primary))) 70%,
-    var(--btn-from, var(--primary)) 100%
+  background-image: linear-gradient(
+    115deg,
+    var(--primary) 0%,
+    var(--primary) 35%,
+    #ffffff 50%,
+    var(--primary) 65%,
+    var(--primary) 100%
   );
-  background-size: 250% auto;
+  background-size: 300% 100%;
+  background-position: 0% center;
   -webkit-background-clip: text;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: textShimmer 6s linear infinite;
+  animation: specularBeam 6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
   display: inline-block;
+  filter: drop-shadow(0 2px 14px var(--primary-glow, rgba(0, 0, 0, 0.25)));
+}
+
+body:not(.dark) .aa-h1-grad {
+  background-image: linear-gradient(
+    115deg,
+    var(--primary) 0%,
+    var(--primary) 35%,
+    #ffffff 50%,
+    var(--primary) 65%,
+    var(--primary) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 0% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
 .aa-sub {
