@@ -295,16 +295,18 @@ export async function getStudentIdentityByQr(qrToken, tenantId) {
 
   const raw = String(qrToken).trim()
   const clean = raw.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, '').replace(/^\*+|\*+$/g, '')
-  const withoutBc = clean.toLowerCase().startsWith('bc-') ? clean.slice(3) : clean
-  const withBc = clean.toLowerCase().startsWith('bc-') ? clean : `BC-${clean}`
+  const safeChars = clean.replace(/[^A-Za-z0-9-]/g, '')
+  const withoutBc = safeChars.toLowerCase().startsWith('bc-') ? safeChars.slice(3) : safeChars
+  const withBc = safeChars.toLowerCase().startsWith('bc-') ? safeChars : `BC-${safeChars}`
 
   // Build candidate search codes in priority order
   const candidates = Array.from(new Set([
-    clean,
-    raw,
+    safeChars,
     withBc,
     withoutBc,
-    clean.toLowerCase(),
+    clean,
+    raw,
+    safeChars.toLowerCase(),
     withoutBc.toLowerCase(),
     withBc.toUpperCase()
   ])).filter(Boolean)
@@ -324,7 +326,7 @@ export async function getStudentIdentityByQr(qrToken, tenantId) {
     }
   }
 
-  // 2. Direct fallback query against profiles table (by barcode_token, qr_token, phone, or id)
+  // 2. Direct fallback query against profiles table
   try {
     let query = supabase
       .from('profiles')
@@ -340,59 +342,65 @@ export async function getStudentIdentityByQr(qrToken, tenantId) {
       query = query.eq('tenant_id', tenantId)
     }
 
-    const orFilters = [
-      `barcode_token.eq.${clean}`,
-      `qr_token.eq.${clean}`,
-      `phone.eq.${clean}`
-    ]
-    if (withoutBc && withoutBc.length >= 3) {
-      orFilters.push(`barcode_token.ilike.%${withoutBc}%`)
+    const orFilters = []
+    if (safeChars && safeChars.length >= 3) {
+      orFilters.push(`barcode_token.ilike.${safeChars}`)
+      orFilters.push(`qr_token.ilike.${safeChars}`)
+      orFilters.push(`phone.eq.${safeChars}`)
     }
-    if (clean && clean.length >= 3) {
-      orFilters.push(`phone.ilike.%${clean}%`)
-    }
-    query = query.or(orFilters.join(','))
 
-    const { data: matchedRows, error: profError } = await query.limit(1)
-    if (!profError && matchedRows && matchedRows.length > 0) {
-      const p = matchedRows[0]
-      // Try RPC with the exact profile's token
-      if (p.barcode_token || p.qr_token) {
-        const { data: rpcData } = await supabase.rpc('get_student_identity', {
-          p_code: p.barcode_token || p.qr_token,
-          p_tenant_id: tenantId
-        })
-        if (rpcData && rpcData.student_id) {
-          return rpcData
+    // Prefix match: e.g. "BC-f81z>..." matches unique student with barcode "BC-f81..."
+    const prefixMatch = clean.match(/(?:BC-)?([a-f0-9]{3,7})/i)
+    if (prefixMatch && prefixMatch[1] && prefixMatch[1].length >= 3) {
+      const pfx = prefixMatch[1]
+      orFilters.push(`barcode_token.ilike.BC-${pfx}%`)
+      orFilters.push(`barcode_token.ilike.%${pfx}%`)
+    }
+
+    if (orFilters.length > 0) {
+      query = query.or(orFilters.join(','))
+
+      const { data: matchedRows, error: profError } = await query.limit(2)
+      if (!profError && matchedRows && matchedRows.length === 1) {
+        const p = matchedRows[0]
+        // Single unique student confirmed! Try RPC with their true barcode_token
+        if (p.barcode_token || p.qr_token) {
+          const { data: rpcData } = await supabase.rpc('get_student_identity', {
+            p_code: p.barcode_token || p.qr_token,
+            p_tenant_id: tenantId
+          })
+          if (rpcData && rpcData.student_id) {
+            return rpcData
+          }
         }
-      }
 
-      // If RPC is unavailable, construct identity directly
-      const primaryGroup = p.student_groups?.find(sg => sg.is_primary) || p.student_groups?.[0]
-      return {
-        student_id: p.id,
-        name: p.name,
-        phone: p.phone,
-        parent_phone: p.parent_phone,
-        grade: p.grade,
-        status: p.status || 'active',
-        enrollment_type: p.enrollment_type || 'CENTER',
-        flags: p.flags || [],
-        branch_name: p.branch?.name || 'الفرع الرئيسي',
-        academic_year_name: p.academic_year?.name || '',
-        group_name: primaryGroup?.group?.name || '',
-        attendance_percentage: null,
-        attended_sessions: 0,
-        present_count: 0,
-        late_count: 0,
-        absent_count: 0,
-        total_sessions: 0,
-        outstanding_balance: 0,
-        last_payment: {},
-        today_attendance: '—',
-        recent_grades: [],
-        notes: [],
-        warnings: []
+        // Direct identity construction
+        const primaryGroup = p.student_groups?.find(sg => sg.is_primary) || p.student_groups?.[0]
+        return {
+          student_id: p.id,
+          name: p.name,
+          phone: p.phone,
+          parent_phone: p.parent_phone,
+          grade: p.grade,
+          status: p.status || 'active',
+          enrollment_type: p.enrollment_type || 'CENTER',
+          flags: p.flags || [],
+          branch_name: p.branch?.name || 'الفرع الرئيسي',
+          academic_year_name: p.academic_year?.name || '',
+          group_name: primaryGroup?.group?.name || '',
+          attendance_percentage: null,
+          attended_sessions: 0,
+          present_count: 0,
+          late_count: 0,
+          absent_count: 0,
+          total_sessions: 0,
+          outstanding_balance: 0,
+          last_payment: {},
+          today_attendance: '—',
+          recent_grades: [],
+          notes: [],
+          warnings: []
+        }
       }
     }
   } catch (err) {

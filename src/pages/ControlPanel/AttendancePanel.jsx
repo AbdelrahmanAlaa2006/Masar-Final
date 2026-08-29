@@ -27,6 +27,7 @@ import { uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 const mapArabicKeysToEnglish = (str) => {
   if (!str) return '';
   const ligatures = {
+    'لآ}': 'bc',
     'لا': 'b',
     'لأ': 't',
     'لإ': 'y',
@@ -1649,6 +1650,12 @@ export default function AttendancePanel({ onBack, flash }) {
                     ch = e.shiftKey ? '<' : ','
                   } else if (code === 'Semicolon') {
                     ch = e.shiftKey ? ':' : ';'
+                  } else if (code === 'Quote') {
+                    ch = e.shiftKey ? '"' : '\''
+                  } else if (code === 'BracketLeft') {
+                    ch = e.shiftKey ? '{' : '['
+                  } else if (code === 'BracketRight') {
+                    ch = e.shiftKey ? '}' : ']'
                   } else if (code === 'Space') {
                     ch = ' '
                   }
