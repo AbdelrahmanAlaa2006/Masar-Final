@@ -22,21 +22,52 @@
      labels), with a safety fallback and a single-fire guard.
    --------------------------------------------------------------------------- */
 
-// Each preset is a pure description of a physical label. `w`/`h` are the label
-// size in millimetres; the rest are typographic/scale tuning for that size.
-//   name  – student-name font size (pt)
-//   meta  – grade/group font size (pt)
-//   pad   – inner padding (mm)
-//   barMm – requested barcode bar height (mm) from the barcode service
-//   scale – barcode raster scale (higher = crisper on 203dpi thermal heads)
-export const LABEL_PRESETS = {
-  '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 10, scale: 4 },
-  '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3 },
-  '50x30': { w: 50, h: 30, name: 9, meta: 7, pad: 2, barMm: 9, scale: 3 },
-  '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4 },
+// Barcode rendering profiles.
+// 'default': Retains 100% byte-for-byte identical settings for existing tenants (e.g. mrmohamedabdella).
+// 'elsharawy': Mathematically tuned for Rongta RP310 direct thermal printer (203 DPI = ~8 dots/mm):
+//   - Taller bars (barMm: 16-22) so physical bar height increases from ~3.5mm-4.5mm to ~11.3mm-15mm (reliable handheld scan).
+//   - Eliminates excessive 5.3x raster downscaling by generating at scale: 2 (374px wide).
+//   - On 50x30 standard roll: 374px image across 376 available printer dots yields EXACTLY 2.000 dots/module (zero fractional aliasing, 1:1 print!).
+//   - bcMaxH: 16mm allows the barcode to take full advantage of label height without vertical squishing.
+export const BARCODE_PROFILES = {
+  default: {
+    format: 'code128',
+    defaultSize: '30x40',
+    quiet: 10,
+    presets: {
+      '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 10, scale: 4, bcMaxH: '13mm' },
+      '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 7, scale: 3, bcMaxH: '13mm' },
+      '50x30': { w: 50, h: 30, name: 9, meta: 7, pad: 2, barMm: 9, scale: 3, bcMaxH: '13mm' },
+      '60x40': { w: 60, h: 40, name: 11, meta: 8.5, pad: 2.5, barMm: 13, scale: 4, bcMaxH: '13mm' },
+    },
+    cssBcMaxH: '13mm',
+  },
+  elsharawy: {
+    format: 'code128',
+    defaultSize: '50x30', // Physical 203 DPI sweet spot for Rongta RP310
+    quiet: 10,
+    presets: {
+      '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
+      '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
+      '50x30': { w: 50, h: 30, name: 8.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
+      '60x40': { w: 60, h: 40, name: 10, meta: 8, pad: 2.0, barMm: 22, scale: 2, bcMaxH: '22mm' },
+    },
+    cssBcMaxH: '16mm',
+  },
 }
 
-export const DEFAULT_LABEL_SIZE = '30x40'
+// Exact normalized slug matching — no fuzzy .includes()
+export function getBarcodeProfile(tenantSlug) {
+  const slug = String(tenantSlug || '').trim().toLowerCase()
+  if (slug === 'elsharawy' || slug === 'elshaarawy') {
+    return BARCODE_PROFILES.elsharawy
+  }
+  return BARCODE_PROFILES.default
+}
+
+// Backward compatibility exports for existing callers
+export const LABEL_PRESETS = BARCODE_PROFILES.default.presets
+export const DEFAULT_LABEL_SIZE = BARCODE_PROFILES.default.defaultSize
 
 // Human labels for a size selector in the UI.
 export const LABEL_SIZE_OPTIONS = [
@@ -49,18 +80,19 @@ export const LABEL_SIZE_OPTIONS = [
 // Reuse the existing Code128 barcode image source (bwip-js public API). Same
 // bcid/text as before, so scanners read the identical token / value.
 //   paddingwidth=10  -> the Code128-mandated >=10-module QUIET ZONE on each side.
-//                       Without it the bars touch the image edge and scanners
-//                       (especially off a phone screen) fail — the real cause of
-//                       "can't scan from the mobile profile".
-//   scale=4          -> crisper bars so downscaling on small screens/thermal
-//                       heads keeps each module sharp.
+//   scale=4 (default) / scale=2 (elsharawy Rongta) -> module raster scaling.
 //   includetext      -> human-readable value under the bars (manual fallback).
 //   barMm (optional) -> requested bar height in mm for print; omitted on screen.
-export function barcodeImageUrl(token, { scale = 4, barMm = 0, quiet = 10 } = {}) {
+export function barcodeImageUrl(token, { scale, barMm = 0, quiet, tenantSlug } = {}) {
+  const profile = getBarcodeProfile(tenantSlug)
+  const finalScale = scale !== undefined ? scale : (profile === BARCODE_PROFILES.elsharawy ? 2 : 4)
+  const finalQuiet = quiet !== undefined ? quiet : (profile.quiet || 10)
+  const finalBarMm = barMm !== undefined ? barMm : 0
+
   const t = encodeURIComponent(String(token || ''))
   let url = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${t}` +
-    `&scale=${scale}&paddingwidth=${quiet}&includetext=true&rotate=N`
-  if (barMm) url += `&height=${barMm}`
+    `&scale=${finalScale}&paddingwidth=${finalQuiet}&includetext=true&rotate=N`
+  if (finalBarMm) url += `&height=${finalBarMm}`
   return url
 }
 
@@ -90,8 +122,9 @@ function labelHtml(item) {
 }
 
 // Build the full, self-contained print document for a set of resolved items.
-function buildDocument(items, preset, title) {
+function buildDocument(items, preset, title, profile = BARCODE_PROFILES.default) {
   const { w, h, name, meta, pad } = preset
+  const bcMaxH = preset.bcMaxH || profile.cssBcMaxH || '13mm'
   const labels = items.map(labelHtml).join('')
 
   // EXACT PAGE MATCHING: @page size is ${w}mm ${h}mm with margin 0. Sizing .lbl to
@@ -118,7 +151,7 @@ function buildDocument(items, preset, title) {
     // stretches (distorted bars = unscannable) or clips.
     `.lbl-bc { width: 100%; margin-top: 1mm;` +
     `display: flex; align-items: center; justify-content: center; }` +
-    `.lbl-bc img { max-width: 100%; max-height: 13mm; width: auto; height: auto;` +
+    `.lbl-bc img { max-width: 100%; max-height: ${bcMaxH}; width: auto; height: auto;` +
     `object-fit: contain; image-rendering: crisp-edges; }`
 
   // Auto-fit the student name so long names stay readable WITHOUT ever
@@ -184,21 +217,29 @@ function buildDocument(items, preset, title) {
  * @param {Array} students            raw student rows
  * @param {Object} opts
  * @param {(s:any)=>{name,grade,group,token}} opts.resolve  maps a row to label fields
- * @param {string} [opts.size]        LABEL_PRESETS key (default 50x30)
+ * @param {string} [opts.size]        LABEL_PRESETS key (default 50x30 or profile default)
  * @param {string} [opts.title]       print-window/document title
+ * @param {string} [opts.tenantSlug]  active tenant slug for profile selection
  * @param {(reason:'empty'|'popup-blocked')=>void} [opts.onError]
  * @returns {number} count of labels sent to print (0 on failure)
  */
 export function printStudentLabels(students, opts = {}) {
-  const { resolve, size = DEFAULT_LABEL_SIZE, title = 'طباعة الباركود', onError } = opts
-  const preset = LABEL_PRESETS[size] || LABEL_PRESETS[DEFAULT_LABEL_SIZE]
+  const { resolve, size, title = 'طباعة الباركود', onError, tenantSlug } = opts
+  const profile = getBarcodeProfile(tenantSlug)
+  const activeSize = size || profile.defaultSize || DEFAULT_LABEL_SIZE
+  const preset = profile.presets[activeSize] || profile.presets[profile.defaultSize] || profile.presets[DEFAULT_LABEL_SIZE]
 
   const items = (students || [])
     .map((s) => (typeof resolve === 'function' ? resolve(s) : s))
     .filter((it) => it && it.token)
     .map((it) => ({
       ...it,
-      barcodeUrl: barcodeImageUrl(it.token, { scale: preset.scale, barMm: preset.barMm }),
+      barcodeUrl: barcodeImageUrl(it.token, {
+        scale: preset.scale,
+        barMm: preset.barMm,
+        quiet: preset.quiet || profile.quiet,
+        tenantSlug,
+      }),
     }))
 
   if (items.length === 0) {
@@ -212,7 +253,7 @@ export function printStudentLabels(students, opts = {}) {
     return 0
   }
   win.document.open()
-  win.document.write(buildDocument(items, preset, title))
+  win.document.write(buildDocument(items, preset, title, profile))
   win.document.close()
   return items.length
 }

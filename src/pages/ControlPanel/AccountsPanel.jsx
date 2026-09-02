@@ -7,7 +7,7 @@ import { createNotification } from '@backend/notificationsApi'
 import { listGroups, assignStudentToGroup, setStudentGroups, listStudentsByGroup } from '@backend/groupsApi'
 import { getBulkInitialPaymentsPreview, registerBulkInitialPayments, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { initials, GRADE_LABEL } from './shared'
-import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl } from '../../utils/barcodeLabels'
+import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl, getBarcodeProfile } from '../../utils/barcodeLabels'
 import { buildStudentExportRows, downloadStudentsCsv, printStudentsList } from '../../utils/studentsExport'
 import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
@@ -108,7 +108,15 @@ export default function AccountsPanel({ onBack, flash }) {
   const [sortBy, setSortBy] = useState('created_at_desc')
 
   // Selected label size + multi-select state (checkboxes in the table).
-  const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE)
+  const [labelSize, setLabelSize] = useState(() => getBarcodeProfile(tenantSlug).defaultSize || DEFAULT_LABEL_SIZE)
+
+  useEffect(() => {
+    const profile = getBarcodeProfile(tenantSlug)
+    if (profile?.defaultSize) {
+      setLabelSize(profile.defaultSize)
+    }
+  }, [tenantSlug])
+
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [bulkPrinting, setBulkPrinting] = useState(false)
   const [printGroupId, setPrintGroupId] = useState('')
@@ -559,6 +567,7 @@ export default function AccountsPanel({ onBack, flash }) {
       resolve: resolveLabel,
       size: labelSize,
       title,
+      tenantSlug,
       onError: (reason) => {
         if (reason === 'popup-blocked') {
           flash('متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.', 'warning')
@@ -1350,7 +1359,7 @@ export default function AccountsPanel({ onBack, flash }) {
       {/* Barcode card lightbox (QR removed — barcode only) */}
       {showQrModal && selectedQrStudent && (() => {
         const barcodeToken = selectedQrStudent.barcode_token || '';
-        const barcodeApiUrl = barcodeToken ? barcodeImageUrl(barcodeToken) : '';
+        const barcodeApiUrl = barcodeToken ? barcodeImageUrl(barcodeToken, { tenantSlug }) : '';
         const gradeText = GRADE_LABEL[selectedQrStudent.grade] || selectedQrStudent.grade || 'غير محدد';
         const groupText = getGroupName(selectedQrStudent);
 
