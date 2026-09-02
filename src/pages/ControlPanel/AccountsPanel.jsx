@@ -7,7 +7,7 @@ import { createNotification } from '@backend/notificationsApi'
 import { listGroups, assignStudentToGroup, setStudentGroups, listStudentsByGroup } from '@backend/groupsApi'
 import { getBulkInitialPaymentsPreview, registerBulkInitialPayments, removeBulkInitialPayments } from '@backend/paymentsApi'
 import { initials, GRADE_LABEL } from './shared'
-import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl, getBarcodeProfile } from '../../utils/barcodeLabels'
+import { printStudentLabels, LABEL_SIZE_OPTIONS, DEFAULT_LABEL_SIZE, barcodeImageUrl, getBarcodeProfile, printCalibrationVariants } from '../../utils/barcodeLabels'
 import { buildStudentExportRows, downloadStudentsCsv, printStudentsList } from '../../utils/studentsExport'
 import { invalidate as invalidateCache } from '../../utils/cache'
 import { useAuth } from '../../contexts/AuthContext'
@@ -1392,9 +1392,49 @@ export default function AccountsPanel({ onBack, flash }) {
                   <div><span style={{ color: '#94a3b8' }}>كود الباركود: </span><span style={{ fontFamily: 'monospace', color: '#8c72db', fontWeight: 'bold' }}>{barcodeToken}</span></div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={handlePrint} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><i className="fas fa-print"></i> طباعة البطاقة</button>
-                <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}>إغلاق</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button onClick={handlePrint} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><i className="fas fa-print"></i> طباعة البطاقة</button>
+                  <button onClick={() => { setShowQrModal(false); setSelectedQrStudent(null); }} style={{ padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: '#fff', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}>إغلاق</button>
+                </div>
+                {(tenantSlug === 'elsharawy' || tenantSlug === 'elshaarawy') && barcodeToken && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      printCalibrationVariants(selectedQrStudent, {
+                        resolve: resolveLabel,
+                        size: labelSize,
+                        tenantSlug,
+                        onError: (reason) => {
+                          if (reason === 'popup-blocked') {
+                            flash('متصفحك منع فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة وحاول مجدداً.', 'warning')
+                          } else {
+                            flash('تعذر بدء طباعة نماذج المعايرة.', 'warning')
+                          }
+                        },
+                      })
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      borderRadius: 12,
+                      border: '1.5px dashed #6366f1',
+                      background: 'rgba(99, 102, 241, 0.12)',
+                      color: '#c7d2fe',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="طباعة 4 نماذج تجريبية للكود الحالي على طابعة رونجتا للمعايرة"
+                  >
+                    <i className="fas fa-flask"></i> طباعة نماذج المعايرة (4 نماذج على الطابعة)
+                  </button>
+                )}
               </div>
             </div>
           </div>,
