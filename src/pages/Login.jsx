@@ -77,7 +77,7 @@ const translations = {
 
 export default function Login() {
   const { login, isLoggedIn, user } = useAuth()
-  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, themeConfig } = useTenant()
+  const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, isFeatureEnabled, themeConfig } = useTenant()
   // Every tenant lets students sign in with a short alphanumeric login code
   // instead of a phone. Purely additive — a normal phone still works.
   const codeLoginEnabled = true
