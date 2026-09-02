@@ -44,15 +44,27 @@ export const BARCODE_PROFILES = {
   },
   elsharawy: {
     format: 'code128',
-    defaultSize: '50x30', // Physical 203 DPI sweet spot for Rongta RP310
-    quiet: 10,
+    defaultSize: '50x30', // Physical Rongta RP310 standard for Elsharawy center
+    quiet: 6,             // Winning Variant C quiet zone
     presets: {
-      '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
-      '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
-      '50x30': { w: 50, h: 30, name: 8.5, meta: 6.5, pad: 1.5, barMm: 16, scale: 2, bcMaxH: '16mm' },
-      '60x40': { w: 60, h: 40, name: 10, meta: 8, pad: 2.0, barMm: 22, scale: 2, bcMaxH: '22mm' },
+      '30x40': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 20, scale: 2, quiet: 6, printWidthMm: 37.0, printHeightMm: 16.0, bcMaxH: '16mm' },
+      '40x30': { w: 40, h: 30, name: 7.5, meta: 6.5, pad: 1.5, barMm: 20, scale: 2, quiet: 6, printWidthMm: 37.0, printHeightMm: 16.0, bcMaxH: '16mm' },
+      '50x30': {
+        w: 50,
+        h: 30,
+        name: 8.5,
+        meta: 6.5,
+        pad: 1.5,
+        barMm: 22,
+        scale: 2,
+        quiet: 6,
+        printWidthMm: 43.0,
+        printHeightMm: 16.5,
+        bcMaxH: '16.5mm',
+      },
+      '60x40': { w: 60, h: 40, name: 10, meta: 8, pad: 2.0, barMm: 24, scale: 2, quiet: 8, printWidthMm: 48.0, printHeightMm: 18.0, bcMaxH: '22mm' },
     },
-    cssBcMaxH: '16mm',
+    cssBcMaxH: '16.5mm',
   },
 }
 
@@ -79,15 +91,15 @@ export const LABEL_SIZE_OPTIONS = [
 
 // Reuse the existing Code128 barcode image source (bwip-js public API). Same
 // bcid/text as before, so scanners read the identical token / value.
-//   paddingwidth=10  -> the Code128-mandated >=10-module QUIET ZONE on each side.
-//   scale=4 (default) / scale=2 (elsharawy Rongta) -> module raster scaling.
+//   paddingwidth     -> quiet zone modules inside image (10 for default, 6 for winning Elsharawy profile).
+//   scale            -> module raster scaling (4 for default, 2 for winning Elsharawy profile).
 //   includetext      -> human-readable value under the bars (manual fallback).
-//   barMm (optional) -> requested bar height in mm for print; omitted on screen.
+//   barMm            -> requested bar height in mm for print.
 export function barcodeImageUrl(token, { scale, barMm = 0, quiet, tenantSlug } = {}) {
   const profile = getBarcodeProfile(tenantSlug)
   const finalScale = scale !== undefined ? scale : (profile === BARCODE_PROFILES.elsharawy ? 2 : 4)
   const finalQuiet = quiet !== undefined ? quiet : (profile.quiet || 10)
-  const finalBarMm = barMm !== undefined ? barMm : 0
+  const finalBarMm = barMm !== undefined ? barMm : (profile === BARCODE_PROFILES.elsharawy ? 22 : 0)
 
   const t = encodeURIComponent(String(token || ''))
   let url = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${t}` +
@@ -108,15 +120,22 @@ function escapeHtml(value) {
 // One label's markup. Layout: name (bold — auto-fits to one line, wraps to a
 // max of two only when unavoidable), optional grade/group metadata line, then
 // the barcode filling the remaining vertical space.
-function labelHtml(item) {
+// If the preset defines explicit millimeter dimensions (e.g. Elsharawy Variant C),
+// those are injected directly onto the img element to prevent browser collapsing.
+function labelHtml(item, preset = {}) {
   const name = escapeHtml(item.name)
   const metaText = escapeHtml([item.grade, item.group].filter(Boolean).join(' - '))
   const src = escapeHtml(item.barcodeUrl)
+  const imgStyle = preset.printWidthMm && preset.printHeightMm
+    ? `width: ${preset.printWidthMm}mm; height: ${preset.printHeightMm}mm; display: block; margin: 0 auto; object-fit: contain; image-rendering: crisp-edges;`
+    : ''
+  const styleAttr = imgStyle ? ` style="${imgStyle}"` : ''
+
   return (
     `<div class="lbl">` +
     `<div class="lbl-name">${name}</div>` +
     (metaText ? `<div class="lbl-meta">${metaText}</div>` : '') +
-    `<div class="lbl-bc"><img src="${src}" alt="barcode" /></div>` +
+    `<div class="lbl-bc"><img src="${src}"${styleAttr} alt="barcode" /></div>` +
     `</div>`
   )
 }
@@ -125,7 +144,7 @@ function labelHtml(item) {
 function buildDocument(items, preset, title, profile = BARCODE_PROFILES.default) {
   const { w, h, name, meta, pad } = preset
   const bcMaxH = preset.bcMaxH || profile.cssBcMaxH || '13mm'
-  const labels = items.map(labelHtml).join('')
+  const labels = items.map((it) => labelHtml(it, preset)).join('')
 
   // EXACT PAGE MATCHING: @page size is ${w}mm ${h}mm with margin 0. Sizing .lbl to
   // EXACTLY height ${h}mm ensures each label box occupies 100% of one page height.
@@ -136,7 +155,7 @@ function buildDocument(items, preset, title, profile = BARCODE_PROFILES.default)
     `html, body { background: #fff; margin: 0; padding: 0; width: ${w}mm; }` +
     `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
     `.lbl {` +
-    `width: ${w}mm; height: ${h}mm; padding: 2mm ${pad}mm 1mm ${pad}mm;` +
+    `width: ${w}mm; height: ${h}mm; padding: 1.5mm ${pad}mm 1mm ${pad}mm;` +
     `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
     `text-align: center; overflow: hidden;` +
     `page-break-after: always; break-after: page;` +
@@ -147,8 +166,7 @@ function buildDocument(items, preset, title, profile = BARCODE_PROFILES.default)
     `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
     `.lbl-meta { font-weight: 600; font-size: ${meta}pt; line-height: 1.1; color: #333; width: 100%;` +
     `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.5mm; }` +
-    // Barcode takes all remaining height; the image is contained so it never
-    // stretches (distorted bars = unscannable) or clips.
+    // Barcode container
     `.lbl-bc { width: 100%; margin-top: 1mm;` +
     `display: flex; align-items: center; justify-content: center; }` +
     `.lbl-bc img { max-width: 100%; max-height: ${bcMaxH}; width: auto; height: auto;` +
@@ -173,7 +191,6 @@ function buildDocument(items, preset, title, profile = BARCODE_PROFILES.default)
     `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
     `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
     `if(el.scrollWidth>el.clientWidth+0.5){` +
-    // Still too long on one line at min font -> wrap to two lines max.
     `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
     `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
     `}` +
@@ -258,200 +275,4 @@ export function printStudentLabels(students, opts = {}) {
   return items.length
 }
 
-// ---------------------------------------------------------------------------
-// Controlled Physical Calibration Suite (Rongta RP310 / Elsharawy Only)
-// ---------------------------------------------------------------------------
-
-// 4 scientifically controlled variants for the Rongta RP310 (203 DPI = 7.992 dots/mm).
-// Every variant has verified, non-collapsing explicit physical millimeter dimensions.
-export const CALIBRATION_VARIANTS = [
-  {
-    id: 'A',
-    badge: 'نموذج A (الأساس الحالي)',
-    description: 'النموذج المرجعي السابق (عرض 47 مم، هامش خارجي 1.5 مم، ارتفاع خطوط 11 مم)',
-    scale: 2,
-    barMm: 16,
-    quiet: 10,
-    printWidthMm: 47.0,
-    printHeightMm: 13.6,
-  },
-  {
-    id: 'B',
-    badge: 'نموذج B (هوامش أمان خارجية)',
-    description: 'عرض 43 مم، هامش خارجي 3.5 مم لمنع تآكل الهوامش، ارتفاع خطوط 11 مم',
-    scale: 2,
-    barMm: 16,
-    quiet: 6,
-    printWidthMm: 43.0,
-    printHeightMm: 13.5,
-  },
-  {
-    id: 'C',
-    badge: 'نموذج C (ارتفاع أكبر للخطوط)',
-    description: 'نفس أبعاد نموذج B مع زيادة ارتفاع الخطوط إلى 14.5 مم (+32%) لتحسين زاوية مسح القارئ',
-    scale: 2,
-    barMm: 22,
-    quiet: 6,
-    printWidthMm: 43.0,
-    printHeightMm: 16.5,
-  },
-  {
-    id: 'D',
-    badge: 'نموذج D (مرشح الإنتاج 1:1)',
-    description: 'تطابق نقي 1:1 مع شبكة نقاط الطابعة (2.000 نقطة/عمود = 354 نقطة) مع هوامش مزدوجة وارتفاع 14.5 مم',
-    scale: 2,
-    barMm: 22,
-    quiet: 5,
-    printWidthMm: 44.3,
-    printHeightMm: 16.5,
-  },
-]
-
-function calibrationLabelHtml(item) {
-  const name = escapeHtml(item.name)
-  const metaText = escapeHtml([item.grade, item.group].filter(Boolean).join(' - '))
-  const src = escapeHtml(item.barcodeUrl)
-  const badge = escapeHtml(item.badge)
-  const wMm = item.printWidthMm
-  const hMm = item.printHeightMm
-
-  return (
-    `<div class="lbl">` +
-    `<div class="lbl-badge">${badge}</div>` +
-    `<div class="lbl-name">${name}</div>` +
-    (metaText ? `<div class="lbl-meta">${metaText}</div>` : '') +
-    `<div class="lbl-bc">` +
-    `<img src="${src}" style="width: ${wMm}mm; height: ${hMm}mm; display: block; margin: 0 auto; object-fit: contain; image-rendering: crisp-edges;" alt="barcode" />` +
-    `</div>` +
-    `</div>`
-  )
-}
-
-function buildCalibrationDocument(items, preset, title) {
-  const { w, h, name, meta, pad } = preset
-  const labels = items.map(calibrationLabelHtml).join('')
-
-  const styles =
-    `@page { size: ${w}mm ${h}mm; margin: 0; }` +
-    `* { margin: 0; padding: 0; box-sizing: border-box; }` +
-    `html, body { background: #fff; margin: 0; padding: 0; width: ${w}mm; }` +
-    `body { font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #000; }` +
-    `.lbl {` +
-    `width: ${w}mm; height: ${h}mm; padding: 1.5mm ${pad}mm 1mm ${pad}mm;` +
-    `display: flex; flex-direction: column; align-items: center; justify-content: center;` +
-    `text-align: center; overflow: hidden;` +
-    `page-break-after: always; break-after: page;` +
-    `page-break-inside: avoid; break-inside: avoid;` +
-    `}` +
-    `.lbl:last-child { page-break-after: auto; break-after: auto; }` +
-    `.lbl-badge {` +
-    `display: inline-block;` +
-    `font-weight: 800; font-size: 6.5pt; line-height: 1;` +
-    `color: #1e1b4b; background: #e0e7ff; border: 0.5px solid #a5b4fc;` +
-    `padding: 1.5px 6px; border-radius: 4px; margin-bottom: 0.8mm;` +
-    `}` +
-    `.lbl-name { font-weight: 700; font-size: ${name}pt; line-height: 1.1; width: 100%;` +
-    `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }` +
-    `.lbl-meta { font-weight: 600; font-size: ${meta}pt; line-height: 1.1; color: #333; width: 100%;` +
-    `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.3mm; }` +
-    `.lbl-bc { width: 100%; margin-top: 0.8mm;` +
-    `display: flex; align-items: center; justify-content: center; }`
-
-  const nameStart = name
-  const nameMin = Math.max(5, +(name * 0.6).toFixed(1))
-
-  const script =
-    `(function(){` +
-    `var START=${nameStart}, MIN=${nameMin}, META_START=${meta};` +
-    `function fitNames(){` +
-    `var els=document.querySelectorAll('.lbl-name');` +
-    `for(var i=0;i<els.length;i++){` +
-    `var el=els[i], pt=START;` +
-    `el.style.whiteSpace='nowrap'; el.style.fontSize=pt+'pt';` +
-    `while(el.scrollWidth>el.clientWidth+0.5 && pt>MIN){ pt-=0.5; el.style.fontSize=pt+'pt'; }` +
-    `if(el.scrollWidth>el.clientWidth+0.5){` +
-    `el.style.whiteSpace='normal'; el.style.textOverflow='clip';` +
-    `el.style.display='-webkit-box'; el.style.webkitBoxOrient='vertical'; el.style.webkitLineClamp='2';` +
-    `}` +
-    `}` +
-    `}` +
-    `var printed=false;` +
-    `function go(){ if(printed) return; printed=true;` +
-    `try{ fitNames(); }catch(e){}` +
-    `try{ window.focus(); }catch(e){}` +
-    `window.print();` +
-    `}` +
-    `var imgs=Array.prototype.slice.call(document.images);` +
-    `var promises=imgs.map(function(im){` +
-    `if(im.decode){ return im.decode().catch(function(){}); }` +
-    `return new Promise(function(res){` +
-    `if(im.complete){ res(); }` +
-    `else { im.addEventListener('load',res); im.addEventListener('error',res); }` +
-    `});` +
-    `});` +
-    `Promise.all(promises).then(function(){ setTimeout(go,500); }).catch(function(){ setTimeout(go,500); });` +
-    `setTimeout(go,8000);` +
-    `window.onafterprint=function(){ setTimeout(function(){ try{ window.close(); }catch(e){} },200); };` +
-    `})();`
-
-  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">` +
-    `<title>${escapeHtml(title)}</title><style>${styles}</style></head>` +
-    `<body>${labels}<script>${script}</` + `script></body></html>`
-}
-
-/**
- * Print 4 controlled calibration variants for a SINGLE student.
- * Strictly isolated for Rongta RP310 physical testing (Elsharawy tenant).
- *
- * @param {Object} student            Single student row
- * @param {Object} opts
- * @param {(s:any)=>{name,grade,group,token}} [opts.resolve]  maps a row to label fields
- * @param {string} [opts.size]        LABEL_PRESETS key (default 50x30)
- * @param {string} [opts.tenantSlug]  must be elsharawy
- * @param {(reason:string)=>void} [opts.onError]
- * @returns {number} count of labels sent to print (4 on success, 0 on failure)
- */
-export function printCalibrationVariants(student, opts = {}) {
-  const { resolve, size, onError, tenantSlug } = opts
-
-  // Strict tenant guard: only elsharawy can trigger calibration
-  const profile = getBarcodeProfile(tenantSlug)
-  if (profile !== BARCODE_PROFILES.elsharawy) {
-    onError && onError('unauthorized-tenant')
-    return 0
-  }
-
-  const baseItem = typeof resolve === 'function' ? resolve(student) : student
-  if (!baseItem || !baseItem.token) {
-    onError && onError('empty')
-    return 0
-  }
-
-  const activeSize = size || profile.defaultSize || '50x30'
-  const preset = profile.presets[activeSize] || profile.presets['50x30']
-
-  // Create 4 test items for the EXACT SAME student token
-  const items = CALIBRATION_VARIANTS.map((v) => ({
-    ...baseItem,
-    badge: v.badge,
-    printWidthMm: v.printWidthMm,
-    printHeightMm: v.printHeightMm,
-    barcodeUrl: barcodeImageUrl(baseItem.token, {
-      scale: v.scale,
-      barMm: v.barMm,
-      quiet: v.quiet,
-      tenantSlug,
-    }),
-  }))
-
-  const win = window.open('', '_blank')
-  if (!win) {
-    onError && onError('popup-blocked')
-    return 0
-  }
-  win.document.open()
-  win.document.write(buildCalibrationDocument(items, preset, `معايرة باركود - ${baseItem.name}`))
-  win.document.close()
-  return items.length
-}
 
