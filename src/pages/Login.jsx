@@ -1158,8 +1158,19 @@ export default function Login() {
 
             <form onSubmit={handleLogin}>
               <div className="input-wrapper">
-                <i className="fas fa-phone"></i>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} required placeholder={t.phone} dir="ltr" />
+                <i className={codeLoginEnabled ? "fas fa-id-card" : "fas fa-phone"}></i>
+                <input 
+                  type="text" 
+                  value={phone} 
+                  onChange={e => setPhone(e.target.value)} 
+                  required 
+                  placeholder={codeLoginEnabled ? (lang === 'ar' ? 'رقم الهاتف أو كود الطالب' : 'Phone or student code') : t.phone} 
+                  dir="auto"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                />
               </div>
               <div className="input-wrapper">
                 <i className="fas fa-lock"></i>
