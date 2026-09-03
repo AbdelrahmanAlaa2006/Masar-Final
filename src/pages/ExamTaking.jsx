@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
-import { getExam, startAttempt, submitAttempt, listAttemptsForStudent } from '@backend/examsApi'
+import { getExam, startAttempt, submitAttempt, countSubmittedAttempts } from '@backend/examsApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { listExamSharedBlocks, buildQuestionBlockMap } from '@backend/examSharedBlocksApi'
 import SharedTextCard from '../components/SharedTextCard'
@@ -32,6 +32,7 @@ export default function ExamTaking() {
   const storageKey = examId ? `masar-exam-progress:${examId}` : null
   const [examFinished, setExamFinished] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
   const [finalScore, setFinalScore] = useState(null)
   const [unansweredAlert, setUnansweredAlert] = useState(null)
   const submittedRef = useRef(false)
@@ -74,14 +75,9 @@ export default function ExamTaking() {
         // Safety Check for Students: verify remaining attempts on refresh or direct URL access
         const role = u?.role || 'student'
         if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
-          // Fetch student's submitted attempts
-          const attempts = await listAttemptsForStudent(sid)
-          const submittedCount = attempts.filter(
-            (a) => a.exam_id === examId && a.submitted_at !== null
-          ).length
-
-          // Fetch overrides
+          // Fetch overrides first to get any bonus attempts or update reset point
           let maxAttempts = e.max_attempts || 1
+          let sinceIso = null
           try {
             const overrides = await listEffectiveOverrides({
               studentId: sid,
@@ -100,23 +96,20 @@ export default function ExamTaking() {
             
             const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
             maxAttempts = maxAttempts + extra
+            if (o?.updated_at) sinceIso = o.updated_at
           } catch (oErr) {
             console.error('Failed to load overrides', oErr)
           }
 
+          // Fast lightweight exact head count (0 payload rows transferred)
+          const submittedCount = await countSubmittedAttempts(examId, sid, sinceIso)
           if (submittedCount >= maxAttempts) {
             setLoadError('لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.')
             return
           }
         }
 
-        setExam(e)
-
-        // Shared reading passages: ONE query for the whole exam, folded into
-        // an index -> block Map. An exam with no passages simply gets an
-        // empty Map and renders exactly as it always has.
-        // Non-fatal on purpose — a passage is supporting material, so if this
-        // fails we still let the student sit the exam rather than block them.
+        // Shared reading passages: ONE query for the whole exam, folded into an index -> block Map.
         try {
           const blocks = await listExamSharedBlocks(e.id)
           setSharedBlockMap(buildQuestionBlockMap(blocks))
@@ -124,43 +117,54 @@ export default function ExamTaking() {
           console.error('shared text blocks load failed', blockErr)
         }
 
-        // Restore prior in-flight progress (answers, current question,
-        // remaining time) so a refresh mid-exam doesn't reset everything.
-        // Bypassed for admins so they always start fresh.
+        // Restore prior in-flight progress (attemptId, answers, current question, remaining time)
         let resumedTime = null
+        let restoredAttemptId = null
         if (storageKey && !isAdmin) {
           try {
             const saved = JSON.parse(localStorage.getItem(storageKey))
-            if (saved && saved.answers) {
-              const restored = {}
-              for (const [k, v] of Object.entries(saved.answers)) {
-                restored[k] = new Set(v)
-              }
-              setAnswers(restored)
-            }
-            if (saved && Number.isInteger(saved.currentQuestion)) {
-              setCurrentQuestion(saved.currentQuestion)
-            }
             if (saved && Number.isFinite(saved.deadline)) {
-              const remaining = Math.max(0, Math.floor((saved.deadline - Date.now()) / 1000))
-              resumedTime = remaining
+              const remaining = Math.floor((saved.deadline - Date.now()) / 1000)
+              if (remaining > 5) {
+                resumedTime = remaining
+                if (saved.attemptId) {
+                  restoredAttemptId = saved.attemptId
+                  setAttemptId(saved.attemptId)
+                }
+                if (saved.answers) {
+                  const restored = {}
+                  for (const [k, v] of Object.entries(saved.answers)) {
+                    restored[k] = new Set(v)
+                  }
+                  setAnswers(restored)
+                }
+                if (Number.isInteger(saved.currentQuestion)) {
+                  setCurrentQuestion(saved.currentQuestion)
+                }
+              } else {
+                // Stale progress from an old/finished session — clear it so it doesn't auto-submit a fresh exam!
+                localStorage.removeItem(storageKey)
+              }
             }
           } catch {}
         }
-        setTimeLeft(resumedTime != null ? resumedTime : (e.duration_minutes || 10) * 60)
+        
+        const initialTime = (resumedTime != null && resumedTime > 0) ? resumedTime : (e.duration_minutes || 10) * 60
+        setTimeLeft(initialTime)
+        setExam(e)
 
-        try {
-          const att = await startAttempt({
-            exam_id: e.id,
-            student_id: sid,
-            max_score: e.total_points,
-          })
-          setAttemptId(att.id)
-        } catch (attErr) {
-          // Non-fatal for admins / preview: log it but let the exam render
-          // so the user can review questions even if the attempt row could
-          // not be created (e.g. RLS blocked the insert).
-          console.error('startAttempt failed', attErr)
+        if (!isAdmin) {
+          try {
+            const att = await startAttempt({ exam_id: e.id })
+            if (att?.id) {
+              setAttemptId(att.id)
+            }
+          } catch (attErr) {
+            console.error('startAttempt failed', attErr)
+            if (!restoredAttemptId) {
+              console.warn('Exam attempt could not be initialized.')
+            }
+          }
         }
       } catch (err) {
         console.error('ExamTaking load failed', err)
@@ -183,12 +187,10 @@ export default function ExamTaking() {
     onExitAttempt: () => setShowExitConfirm(true),
   })
 
-  // ── Persist progress on every change so a refresh resumes mid-exam.
-  // We store the absolute deadline (not the remaining seconds) so the
-  // clock keeps ticking even while the page is closed. Cleared on submit.
-  // Bypassed for admins.
+  // ── Persist progress on answer/question change so a refresh resumes mid-exam.
+  // We store attemptId and absolute deadline so the clock keeps ticking even while the page is closed.
   useEffect(() => {
-    if (!storageKey || !exam || examFinished || isAdmin) return
+    if (!storageKey || !exam || examFinished || isAdmin || timeLeft <= 0) return
     try {
       const serialAnswers = {}
       for (const [k, v] of Object.entries(answers)) {
@@ -196,22 +198,52 @@ export default function ExamTaking() {
       }
       const deadline = Date.now() + timeLeft * 1000
       localStorage.setItem(storageKey, JSON.stringify({
+        attemptId,
         answers: serialAnswers,
         currentQuestion,
         deadline,
       }))
     } catch {}
-  }, [answers, currentQuestion, timeLeft, storageKey, exam, examFinished, isAdmin])
+  }, [answers, currentQuestion, storageKey, exam, examFinished, isAdmin, attemptId])
+
+  // Flush progress immediately when student switches tabs or closes the page
+  useEffect(() => {
+    const handleSave = () => {
+      if (!storageKey || !exam || examFinished || isAdmin || timeLeft <= 0) return
+      try {
+        const serialAnswers = {}
+        for (const [k, v] of Object.entries(answers)) {
+          serialAnswers[k] = Array.from(v || [])
+        }
+        const deadline = Date.now() + timeLeft * 1000
+        localStorage.setItem(storageKey, JSON.stringify({
+          attemptId,
+          answers: serialAnswers,
+          currentQuestion,
+          deadline,
+        }))
+      } catch {}
+    }
+    window.addEventListener('beforeunload', handleSave)
+    document.addEventListener('visibilitychange', handleSave)
+    return () => {
+      window.removeEventListener('beforeunload', handleSave)
+      document.removeEventListener('visibilitychange', handleSave)
+    }
+  }, [answers, currentQuestion, storageKey, exam, examFinished, isAdmin, timeLeft, attemptId])
 
   // ── Timer ─────────────────────────────────────────────────────
-  // Bypassed for admins.
   useEffect(() => {
-    if (examFinished || !exam || isAdmin) return
+    if (examFinished || !exam) return
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer)
-          handleFinishExam(true) // auto
+          if (isAdmin) {
+            setExamFinished(true)
+          } else {
+            handleFinishExam(true) // auto
+          }
           return 0
         }
         return prev - 1
@@ -262,33 +294,60 @@ export default function ExamTaking() {
   )
 
   const handleFinishExam = async (auto = false) => {
-    if (submittedRef.current || submitting) return
+    if (submitting) return
     // Manual submit requires answering every question. Auto-submit on
     // timeout still goes through with whatever the student has.
     if (!auto && unansweredIndices.length > 0) {
       setUnansweredAlert(unansweredIndices)
       return
     }
-    submittedRef.current = true
     setSubmitting(true)
+    setSubmitError(null)
+
+    if (isAdmin) {
+      // Admin preview: finish without writing to database
+      setFinalScore(0)
+      setExamFinished(true)
+      setSubmitting(false)
+      return
+    }
+
     const responses = questions.map((q, qIdx) => ({
       questionId: qIdx,
       selected: Array.from(answers[qIdx] || []),
     }))
-    let serverScore = 0
+
     try {
-      if (attemptId) {
-        const res = await submitAttempt(attemptId, { responses })
-        serverScore = res?.score ?? 0
+      let currentAttId = attemptId
+      if (!currentAttId && exam?.id) {
+        const att = await startAttempt({ exam_id: exam.id })
+        currentAttId = att.id
+        setAttemptId(currentAttId)
+      }
+
+      if (!currentAttId) {
+        throw new Error('تعذر العثور على محاولة الامتحان المفتوحة.')
+      }
+
+      const res = await submitAttempt(currentAttId, { responses })
+      const serverScore = res?.score ?? 0
+
+      submittedRef.current = true
+      setFinalScore(serverScore)
+      setExamFinished(true)
+      setSubmitting(false)
+
+      // Only delete localStorage after confirmed server-side submission!
+      if (storageKey) {
+        try { localStorage.removeItem(storageKey) } catch {}
       }
     } catch (err) {
       console.error('submitAttempt failed', err)
-    }
-    setFinalScore(serverScore)
-    setExamFinished(true)
-    setSubmitting(false)
-    if (storageKey) {
-      try { localStorage.removeItem(storageKey) } catch {}
+      setSubmitting(false)
+      // DO NOT clear localStorage! Answers are safely preserved on the device.
+      setSubmitError(
+        'تعذر إرسال الإجابات إلى الخادم بسبب بطء أو انقطاع في الاتصال. تم حفظ جميع إجاباتك بأمان على جهازك. يرجى الضغط على زر "إعادة محاولة التسليم الآن".'
+      )
     }
   }
 
@@ -578,6 +637,31 @@ export default function ExamTaking() {
           }}
           onCancel={() => setShowExitConfirm(false)}
         />
+      )}
+
+      {submitError && (
+        <div className="et-modal-backdrop">
+          <div className="et-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="et-modal-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>⚠️</div>
+            <h3 className="et-modal-title">تعذر إرسال الإجابات</h3>
+            <p className="et-modal-sub" style={{ color: '#dc2626', fontWeight: 600 }}>
+              {submitError}
+            </p>
+            <p className="et-modal-sub" style={{ fontSize: '0.88rem', color: '#64748b' }}>
+              لا تقلق، جميع إجاباتك محفوظة بأمان على جهازك ولن تضيع. يمكنك الضغط على زر إعادة المحاولة فوراً.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px', width: '100%' }}>
+              <button
+                className="et-btn et-btn-finish"
+                style={{ flex: 1, padding: '14px', fontSize: '1rem', fontWeight: 700 }}
+                disabled={submitting}
+                onClick={() => handleFinishExam(true)}
+              >
+                {submitting ? 'جاري محاولة الإرسال...' : 'إعادة محاولة التسليم الآن 🔄'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

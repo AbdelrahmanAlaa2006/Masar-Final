@@ -522,10 +522,10 @@ body.dark .et-finished-title {
 ───────────────────────────────────────── */
 .et-layout {
   width: 100%;
-  max-width: 1080px;
+  max-width: 1120px;
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 22px;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
   align-items: start;
 }
 
@@ -545,6 +545,8 @@ body.dark .et-finished-title {
   flex-direction: column;
   gap: 12px;
   font-family: 'Tajawal', sans-serif;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .et-sidepanel-head {
@@ -573,8 +575,10 @@ body.dark .et-finished-title {
 
 .et-sidepanel-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .et-side-num {

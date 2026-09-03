@@ -87,14 +87,16 @@ export async function getExam(id) {
     .single()
   if (error) throw error
 
-  // Check packages gating (shared, cached viewer resolution)
-  const { userId, isStudent } = await getViewerContext()
-  if (userId && isStudent && data.grade === 'packages') {
-    const { listStudentContentAccess } = await import('./packagesApi')
-    const access = await listStudentContentAccess(userId)
-    const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
-    if (!allowedExamIds.has(id)) {
-      throw new Error('This exam is locked inside a package you have not purchased.')
+  // Check packages gating only when the exam is specifically a package item
+  if (data.grade === 'packages') {
+    const { userId, isStudent } = await getViewerContext()
+    if (userId && isStudent) {
+      const { listStudentContentAccess } = await import('./packagesApi')
+      const access = await listStudentContentAccess(userId)
+      const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
+      if (!allowedExamIds.has(id)) {
+        throw new Error('This exam is locked inside a package you have not purchased.')
+      }
     }
   }
 
@@ -231,13 +233,12 @@ export async function countSubmittedAttemptsBatch(examIds, studentId, sinceMap =
   })
 }
 
-// Create an in-flight attempt row. Returns the row id to update on submit.
-export async function startAttempt({ exam_id, student_id, max_score }) {
-  const { data, error } = await supabase
-    .from('exam_attempts')
-    .insert({ exam_id, student_id, max_score: max_score || 0 })
-    .select()
-    .single()
+// Atomically create or restore an in-flight attempt row via PostgreSQL function.
+// The server authoritatively verifies tenant isolation, content access, and computes max_score.
+export async function startAttempt({ exam_id }) {
+  const { data, error } = await supabase.rpc('start_or_get_exam_attempt', {
+    p_exam_id: exam_id,
+  })
   if (error) throw error
   return data
 }
