@@ -341,16 +341,21 @@ export default function Payments() {
 
   // Fast transfer USSD code dial generator for Vodafone cash
   const vodaDialerLink = useMemo(() => {
-    return `tel:*9*7*${activeConfig.vodafoneCash.number}#`
-  }, [activeConfig.vodafoneCash.number])
+    const num = activeConfig.vodafoneCash?.number
+    return num ? `tel:*9*7*${num}#` : '#'
+  }, [activeConfig.vodafoneCash?.number])
 
   const instaQrUrl = useMemo(() => {
-    return activeConfig.instaPay.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeConfig.instaPay.link)}`
-  }, [activeConfig.instaPay.link, activeConfig.instaPay.qrOverride])
+    const data = activeConfig.instaPay?.link || activeConfig.instaPay?.address || activeConfig.instaPay?.phone
+    if (!data) return ''
+    return activeConfig.instaPay?.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data)}`
+  }, [activeConfig.instaPay?.link, activeConfig.instaPay?.address, activeConfig.instaPay?.phone, activeConfig.instaPay?.qrOverride])
 
   const vodaQrUrl = useMemo(() => {
-    return activeConfig.vodafoneCash.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${activeConfig.vodafoneCash.number}`)}`
-  }, [activeConfig.vodafoneCash.number, activeConfig.vodafoneCash.qrOverride])
+    const num = activeConfig.vodafoneCash?.number
+    if (!num) return ''
+    return activeConfig.vodafoneCash?.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${num}`)}`
+  }, [activeConfig.vodafoneCash?.number, activeConfig.vodafoneCash?.qrOverride])
 
   return (
     <>
@@ -415,26 +420,52 @@ export default function Payments() {
             <div className="pay-card-badge">تطبيق InstaPay</div>
             <div className="pay-card-icon"><i className="fas fa-bolt"></i></div>
             <h3 className="pay-card-title">التحويل عبر إنستا باي</h3>
-            <p className="pay-card-text">قم بتحويل قيمة الاشتراك إلى العنوان التالي مباشرة:</p>
-            <div className="pay-card-value-box" style={{ marginBottom: activeConfig.instaPay.phone ? 8 : 18 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
-                <small style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
-                <span className="pay-card-value">{activeConfig.instaPay.address}</span>
-              </div>
-              <button 
-                className="pay-card-copy-btn" 
-                onClick={() => handleCopy(activeConfig.instaPay.address, 'insta')}
-                title="نسخ عنوان الدفع"
-              >
-                {copiedText === 'insta' ? <i className="fas fa-check" style={{ color: '#10b981' }}></i> : <i className="fas fa-copy"></i>}
-              </button>
-            </div>
+            <p className="pay-card-text">
+              {activeConfig.instaPay.address || activeConfig.instaPay.phone || activeConfig.instaPay.link
+                ? 'قم بتحويل قيمة الاشتراك إلى العنوان أو رقم الهاتف التالي:'
+                : 'لم يتم تعيين بيانات التحويل عبر إنستا باي بعد من قِبل إدارة المنصة.'}
+            </p>
 
-            {activeConfig.instaPay.phone && (
+            {activeConfig.instaPay.address ? (
+              <div className="pay-card-value-box" style={{ marginBottom: activeConfig.instaPay.phone ? 8 : 18 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                  <small style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
+                  <span className="pay-card-value">{activeConfig.instaPay.address}</span>
+                </div>
+                <button 
+                  className="pay-card-copy-btn" 
+                  onClick={() => handleCopy(activeConfig.instaPay.address, 'insta')}
+                  title="نسخ عنوان الدفع"
+                >
+                  {copiedText === 'insta' ? <i className="fas fa-check" style={{ color: '#10b981' }}></i> : <i className="fas fa-copy"></i>}
+                </button>
+              </div>
+            ) : null}
+
+            {activeConfig.instaPay.phone ? (
               <div className="pay-card-value-box" style={{ marginBottom: 18 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
                   <small style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 700 }}>رقم هاتف إنستا باي:</small>
-                  <span className="pay-card-value" style={{ direction: 'ltr' }}>{activeConfig.instaPay.phone}</span>
+                  <a
+                    href={`https://ipn.eg/S/${activeConfig.instaPay.phone.replace(/[^0-9+]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pay-card-value"
+                    style={{
+                      direction: 'ltr',
+                      color: 'var(--cp-text-main)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                    title="فتح رابط التحويل بالرقم في تطبيق إنستا باي"
+                  >
+                    <span>{activeConfig.instaPay.phone}</span>
+                    <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem', opacity: 0.7, color: '#38bdf8' }}></i>
+                  </a>
                 </div>
                 <button 
                   className="pay-card-copy-btn" 
@@ -444,44 +475,65 @@ export default function Payments() {
                   {copiedText === 'insta-phone' ? <i className="fas fa-check" style={{ color: '#10b981' }}></i> : <i className="fas fa-copy"></i>}
                 </button>
               </div>
+            ) : null}
+
+            {!activeConfig.instaPay.address && !activeConfig.instaPay.phone && !activeConfig.instaPay.link ? (
+              <div style={{ padding: '8px 12px', color: 'var(--cp-text-muted)', fontSize: '0.85rem' }}>
+                <i className="fas fa-circle-info" style={{ marginLeft: 6 }}></i> يرجى التواصل مع الإدارة للاستفسار عن تفاصيل التحويل.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {activeConfig.instaPay.link && (
+                  <a 
+                    href={activeConfig.instaPay.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="pay-card-action-btn"
+                  >
+                    افتح تطبيق إنستا باي <i className="fas fa-external-link-alt"></i>
+                  </a>
+                )}
+
+                {activeConfig.instaPay.phone && (
+                  <a 
+                    href={`https://ipn.eg/S/${activeConfig.instaPay.phone.replace(/[^0-9+]/g, '')}`}
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="pay-card-action-btn"
+                    style={{ background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.35))', border: '1px solid rgba(56, 189, 248, 0.4)', color: '#fff' }}
+                    title="فتح رابط التحويل بالرقم مباشرة في إنستا باي"
+                  >
+                    رابط تحويل الرقم ({activeConfig.instaPay.phone}) <i className="fas fa-external-link-alt"></i>
+                  </a>
+                )}
+
+                {activeConfig.instaPay.phone && (
+                  <button 
+                    type="button"
+                    className="pay-card-action-btn"
+                    onClick={() => handleCopy(activeConfig.instaPay.phone, 'insta-phone')}
+                    style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
+                    title="نسخ رقم هاتف إنستا باي"
+                  >
+                    <i className="fas fa-copy"></i> {copiedText === 'insta-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
+                  </button>
+                )}
+
+                {instaQrUrl && (
+                  <button 
+                    className="pay-card-action-btn"
+                    onClick={() => setShowInstaQr(!showInstaQr)}
+                    style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
+                  >
+                    <i className="fas fa-qrcode"></i> {showInstaQr ? 'إخفاء الرمز' : 'عرض رمز QR'}
+                  </button>
+                )}
+              </div>
             )}
-            
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {activeConfig.instaPay.link && (
-                <a 
-                  href={activeConfig.instaPay.link} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="pay-card-action-btn"
-                >
-                  افتح تطبيق إنستا باي <i className="fas fa-external-link-alt"></i>
-                </a>
-              )}
 
-              {activeConfig.instaPay.phone && (
-                <button 
-                  type="button"
-                  className="pay-card-action-btn"
-                  onClick={() => handleCopy(activeConfig.instaPay.phone, 'insta-phone')}
-                  style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
-                  title="نسخ رقم هاتف إنستا باي"
-                >
-                  <i className="fas fa-phone"></i> {copiedText === 'insta-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
-                </button>
-              )}
-
-              <button 
-                className="pay-card-action-btn"
-                onClick={() => setShowInstaQr(!showInstaQr)}
-                style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
-              >
-                <i className="fas fa-qrcode"></i> {showInstaQr ? 'إخفاء الرمز' : 'عرض رمز QR'}
-              </button>
-            </div>
-
-            {showInstaQr && (
+            {showInstaQr && instaQrUrl && (
               <div style={{ background: '#fff', padding: 12, borderRadius: 16, marginTop: 18, display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', transform: 'scale(1)', transition: 'all 0.2s' }}>
-                <img key={activeConfig.instaPay.link} src={instaQrUrl} alt="InstaPay QR Code" style={{ width: 140, height: 140 }} />
+                <img key={activeConfig.instaPay.link || activeConfig.instaPay.address} src={instaQrUrl} alt="InstaPay QR Code" style={{ width: 140, height: 140 }} />
               </div>
             )}
           </div>
@@ -491,37 +543,52 @@ export default function Payments() {
             <div className="pay-card-badge">E-wallet</div>
             <div className="pay-card-icon"><i className="fas fa-mobile-screen"></i></div>
             <h3 className="pay-card-title">محفظة إلكترونية</h3>
-            <p className="pay-card-text">قم بتحويل قيمة الاشتراك إلى رقم محفظة إلكترونية التالي:</p>
-            <div className="pay-card-value-box">
-              <span className="pay-card-value">{activeConfig.vodafoneCash.number}</span>
-              <button 
-                className="pay-card-copy-btn" 
-                onClick={() => handleCopy(activeConfig.vodafoneCash.number, 'voda')}
-              >
-                {copiedText === 'voda' ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <a 
-                href={vodaDialerLink}
-                className="pay-card-action-btn"
-              >
-                اتصال وتحويل سريع <i className="fas fa-phone"></i>
-              </a>
+            <p className="pay-card-text">
+              {activeConfig.vodafoneCash.number
+                ? 'قم بتحويل قيمة الاشتراك إلى رقم محفظة إلكترونية التالي:'
+                : 'لم يتم تعيين رقم المحفظة الإلكترونية بعد من قِبل إدارة المنصة.'}
+            </p>
 
-              <button 
-                className="pay-card-action-btn"
-                onClick={() => setShowVodaQr(!showVodaQr)}
-                style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
-              >
-                <i className="fas fa-qrcode"></i> {showVodaQr ? 'إخفاء الرمز' : 'عرض رمز QR'}
-              </button>
-            </div>
+            {activeConfig.vodafoneCash.number ? (
+              <>
+                <div className="pay-card-value-box">
+                  <span className="pay-card-value">{activeConfig.vodafoneCash.number}</span>
+                  <button 
+                    className="pay-card-copy-btn" 
+                    onClick={() => handleCopy(activeConfig.vodafoneCash.number, 'voda')}
+                  >
+                    {copiedText === 'voda' ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+                  </button>
+                </div>
+                
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <a 
+                    href={vodaDialerLink}
+                    className="pay-card-action-btn"
+                  >
+                    اتصال وتحويل سريع <i className="fas fa-phone"></i>
+                  </a>
 
-            {showVodaQr && (
-              <div style={{ background: '#fff', padding: 12, borderRadius: 16, marginTop: 18, display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', transform: 'scale(1)', transition: 'all 0.2s' }}>
-                <img key={activeConfig.vodafoneCash.number} src={vodaQrUrl} alt="Vodafone Cash QR Code" style={{ width: 140, height: 140 }} />
+                  {vodaQrUrl && (
+                    <button 
+                      className="pay-card-action-btn"
+                      onClick={() => setShowVodaQr(!showVodaQr)}
+                      style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
+                    >
+                      <i className="fas fa-qrcode"></i> {showVodaQr ? 'إخفاء الرمز' : 'عرض رمز QR'}
+                    </button>
+                  )}
+                </div>
+
+                {showVodaQr && vodaQrUrl && (
+                  <div style={{ background: '#fff', padding: 12, borderRadius: 16, marginTop: 18, display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', transform: 'scale(1)', transition: 'all 0.2s' }}>
+                    <img key={activeConfig.vodafoneCash.number} src={vodaQrUrl} alt="Vodafone Cash QR Code" style={{ width: 140, height: 140 }} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ padding: '8px 12px', color: 'var(--cp-text-muted)', fontSize: '0.85rem' }}>
+                <i className="fas fa-circle-info" style={{ marginLeft: 6 }}></i> يرجى التواصل مع الإدارة للاستفسار عن تفاصيل التحويل بالمحافظ.
               </div>
             )}
           </div>
@@ -1007,8 +1074,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
   const handleSaveConfig = async (e) => {
     e.preventDefault()
-    if (!instaAddress || !instaLink || !vodaNumber) {
-      notify('الرجاء تعبئة جميع حقول بيانات الدفع ⚠️', 'danger')
+    if (!instaAddress && !instaLink && !instaPhone && !vodaNumber) {
+      notify('الرجاء إدخال بيانات وسيلة دفع واحدة على الأقل ⚠️', 'danger')
       return
     }
 
@@ -1016,17 +1083,17 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     try {
       // 1. Update InstaPay config
       await updatePaymentSetting('instaPay', {
-        address: instaAddress,
-        label: instaAddress,
-        link: instaLink,
+        address: (instaAddress || '').trim(),
+        label: (instaAddress || instaPhone || '').trim(),
+        link: (instaLink || '').trim(),
         phone: (instaPhone || '').trim(),
         qrOverride: config?.instaPay?.qrOverride || ''
       })
 
       // 2. Update Vodafone Cash config
       await updatePaymentSetting('vodafoneCash', {
-        number: vodaNumber,
-        label: vodaNumber,
+        number: (vodaNumber || '').trim(),
+        label: (vodaNumber || '').trim(),
         qrOverride: config?.vodafoneCash?.qrOverride || ''
       })
 
@@ -1743,7 +1810,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
 
             <form onSubmit={handleSaveConfig} className="paypg-config-form">
               <div className="form-group">
-                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>عنوان إنستا باي (InstaPay Address) *</label>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>عنوان إنستا باي (InstaPay Address - اختياري)</label>
                 <input 
                   type="text" 
                   value={instaAddress} 
@@ -1761,12 +1828,11 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   placeholder="مثال: name@instapay"
                   className="paypg-admin-input"
                   style={{ height: 42, width: '100%' }}
-                  required
                 />
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رابط تطبيق إنستا باي (InstaPay Link) *</label>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رابط تطبيق إنستا باي (InstaPay Link - اختياري)</label>
                 <input 
                   type="url" 
                   value={instaLink} 
@@ -1774,7 +1840,6 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   placeholder="مثال: https://ipn.eg/S/name"
                   className="paypg-admin-input"
                   style={{ height: 42, width: '100%' }}
-                  required
                 />
               </div>
 
@@ -1794,7 +1859,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رقم محفظة إلكترونية (Vodafone Cash Number) *</label>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رقم محفظة إلكترونية (Vodafone Cash Number - اختياري)</label>
                 <input 
                   type="text" 
                   value={vodaNumber} 
@@ -1802,7 +1867,6 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   placeholder="مثال: 0100xxxxxxx"
                   className="paypg-admin-input"
                   style={{ height: 42, width: '100%' }}
-                  required
                 />
               </div>
 

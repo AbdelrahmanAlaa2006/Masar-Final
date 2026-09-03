@@ -203,16 +203,21 @@ export default function Shop() {
   }
 
   const vodaDialerLink = useMemo(() => {
-    return `tel:*9*7*${activeConfig.vodafoneCash.number}#`
-  }, [activeConfig.vodafoneCash.number])
+    const num = activeConfig.vodafoneCash?.number
+    return num ? `tel:*9*7*${num}#` : '#'
+  }, [activeConfig.vodafoneCash?.number])
 
   const instaQrUrl = useMemo(() => {
-    return activeConfig.instaPay.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeConfig.instaPay.link || '')}`
-  }, [activeConfig.instaPay.link, activeConfig.instaPay.qrOverride])
+    const data = activeConfig.instaPay?.link || activeConfig.instaPay?.address || activeConfig.instaPay?.phone
+    if (!data) return ''
+    return activeConfig.instaPay?.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(data)}`
+  }, [activeConfig.instaPay?.link, activeConfig.instaPay?.address, activeConfig.instaPay?.phone, activeConfig.instaPay?.qrOverride])
 
   const vodaQrUrl = useMemo(() => {
-    return activeConfig.vodafoneCash.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${activeConfig.vodafoneCash.number}`)}`
-  }, [activeConfig.vodafoneCash.number, activeConfig.vodafoneCash.qrOverride])
+    const num = activeConfig.vodafoneCash?.number
+    if (!num) return ''
+    return activeConfig.vodafoneCash?.qrOverride || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`tel:${num}`)}`
+  }, [activeConfig.vodafoneCash?.number, activeConfig.vodafoneCash?.qrOverride])
 
   if (authLoading) {
     return (
@@ -480,27 +485,52 @@ export default function Shop() {
               <div className="checkout-instructions-panel">
                 {paymentMethod === 'InstaPay' ? (
                   <div className="instruction-content">
-                    <p>قم بالتحويل عبر تطبيق <strong>InstaPay</strong> إلى عنوان الدفع التالي:</p>
-                    <div className="checkout-value-box">
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
-                        <small style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
-                        <span className="checkout-value-text">{activeConfig.instaPay.address}</span>
-                      </div>
-                      <button 
-                        onClick={() => copyToClipboard(activeConfig.instaPay.address, 'instapay')}
-                        className="copy-value-btn"
-                        type="button"
-                        title="نسخ عنوان الدفع"
-                      >
-                        {copiedText === 'instapay' ? 'تم النسخ' : <i className="fas fa-copy" />}
-                      </button>
-                    </div>
+                    <p>
+                      {activeConfig.instaPay.address || activeConfig.instaPay.phone || activeConfig.instaPay.link
+                        ? <>قم بالتحويل عبر تطبيق <strong>InstaPay</strong> إلى البيانات التالية:</>
+                        : <>لم يتم تعيين بيانات تحويل <strong>InstaPay</strong> من الإدارة بعد. يرجى مراجعة الإدارة.</>}
+                    </p>
 
-                    {activeConfig.instaPay.phone && (
+                    {activeConfig.instaPay.address ? (
+                      <div className="checkout-value-box">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                          <small style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
+                          <span className="checkout-value-text">{activeConfig.instaPay.address}</span>
+                        </div>
+                        <button 
+                          onClick={() => copyToClipboard(activeConfig.instaPay.address, 'instapay')}
+                          className="copy-value-btn"
+                          type="button"
+                          title="نسخ عنوان الدفع"
+                        >
+                          {copiedText === 'instapay' ? 'تم النسخ' : <i className="fas fa-copy" />}
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {activeConfig.instaPay.phone ? (
                       <div className="checkout-value-box" style={{ marginTop: 8 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
                           <small style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 700 }}>رقم هاتف إنستا باي:</small>
-                          <span className="checkout-value-text" style={{ direction: 'ltr' }}>{activeConfig.instaPay.phone}</span>
+                          <a
+                            href={`https://ipn.eg/S/${activeConfig.instaPay.phone.replace(/[^0-9+]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="checkout-value-text"
+                            style={{
+                              direction: 'ltr',
+                              color: 'inherit',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              cursor: 'pointer'
+                            }}
+                            title="فتح رابط التحويل بالرقم في تطبيق إنستا باي"
+                          >
+                            <span>{activeConfig.instaPay.phone}</span>
+                            <i className="fas fa-external-link-alt" style={{ fontSize: '0.72rem', opacity: 0.7, color: '#38bdf8' }}></i>
+                          </a>
                         </div>
                         <button 
                           onClick={() => copyToClipboard(activeConfig.instaPay.phone, 'instapay-phone')}
@@ -511,7 +541,7 @@ export default function Shop() {
                           {copiedText === 'instapay-phone' ? 'تم النسخ' : <i className="fas fa-copy" />}
                         </button>
                       </div>
-                    )}
+                    ) : null}
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 14 }}>
                       {activeConfig.instaPay.link && (
@@ -527,61 +557,87 @@ export default function Shop() {
                       )}
 
                       {activeConfig.instaPay.phone && (
+                        <a
+                          href={`https://ipn.eg/S/${activeConfig.instaPay.phone.replace(/[^0-9+]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="checkout-action-btn-link instapay-link"
+                          style={{ flex: 1, minWidth: 140, marginBottom: 0, background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}
+                          title="فتح رابط تحويل الرقم في إنستا باي"
+                        >
+                          <i className="fas fa-external-link-alt"></i> رابط الرقم ({activeConfig.instaPay.phone})
+                        </a>
+                      )}
+
+                      {activeConfig.instaPay.phone && (
                         <button
                           type="button"
                           onClick={() => copyToClipboard(activeConfig.instaPay.phone, 'instapay-phone')}
                           className="checkout-action-btn-link instapay-link"
-                          style={{ flex: 1, minWidth: 140, marginBottom: 0, cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}
+                          style={{ flex: 1, minWidth: 120, marginBottom: 0, cursor: 'pointer', border: 'none', background: 'rgba(255,255,255,0.08)', color: '#fff' }}
                           title="نسخ رقم الهاتف"
                         >
-                          <i className="fas fa-phone"></i> {copiedText === 'instapay-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
+                          <i className="fas fa-copy"></i> {copiedText === 'instapay-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
                         </button>
                       )}
                     </div>
-                    <div className="qr-toggle-area">
-                      <button 
-                        type="button" 
-                        onClick={() => copyToClipboard(activeConfig.instaPay.address, 'instapay')} 
-                        className="qr-toggle-btn"
-                      >
-                        <i className="fas fa-qrcode"></i> عرض رمز QR للدفع
-                      </button>
-                      <div className="qr-image-wrapper">
-                        <img src={instaQrUrl} alt="InstaPay QR Code" />
+
+                    {instaQrUrl && (
+                      <div className="qr-toggle-area">
+                        <button 
+                          type="button" 
+                          onClick={() => copyToClipboard(activeConfig.instaPay.address || activeConfig.instaPay.phone || '', 'instapay')} 
+                          className="qr-toggle-btn"
+                        >
+                          <i className="fas fa-qrcode"></i> عرض رمز QR للدفع
+                        </button>
+                        <div className="qr-image-wrapper">
+                          <img src={instaQrUrl} alt="InstaPay QR Code" />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="instruction-content">
-                    <p>قم بتحويل قيمة الاشتراك إلى رقم <strong>فودافون كاش</strong> التالي:</p>
-                    <div className="checkout-value-box">
-                      <span className="checkout-value-text">{activeConfig.vodafoneCash.number}</span>
-                      <button 
-                        onClick={() => copyToClipboard(activeConfig.vodafoneCash.number, 'vodafone')}
-                        className="copy-value-btn"
-                        type="button"
-                      >
-                        {copiedText === 'vodafone' ? 'تم النسخ' : <i className="fas fa-copy" />}
-                      </button>
-                    </div>
-                    <a 
-                      href={vodaDialerLink} 
-                      className="checkout-action-btn-link voda-link"
-                    >
-                      <i className="fas fa-phone"></i> اتصال سريع بالتحويل (*9*7*)
-                    </a>
-                    <div className="qr-toggle-area">
-                      <button 
-                        type="button" 
-                        onClick={() => copyToClipboard(activeConfig.vodafoneCash.number, 'vodafone')} 
-                        className="qr-toggle-btn"
-                      >
-                        <i className="fas fa-qrcode"></i> عرض رمز QR للرقم
-                      </button>
-                      <div className="qr-image-wrapper">
-                        <img src={vodaQrUrl} alt="Vodafone Cash QR Code" />
-                      </div>
-                    </div>
+                    <p>
+                      {activeConfig.vodafoneCash.number
+                        ? <>قم بتحويل قيمة الاشتراك إلى رقم <strong>فودافون كاش</strong> التالي:</>
+                        : <>لم يتم تعيين رقم <strong>فودافون كاش</strong> من الإدارة بعد. يرجى مراجعة الإدارة.</>}
+                    </p>
+                    {activeConfig.vodafoneCash.number ? (
+                      <>
+                        <div className="checkout-value-box">
+                          <span className="checkout-value-text">{activeConfig.vodafoneCash.number}</span>
+                          <button 
+                            onClick={() => copyToClipboard(activeConfig.vodafoneCash.number, 'vodafone')}
+                            className="copy-value-btn"
+                            type="button"
+                          >
+                            {copiedText === 'vodafone' ? 'تم النسخ' : <i className="fas fa-copy" />}
+                          </button>
+                        </div>
+                        <a 
+                          href={vodaDialerLink} 
+                          className="checkout-action-btn-link voda-link"
+                        >
+                          <i className="fas fa-phone"></i> اتصال سريع بالتحويل (*9*7*)
+                        </a>
+                        {vodaQrUrl && (
+                          <div className="qr-toggle-area">
+                            <button 
+                              type="button" 
+                              onClick={() => copyToClipboard(activeConfig.vodafoneCash.number, 'vodafone')} 
+                              className="qr-toggle-btn"
+                            >
+                              <i className="fas fa-qrcode"></i> عرض رمز QR للرقم
+                            </button>
+                            <div className="qr-image-wrapper">
+                              <img src={vodaQrUrl} alt="Vodafone Cash QR Code" />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
                   </div>
                 )}
               </div>
