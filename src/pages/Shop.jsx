@@ -83,6 +83,7 @@ export default function Shop() {
             address: dbConfig.instaPay?.address || PAYMENT_CONFIG.instaPay.address,
             label: dbConfig.instaPay?.label || PAYMENT_CONFIG.instaPay.label,
             link: dbConfig.instaPay?.link || PAYMENT_CONFIG.instaPay.link,
+            phone: dbConfig.instaPay?.phone || PAYMENT_CONFIG.instaPay.phone || '',
             qrOverride: dbConfig.instaPay?.qrOverride || PAYMENT_CONFIG.instaPay.qrOverride || '',
           }
         })
@@ -481,25 +482,62 @@ export default function Shop() {
                   <div className="instruction-content">
                     <p>قم بالتحويل عبر تطبيق <strong>InstaPay</strong> إلى عنوان الدفع التالي:</p>
                     <div className="checkout-value-box">
-                      <span className="checkout-value-text">{activeConfig.instaPay.address}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                        <small style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
+                        <span className="checkout-value-text">{activeConfig.instaPay.address}</span>
+                      </div>
                       <button 
                         onClick={() => copyToClipboard(activeConfig.instaPay.address, 'instapay')}
                         className="copy-value-btn"
                         type="button"
+                        title="نسخ عنوان الدفع"
                       >
                         {copiedText === 'instapay' ? 'تم النسخ' : <i className="fas fa-copy" />}
                       </button>
                     </div>
-                    {activeConfig.instaPay.link && (
-                      <a 
-                        href={activeConfig.instaPay.link} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="checkout-action-btn-link instapay-link"
-                      >
-                        <i className="fas fa-circle-arrow-up"></i> الانتقال السريع للتطبيق الدفع
-                      </a>
+
+                    {activeConfig.instaPay.phone && (
+                      <div className="checkout-value-box" style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                          <small style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 700 }}>رقم هاتف إنستا باي:</small>
+                          <span className="checkout-value-text" style={{ direction: 'ltr' }}>{activeConfig.instaPay.phone}</span>
+                        </div>
+                        <button 
+                          onClick={() => copyToClipboard(activeConfig.instaPay.phone, 'instapay-phone')}
+                          className="copy-value-btn"
+                          type="button"
+                          title="نسخ رقم الهاتف"
+                        >
+                          {copiedText === 'instapay-phone' ? 'تم النسخ' : <i className="fas fa-copy" />}
+                        </button>
+                      </div>
                     )}
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 14 }}>
+                      {activeConfig.instaPay.link && (
+                        <a 
+                          href={activeConfig.instaPay.link} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="checkout-action-btn-link instapay-link"
+                          style={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+                        >
+                          <i className="fas fa-circle-arrow-up"></i> الانتقال السريع للتطبيق
+                        </a>
+                      )}
+
+                      {activeConfig.instaPay.phone && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(activeConfig.instaPay.phone, 'instapay-phone')}
+                          className="checkout-action-btn-link instapay-link"
+                          style={{ flex: 1, minWidth: 140, marginBottom: 0, cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}
+                          title="نسخ رقم الهاتف"
+                        >
+                          <i className="fas fa-phone"></i> {copiedText === 'instapay-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
+                        </button>
+                      )}
+                    </div>
                     <div className="qr-toggle-area">
                       <button 
                         type="button" 

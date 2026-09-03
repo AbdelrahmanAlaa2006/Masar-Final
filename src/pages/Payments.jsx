@@ -190,6 +190,7 @@ export default function Payments() {
             address: dbConfig.instaPay?.address || PAYMENT_CONFIG.instaPay.address,
             label: dbConfig.instaPay?.label || PAYMENT_CONFIG.instaPay.label,
             link: dbConfig.instaPay?.link || PAYMENT_CONFIG.instaPay.link,
+            phone: dbConfig.instaPay?.phone || PAYMENT_CONFIG.instaPay.phone || '',
             qrOverride: dbConfig.instaPay?.qrOverride || PAYMENT_CONFIG.instaPay.qrOverride || '',
           },
           packages: dbConfig.packages || null
@@ -415,25 +416,59 @@ export default function Payments() {
             <div className="pay-card-icon"><i className="fas fa-bolt"></i></div>
             <h3 className="pay-card-title">التحويل عبر إنستا باي</h3>
             <p className="pay-card-text">قم بتحويل قيمة الاشتراك إلى العنوان التالي مباشرة:</p>
-            <div className="pay-card-value-box">
-              <span className="pay-card-value">{activeConfig.instaPay.address}</span>
+            <div className="pay-card-value-box" style={{ marginBottom: activeConfig.instaPay.phone ? 8 : 18 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                <small style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 700 }}>عنوان الدفع (IPA):</small>
+                <span className="pay-card-value">{activeConfig.instaPay.address}</span>
+              </div>
               <button 
                 className="pay-card-copy-btn" 
                 onClick={() => handleCopy(activeConfig.instaPay.address, 'insta')}
+                title="نسخ عنوان الدفع"
               >
-                {copiedText === 'insta' ? <i className="fas fa-check"></i> : <i className="fas fa-copy"></i>}
+                {copiedText === 'insta' ? <i className="fas fa-check" style={{ color: '#10b981' }}></i> : <i className="fas fa-copy"></i>}
               </button>
             </div>
+
+            {activeConfig.instaPay.phone && (
+              <div className="pay-card-value-box" style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+                  <small style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', fontWeight: 700 }}>رقم هاتف إنستا باي:</small>
+                  <span className="pay-card-value" style={{ direction: 'ltr' }}>{activeConfig.instaPay.phone}</span>
+                </div>
+                <button 
+                  className="pay-card-copy-btn" 
+                  onClick={() => handleCopy(activeConfig.instaPay.phone, 'insta-phone')}
+                  title="نسخ رقم الهاتف"
+                >
+                  {copiedText === 'insta-phone' ? <i className="fas fa-check" style={{ color: '#10b981' }}></i> : <i className="fas fa-copy"></i>}
+                </button>
+              </div>
+            )}
             
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <a 
-                href={activeConfig.instaPay.link} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="pay-card-action-btn"
-              >
-                افتح تطبيق إنستا باي <i className="fas fa-external-link-alt"></i>
-              </a>
+              {activeConfig.instaPay.link && (
+                <a 
+                  href={activeConfig.instaPay.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="pay-card-action-btn"
+                >
+                  افتح تطبيق إنستا باي <i className="fas fa-external-link-alt"></i>
+                </a>
+              )}
+
+              {activeConfig.instaPay.phone && (
+                <button 
+                  type="button"
+                  className="pay-card-action-btn"
+                  onClick={() => handleCopy(activeConfig.instaPay.phone, 'insta-phone')}
+                  style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }}
+                  title="نسخ رقم هاتف إنستا باي"
+                >
+                  <i className="fas fa-phone"></i> {copiedText === 'insta-phone' ? 'تم نسخ الرقم' : 'نسخ رقم الهاتف'}
+                </button>
+              )}
 
               <button 
                 className="pay-card-action-btn"
@@ -954,6 +989,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [showConfigEditor, setShowConfigEditor] = useState(false)
   const [instaAddress, setInstaAddress] = useState(config?.instaPay?.address || '')
   const [instaLink, setInstaLink] = useState(config?.instaPay?.link || '')
+  const [instaPhone, setInstaPhone] = useState(config?.instaPay?.phone || '')
   const [vodaNumber, setVodaNumber] = useState(config?.vodafoneCash?.number || '')
   const [packagesStr, setPackagesStr] = useState(config?.packages || '')
   const [savingConfig, setSavingConfig] = useState(false)
@@ -963,6 +999,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
     if (config) {
       setInstaAddress(config.instaPay?.address || '')
       setInstaLink(config.instaPay?.link || '')
+      setInstaPhone(config.instaPay?.phone || '')
       setVodaNumber(config.vodafoneCash?.number || '')
       setPackagesStr(config.packages || '')
     }
@@ -982,6 +1019,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         address: instaAddress,
         label: instaAddress,
         link: instaLink,
+        phone: (instaPhone || '').trim(),
         qrOverride: config?.instaPay?.qrOverride || ''
       })
 
@@ -1738,6 +1776,21 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                   style={{ height: 42, width: '100%' }}
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>رقم هاتف إنستا باي (InstaPay Phone Number - اختياري)</label>
+                <input 
+                  type="text" 
+                  value={instaPhone} 
+                  onChange={(e) => setInstaPhone(e.target.value)}
+                  placeholder="مثال: 010xxxxxxxx"
+                  className="paypg-admin-input"
+                  style={{ height: 42, width: '100%' }}
+                />
+                <small style={{ color: 'var(--cp-text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
+                  يظهر للطلاب كخيار دفع إضافي عبر رقم الهاتف بجانب الرابط وعنوان الـ IPA.
+                </small>
               </div>
 
               <div className="form-group">

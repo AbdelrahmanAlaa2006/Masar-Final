@@ -11,6 +11,7 @@ export const PAYMENT_CONFIG = {
     address: 'abdoalaa@instapay',
     label: 'abdoalaa@instapay',
     link: 'https://ipn.eg/S/abdoalaa', // Official deep link to redirect to the InstaPay app directly
+    phone: '', // Optional: Phone number registered on InstaPay for transfer by phone
     qrOverride: '', // Optional: Add a custom InstaPay QR image URL if preferred.
   }
 }
