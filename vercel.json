@@ -21,6 +21,11 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmahmoudelbeliqdar\\.com" }],
       "destination": "/sitemap-belqadar.xml"
     },
+    {
+      "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
+      "destination": "/sitemap-mohamed-yasser.xml"
+    },
     { "source": "/sitemap.xml", "destination": "/sitemap-default.xml" },
     {
       "source": "/robots.txt",
@@ -42,6 +47,11 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmahmoudelbeliqdar\\.com" }],
       "destination": "/robots-belqadar.txt"
     },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
+      "destination": "/robots-mohamed-yasser.txt"
+    },
     { "source": "/robots.txt", "destination": "/robots-default.txt" },
     {
       "source": "/(.*)",
@@ -62,6 +72,11 @@
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "(www\\.)?mrmahmoudelbeliqdar\\.com" }],
       "destination": "/belqadar-math.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
+      "destination": "/mohamed-yasser.html"
     },
     {
       "source": "/(.*)",

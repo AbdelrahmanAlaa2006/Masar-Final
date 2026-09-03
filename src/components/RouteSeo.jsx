@@ -29,7 +29,7 @@ import { useTenant } from '../contexts/TenantContext'
    be production. Keep in sync with seo/domains.mjs + vercel.json.
    NOTE: a single hardcoded host here used to delete the canonical on every
    OTHER custom domain, which would have de-indexed each new teacher site. */
-const PRODUCTION_HOSTS = ['gitfekra.com', 'mrmohamedabdella.com', 'mrkhalidelsharif.com', 'mrmahmoudelbeliqdar.com']
+const PRODUCTION_HOSTS = ['gitfekra.com', 'mrmohamedabdella.com', 'mrkhalidelsharif.com', 'mrmahmoudelbeliqdar.com', 'mrmohamedyasser.com']
 const PUBLIC_PATHS = ['/', '/login', '/register', '/credits']
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1'
 
@@ -59,6 +59,7 @@ export default function RouteSeo() {
     const isPower = tenant.slug === 'power-platform'
     const isEldad = tenant.slug === 'eldad'
     const isElsharawy = tenant.slug === 'elsharawy' || tenant.slug === 'elshaarawy'
+    const isMohamedYasser = tenant.slug === 'mohamed-yasser' || (tenant.slug || '').includes('yasser')
     const host = window.location.hostname.replace(/^www\./, '')
 
     // 1. Robots: public pages indexable, app pages not.
@@ -142,6 +143,27 @@ export default function RouteSeo() {
               title: 'فريق التطوير والهندسة البرمجية — منصة الشعراوي',
               description:
                 'تعرّف على فريق الهندسة البرمجية والأمن السيبراني لمنصة الشعراوي (Abdelrahman Alaa & Eyad Elalkamy).'
+            }
+          }
+        : isMohamedYasser
+        ? {
+            '/': {
+              description:
+                'منصة أستاذ محمد ياسر التعليمية (Best of the Best) — تدريس وتأسيس مادة اللغة الإنجليزية للمرحلة الثانوية بأسلوب تفاعلي، امتحانات دورية، ومتابعة أولياء الأمور.'
+            },
+            '/login': {
+              description:
+                'تسجيل الدخول إلى منصة مستر محمد ياسر — منصة تدريس وتأسيس اللغة الإنجليزية للمرحلة الثانوية. تابع محاضراتك وواجباتك وامتحاناتك أونلاين.'
+            },
+            '/register': {
+              title: 'إنشاء حساب — مستر محمد ياسر | Best of the Best',
+              description:
+                'أنشئ حسابك في منصة مستر محمد ياسر للغة الإنجليزية وابدأ رحلتك للتفوق والدرجة النهائية — The more you learn, the more you earn.'
+            },
+            '/credits': {
+              title: 'فريق التطوير والهندسة البرمجية — منصة مستر محمد ياسر',
+              description:
+                'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة مستر محمد ياسر (Abdelrahman Alaa & Eyad Elalkamy).'
             }
           }
         : {

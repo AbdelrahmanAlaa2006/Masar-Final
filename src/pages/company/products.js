@@ -116,7 +116,7 @@ export const PLATFORMS = [
     image: '/images/Image Mr Mohamed Yasser.png',
     imagePosition: 'center 10%',
     logo: '/images/Logo Mr Mohamed Yasser.png',
-    url: '/login?tenant=mohamed-yasser',
+    url: 'https://mrmohamedyasser.com/login',
   },
 ]
 

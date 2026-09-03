@@ -8,10 +8,11 @@
 --   Copy & paste this query into your Supabase Dashboard SQL Editor and Run.
 -- ============================================================================
 
-INSERT INTO public.tenants (slug, name, primary_color, secondary_color, logo_url, config)
+INSERT INTO public.tenants (slug, name, domain, primary_color, secondary_color, logo_url, config)
 VALUES (
   'mohamed-yasser',
   'مستر محمد ياسر — لغة إنجليزية',
+  'mrmohamedyasser.com',
   '#ee7d30',
   '#1c3257',
   '/images/Logo Mr Mohamed Yasser.png',

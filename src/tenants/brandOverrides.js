@@ -20,7 +20,9 @@ const BRAND_OVERRIDES = [
     key: 'mohamed-yasser',
     match: (t) =>
       t.slug === 'mohamed-yasser' ||
-      (t.slug || '').includes('yasser'),
+      (t.slug || '').includes('yasser') ||
+      t.domain === 'mrmohamedyasser.com' ||
+      (t.domain || '').includes('mrmohamedyasser'),
     apply: {
       name: 'مستر محمد ياسر',
       slug: 'mohamed-yasser',

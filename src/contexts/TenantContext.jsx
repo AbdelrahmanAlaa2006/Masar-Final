@@ -97,6 +97,9 @@ export function TenantProvider({ children }) {
         if (candidate === 'elshaarawy') {
           querySlug = 'elsharawy'
         }
+        if (candidate === 'mrmohamedyasser.com' || candidate.includes('mohamedyasser') || candidate.includes('mrmohamedyasser')) {
+          querySlug = 'mohamed-yasser'
+        }
 
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
 

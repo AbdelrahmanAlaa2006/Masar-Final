@@ -1,0 +1,28 @@
+# mrmohamedyasser.com — مستر محمد ياسر | Mr Mohamed Yasser
+# Public pages are crawlable; the student/admin app areas are not.
+
+User-agent: *
+Disallow: /control-panel
+Disallow: /profile
+Disallow: /home
+Disallow: /homework
+Disallow: /lectures
+Disallow: /exams
+Disallow: /exam-taking
+Disallow: /exam-add
+Disallow: /videos
+Disallow: /video-add
+Disallow: /shop
+Disallow: /packages
+Disallow: /payments
+Disallow: /chat
+Disallow: /report
+Disallow: /videos-report
+Disallow: /exams-report
+Disallow: /homework-report
+Disallow: /videos-group-report
+Disallow: /exams-group-report
+Disallow: /homework-group-report
+Disallow: /public-report
+
+Sitemap: https://mrmohamedyasser.com/sitemap.xml

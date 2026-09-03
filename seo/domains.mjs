@@ -279,7 +279,7 @@ export const DOMAINS = {
   },
 
   'mohamed-yasser': {
-    hosts: ['mohamedyasser.com', 'www.mohamedyasser.com', 'mohamed-yasser.masaar.app'],
+    hosts: ['mrmohamedyasser.com', 'www.mrmohamedyasser.com', 'mohamed-yasser.masaar.app'],
     lang: 'ar',
     title: 'مستر محمد ياسر — لغة إنجليزية | The more you learn , the more you earn',
     description:
@@ -287,8 +287,8 @@ export const DOMAINS = {
     keywords:
       'محمد ياسر, مستر محمد ياسر, أستاذ محمد ياسر, Mohamed Yasser, Mr Mohamed Yasser, English with Mohamed Yasser, إنجليزي ثانوي, ثانوية عامة, لغة إنجليزية, جرامر, ترجمة, منصة تعليمية, Best of the Best',
     author: 'مستر محمد ياسر — Mr Mohamed Yasser',
-    canonical: 'https://gitfekra.com/login?tenant=mohamed-yasser',
-    ogImage: '/images/Logo Mr Mohamed Yasser.png',
+    canonical: 'https://mrmohamedyasser.com/',
+    ogImage: 'https://mrmohamedyasser.com/images/Logo%20Mr%20Mohamed%20Yasser.png',
     themeColor: '#ee7d30',
     favicon: '/images/Logo Mr Mohamed Yasser.png',
     faviconType: 'image/png',
@@ -298,7 +298,7 @@ export const DOMAINS = {
         name: 'Mohamed Yasser',
         alternateName: ['محمد ياسر', 'مستر محمد ياسر', 'أستاذ محمد ياسر', 'Mr Mohamed Yasser', 'Mohamed Yaser'],
         jobTitle: 'Senior English Language Teacher — Secondary Stage',
-        image: '/images/Image Mr Mohamed Yasser.png',
+        image: 'https://mrmohamedyasser.com/images/Image%20Mr%20Mohamed%20Yasser.png',
         knowsAbout: ['English Language', 'Grammar', 'English Literature', 'Translation', 'Secondary Stage', 'اللغة الإنجليزية', 'الثانوية العامة'],
         sameAs: [
           'https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr',
@@ -309,7 +309,7 @@ export const DOMAINS = {
       org: {
         name: 'منصة مستر محمد ياسر للغة الإنجليزية',
         alternateName: ['Mr Mohamed Yasser Platform', 'Best of the Best English'],
-        logo: '/images/Logo Mr Mohamed Yasser.png',
+        logo: 'https://mrmohamedyasser.com/images/Logo%20Mr%20Mohamed%20Yasser.png',
         description:
           'منصة تعليمية متخصصة في تدريس وتأسيس مادة اللغة الإنجليزية لطلاب المرحلة الثانوية مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
         telephone: '+201036836301',
