@@ -301,6 +301,38 @@ export default function Exams() {
       setShowModal(true)
       return
     }
+
+    // Availability window check for students
+    if (userRole !== 'admin' && userRole !== 'assistant') {
+      const now = new Date()
+      if (exam.opens_at) {
+        const opensAt = new Date(exam.opens_at)
+        if (now < opensAt) {
+          setAlertModal('الامتحان غير متاح الآن', `لم يحن موعد فتح هذا الامتحان بعد. يبدأ في: ${opensAt.toLocaleString('ar-EG')}`)
+          return
+        }
+        if (exam.expires_at) {
+          const expiresAt = new Date(exam.expires_at)
+          if (now >= expiresAt) {
+            setAlertModal('الامتحان غير متاح', 'انتهت فترة إتاحة هذا الامتحان.')
+            return
+          }
+        }
+      } else {
+        // Legacy availability check
+        const createdAt = new Date(exam.created_at)
+        const o = overridesMap.get(exam.id)
+        const effectiveHours = o?.availableHours ?? exam.available_hours
+        if (effectiveHours) {
+          const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
+          if (now >= availableUntil) {
+            setAlertModal('الامتحان غير متاح', 'انتهت فترة إتاحة هذا الامتحان.')
+            return
+          }
+        }
+      }
+    }
+
     navigate(`/exam-taking?id=${exam.id}`)
   }
 
@@ -401,31 +433,61 @@ export default function Exams() {
 
   const renderExamItem = (exam, index) => {
     const remaining = remainingFor(exam)
-    const createdAt = new Date(exam.created_at)
-    // Per-audience availability override wins over the exam's own default.
-    // `overridesMap` is keyed by exam.id and may carry `availableHours`.
-    const o = overridesMap.get(exam.id)
-    const effectiveHours = o?.availableHours ?? exam.available_hours
-    const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
-    const isAvailable = new Date() < availableUntil
-    let formattedDate = ''
-    try {
-      formattedDate = availableUntil.toLocaleDateString('ar-EG', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      })
-    } catch (e) {
-      formattedDate = availableUntil.toLocaleDateString()
+    const now = new Date()
+
+    let isAvailable = true
+    let statusText = 'متاح'
+    let footerText = ''
+
+    if (exam.opens_at) {
+      const opensAt = new Date(exam.opens_at)
+      const expiresAt = exam.expires_at ? new Date(exam.expires_at) : null
+
+      if (now < opensAt) {
+        isAvailable = false
+        statusText = 'غير متاح (قريباً)'
+        footerText = `يبدأ في: ${opensAt.toLocaleString('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+      } else if (expiresAt && now >= expiresAt) {
+        isAvailable = false
+        statusText = 'غير متاح (انتهى)'
+        footerText = `انتهى في: ${expiresAt.toLocaleString('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+      } else {
+        isAvailable = true
+        statusText = 'متاح'
+        footerText = expiresAt 
+          ? `متاح حتى ${expiresAt.toLocaleString('ar-EG', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+          : 'متاح'
+      }
+    } else {
+      // Legacy exam availability calculation
+      const createdAt = new Date(exam.created_at)
+      const o = overridesMap.get(exam.id)
+      const effectiveHours = o?.availableHours ?? exam.available_hours
+      const availableUntil = new Date(createdAt.getTime() + (effectiveHours * 60 * 60 * 1000))
+      isAvailable = now < availableUntil
+      statusText = isAvailable ? 'متاح' : 'غير متاح'
+      try {
+        const formattedDate = availableUntil.toLocaleDateString('ar-EG', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        })
+        footerText = isAvailable ? `متاح حتى ${formattedDate}` : `انتهى في ${formattedDate}`
+      } catch (e) {
+        footerText = `متاح حتى ${availableUntil.toLocaleDateString()}`
+      }
     }
+
     const qCount = exam.questions_count !== undefined
       ? exam.questions_count
       : (Array.isArray(exam.questions) ? exam.questions.length : 0)
+
+    const groupName = exam.groups?.name
 
     return (
       <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>
         <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
           <span className="ec-status-dot" />
-          <span>{isAvailable ? 'متاح' : 'غير متاح'}</span>
+          <span>{statusText}</span>
           {(userRole === 'admin' || userRole === 'assistant') && (
             <>
               <button className="ec-delete-btn" onClick={e => { e.stopPropagation(); handleToggleArchive(exam) }} style={{ marginInlineEnd: 6, background: 'rgba(255,255,255,0.08)' }}>
@@ -445,7 +507,24 @@ export default function Exams() {
           <div className="ec-badge">{index + 1}</div>
           <div className="ec-titles">
             <div className="ec-title">{exam.title}</div>
-            <div className="ec-lecture">📝 {exam.number ? `رقم ${exam.number}` : ''}</div>
+            <div className="ec-lecture" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {exam.number ? <span>📝 رقم {exam.number}</span> : null}
+              {exam.target_audience === 'group' && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(124, 58, 237, 0.15)',
+                  color: '#a78bfa',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '600'
+                }}>
+                  👥 مجموعة: {groupName || 'محددة'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -458,7 +537,9 @@ export default function Exams() {
           <div className="ec-stat">
             <span className="ec-stat-icon">🕒</span>
             <span className="ec-stat-label">المدة المتاحة</span>
-            <span className="ec-stat-value">{effectiveHours} ساعة</span>
+            <span className="ec-stat-value">
+              {exam.availability_days ? `${exam.availability_days} يوم` : `${exam.available_hours || 72} ساعة`}
+            </span>
           </div>
           <div className="ec-stat">
             <span className="ec-stat-icon">❓</span>
@@ -485,7 +566,7 @@ export default function Exams() {
           ) : (
             <>
               <span>⏳</span>
-              <span>متاح حتى {formattedDate}</span>
+              <span>{footerText}</span>
             </>
           )}
         </div>

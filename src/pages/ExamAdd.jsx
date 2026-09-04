@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './ExamAdd.css'
 import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
+import { listGroups } from '@backend/groupsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
 import { invalidatePrefix } from '../utils/cache'
 import SharedTextBlocksEditor, {
@@ -15,7 +16,6 @@ import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 export default function ExamAdd() {
   const navigate = useNavigate()
   const { isGradeEnabled, gradesList } = useTenant()
-  const [examNumber, setExamNumber] = useState('')
   const [examTitle, setExamTitle] = useState('')
   const [examGrade, setExamGrade] = useState(() => {
     const selected = localStorage.getItem('selectedGrade')
@@ -34,7 +34,20 @@ export default function ExamAdd() {
   })
   const [duration, setDuration] = useState('')
   const [maxAttempts, setMaxAttempts] = useState(1)
-  const [examDurationHours, setExamDurationHours] = useState(72)
+  const [opensAt, setOpensAt] = useState(() => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  })
+  const [availabilityDays, setAvailabilityDays] = useState(3)
+  const [targetAudience, setTargetAudience] = useState('stage') // 'stage' | 'group'
+  const [targetGroupId, setTargetGroupId] = useState('')
+  const [allGroups, setAllGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
   const [numQuestions, setNumQuestions] = useState('')
   const [questions, setQuestions] = useState([])
   // Shared reading passages. Held here and written straight after the exam
@@ -57,6 +70,31 @@ export default function ExamAdd() {
       }
     }
   }, [gradesList])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingGroups(true)
+    ;(async () => {
+      try {
+        const list = await listGroups()
+        if (!cancelled) setAllGroups(list || [])
+      } catch (err) {
+        console.error('Failed to load groups:', err)
+      } finally {
+        if (!cancelled) setLoadingGroups(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const availableGroups = useMemo(() => {
+    const dbGrade = uiToDbGrade(examGrade) || examGrade
+    return allGroups.filter(g => g.grade === dbGrade)
+  }, [allGroups, examGrade])
+
+  useEffect(() => {
+    setTargetGroupId('')
+  }, [examGrade])
 
   const generateQuestions = () => {
     const count = parseInt(numQuestions)
@@ -241,6 +279,15 @@ export default function ExamAdd() {
       notify('يرجى اختيار الصف الدراسي', { type: 'warning' })
       return null
     }
+    if (targetAudience === 'group' && !targetGroupId) {
+      notify('يرجى اختيار المجموعة المستهدفة للامتحان', { type: 'warning' })
+      return null
+    }
+    const days = parseInt(availabilityDays, 10)
+    if (!days || days <= 0) {
+      notify('يرجى إدخال عدد صحيح لأيام الإتاحة (يوم واحد على الأقل)', { type: 'warning' })
+      return null
+    }
     const isValid = questions.every(q =>
       q.question.trim() &&
       q.options.every(opt => opt.trim()) &&
@@ -275,12 +322,17 @@ export default function ExamAdd() {
   const previewExam = () => {
     const payload = buildExamPayload()
     if (!payload) return
+    const stageObj = (gradesList || []).find(g => (dbToUiGrade(g.id) || g.id) === examGrade)
+    const selectedGroupObj = allGroups.find(g => g.id === targetGroupId)
     setPreviewData({
-      number: examNumber,
       title: examTitle,
+      stageName: stageObj ? stageObj.name : examGrade,
+      targetAudience,
+      targetGroupName: selectedGroupObj ? selectedGroupObj.name : '',
+      opensAt: opensAt ? new Date(opensAt).toLocaleString('ar-EG') : '—',
+      availabilityDays: parseInt(availabilityDays, 10),
       duration: parseInt(duration),
       maxAttempts: parseInt(maxAttempts),
-      examDurationHours: parseInt(examDurationHours),
       questions: payload.cleanQuestions,
       totalPoints: payload.total_points,
     })
@@ -308,16 +360,18 @@ export default function ExamAdd() {
     setSaving(true)
     try {
       const created = await createExam({
-        number: examNumber.trim() || null,
         title: examTitle.trim(),
         grade: payload.dbGrade,
         duration_minutes: parseInt(duration),
         max_attempts: parseInt(maxAttempts),
-        available_hours: parseInt(examDurationHours),
         questions: payload.cleanQuestions,
         total_points: payload.total_points,
         created_by: createdBy,
         exam_type: examType,
+        opens_at: opensAt ? new Date(opensAt).toISOString() : new Date().toISOString(),
+        availability_days: parseInt(availabilityDays, 10),
+        target_audience: targetAudience,
+        target_group_id: targetAudience === 'group' ? targetGroupId : null,
       })
 
       // Blocks reference the exam by id, so they can only be written once the
@@ -354,17 +408,6 @@ export default function ExamAdd() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="examNumber">🔢 رقم الامتحان:</label>
-          <input 
-            type="number" 
-            id="examNumber"
-            value={examNumber}
-            onChange={(e) => setExamNumber(e.target.value)}
-            placeholder="مثلاً 5"
-          />
-        </div>
-
-        <div className="form-group">
           <label htmlFor="examTitle">📝 عنوان الامتحان:</label>
           <input
             type="text"
@@ -373,6 +416,18 @@ export default function ExamAdd() {
             onChange={(e) => setExamTitle(e.target.value)}
             placeholder="مثلاً: حساب تفاضلي متقدم"
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="targetAudience">🎯 فئة الجمهور المستهدف:</label>
+          <select
+            id="targetAudience"
+            value={targetAudience}
+            onChange={(e) => setTargetAudience(e.target.value)}
+          >
+            <option value="stage">الدفعة بالكامل (Entire Stage)</option>
+            <option value="group">مجموعة محددة (Specific Group)</option>
+          </select>
         </div>
 
         <div className="form-group">
@@ -388,6 +443,37 @@ export default function ExamAdd() {
             })}
             <option value="packages">باقات مدفوعة 📦</option>
           </select>
+        </div>
+
+        {targetAudience === 'group' && (
+          <div className="form-group">
+            <label htmlFor="targetGroupId">👥 المجموعة:</label>
+            <select
+              id="targetGroupId"
+              value={targetGroupId}
+              onChange={(e) => setTargetGroupId(e.target.value)}
+            >
+              <option value="">-- اختر المجموعة --</option>
+              {availableGroups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+            {availableGroups.length === 0 && (
+              <p style={{ fontSize: 12.5, color: '#f59e0b', margin: '6px 0 0', fontWeight: 600 }}>
+                ⚠️ لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="opensAt">📅 وقت فتح الامتحان:</label>
+          <input 
+            type="datetime-local" 
+            id="opensAt"
+            value={opensAt}
+            onChange={(e) => setOpensAt(e.target.value)}
+          />
         </div>
 
         <div className="form-group">
@@ -420,17 +506,17 @@ export default function ExamAdd() {
                 id="maxAttempts"
                 min="1"
                 value={maxAttempts}
-                onChange={(e) => setMaxAttempts(parseInt(e.target.value))}
+                onChange={(e) => setMaxAttempts(parseInt(e.target.value, 10) || 1)}
               />
             </div>
             <div>
-              <label htmlFor="examDurationHours">⏳ مدة توفر الامتحان (بالساعات):</label>
+              <label htmlFor="availabilityDays">⏳ مدة توفر الامتحان (بالأيام):</label>
               <input 
                 type="number" 
-                id="examDurationHours"
+                id="availabilityDays"
                 min="1"
-                value={examDurationHours}
-                onChange={(e) => setExamDurationHours(parseInt(e.target.value))}
+                value={availabilityDays}
+                onChange={(e) => setAvailabilityDays(parseInt(e.target.value, 10) || 1)}
               />
             </div>
           </div>
@@ -682,11 +768,18 @@ export default function ExamAdd() {
         {showPreview && previewData && (
           <div className="preview">
             <h2><i className="fas fa-magnifying-glass" style={{ color: '#f59e0b', marginInlineEnd: 8 }}></i> المعاينة</h2>
-            <h3>📝 الامتحان رقم {previewData.number}</h3>
-            <p><strong>العنوان:</strong> {previewData.title}</p>
-            <p><strong>المدة:</strong> {previewData.duration} دقيقة</p>
+            <h3>📝 {previewData.title}</h3>
+            <p><strong>المرحلة الدراسية:</strong> {previewData.stageName}</p>
+            <p>
+              <strong>الجمهور المستهدف:</strong>{' '}
+              {previewData.targetAudience === 'group'
+                ? `مجموعة محددة (${previewData.targetGroupName || 'غير محددة'})`
+                : 'الدفعة بالكامل'}
+            </p>
+            <p><strong>وقت فتح الامتحان:</strong> {previewData.opensAt}</p>
+            <p><strong>فترة الإتاحة:</strong> {previewData.availabilityDays} يوم</p>
+            <p><strong>مدة الإجابة:</strong> {previewData.duration} دقيقة</p>
             <p><strong>عدد المحاولات:</strong> {previewData.maxAttempts}</p>
-            <p><strong>الفترة المتاحة:</strong> {previewData.examDurationHours} ساعة</p>
             <p><strong>إجمالي النقاط:</strong> {previewData.totalPoints}</p>
             <hr />
             {previewData.questions.map((q, idx) => (

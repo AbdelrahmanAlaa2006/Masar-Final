@@ -35,8 +35,8 @@ export async function listExams({ lean = false } = {}) {
   const isAdmin = isStaffAdmin || permissions.includes('exams')
 
   const cols = lean
-    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, exam_type, origin, created_at, questions_count'
-    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, exam_type, origin, created_at'
+    ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, exam_type, origin, created_at, questions_count, opens_at, availability_days, expires_at, target_audience, target_group_id, groups:target_group_id(id, name)'
+    : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, exam_type, origin, created_at, opens_at, availability_days, expires_at, target_audience, target_group_id, groups:target_group_id(id, name)'
 
   let query = supabase
     .from('exams')
@@ -55,12 +55,27 @@ export async function listExams({ lean = false } = {}) {
   if (error) throw error
   let rows = data || []
 
-  // Package-level gating for student role
+  // Gating for student role (packages + group targeting)
   if (userId && isStudent) {
-    const { listStudentContentAccess } = await import('./packagesApi')
-    const access = await listStudentContentAccess(userId)
+    const [packagesMod, studentGroupsRes] = await Promise.all([
+      import('./packagesApi'),
+      supabase.from('student_groups').select('group_id').eq('student_id', userId)
+    ])
+    const access = await packagesMod.listStudentContentAccess(userId)
     const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
-    rows = rows.filter(e => e.grade !== 'packages' || allowedExamIds.has(e.id))
+    const studentGroupIds = new Set((studentGroupsRes.data || []).map(sg => sg.group_id))
+
+    rows = rows.filter(e => {
+      // 1. Package gating
+      if (e.grade === 'packages' && !allowedExamIds.has(e.id)) return false
+      // 2. Group targeting
+      if (e.target_audience === 'group') {
+        if (!e.target_group_id || !studentGroupIds.has(e.target_group_id)) {
+          return false
+        }
+      }
+      return true
+    })
   }
 
   return rows
@@ -82,20 +97,52 @@ export async function setExamRevealGrades(examId, reveal) {
 export async function getExam(id) {
   const { data, error } = await supabase
     .from('exams')
-    .select('*')
+    .select('*, groups:target_group_id(id, name)')
     .eq('id', id)
     .single()
   if (error) throw error
 
-  // Check packages gating only when the exam is specifically a package item
-  if (data.grade === 'packages') {
-    const { userId, isStudent } = await getViewerContext()
-    if (userId && isStudent) {
+  const { userId, isStudent } = await getViewerContext()
+
+  // Guard for student role
+  if (userId && isStudent) {
+    // 1. Check packages gating only when the exam is specifically a package item
+    if (data.grade === 'packages') {
       const { listStudentContentAccess } = await import('./packagesApi')
       const access = await listStudentContentAccess(userId)
       const allowedExamIds = new Set(access.filter(a => a.content_type === 'exam').map(a => a.content_id))
       if (!allowedExamIds.has(id)) {
         throw new Error('This exam is locked inside a package you have not purchased.')
+      }
+    }
+
+    // 2. Check group targeting
+    if (data.target_audience === 'group') {
+      if (!data.target_group_id) {
+        throw new Error('هذا الامتحان غير متاح.')
+      }
+      const { data: sg } = await supabase
+        .from('student_groups')
+        .select('group_id')
+        .eq('student_id', userId)
+        .eq('group_id', data.target_group_id)
+        .maybeSingle()
+      if (!sg) {
+        throw new Error('هذا الامتحان مخصص لمجموعة أخرى.')
+      }
+    }
+
+    // 3. Check time windows
+    if (data.opens_at && new Date() < new Date(data.opens_at)) {
+      throw new Error('لم يحن موعد فتح هذا الامتحان بعد.')
+    }
+    if (data.expires_at && new Date() >= new Date(data.expires_at)) {
+      throw new Error('انتهت فترة إتاحة هذا الامتحان.')
+    }
+    if (!data.opens_at && !data.expires_at && data.available_hours) {
+      const legacyUntil = new Date(new Date(data.created_at).getTime() + data.available_hours * 3600000)
+      if (new Date() >= legacyUntil) {
+        throw new Error('انتهت فترة إتاحة هذا الامتحان.')
       }
     }
   }
@@ -108,18 +155,42 @@ export function invalidateExamsCache() {
 }
 
 export async function createExam(input) {
+  // If group-targeted, server-side validate that target_group_id actually belongs to input.grade
+  if (input.target_audience === 'group') {
+    if (!input.target_group_id) {
+      throw new Error('يرجى تحديد المجموعة المستهدفة للامتحان.')
+    }
+    const { data: grp, error: grpErr } = await supabase
+      .from('groups')
+      .select('id, grade')
+      .eq('id', input.target_group_id)
+      .single()
+    if (grpErr || !grp || grp.grade !== input.grade) {
+      throw new Error('المجموعة المحددة لا تنتمي للصف الدراسي المختار.')
+    }
+  }
+
   const payload = {
     number: input.number || null,
     title: input.title,
     grade: input.grade,
     duration_minutes: parseInt(input.duration_minutes),
     max_attempts: parseInt(input.max_attempts) || 1,
-    available_hours: parseInt(input.available_hours) || 72,
     questions: input.questions || [],
     total_points: parseInt(input.total_points) || 0,
     created_by: input.created_by || null,
     exam_type: input.exam_type || 'exam',
+    opens_at: input.opens_at || null,
+    availability_days: input.availability_days ? parseInt(input.availability_days, 10) : null,
+    target_audience: input.target_audience || 'stage',
+    target_group_id: input.target_audience === 'group' ? (input.target_group_id || null) : null,
   }
+
+  // Preserve available_hours if provided for legacy exams, but do NOT calculate or overwrite for new exams
+  if (input.available_hours !== undefined && input.available_hours !== null) {
+    payload.available_hours = parseInt(input.available_hours, 10)
+  }
+
   const { data, error } = await supabase
     .from('exams')
     .insert(payload)
@@ -131,21 +202,25 @@ export async function createExam(input) {
 }
 
 // Patch exam metadata (title / number / grade / duration / max_attempts /
-// available_hours / total_points / reveal_grades). Editing the
-// `questions` array is NOT supported here — re-build the exam if you
-// need to change individual questions.
+// available_hours / total_points / reveal_grades / scheduling / targeting).
+// Editing the `questions` array is NOT supported here — re-build the exam if
+// you need to change individual questions.
 export async function updateExam(id, input) {
   const patch = {}
-  if (input.title           !== undefined) patch.title = String(input.title).trim()
-  if (input.number          !== undefined) patch.number = input.number || null
-  if (input.grade           !== undefined) patch.grade = input.grade
-  if (input.duration_minutes !== undefined) patch.duration_minutes = Math.max(1, parseInt(input.duration_minutes, 10) || 1)
-  if (input.max_attempts     !== undefined) patch.max_attempts = Math.max(1, parseInt(input.max_attempts, 10) || 1)
-  if (input.available_hours  !== undefined) patch.available_hours = Math.max(1, parseInt(input.available_hours, 10) || 1)
-  if (input.total_points     !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
-  if (input.reveal_grades    !== undefined) patch.reveal_grades = !!input.reveal_grades
-  if (input.questions        !== undefined) patch.questions = input.questions || []
-  if (input.exam_type        !== undefined) patch.exam_type = input.exam_type
+  if (input.title             !== undefined) patch.title = String(input.title).trim()
+  if (input.number            !== undefined) patch.number = input.number || null
+  if (input.grade             !== undefined) patch.grade = input.grade
+  if (input.duration_minutes   !== undefined) patch.duration_minutes = Math.max(1, parseInt(input.duration_minutes, 10) || 1)
+  if (input.max_attempts       !== undefined) patch.max_attempts = Math.max(1, parseInt(input.max_attempts, 10) || 1)
+  if (input.available_hours    !== undefined) patch.available_hours = Math.max(1, parseInt(input.available_hours, 10) || 1)
+  if (input.total_points       !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
+  if (input.reveal_grades      !== undefined) patch.reveal_grades = !!input.reveal_grades
+  if (input.questions          !== undefined) patch.questions = input.questions || []
+  if (input.exam_type          !== undefined) patch.exam_type = input.exam_type
+  if (input.opens_at            !== undefined) patch.opens_at = input.opens_at || null
+  if (input.availability_days   !== undefined) patch.availability_days = input.availability_days ? parseInt(input.availability_days, 10) : null
+  if (input.target_audience     !== undefined) patch.target_audience = input.target_audience
+  if (input.target_group_id     !== undefined) patch.target_group_id = input.target_group_id || null
 
   const { data, error } = await supabase
     .from('exams').update(patch).eq('id', id).select().single()

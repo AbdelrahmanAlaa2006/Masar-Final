@@ -140,10 +140,19 @@ export default function ExamsGroupReport() {
     return () => { cancelled = true }
   }, [currentGrade, reportSource, reportType])
 
-  const examsForGrade = useMemo(
-    () => exams.filter(e => uiToDbGrade(e.grade) === currentGrade),
-    [exams, currentGrade]
-  )
+  const examsForGrade = useMemo(() => {
+    return exams.filter(e => {
+      if (uiToDbGrade(e.grade) !== currentGrade) return false
+      // If a group is selected, only show stage-wide exams OR exams targeted to this group
+      if (currentGroup && e.target_audience === 'group') {
+        const examGroupName = (e.groups?.name || '').trim()
+        if (examGroupName && examGroupName !== currentGroup) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [exams, currentGrade, currentGroup])
   // All students in the chosen grade — used to derive group chips.
   const studentsInGrade = useMemo(
     () => students.filter(s => s.grade === currentGrade),
@@ -226,7 +235,16 @@ export default function ExamsGroupReport() {
     if (!exam) return
     const maxScore = exam.total_points || 0
     const maxAttempts = exam.max_attempts || 1
-    const gradeStudents = studentsForGrade
+    // If the exam is specifically targeted to a group, only consider students of that group
+    // so students from other groups are not incorrectly marked as absent / "لم يؤدِ"
+    let gradeStudents = studentsForGrade
+    if (exam.target_audience === 'group') {
+      const examGroupName = (exam.groups?.name || '').trim()
+      if (examGroupName) {
+        gradeStudents = gradeStudents.filter(s => (s.group || '').trim() === examGroupName)
+      }
+    }
+
     if (gradeStudents.length === 0) {
       setAllStudentsData([]); setDisplayedStudents([]); return
     }
@@ -561,11 +579,16 @@ export default function ExamsGroupReport() {
                       }}
                     >
                       <option value="">{selectPlaceholder}</option>
-                      {examsForGrade.map((exam) => (
-                        <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
-                          {exam.number ? `${exam.number} — ` : ''}{exam.title}
-                        </option>
-                      ))}
+                      {examsForGrade.map((exam) => {
+                        const grpSuffix = exam.target_audience === 'group' 
+                          ? ` (مجموعة: ${exam.groups?.name || 'محددة'})` 
+                          : ''
+                        return (
+                          <option key={exam.id} value={exam.id} style={{ background: 'var(--cp-card-bg)', color: 'var(--cp-text-main)' }}>
+                            {exam.number ? `${exam.number} — ` : ''}{exam.title}{grpSuffix}
+                          </option>
+                        )
+                      })}
                     </select>
                     <i className="fas fa-chevron-down" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--cp-text-muted)', pointerEvents: 'none' }}></i>
                   </div>

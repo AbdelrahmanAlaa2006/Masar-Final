@@ -140,12 +140,21 @@ export default function ExamsReport() {
           }
           allExams = Array.from(examMap.values())
         } else {
-          // All exams the viewer can see, then filter to the target's grade and type.
+          // All exams the viewer can see, then filter to the target's grade, type, and target audience
           const allExamsRaw = await cached('exams', LIST_TTL, listExams)
           allExams = allExamsRaw.filter((e) => {
             const matchesGrade = targetGrade ? e.grade === targetGrade : true
             const matchesType = (e.exam_type || 'exam') === reportType
-            return matchesGrade && matchesType
+            if (!matchesGrade || !matchesType) return false
+
+            // If exam is targeted to a specific group, only include it if the student belongs to that group
+            if (e.target_audience === 'group') {
+              const examGroupName = (e.groups?.name || '').trim()
+              if (examGroupName && (!targetGroup || targetGroup.trim() !== examGroupName)) {
+                return false
+              }
+            }
+            return true
           })
           // The target student's attempts (admin can read any student via RLS).
           // Per-student key — cached internally so admins can flip back to the same
