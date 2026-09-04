@@ -55,7 +55,7 @@ import { detectDevTools } from './utils/devtools'
 
 // SECURITY CONFIGURATION: Set to true to enable the devtools blocker and copy/paste restrictions (blocked).
 // Set to false to disable them (not blocked).
-const ENABLE_DEVTOOLS_BLOCKER = false;
+const ENABLE_DEVTOOLS_BLOCKER = true;
 
 // Page loader component for Suspense fallback
 function PageLoader() {
@@ -696,59 +696,59 @@ function AppContent() {
 
       <div className="page-container">
         <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : isLoggedIn ? (user?.role === 'student' && !isFeatureEnabled('student_platform_access') ? <StudentPlatformDisabledPage /> : <Home />) : <Login />} />
-            <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
-            <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
-            <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
-            {/* Old /lectures URLs redirect to the new /homework page so
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={showCompanyLanding ? <GitFekraLanding /> : isLoggedIn ? (user?.role === 'student' && !isFeatureEnabled('student_platform_access') ? <StudentPlatformDisabledPage /> : <Home />) : <Login />} />
+              <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login />} />
+              <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
+              <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
+              {/* Old /lectures URLs redirect to the new /homework page so
                 shared links / browser bookmarks keep working. */}
-            <Route path="/homework" element={<FeatureRoute featureKey="homework"><PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute></FeatureRoute>} />
-            <Route path="/lectures" element={<FeatureRoute featureKey="homework"><Navigate to="/homework" replace /></FeatureRoute>} />
-            <Route path="/exams" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute></FeatureRoute>} />
-            <Route path="/exam-taking" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute></FeatureRoute>} />
-            <Route path="/videos" element={<FeatureRoute featureKey="videos"><PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute></FeatureRoute>} />
-            <Route path="/shop" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Shop /></ProtectedRoute></FeatureRoute>} />
-            <Route path="/packages" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Packages /></ProtectedRoute></FeatureRoute>} />
-            <Route path="/payments" element={<FeatureRoute featureKey="payments"><PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute></FeatureRoute>} />
+              <Route path="/homework" element={<FeatureRoute featureKey="homework"><PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute></FeatureRoute>} />
+              <Route path="/lectures" element={<FeatureRoute featureKey="homework"><Navigate to="/homework" replace /></FeatureRoute>} />
+              <Route path="/exams" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute></FeatureRoute>} />
+              <Route path="/exam-taking" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute></FeatureRoute>} />
+              <Route path="/videos" element={<FeatureRoute featureKey="videos"><PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute></FeatureRoute>} />
+              <Route path="/shop" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Shop /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/packages" element={<FeatureRoute featureKey="packages_store"><ProtectedRoute isLoggedIn={isLoggedIn}><Packages /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/payments" element={<FeatureRoute featureKey="payments"><PermissionRoute isLoggedIn={isLoggedIn} permission="payments"><Payments /></PermissionRoute></FeatureRoute>} />
 
-            <Route path="/chat" element={<FeatureRoute featureKey="chat"><PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute></FeatureRoute>} />
+              <Route path="/chat" element={<FeatureRoute featureKey="chat"><PermissionRoute isLoggedIn={isLoggedIn} permission="students"><StudentChat /></PermissionRoute></FeatureRoute>} />
 
-            {/* Feature-specific Reports: each follows its granular capability toggle */}
-            <Route path="/videos-report" element={<FeatureRoute featureKey="video_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute></FeatureRoute>} />
-            <Route path="/exams-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute></FeatureRoute>} />
-            <Route path="/homework-report" element={<FeatureRoute featureKey="homework_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute></FeatureRoute>} />
-            <Route path="/grades-report" element={<FeatureRoute featureKey="grades_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute></FeatureRoute>} />
-            <Route path="/attendance-report" element={<FeatureRoute featureKey="attendance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><AttendanceReport /></PermissionRoute></FeatureRoute>} />
-            <Route path="/finance-report" element={<FeatureRoute featureKey="finance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><FinanceReport /></PermissionRoute></FeatureRoute>} />
+              {/* Feature-specific Reports: each follows its granular capability toggle */}
+              <Route path="/videos-report" element={<FeatureRoute featureKey="video_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/exams-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/homework-report" element={<FeatureRoute featureKey="homework_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/grades-report" element={<FeatureRoute featureKey="grades_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/attendance-report" element={<FeatureRoute featureKey="attendance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><AttendanceReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/finance-report" element={<FeatureRoute featureKey="finance_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><FinanceReport /></PermissionRoute></FeatureRoute>} />
 
-            {/* Admin only */}
-            <Route path="/video-add" element={<FeatureRoute featureKey="videos"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute></FeatureRoute>} />
-            <Route path="/exam-add" element={<FeatureRoute featureKey="exams"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute></FeatureRoute>} />
-            <Route path="/report" element={<FeatureRoute featureKey="reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute></FeatureRoute>} />
-            
-            {/* Staff-only group reports: each follows its granular capability toggle */}
-            <Route path="/pre-assessment-report" element={<FeatureRoute featureKey="pre_assessments"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/videos-group-report" element={<FeatureRoute featureKey="video_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/exams-group-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/homework-group-report" element={<FeatureRoute featureKey="homework_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/grades-group-report" element={<FeatureRoute featureKey="grades_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/attendance-group-report" element={<FeatureRoute featureKey="attendance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/finance-group-report" element={<FeatureRoute featureKey="finance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute></FeatureRoute>} />
-            <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
+              {/* Admin only */}
+              <Route path="/video-add" element={<FeatureRoute featureKey="videos"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="videos"><VideoAdd /></AdminRoute></FeatureRoute>} />
+              <Route path="/exam-add" element={<FeatureRoute featureKey="exams"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="exams"><ExamAdd /></AdminRoute></FeatureRoute>} />
+              <Route path="/report" element={<FeatureRoute featureKey="reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><Report /></PermissionRoute></FeatureRoute>} />
 
-            <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
-            <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
-            <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
+              {/* Staff-only group reports: each follows its granular capability toggle */}
+              <Route path="/pre-assessment-report" element={<FeatureRoute featureKey="pre_assessments"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/videos-group-report" element={<FeatureRoute featureKey="video_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/exams-group-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/homework-group-report" element={<FeatureRoute featureKey="homework_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/grades-group-report" element={<FeatureRoute featureKey="grades_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/attendance-group-report" element={<FeatureRoute featureKey="attendance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/finance-group-report" element={<FeatureRoute featureKey="finance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
 
-            {/* Public report: general standalone report */}
-            <Route path="/public-report" element={<FeatureRoute featureKey="reports"><PublicReport /></FeatureRoute>} />
-            <Route path="/credits" element={<GitFekraLanding />} />
-            <Route path="/company" element={<GitFekraLanding />} />
-          </Routes>
-        </Suspense>
+              <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
+              <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />
+              <Route path="/privacy" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Privacy /></ProtectedRoute>} />
+
+              {/* Public report: general standalone report */}
+              <Route path="/public-report" element={<FeatureRoute featureKey="reports"><PublicReport /></FeatureRoute>} />
+              <Route path="/credits" element={<GitFekraLanding />} />
+              <Route path="/company" element={<GitFekraLanding />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </div>
 

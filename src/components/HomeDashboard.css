@@ -45,8 +45,8 @@
 }
 
 body.dark .hdash-card {
-  background: var(--card-bg, var(--dynamic-card, rgba(30, 41, 59, 0.45)));
-  border-color: var(--border-color, rgba(255, 255, 255, 0.08));
+  background: var(--dynamic-card, rgba(30, 41, 59, 0.45)) !important;
+  border-color: rgba(255, 255, 255, 0.08);
   box-shadow: var(--shadow);
 }
 

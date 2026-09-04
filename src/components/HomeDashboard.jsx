@@ -176,7 +176,8 @@ function StudentDashboard() {
     exams: new Set(),
   })
   
-  const [upcoming, setUpcoming] = useState(null)
+  const [upcomingEvent, setUpcomingEvent] = useState(null)
+  const [activeExam, setActiveExam] = useState(null)
   
   // Live content for THIS student's grade
   const { stats, loading, error, refresh } = useContentStats({ role: 'student', grade: userGrade })
@@ -257,7 +258,7 @@ function StudentDashboard() {
           exams: completedExs,
         })
 
-        // 2. Query scheduled_events first
+        // 2. Query scheduled_events (Calendar upcoming events)
         const nowIso = new Date().toISOString()
         const { data: dbEvents } = await supabase
           .from('scheduled_events')
@@ -271,7 +272,7 @@ function StudentDashboard() {
 
         if (dbEvents && dbEvents.length > 0) {
           const nextEvent = dbEvents[0]
-          setUpcoming({
+          setUpcomingEvent({
             id: nextEvent.id,
             title: nextEvent.title,
             event_type: nextEvent.event_type,
@@ -279,45 +280,47 @@ function StudentDashboard() {
             isScheduledEvent: true
           })
         } else {
-          // Fallback: Resolve "Next/Upcoming Exam" from the old exams system
-          const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
-            supabase
-              .from('exams')
-              .select('id, title, created_at, available_hours')
-              .eq('grade', userGrade)
-              // Pre-video gate assessments are not exams the student can go
-              // and sit — never surface one as "your next exam".
-              .eq('origin', 'library')
-              .order('created_at', { ascending: false })
-              .then((r) => { if (r.error) throw r.error; return r.data || [] })
-          )
+          setUpcomingEvent(null)
+        }
 
-          if (cancelled) return
+        // 3. Query Active Exam (Always check for currently open uncompleted exams)
+        const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
+          supabase
+            .from('exams')
+            .select('id, title, created_at, available_hours')
+            .eq('grade', userGrade)
+            // Pre-video gate assessments are not exams the student can go
+            // and sit — never surface one as "your next exam".
+            .eq('origin', 'library')
+            .order('created_at', { ascending: false })
+            .then((r) => { if (r.error) throw r.error; return r.data || [] })
+        )
 
-          if (dbExams && dbExams.length > 0) {
-            const nextExam = dbExams.find(e => !completedExs.has(e.id))
-            if (nextExam) {
-              const createdTime = new Date(nextExam.created_at).getTime()
-              const availableHours = nextExam.available_hours || 72
-              const availableUntil = createdTime + availableHours * 60 * 60 * 1000
-              
-              if (availableUntil > Date.now()) {
-                setUpcoming({
-                  id: nextExam.id,
-                  title: nextExam.title,
-                  event_type: 'exam',
-                  at: new Date(availableUntil).toISOString(),
-                  isScheduledEvent: false
-                })
-              } else {
-                setUpcoming(null)
-              }
+        if (cancelled) return
+
+        if (dbExams && dbExams.length > 0) {
+          const nextExam = dbExams.find(e => !completedExs.has(e.id))
+          if (nextExam) {
+            const createdTime = new Date(nextExam.created_at).getTime()
+            const availableHours = nextExam.available_hours || 72
+            const availableUntil = createdTime + availableHours * 60 * 60 * 1000
+            
+            if (availableUntil > Date.now()) {
+              setActiveExam({
+                id: nextExam.id,
+                title: nextExam.title,
+                event_type: 'exam',
+                at: new Date(availableUntil).toISOString(),
+                isScheduledEvent: false
+              })
             } else {
-              setUpcoming(null)
+              setActiveExam(null)
             }
           } else {
-            setUpcoming(null)
+            setActiveExam(null)
           }
+        } else {
+          setActiveExam(null)
         }
       } catch (err) {
         console.error('Error loading live student dashboard stats:', err)
@@ -328,11 +331,12 @@ function StudentDashboard() {
   }, [userId, userGrade])
 
   const lastItem = recentNav[0]
-  const countdown = useCountdown(upcoming?.at)
+  const eventCountdown = useCountdown(upcomingEvent?.at)
+  const examCountdown = useCountdown(activeExam?.at)
 
-  const cardTitle = useMemo(() => {
-    if (!upcoming) return 'الامتحان القادم'
-    switch (upcoming.event_type) {
+  const eventTitle = useMemo(() => {
+    if (!upcomingEvent) return 'الحدث القادم'
+    switch (upcomingEvent.event_type) {
       case 'video': return 'المحاضرة القادمة 🎥'
       case 'homework': return 'الواجب القادم 📖'
       case 'exam': return 'الامتحان القادم 📝'
@@ -340,11 +344,11 @@ function StudentDashboard() {
       case 'announcement': return 'تنبيه هام 🔔'
       default: return 'الفعالية القادمة 📅'
     }
-  }, [upcoming])
+  }, [upcomingEvent])
 
-  const cardIcon = useMemo(() => {
-    if (!upcoming) return 'fa-hourglass-half'
-    switch (upcoming.event_type) {
+  const eventIcon = useMemo(() => {
+    if (!upcomingEvent) return 'fa-calendar-days'
+    switch (upcomingEvent.event_type) {
       case 'video': return 'fa-video'
       case 'homework': return 'fa-clipboard-list'
       case 'exam': return 'fa-file-signature'
@@ -352,18 +356,18 @@ function StudentDashboard() {
       case 'announcement': return 'fa-bullhorn'
       default: return 'fa-calendar-days'
     }
-  }, [upcoming])
+  }, [upcomingEvent])
 
-  const linkInfo = useMemo(() => {
-    if (!upcoming) return { to: '/exams', label: 'استعد الآن' }
-    switch (upcoming.event_type) {
+  const eventLink = useMemo(() => {
+    if (!upcomingEvent) return { to: '/exams', label: 'استعد الآن' }
+    switch (upcomingEvent.event_type) {
       case 'video': return { to: '/videos', label: 'شاهد الآن' }
       case 'homework': return { to: '/homework', label: 'افتح الواجب' }
       case 'exam': return { to: '/exams', label: 'استعد الآن' }
       case 'payment': return { to: '/payments', label: 'تفاصيل الدفع' }
       default: return { to: '/shop', label: 'افتح المتجر' }
     }
-  }, [upcoming])
+  }, [upcomingEvent])
 
   return (
     <section className="hdash hdash-student">
@@ -407,28 +411,90 @@ function StudentDashboard() {
         {isFeatureEnabled('exams') && <ProgressRow label="الامتحانات" data={progress.exams}    accent="var(--season-accent-soft, var(--primary, #f59e0b))" />}
       </WidgetCard>
 
-      <WidgetCard
-        icon={cardIcon}
-        title={cardTitle}
-        accent="amber"
-      >
-        {upcoming && countdown ? (
+      {/* 1. Upcoming Scheduled Event (Calendar Event set by Secretary/Admin) */}
+      {upcomingEvent && eventCountdown && (
+        <WidgetCard
+          icon={eventIcon}
+          title={eventTitle}
+          accent="amber"
+        >
           <div className="hdash-countdown">
-            <div className="hdash-countdown-title">{upcoming.title}</div>
-            <div className="hdash-countdown-grid">
-              <CountCell value={countdown.days} label="يوم" />
-              <CountCell value={countdown.hours} label="ساعة" />
-              <CountCell value={countdown.minutes} label="دقيقة" />
-              <CountCell value={countdown.seconds} label="ثانية" />
+            <div className="hdash-countdown-title">{upcomingEvent.title}</div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: '700',
+              padding: '3px 10px',
+              borderRadius: '999px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: 'var(--primary, #6366f1)',
+              marginBottom: '10px'
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }}></span>
+              يبدأ خلال:
             </div>
-            <Link to={linkInfo.to} className="hdash-countdown-cta">
-              {linkInfo.label} <i className="fas fa-arrow-left"></i>
+            <div className="hdash-countdown-grid">
+              <CountCell value={eventCountdown.days} label="يوم" />
+              <CountCell value={eventCountdown.hours} label="ساعة" />
+              <CountCell value={eventCountdown.minutes} label="دقيقة" />
+              <CountCell value={eventCountdown.seconds} label="ثانية" />
+            </div>
+            <Link to={eventLink.to} className="hdash-countdown-cta">
+              {eventLink.label} <i className="fas fa-arrow-left"></i>
             </Link>
           </div>
-        ) : (
+        </WidgetCard>
+      )}
+
+      {/* 2. Currently Active Exam (Ongoing exam available for the student) */}
+      {activeExam && examCountdown && (
+        <WidgetCard
+          icon="fa-file-signature"
+          title="امتحان متاح حالياً 📝"
+          accent="emerald"
+        >
+          <div className="hdash-countdown">
+            <div className="hdash-countdown-title">{activeExam.title}</div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: '700',
+              padding: '3px 10px',
+              borderRadius: '999px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              color: '#10b981',
+              marginBottom: '10px'
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }}></span>
+              متاح حالياً • ينتهي خلال:
+            </div>
+            <div className="hdash-countdown-grid">
+              <CountCell value={examCountdown.days} label="يوم" />
+              <CountCell value={examCountdown.hours} label="ساعة" />
+              <CountCell value={examCountdown.minutes} label="دقيقة" />
+              <CountCell value={examCountdown.seconds} label="ثانية" />
+            </div>
+            <Link to="/exams" className="hdash-countdown-cta" style={{ color: '#10b981' }}>
+              ابدأ الامتحان الآن <i className="fas fa-arrow-left"></i>
+            </Link>
+          </div>
+        </WidgetCard>
+      )}
+
+      {/* 3. Empty State if neither exists */}
+      {!upcomingEvent && !activeExam && (
+        <WidgetCard
+          icon="fa-calendar-check"
+          title="المواعيد والامتحانات"
+          accent="amber"
+        >
           <EmptyHint icon="fa-calendar-check" text="لا توجد محاضرات أو امتحانات مجدولة حالياً" />
-        )}
-      </WidgetCard>
+        </WidgetCard>
+      )}
     </section>
   )
 }

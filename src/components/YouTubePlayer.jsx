@@ -61,6 +61,24 @@ const QUALITY_LABEL = {
   default: 'Auto',
 }
 
+function IconRewind5({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: 'block' }}>
+      <path d="M12.5 5V1.5L8 6l4.5 4.5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4.5c0 4.14 3.36 7.5 7.5 7.5s7.5-3.36 7.5-7.5-3.36-7.5-7.5-7.5z" />
+      <text x="12" y="15.2" textAnchor="middle" fontSize="7" fontWeight="800" fill="currentColor" fontFamily="system-ui, -apple-system, sans-serif">5</text>
+    </svg>
+  )
+}
+
+function IconForward5({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: 'block' }}>
+      <path d="M11.5 5V1.5l4.5 4.5-4.5 4.5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.14-3.36 7.5-7.5 7.5S4 17.14 4 13s3.36-7.5 7.5-7.5z" />
+      <text x="12" y="15.2" textAnchor="middle" fontSize="7" fontWeight="800" fill="currentColor" fontFamily="system-ui, -apple-system, sans-serif">5</text>
+    </svg>
+  )
+}
+
 export default function YouTubePlayer({
   videoId,
   onEnded,
@@ -87,7 +105,10 @@ export default function YouTubePlayer({
   const [muted, setMuted]       = useState(startMuted)
   const [volume, setVolume]     = useState(100)
   const [qualities, setQualities] = useState([])
-  const [quality, setQuality]   = useState('auto')
+  const [quality, setQuality]   = useState(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
+  })
+  const userSelectedQualityRef  = useRef(false)
   const [rate, setRate]         = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -143,13 +164,24 @@ export default function YouTubePlayer({
             setVolume(e.target.getVolume() ?? 100)
             setMuted(Boolean(e.target.isMuted?.()))
             if (startMuted) { try { e.target.mute() } catch {} }
-            // Kick off playback briefly so YouTube resolves the real
-            // quality list (getAvailableQualityLevels returns [] until
-            // the video has actually loaded a stream).
+
+            // Default to 480p ('large') or 360p ('medium') so student bandwidth is conserved
+            const pref = (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
+            try { e.target.setPlaybackQuality(pref) } catch {}
+
             const refreshQualities = () => {
               try {
                 const qs = e.target.getAvailableQualityLevels?.() || []
-                if (qs.length) setQualities(qs)
+                if (qs.length) {
+                  setQualities(qs)
+                  if (!userSelectedQualityRef.current) {
+                    const target = qs.includes(pref) ? pref : (qs.includes('large') ? 'large' : (qs.includes('medium') ? 'medium' : qs[qs.length - 1]))
+                    if (target) {
+                      e.target.setPlaybackQuality(target)
+                      setQuality(target)
+                    }
+                  }
+                }
               } catch {}
             }
             refreshQualities()
@@ -161,9 +193,21 @@ export default function YouTubePlayer({
           },
           onStateChange: (e) => {
             const YTs = window.YT.PlayerState
-            if (e.data === YTs.PLAYING)   setPlaying(true)
+            if (e.data === YTs.PLAYING) {
+              setPlaying(true)
+              if (!userSelectedQualityRef.current) {
+                const pref = (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
+                try { e.target.setPlaybackQuality(pref) } catch {}
+              }
+            }
             if (e.data === YTs.PAUSED)    setPlaying(false)
-            if (e.data === YTs.BUFFERING) setPlaying(true)
+            if (e.data === YTs.BUFFERING) {
+              setPlaying(true)
+              if (!userSelectedQualityRef.current) {
+                const pref = (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
+                try { e.target.setPlaybackQuality(pref) } catch {}
+              }
+            }
             if (e.data === YTs.ENDED) {
               setPlaying(false)
               if (typeof onEnded === 'function') onEnded()
@@ -173,7 +217,18 @@ export default function YouTubePlayer({
             if (d && d !== duration) setDuration(d)
           },
           onPlaybackQualityChange: (e) => {
-            setQuality(e.data || 'auto')
+            if (!userSelectedQualityRef.current) {
+              // If YouTube promotes to 1080p or 720p automatically, force it back to 480p/360p
+              if (e.data === 'hd1080' || e.data === 'hd720' || e.data === 'hd1440' || e.data === 'highres') {
+                const pref = (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
+                try {
+                  e.target.setPlaybackQuality(pref)
+                  setQuality(pref)
+                  return
+                } catch {}
+              }
+            }
+            setQuality(e.data || 'large')
             try {
               const qs = e.target.getAvailableQualityLevels?.() || []
               if (qs.length) setQualities(qs)
@@ -381,6 +436,10 @@ export default function YouTubePlayer({
   }
 
   const pickQuality = (q) => {
+    userSelectedQualityRef.current = true
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('masaar_student_quality', q)
+    }
     const p = playerRef.current; if (!p) return
     try { p.setPlaybackQuality(q) } catch {}
     setQuality(q); setMenuOpen(false)
@@ -423,16 +482,23 @@ export default function YouTubePlayer({
         ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : null),
       }}
     >
-      {/* The YT iframe mounts here. Controls are layered above.
-          Set pointerEvents: 'none' to block direct interactions and prevent native controls on mobile. */}
-      <div ref={hostRef} style={{
-        position: 'absolute',
-        top: fullscreen ? 0 : '-10%',
-        left: 0,
-        width: '100%',
-        height: fullscreen ? '100%' : '120%',
-        pointerEvents: 'none',
-      }} />
+      {/* The YT iframe mounts here inside a persistent crop container.
+          This shifts YouTube's top channel/title bar and bottom watermark/controls
+          completely outside the overflow:hidden wrapper on both mobile and desktop. */}
+      <div
+        className="ytp-crop-wrapper"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: fullscreen ? 0 : (isNarrow ? '-64px' : '-48px'),
+          height: fullscreen ? '100%' : (isNarrow ? 'calc(100% + 128px)' : 'calc(100% + 96px)'),
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        <div ref={hostRef} style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
+      </div>
 
       {/* Clickable transparent layer — catches clicks so YouTube's
           in-frame overlays (title, share, channel) are unreachable.
@@ -519,14 +585,36 @@ export default function YouTubePlayer({
               100% { opacity: 0; transform: scale(1); }
             }
             .ytp-custom-btn {
-              transition: all 0.2s ease !important;
+              transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
             .ytp-custom-btn:hover {
-              background: rgba(255, 255, 255, 0.15) !important;
-              color: #f56565 !important;
+              background: rgba(255, 255, 255, 0.18) !important;
+              color: #ffffff !important;
+              transform: scale(1.06);
             }
             .ytp-custom-btn:active {
               transform: scale(0.92) !important;
+            }
+            .ytp-main-play-btn:hover {
+              background: var(--primary-hover, var(--primary, #6d28d9)) !important;
+              transform: scale(1.1) !important;
+              box-shadow: 0 4px 16px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
+            }
+            .ytp-center-play-button:hover {
+              transform: translate(-50%, -50%) scale(1.1) !important;
+              background: var(--primary, #7c3aed) !important;
+              border-color: #ffffff !important;
+              box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 32px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
+            }
+            .ytp-center-play-button:active {
+              transform: translate(-50%, -50%) scale(0.95) !important;
+            }
+            .ytp-crop-wrapper iframe,
+            .ytp-crop-wrapper > div {
+              width: 100% !important;
+              height: 100% !important;
+              border: none !important;
+              pointer-events: none !important;
             }
           `}</style>
         </div>
@@ -537,92 +625,115 @@ export default function YouTubePlayer({
         <button
           onClick={togglePlay}
           aria-label="Play"
+          className="ytp-center-play-button"
           style={{
-            position: 'absolute', left: '50%', top: '50%',
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
             transform: 'translate(-50%, -50%)',
-            width: isNarrow ? 56 : 72, height: isNarrow ? 56 : 72, borderRadius: '50%',
-            border: 'none',
-            background: 'rgba(0,0,0,0.55)',
-            color: '#fff', fontSize: isNarrow ? 20 : 28, cursor: 'pointer',
-            display: 'grid', placeItems: 'center',
+            width: isNarrow ? 54 : 64,
+            height: isNarrow ? 54 : 64,
+            borderRadius: '50%',
+            border: '2px solid rgba(255, 255, 255, 0.35)',
+            background: 'radial-gradient(circle at 35% 35%, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.98))',
+            color: '#fff',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             zIndex: 3,
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6), 0 0 24px var(--primary-glow, rgba(124, 58, 237, 0.35))',
+            transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          <i className="fas fa-play" style={{ marginInlineStart: 4 }}></i>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 3 }}>
+            <path d="M8 5v14l11-7z" />
+          </svg>
         </button>
       )}
 
-      {/* Fixed control bar — always visible. On phones we collapse the
-          gap, drop the volume slider, and shrink the icon buttons so the
-          row actually fits on one line instead of overflowing. */}
+      {/* Fixed control bar — always visible */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: isNarrow ? 40 : 56,
-          padding: isNarrow ? '0 8px' : '0 12px',
+          height: isNarrow ? 44 : 52,
+          padding: isNarrow ? '0 8px' : '0 14px',
           display: 'flex', alignItems: 'center',
           gap: isNarrow ? 6 : 10,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.15))',
+          background: 'linear-gradient(to top, rgba(10,12,18,0.92), rgba(10,12,18,0.6) 70%, rgba(10,12,18,0))',
           color: '#fff',
           zIndex: 4,
         }}
       >
-        {/* Skip back 5s — counts as watched */}
-        <button
-          onClick={() => seekBy(-5, 5)}
-          aria-label="Back 5 seconds"
-          title="إرجاع 5 ثوانٍ"
-          className="ytp-custom-btn"
-          style={{ ...getIconBtnStyle(isNarrow), position: 'relative' }}
-        >
-          <i className="fas fa-rotate-left"></i>
-          <span style={{
-            position: 'absolute',
-            top: '55%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: isNarrow ? 7 : 8,
-            fontWeight: 800,
-          }}>5</span>
-        </button>
+        {/* Left Controls Group */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? 4 : 6, flexShrink: 0 }}>
+          {/* Skip back 5s — counts as watched */}
+          <button
+            onClick={() => seekBy(-5, 5)}
+            aria-label="Back 5 seconds"
+            title="إرجاع 5 ثوانٍ"
+            className="ytp-custom-btn ytp-skip-btn"
+            style={getIconBtnStyle(isNarrow)}
+          >
+            <IconRewind5 size={isNarrow ? 18 : 20} />
+          </button>
 
-        {/* Play / Pause */}
-        <button
-          onClick={togglePlay}
-          aria-label={playing ? 'Pause' : 'Play'}
-          className="ytp-custom-btn"
-          style={getIconBtnStyle(isNarrow)}
-        >
-          <i className={`fas ${playing ? 'fa-pause' : 'fa-play'}`}></i>
-        </button>
+          {/* Play / Pause */}
+          <button
+            onClick={togglePlay}
+            aria-label={playing ? 'Pause' : 'Play'}
+            title={playing ? 'إيقاف مؤقت' : 'تشغيل'}
+            className="ytp-custom-btn ytp-main-play-btn"
+            style={{
+              ...getIconBtnStyle(isNarrow),
+              borderRadius: '50%',
+              background: 'var(--primary, #7c3aed)',
+              color: '#fff',
+              boxShadow: '0 2px 8px var(--primary-glow, rgba(124, 58, 237, 0.4))',
+            }}
+          >
+            {playing ? (
+              <svg width={isNarrow ? 13 : 15} height={isNarrow ? 13 : 15} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+              </svg>
+            ) : (
+              <svg width={isNarrow ? 13 : 15} height={isNarrow ? 13 : 15} viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}>
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
 
-        {/* Skip forward 5s — counts as watched */}
-        <button
-          onClick={() => seekBy(5, 5)}
-          aria-label="Forward 5 seconds"
-          title="تقديم 5 ثوانٍ"
-          className="ytp-custom-btn"
-          style={{ ...getIconBtnStyle(isNarrow), position: 'relative' }}
-        >
-          <i className="fas fa-rotate-right"></i>
-          <span style={{
-            position: 'absolute',
-            top: '55%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: isNarrow ? 7 : 8,
-            fontWeight: 800,
-          }}>5</span>
-        </button>
+          {/* Skip forward 5s — counts as watched */}
+          <button
+            onClick={() => seekBy(5, 5)}
+            aria-label="Forward 5 seconds"
+            title="تقديم 5 ثوانٍ"
+            className="ytp-custom-btn ytp-skip-btn"
+            style={getIconBtnStyle(isNarrow)}
+          >
+            <IconForward5 size={isNarrow ? 18 : 20} />
+          </button>
 
-        {/* Time — hidden on phones to free up width for the scrubber. */}
-        {!isNarrow && (
-          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, opacity: 0.9 }}>
-            {fmtTime(current)} / {fmtTime(duration)}
-          </span>
-        )}
+          {/* Time — hidden on phones to free up width for the scrubber. */}
+          {!isNarrow && (
+            <span style={{
+              fontVariantNumeric: 'tabular-nums',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'rgba(255, 255, 255, 0.85)',
+              marginInlineStart: 8,
+              marginInlineEnd: 4,
+              whiteSpace: 'nowrap',
+              userSelect: 'none',
+            }}>
+              {fmtTime(current)} / {fmtTime(duration)}
+            </span>
+          )}
+        </div>
 
         {/* Scrubber */}
         <div
@@ -638,6 +749,7 @@ export default function YouTubePlayer({
             borderRadius: 99,
             position: 'relative',
             cursor: 'pointer',
+            margin: '0 4px',
           }}
         >
           <div style={{
@@ -646,7 +758,7 @@ export default function YouTubePlayer({
           }} />
           <div style={{
             position: 'absolute', inset: 0, width: `${pct}%`,
-            background: 'linear-gradient(90deg,#667eea,#c53030)',
+            background: 'var(--primary, #7c3aed)',
             borderRadius: 99,
           }} />
           <div style={{
@@ -656,143 +768,150 @@ export default function YouTubePlayer({
           }} />
         </div>
 
-        {/* Volume — phones use hardware buttons, so we hide the slider
-            and even the mute icon (the platform handles mute via the
-            silent switch / volume keys). Desktop keeps both. */}
-        {!isNarrow && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
-              <i className={`fas ${muted || volume === 0 ? 'fa-volume-xmark' : volume < 40 ? 'fa-volume-low' : 'fa-volume-high'}`}></i>
-            </button>
-            <input
-              type="range" min={0} max={100}
-              value={muted ? 0 : volume}
-              onChange={(e) => onVolume(e.target.value)}
+        {/* Right Controls Group */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? 4 : 8, flexShrink: 0 }}>
+          {/* Volume */}
+          {!isNarrow && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
+                <i className={`fas ${muted || volume === 0 ? 'fa-volume-xmark' : volume < 40 ? 'fa-volume-low' : 'fa-volume-high'}`}></i>
+              </button>
+              <input
+                type="range" min={0} max={100}
+                value={muted ? 0 : volume}
+                onChange={(e) => onVolume(e.target.value)}
+                style={{
+                  width: 64, accentColor: 'var(--primary, #7c3aed)', cursor: 'pointer', height: 4,
+                }}
+              />
+            </div>
+          )}
+
+          {/* Playback speed */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setRateMenuOpen(v => !v); setMenuOpen(false) }}
+              aria-label="Playback speed"
+              title="سرعة التشغيل"
+              className="ytp-custom-btn"
               style={{
-                width: 70, accentColor: '#c53030', cursor: 'pointer',
+                ...getIconBtnStyle(isNarrow),
+                width: 'auto',
+                padding: '0 8px',
+                fontSize: 12, fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
-            />
+            >
+              <i className="fas fa-gauge-high" style={{ fontSize: 11 }}></i>
+              <span>{rate === 1 ? '1x' : `${rate}x`}</span>
+            </button>
+            {rateMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 8px)',
+                right: 0,
+                minWidth: 120,
+                background: 'rgba(20,20,26,0.96)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                overflow: 'hidden',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
+              }}>
+                <div style={{
+                  padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
+                }}>السرعة</div>
+                {RATES.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => pickRate(r)}
+                    style={{
+                      display: 'flex', width: '100%', justifyContent: 'space-between',
+                      alignItems: 'center', gap: 10,
+                      padding: '8px 12px',
+                      background: r === rate ? 'var(--primary-soft, rgba(124, 58, 237, 0.2))' : 'transparent',
+                      color: '#fff', border: 'none', cursor: 'pointer',
+                      fontSize: 13, textAlign: 'start',
+                    }}
+                  >
+                    <span>{r === 1 ? 'عادي (1x)' : `${r}x`}</span>
+                    {r === rate && <i className="fas fa-check" style={{ color: 'var(--primary, #a78bfa)' }}></i>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Playback speed */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => { setRateMenuOpen(v => !v); setMenuOpen(false) }}
-            aria-label="Playback speed"
-            title="سرعة التشغيل"
-            className="ytp-custom-btn"
-            style={{
-              ...getIconBtnStyle(isNarrow),
-              width: isNarrow ? 30 : 'auto',
-              padding: isNarrow ? 0 : '0 10px',
-              fontSize: isNarrow ? 11 : 12, fontWeight: 700,
-            }}
-          >
-            <i className="fas fa-gauge-high" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
-            {!isNarrow && (rate === 1 ? '1x' : `${rate}x`)}
-          </button>
-          {rateMenuOpen && (
-            <div style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 8px)',
-              right: 0,
-              minWidth: 120,
-              background: 'rgba(20,20,26,0.96)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 8,
-              overflow: 'hidden',
-              boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
-            }}>
+          {/* Quality */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => { setMenuOpen((v) => !v); setRateMenuOpen(false) }}
+              aria-label="Quality"
+              title="جودة الفيديو"
+              className="ytp-custom-btn ytp-quality-btn"
+              style={{
+                ...getIconBtnStyle(isNarrow),
+                width: 'auto',
+                padding: '0 8px',
+                fontSize: 12, fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <i className="fas fa-gear" style={{ fontSize: 11 }}></i>
+              <span>{QUALITY_LABEL[quality] || (quality === 'large' ? '480p' : quality === 'medium' ? '360p' : '480p')}</span>
+            </button>
+            {menuOpen && (
               <div style={{
-                padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
-              }}>السرعة</div>
-              {RATES.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => pickRate(r)}
-                  style={{
-                    display: 'flex', width: '100%', justifyContent: 'space-between',
-                    alignItems: 'center', gap: 10,
-                    padding: '8px 12px',
-                    background: r === rate ? 'rgba(197,48,48,0.2)' : 'transparent',
-                    color: '#fff', border: 'none', cursor: 'pointer',
-                    fontSize: 13, textAlign: 'start',
-                  }}
-                >
-                  <span>{r === 1 ? 'عادي (1x)' : `${r}x`}</span>
-                  {r === rate && <i className="fas fa-check" style={{ color: '#f56565' }}></i>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                position: 'absolute',
+                bottom: 'calc(100% + 8px)',
+                right: 0,
+                minWidth: 140,
+                background: 'rgba(20,20,26,0.96)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                overflow: 'hidden',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
+              }}>
+                <div style={{
+                  padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
+                }}>الجودة</div>
+                {(() => {
+                  const order = ['highres','hd2160','hd1440','hd1080','hd720','large','medium','small','tiny']
+                  const concrete = order.filter((o) => qualities.includes(o))
+                  const list = concrete.length ? concrete : ['large', 'medium', 'small']
+                  return list.map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => pickQuality(q)}
+                      style={{
+                        display: 'flex', width: '100%', justifyContent: 'space-between',
+                        alignItems: 'center', gap: 10,
+                        padding: '8px 12px',
+                        background: q === quality ? 'var(--primary-soft, rgba(124, 58, 237, 0.2))' : 'transparent',
+                        color: '#fff', border: 'none', cursor: 'pointer',
+                        fontSize: 13, textAlign: 'start',
+                      }}
+                    >
+                      <span>{QUALITY_LABEL[q] || q}</span>
+                      {q === quality && <i className="fas fa-check" style={{ color: 'var(--primary, #a78bfa)' }}></i>}
+                    </button>
+                  ))
+                })()}
+              </div>
+            )}
+          </div>
 
-        {/* Quality */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => { setMenuOpen((v) => !v); setRateMenuOpen(false) }}
-            aria-label="Quality"
-            className="ytp-custom-btn"
-            style={{
-              ...getIconBtnStyle(isNarrow),
-              width: isNarrow ? 30 : 'auto',
-              padding: isNarrow ? 0 : '0 10px',
-              fontSize: isNarrow ? 11 : 12, fontWeight: 600,
-            }}
-          >
-            <i className="fas fa-gear" style={{ marginInlineEnd: isNarrow ? 0 : 6 }}></i>
-            {!isNarrow && (QUALITY_LABEL[quality] || 'Auto')}
+          {/* Fullscreen */}
+          <button onClick={toggleFullscreen} aria-label="Fullscreen" title="ملء الشاشة" className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
+            <i className={`fas ${fullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
           </button>
-          {menuOpen && (
-            <div style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 8px)',
-              right: 0,
-              minWidth: 140,
-              background: 'rgba(20,20,26,0.96)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 8,
-              overflow: 'hidden',
-              boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
-            }}>
-              <div style={{
-                padding: '8px 12px', fontSize: 11, opacity: 0.6, textTransform: 'uppercase',
-              }}>الجودة</div>
-              {/* Always show "Auto" first, then all available concrete
-                  levels sorted best-to-worst. YouTube returns them in a
-                  mostly-sorted order but we normalise here so the list
-                  is consistent across videos. */}
-              {(() => {
-                const order = ['highres','hd2160','hd1440','hd1080','hd720','large','medium','small','tiny']
-                const concrete = order.filter((o) => qualities.includes(o))
-                const list = ['auto', ...concrete]
-                return list.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => pickQuality(q)}
-                  style={{
-                    display: 'flex', width: '100%', justifyContent: 'space-between',
-                    alignItems: 'center', gap: 10,
-                    padding: '8px 12px',
-                    background: q === quality ? 'rgba(197,48,48,0.2)' : 'transparent',
-                    color: '#fff', border: 'none', cursor: 'pointer',
-                    fontSize: 13, textAlign: 'start',
-                  }}
-                >
-                  <span>{QUALITY_LABEL[q] || q}</span>
-                  {q === quality && <i className="fas fa-check" style={{ color: '#f56565' }}></i>}
-                </button>
-                ))
-              })()}
-            </div>
-          )}
         </div>
-
-        {/* Fullscreen */}
-        <button onClick={toggleFullscreen} aria-label="Fullscreen" className="ytp-custom-btn" style={getIconBtnStyle(isNarrow)}>
-          <i className={`fas ${fullscreen ? 'fa-compress' : 'fa-expand'}`}></i>
-        </button>
       </div>
 
       {/* Block right-click in the controls/overlay too */}
@@ -801,14 +920,18 @@ export default function YouTubePlayer({
 }
 
 const getIconBtnStyle = (isNarrow) => ({
-  width: isNarrow ? 30 : 36,
-  height: isNarrow ? 30 : 36,
+  width: isNarrow ? 32 : 36,
+  height: isNarrow ? 32 : 36,
   borderRadius: 8,
   border: 'none',
   background: 'transparent',
   color: '#fff',
   cursor: 'pointer',
-  display: 'grid', placeItems: 'center',
-  fontSize: isNarrow ? 12 : 14,
-  transition: 'background 0.12s',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  flexShrink: 0,
+  fontSize: isNarrow ? 12 : 13,
+  transition: 'background 0.15s ease, transform 0.15s ease, color 0.15s ease',
 })

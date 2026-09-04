@@ -17,6 +17,7 @@ import BunnyPlayer from '../components/BunnyPlayer'
 import VideoComments from '../components/VideoComments'
 import AssessmentRunner from '../components/AssessmentRunner'
 import VideoTitleCard from '../components/VideoTitleCard'
+import VideoPlayerWorkspace from '../components/VideoPlayerWorkspace'
 import ScreenGuard from '../components/ScreenGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import useExitGuard from '../hooks/useExitGuard'
@@ -315,18 +316,19 @@ export default function Packages() {
     return Math.max(0, cap - partViewsUsed(part))
   }
 
-  const playVideoPart = async (part) => {
+  const playVideoPart = async (part, overrideVideo = null) => {
+    const activeVid = overrideVideo || currentVideo
     if (userRole !== 'admin' && userRole !== 'assistant') {
-      const left = partTrialsLeft(currentVideo, part)
+      const left = partTrialsLeft(activeVid, part)
       if (left <= 0) {
         return showAlertModal(
           'انتهت محاولاتك',
-          `لقد استخدمت كل محاولات مشاهدة هذا الجزء (${partViewCap(currentVideo, part)}). تواصل مع المعلم للحصول على محاولات إضافية.`
+          `لقد استخدمت كل محاولات مشاهدة هذا الجزء (${partViewCap(activeVid, part)}). تواصل مع المعلم للحصول على محاولات إضافية.`
         )
       }
     }
 
-    const blocking = findBlockingGate(currentVideo, part)
+    const blocking = findBlockingGate(activeVid, part)
     if (blocking && userRole !== 'admin' && userRole !== 'assistant') {
       if (blocking.attempts_remaining <= 0) {
         return showAlertModal(
@@ -423,10 +425,17 @@ export default function Packages() {
     if (userRole !== 'admin' && userRole !== 'assistant' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
     }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     setCurrentVideo(video)
-    setSelectedPart(null)
     setView('player')
     setShowPdf(!!video.pdf_url)
+
+    const firstPart = video.parts && video.parts.length > 0 ? video.parts[0] : null
+    if (firstPart) {
+      playVideoPart(firstPart, video)
+    } else {
+      setSelectedPart(null)
+    }
   }
 
   // Smart Notes saving/seeking
@@ -626,8 +635,8 @@ export default function Packages() {
                           <div className="vc-stats">
                             <div className="vc-stat">
                               <span className="vc-stat-icon">🎬</span>
-                              <span className="vc-stat-label">عدد الأجزاء</span>
-                              <span className="vc-stat-value">{vid.totalParts} جزء</span>
+                              <span className="vc-stat-label">نوع المحتوى</span>
+                              <span className="vc-stat-value">{vid.totalParts > 1 ? `${vid.totalParts} أجزاء` : 'فيديو كامل'}</span>
                             </div>
                             <div className="vc-stat">
                               <span className="vc-stat-icon">🕒</span>
@@ -778,299 +787,78 @@ export default function Packages() {
 
       {/* 3. Inline video player view */}
       {view === 'player' && currentVideo && (
-        <div>
-          <div className="vid-player-header max-w-7xl mx-auto">
-            <button className="btn btn-outline vid-player-back" onClick={goBackToDetail}>← العودة لمحتوى الباقة</button>
-            <div className="vid-player-titles">
-              <VideoTitleCard
-                title={currentVideo?.title}
-                description={currentVideo?.description}
-                eyebrow="من محتوى الباقة"
-                icon="fa-play"
-                meta={[
-                  currentVideo?.totalParts
-                    ? { icon: 'fa-layer-group', text: `${currentVideo.totalParts} أجزاء` }
-                    : null,
-                  currentVideo?.pdf_url
-                    ? { icon: 'fa-file-pdf', text: 'مذكرة مرفقة' }
-                    : null,
-                ].filter(Boolean)}
-              />
-            </div>
-            <div className="vid-player-spacer" />
-          </div>
-
-          <div className="video-player-container">
-            <div className="video-player-card card" style={{ padding: 12 }}>
-              <div className="video-column">
-                {selectedPart && (selectedPart.youtubeId || selectedPart.driveId || selectedPart.bunnyVideoId) ? (
-                  (() => {
-                    const handleProgress = ({ watchedSeconds }) => {
-                      if (userRole === 'admin' || userRole === 'assistant' || !currentUser?.id) return
-                      updatePartProgress({
-                        student_id: currentUser.id,
-                        video_id: currentVideo.id,
-                        part_id: selectedPart.id,
-                        seconds: watchedSeconds,
-                      }).then((row) => {
-                        if (!row) return
-                        setProgressRows((prev) => {
-                          const others = prev.filter((p) => p.part_id !== selectedPart.id)
-                          return [...others, row]
-                        })
-                      }).catch((e) => console.error('updatePartProgress failed', e))
-                    }
-                    const seed = progressRows.find((r) => r.part_id === selectedPart.id)?.seconds_watched || 0
-                    return (
-                      <PlayerFacade key={selectedPart.id} part={selectedPart}>
-                        {selectedPart.source === 'bunny' ? (
-                          <BunnyPlayer
-                            partId={selectedPart.id}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                            onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeGate}
-                          />
-                        ) : selectedPart.source === 'drive' ? (
-                          <DrivePlayer
-                            driveId={selectedPart.driveId}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                          />
-                        ) : (
-                          <YouTubePlayer
-                            videoId={selectedPart.youtubeId}
-                            initialWatchedSeconds={seed}
-                            onProgress={handleProgress}
-                            seekTrigger={seekTrigger}
-                            onTimeUpdate={handleTimeUpdate}
-                            forcePause={!!activeGate}
-                          />
-                        )}
-                      </PlayerFacade>
-                    )
-                  })()
+        <VideoPlayerWorkspace
+          video={currentVideo}
+          selectedPart={selectedPart}
+          onSelectPart={playVideoPart}
+          onBack={goBackToDetail}
+          backLabel="العودة لمحتوى الباقة"
+          levelEyebrow="من محتوى الباقة"
+          userRole={userRole}
+          currentUser={currentUser}
+          partTrialsLeft={partTrialsLeft}
+          partViewCap={partViewCap}
+          findBlockingGate={findBlockingGate}
+          gatesForPart={gatesForPart}
+          notes={notes}
+          loadingNotes={loadingNotes}
+          noteContent={noteContent}
+          onNoteContentChange={setNoteContent}
+          onSaveNote={handleSaveNote}
+          onDeleteNote={handleDeleteNote}
+          onSeekToNote={handleSeekToNote}
+          currentTime={currentTime}
+          formatTime={formatTime}
+          discussionSlot={<VideoComments videoId={currentVideo.id} currentUser={currentUser} />}
+          pdfSlot={currentVideo?.pdf_url ? <PdfInline url={currentVideo.pdf_url} title={currentVideo.title} /> : null}
+        >
+          {selectedPart && (() => {
+            const handleProgress = ({ watchedSeconds }) => {
+              if (userRole === 'admin' || userRole === 'assistant' || !currentUser?.id) return
+              updatePartProgress({
+                student_id: currentUser.id,
+                video_id: currentVideo.id,
+                part_id: selectedPart.id,
+                seconds: watchedSeconds,
+              }).then((row) => {
+                if (!row) return
+                setProgressRows((prev) => {
+                  const others = prev.filter((p) => p.part_id !== selectedPart.id)
+                  return [...others, row]
+                })
+              }).catch((e) => console.error('updatePartProgress failed', e))
+            }
+            const seed = progressRows.find((r) => r.part_id === selectedPart.id)?.seconds_watched || 0
+            return (
+              <PlayerFacade key={selectedPart.id} part={selectedPart}>
+                {selectedPart.source === 'bunny' ? (
+                  <BunnyPlayer
+                    partId={selectedPart.id}
+                    initialWatchedSeconds={seed}
+                    onProgress={handleProgress}
+                    onTimeUpdate={handleTimeUpdate}
+                    forcePause={!!activeGate}
+                  />
+                ) : selectedPart.source === 'drive' ? (
+                  <DrivePlayer
+                    driveId={selectedPart.driveId}
+                    initialWatchedSeconds={seed}
+                    onProgress={handleProgress}
+                  />
                 ) : (
-                  <div className="placeholder-video">
-                    <div>
-                      <div style={{ fontSize: '4rem', marginBottom: '16px' }}>▶️</div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>اختر جزء لبدء المشاهدة</h3>
-                      <p style={{ opacity: 0.8 }}>اضغط على أحد الأجزاء من القائمة الجانبية</p>
-                    </div>
-                  </div>
+                  <YouTubePlayer
+                    videoId={selectedPart.youtubeId}
+                    initialWatchedSeconds={seed}
+                    onProgress={handleProgress}
+                    seekTrigger={seekTrigger}
+                    onTimeUpdate={handleTimeUpdate}
+                    forcePause={!!activeGate}
+                  />
                 )}
-              </div>
-            </div>
-
-            {showPdf && currentVideo?.pdf_url && (
-              <div className="video-pdf-card card" style={{ padding: '20px 24px' }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 16,
-                  borderBottom: '1px solid var(--border-primary)',
-                  paddingBottom: 12
-                }}>
-                  <h3 className="title-section" style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
-                    <span>مذكرة المحاضرة: {currentVideo.title}</span>
-                  </h3>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline btn-sm"
-                    style={{ padding: '6px 14px', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444', background: 'transparent', margin: 0 }}
-                    onClick={() => setShowPdf(false)}
-                  >
-                    إخفاء المذكرة
-                  </button>
-                </div>
-                <div style={{ width: '100%', height: '800px', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
-                  <PdfInline url={currentVideo.pdf_url} title={currentVideo.title} />
-                </div>
-              </div>
-            )}
-
-            <div className="video-sidebar">
-              {currentVideo?.pdf_url && (
-                <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <button
-                    type="button"
-                    className={`btn ${showPdf ? 'btn-primary' : 'btn-outline'}`}
-                    style={{ width: '100%', justifyContent: 'center', gap: 8, padding: '12px', fontSize: '0.95rem', margin: 0, direction: 'rtl' }}
-                    onClick={() => setShowPdf(!showPdf)}
-                  >
-                    <i className={showPdf ? "fas fa-eye-slash" : "fas fa-file-pdf"} style={{ fontSize: '1.1rem' }}></i>
-                    <span>{showPdf ? "إخفاء مذكرة المحاضرة" : "عرض مذكرة المحاضرة"}</span>
-                  </button>
-                </div>
-              )}
-
-              <div className="card">
-                <h3 className="title-section text-center" style={{ color: 'var(--text-primary)' }}>أجزاء المحاضرة</h3>
-                <div id="partsList" data-quiz-tick={quizTick}>
-                  {currentVideo?.parts.map((part, index) => {
-                    const blocking = findBlockingGate(currentVideo, part)
-                    const left = partTrialsLeft(currentVideo, part)
-                    const cap = partViewCap(currentVideo, part)
-                    const outOfTrials = userRole !== 'admin' && userRole !== 'assistant' && left <= 0
-                    const locked = (!!blocking && userRole !== 'admin' && userRole !== 'assistant') || outOfTrials
-                    const isActive = selectedPart?.id === part.id
-                    const showTrials = userRole !== 'admin' && userRole !== 'assistant' && cap !== Infinity
-                    const trialColor = left <= 0 ? '#e53e3e' : left === 1 ? '#ed8936' : '#38a169'
-                    return (
-                      <div
-                        key={part.id}
-                        className={`part-item ${locked ? 'part-item-locked' : ''} ${isActive ? 'part-item-active' : ''}`}
-                        onClick={() => playVideoPart(part)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div className="title-card" style={{ color: 'var(--text-primary)', flex: 1 }}>
-                            {locked && <i className="fas fa-lock" style={{ marginInlineEnd: 6, color: '#ed8936' }}></i>}
-                            الجزء {index + 1}: {part.title}
-                          </div>
-                          {showTrials && (
-                            <span
-                              title="المحاولات المتبقية"
-                              style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                padding: '4px 10px',
-                                borderRadius: 999,
-                                background: `${trialColor}1a`,
-                                color: trialColor,
-                                border: `1px solid ${trialColor}55`,
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <i className="fas fa-eye" style={{ marginInlineEnd: 4 }}></i>
-                              {left} / {cap}
-                            </span>
-                          )}
-                        </div>
-                        {blocking && userRole !== 'admin' && userRole !== 'assistant' && (
-                          <div style={{ fontSize: '0.8rem', marginTop: '6px', fontWeight: 700, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: '#ed8936' }}>
-                              <i className="fas fa-clipboard-check"></i> {blocking.type_label} مطلوب: {blocking.title}
-                            </span>
-                            <span style={{ color: 'var(--text-secondary)' }}>
-                              <i className="fas fa-bullseye" style={{ marginInlineEnd: 4 }}></i>
-                              النجاح {blocking.passing_score}%
-                            </span>
-                            {/* Attempts remaining is the only progress signal a
-                                student gets before passing — never a score. */}
-                            <span style={{ color: blocking.attempts_remaining <= 1 ? '#e53e3e' : 'var(--text-secondary)' }}>
-                              <i className="fas fa-repeat" style={{ marginInlineEnd: 4 }}></i>
-                              {blocking.allowed_attempts === 0
-                                ? 'محاولات غير محدودة'
-                                : `متبقي ${blocking.attempts_remaining} من ${blocking.allowed_attempts} محاولة`}
-                            </span>
-                          </div>
-                        )}
-                        {!blocking && gatesForPart(part).length > 0 && userRole !== 'admin' && userRole !== 'assistant' && (
-                          <div style={{ fontSize: '0.8rem', color: '#38a169', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-lock-open"></i> تم اجتياز التقييم المطلوب
-                          </div>
-                        )}
-                        {outOfTrials && (
-                          <div style={{ fontSize: '0.8rem', color: '#e53e3e', marginTop: '6px', fontWeight: 700 }}>
-                            <i className="fas fa-circle-xmark"></i> انتهت محاولاتك لهذا الجزء
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Personal Smart Notes Card */}
-              {selectedPart?.source === 'youtube' && (
-                <div className="card notes-card mt-6" style={{ direction: 'rtl' }}>
-                  <h3 className="title-section text-center" style={{ color: 'var(--text-primary)', marginBottom: 12 }}>
-                    <i className="fas fa-book-open" style={{ marginInlineEnd: 8, color: 'var(--educational-primary)' }}></i>
-                    ملاحظات وتوقيت الفيديو
-                  </h3>
-
-                  {(userRole === 'admin' || userRole === 'assistant') && (
-                    <form onSubmit={handleSaveNote} className="note-form mb-4">
-                      <div className="note-input-container">
-                        <textarea
-                          className="note-textarea"
-                          placeholder="اكتب ملاحظة هنا أثناء المشاهدة..."
-                          value={noteContent}
-                          onChange={(e) => setNoteContent(e.target.value)}
-                          rows={3}
-                        />
-                        <div className="note-form-actions">
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm note-timestamp-btn"
-                            title="التوقيت الحالي"
-                          >
-                            <i className="fas fa-clock" style={{ marginInlineEnd: 4 }}></i>
-                            {formatTime(currentTime)}
-                          </button>
-                          <button type="submit" className="btn btn-primary btn-sm note-submit-btn" disabled={!noteContent.trim()}>
-                            حفظ الملاحظة
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  )}
-
-                  {/* Notes list */}
-                  <div className="notes-list-container">
-                    {loadingNotes ? (
-                      <div className="text-center p-4" style={{ color: 'var(--text-muted)' }}>
-                        <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }}></i>
-                        جاري تحميل الملاحظات...
-                      </div>
-                    ) : notes.length === 0 ? (
-                      <div className="text-center p-6 notes-empty-state">
-                        <i className="far fa-note-sticky" style={{ fontSize: '2rem', display: 'block', marginBottom: 8, opacity: 0.5 }}></i>
-                        <span>لا توجد ملاحظات محفوظة في هذا الجزء بعد.</span>
-                      </div>
-                    ) : (
-                      <div className="notes-list">
-                        {notes.map((note) => (
-                          <div key={note.id} className="note-item">
-                            <div className="note-header">
-                              <button
-                                onClick={() => handleSeekToNote(note.timestamp_seconds)}
-                                className="note-time-badge"
-                                title="انتقل إلى هذا الوقت"
-                              >
-                                <i className="fas fa-play" style={{ fontSize: '0.65rem', marginInlineEnd: 4 }}></i>
-                                {formatTime(note.timestamp_seconds)}
-                              </button>
-                              {(userRole === 'admin' || userRole === 'assistant') && (
-                                <button
-                                  onClick={() => handleDeleteNote(note.id)}
-                                  className="note-delete-btn"
-                                  title="حذف الملاحظة"
-                                >
-                                  <i className="fas fa-trash"></i>
-                                </button>
-                              )}
-                            </div>
-                            <p className="note-text">{note.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {currentVideo && (
-              <div className="video-comments-area">
-                <VideoComments videoId={currentVideo.id} currentUser={currentUser} />
-              </div>
-            )}
-          </div>
-        </div>
+              </PlayerFacade>
+            )
+          })()}
+        </VideoPlayerWorkspace>
       )}
 
       {/* 4. Homework Submit Modal */}
@@ -1166,12 +954,30 @@ function PlayerFacade({ part, children }) {
         padding: 0,
       }}
     >
-      <div className="facade-overlay">
-        <span className="facade-play-btn">
-          <i className="fas fa-play"></i>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'rgba(0,0,0,0.25)',
+        transition: 'background .15s',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.92)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.4)',
+          color: 'var(--primary, #7c3aed)', fontSize: 28,
+        }}>
+          <i className="fas fa-play" aria-hidden="true"></i>
         </span>
       </div>
-      <div className="facade-source-badge">
+      <div style={{
+        position: 'absolute', bottom: 12, insetInlineStart: 12,
+        background: 'rgba(0,0,0,0.65)', color: '#fff',
+        padding: '4px 10px', borderRadius: 6,
+        fontSize: 12, fontWeight: 600,
+      }}>
         {part.source === 'bunny' ? 'Bunny Stream' : part.source === 'drive' ? 'Google Drive' : 'YouTube'}
       </div>
     </button>
@@ -1183,10 +989,15 @@ function PdfInline({ url, title }) {
   const src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`
   const CLIP = 48
   return (
-    <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+    <div
+      tabIndex={-1}
+      style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}
+    >
       <iframe
         src={src}
         title={title}
+        tabIndex={-1}
+        loading="lazy"
         style={{
           position: 'absolute',
           top: -CLIP,

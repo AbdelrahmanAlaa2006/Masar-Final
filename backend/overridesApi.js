@@ -48,6 +48,8 @@ export async function listOverridesForTarget(scope, targetId, itemType) {
 function invalidateOverrideCaches() {
   invalidatePrefix('overrides:')
   invalidatePrefix('grades-summary:')
+  invalidatePrefix('student-exam-attempts-batch:')
+  invalidatePrefix('attempts:')
 }
 
 /* Admin: upsert one override row. Pass { allowed, attempts } — either may be

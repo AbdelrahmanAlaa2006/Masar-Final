@@ -41,6 +41,8 @@ export default function ExamTaking() {
   // this just no-ops on the second pass.
   const startedRef = useRef(false)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [mobileMapOpen, setMobileMapOpen] = useState(false)
+  const quickNavRef = useRef(null)
 
   // Extract user parameters and role once per component lifecycle
   const { guardLabel, isAdmin } = useMemo(() => {
@@ -252,6 +254,16 @@ export default function ExamTaking() {
     return () => clearInterval(timer)
   }, [examFinished, exam, isAdmin])
 
+  // Auto-scroll active quick-nav pill into view smoothly
+  useEffect(() => {
+    if (quickNavRef.current) {
+      const activeBtn = quickNavRef.current.querySelector('.is-active')
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }
+    }
+  }, [currentQuestion])
+
 
 
   const formatTime = seconds => {
@@ -438,34 +450,51 @@ export default function ExamTaking() {
       )}
       <div className={`et-layout ${examFinished ? 'is-finished' : ''}`}>
       {!examFinished && (
-        <aside className="et-sidepanel" aria-label="قائمة الأسئلة">
-          <div className="et-sidepanel-head">
-            <h3>الأسئلة</h3>
-            <span className="et-sidepanel-count">
-              {answeredCount} / {questions.length}
-            </span>
+        <aside className={`et-sidepanel ${mobileMapOpen ? 'is-mobile-open' : 'is-mobile-closed'}`} aria-label="قائمة الأسئلة">
+          <div className="et-sidepanel-head" onClick={() => setMobileMapOpen(v => !v)} role="button" tabIndex={0}>
+            <div className="et-sidepanel-title-wrap">
+              <span className="et-sidepanel-icon">📋</span>
+              <h3>الأسئلة</h3>
+            </div>
+            <div className="et-sidepanel-badges">
+              <span className="et-sidepanel-count">
+                {answeredCount} / {questions.length}
+              </span>
+              <span className="et-sidepanel-chevron" aria-hidden="true">
+                {mobileMapOpen ? '▲ إخفاء' : '▼ عرض'}
+              </span>
+            </div>
           </div>
-          <div className="et-sidepanel-grid">
-            {questions.map((_, idx) => {
-              const answered = answers[idx] && answers[idx].size > 0
-              const active = idx === currentQuestion
-              return (
-                <button
-                  key={idx}
-                  className={`et-side-num ${answered ? 'is-answered' : 'is-pending'} ${active ? 'is-active' : ''}`}
-                  onClick={() => setCurrentQuestion(idx)}
-                  aria-label={`السؤال ${idx + 1}${answered ? ' - تمت الإجابة' : ' - لم يُجَب بعد'}`}
-                  title={answered ? 'تمت الإجابة' : 'لم يُجَب بعد'}
-                >
-                  {idx + 1}
-                  {answered && <i className="fas fa-check et-side-num-tick" aria-hidden="true"></i>}
-                </button>
-              )
-            })}
-          </div>
-          <div className="et-sidepanel-legend">
-            <span><span className="et-legend-swatch is-answered"></span> أجبت</span>
-            <span><span className="et-legend-swatch is-pending"></span> متبقي</span>
+          <div className="et-sidepanel-body">
+            <div className="et-sidepanel-grid">
+              {questions.map((_, idx) => {
+                const answered = answers[idx] && answers[idx].size > 0
+                const active = idx === currentQuestion
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`et-side-num ${answered ? 'is-answered' : 'is-pending'} ${active ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setCurrentQuestion(idx)
+                      if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+                        setMobileMapOpen(false)
+                      }
+                    }}
+                    aria-label={`السؤال ${idx + 1}${answered ? ' - تمت الإجابة' : ' - لم يُجَب بعد'}`}
+                    title={answered ? 'تمت الإجابة' : 'لم يُجَب بعد'}
+                  >
+                    {idx + 1}
+                    {answered && <i className="fas fa-check et-side-num-tick" aria-hidden="true"></i>}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="et-sidepanel-legend">
+              <span><span className="et-legend-swatch is-active-legend"></span> الحالي</span>
+              <span><span className="et-legend-swatch is-answered"></span> أجبت</span>
+              <span><span className="et-legend-swatch is-pending"></span> متبقي</span>
+            </div>
           </div>
         </aside>
       )}
@@ -473,21 +502,54 @@ export default function ExamTaking() {
         {!examFinished ? (
           <>
             <div className="et-topbar">
-              <div className="et-topbar-stat">
-                <span>✅</span>
-                <span>أجبت: <strong>{answeredCount}</strong></span>
+              <div className="et-topbar-right">
+                <span className="et-topbar-title">
+                  السؤال {currentQuestion + 1} من {questions.length}
+                </span>
+                <span className="et-topbar-stat">
+                  <span>✅</span>
+                  <span><strong>{answeredCount}</strong></span>
+                </span>
               </div>
-              <div className="et-topbar-center">
-                السؤال {currentQuestion + 1} من {questions.length}
-              </div>
-              <div className={`et-timer ${timeLeft <= 60 ? 'et-timer-critical' : ''}`}>
-                <span>⏱</span>
-                <span>{formatTime(timeLeft)}</span>
+              <div className="et-topbar-left">
+                <button
+                  type="button"
+                  className={`et-map-trigger-btn ${mobileMapOpen ? 'is-open' : ''}`}
+                  onClick={() => setMobileMapOpen(v => !v)}
+                  aria-label="عرض خريطة الأسئلة"
+                >
+                  <span>📋</span>
+                  <span className="et-map-trigger-text">{mobileMapOpen ? 'إخفاء' : 'الأسئلة'}</span>
+                </button>
+                <div className={`et-timer ${timeLeft <= 60 ? 'et-timer-critical' : ''}`}>
+                  <span>⏱</span>
+                  <span>{formatTime(timeLeft)}</span>
+                </div>
               </div>
             </div>
 
             <div className="et-progress-track">
               <div className="et-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+
+            {/* Quick-Jump Question Strip (Mobile Friendly Horizontal Scroll) */}
+            <div className="et-quick-strip" ref={quickNavRef} aria-label="شريط الأسئلة السريع">
+              {questions.map((_, idx) => {
+                const answered = answers[idx] && answers[idx].size > 0
+                const active = idx === currentQuestion
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`et-quick-pill ${answered ? 'is-answered' : 'is-pending'} ${active ? 'is-active' : ''}`}
+                    onClick={() => setCurrentQuestion(idx)}
+                    aria-label={`سؤال ${idx + 1}`}
+                  >
+                    <span>{idx + 1}</span>
+                    {answered && <span className="et-quick-pill-dot">✓</span>}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Shared reading passage, re-shown above every linked question so

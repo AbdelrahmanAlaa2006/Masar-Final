@@ -8,6 +8,7 @@ import {
   resetStudentVideoAttempts,
   resetGradeVideoAttempts,
 } from '@backend/progressApi'
+import { resetStudentExamAttempts } from '@backend/examsApi'
 import { listVideoAssessmentsForVideos, invalidateGateCache } from '@backend/videoAssessmentsApi'
 import {
   ScopePicker,
@@ -257,9 +258,11 @@ export default function AttemptsPanel({
         } else if (target.kind === 'prep') {
           await resetGradeVideoAttempts({ grade: target.id, video_id: item.id })
         }
+      } else if (itemType === 'exam' && target.kind === 'student') {
+        await resetStudentExamAttempts({ student_id: target.id, exam_id: item.id })
       }
       if (itemType === 'video_assessment') invalidateGateCache()
-      flash(isVideoView
+      flash(isVideoView || itemType === 'exam'
         ? 'تم تصفير المحاولات وإعادة الإعدادات الافتراضية'
         : 'تم استرجاع الإعدادات الافتراضية')
     } catch (e) {
