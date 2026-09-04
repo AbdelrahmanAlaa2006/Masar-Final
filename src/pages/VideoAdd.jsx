@@ -310,9 +310,8 @@ export default function VideoAdd() {
       invalidateCache('videos')
       setShowSuccess(true)
       setTimeout(() => {
-        setShowSuccess(false)
-        resetForm()
-      }, 3000)
+        navigate('/videos')
+      }, 1200)
     } catch (err) {
       if (uploadedKey || uploadedUrl) {
         deleteR2Object({ key: uploadedKey, url: uploadedUrl }).catch(() => {})
@@ -818,8 +817,8 @@ export default function VideoAdd() {
         {showSuccess && (
           <div className="success-message">
             <div className="success-content">
-              <span className="success-icon">✅</span>
-              <p>تم حفظ الفيديو بنجاح!</p>
+              <span className="success-icon">🎉</span>
+              <p>تم حفظ الفيديو بنجاح! سيتم توجيهك إلى صفحة الفيديوهات...</p>
             </div>
           </div>
         )}
