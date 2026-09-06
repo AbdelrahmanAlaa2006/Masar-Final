@@ -1085,6 +1085,7 @@ export default function AttendancePanel({ onBack, flash }) {
         const m = isNaN(date.getTime()) ? new Date().getMonth() : date.getMonth()
         return m >= 7 ? m - 7 : m + 5
       }
+      const currentAcadIdx = getAcadMonthIdx(new Date())
 
       const monthlyFee = Number(feesByGrade[studentData.grade]) || 0
       const studentId = studentData.student_id

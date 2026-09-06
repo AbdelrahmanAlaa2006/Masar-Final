@@ -75,6 +75,9 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const confirmBtnRef = useRef(null)
   const modalBoxRef = useRef(null)
 
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+
   // Multi-month unpaid tracking
   const unpaidMonthsList = Array.isArray(student.unpaid_months) ? student.unpaid_months : []
   const initialAmountDue = typeof student.amount_due === 'number'
