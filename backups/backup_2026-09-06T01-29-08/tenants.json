@@ -1,0 +1,3337 @@
+[
+  {
+    "id": "46c9da75-7682-47aa-8a27-0e517cdfdcdc",
+    "slug": "mona-chem",
+    "domain": null,
+    "name": "منصة الكيمياء - أ. منى",
+    "logo_url": null,
+    "primary_color": "#ff4500",
+    "secondary_color": "#3b82f6",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "chemistry",
+      "teacher": {
+        "bio": {
+          "ar": "بشرح الكيمياء بأسلوب علمي حديث وتجارب عملية تقرب المفاهيم والمعادلات لذهن الطالب وتسهل عليه الفهم والاستيعاب.",
+          "en": "I teach chemistry with a modern scientific style and practical experiments that bring concepts and equations to life."
+        },
+        "name": {
+          "ar": "منى أحمد",
+          "en": "Mona Ahmed"
+        },
+        "role": {
+          "ar": "مدرّسة الكيمياء القديرة",
+          "en": "Senior Chemistry Teacher"
+        },
+        "quote": {
+          "ar": "«الكيمياء ليست حفظاً للمعادلات، بل فهم لكيفية عمل الكون.»",
+          "en": "“Chemistry is not about memorizing equations, but understanding how the universe works.”"
+        },
+        "experience": {
+          "ar": "+8",
+          "en": "+8"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "99%",
+          "en": "99%"
+        },
+        "target_stage": {
+          "ar": "المرحلة الثانوية",
+          "en": "Secondary Stage"
+        },
+        "students_count": {
+          "ar": "+1,500",
+          "en": "+1,500"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المرحلة التي تدرّسها",
+          "en": "Stage she teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في الكيمياء - شرح مبسط وتجارب تفاعلية تجعلك تعشق الكيمياء وتتفوق فيها.",
+          "en": "An educational platform specializing in chemistry - simplified explanations and interactive experiments that make you love chemistry."
+        },
+        "brand_short": {
+          "ar": "الأستاذة منى كيمياء",
+          "en": "Mona Chemistry"
+        },
+        "hero_title_a": {
+          "ar": "علم الكيمياء",
+          "en": "Chemistry Science"
+        },
+        "hero_title_b": {
+          "ar": "المتعة والفهم معاً",
+          "en": "Understanding made fun"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "زورنا في مقرنا",
+          "en": "Visit our center"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للدروس والمراجعات العملية بدمنهور.",
+          "en": "Our main center for lessons and practical reviews in Damanhour."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "chemistry"
+    },
+    "created_at": "2026-05-27T00:12:02.425143+00:00"
+  },
+  {
+    "id": "25e32227-564e-4833-9463-0d17dce27574",
+    "slug": "sherif-physics",
+    "domain": null,
+    "name": "منصة الفيزياء - أ. شريف",
+    "logo_url": null,
+    "primary_color": "#059669",
+    "secondary_color": "#0d9488",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "physics",
+      "teacher": {
+        "bio": {
+          "ar": "شرح مبسط لقوانين الفيزياء الكلاسيكية والحديثة مع حلول عملية ونماذج تفاعلية لضمان الدرجات النهائية.",
+          "en": "Simplified explanations of classical and modern physics with practical solutions and interactive models."
+        },
+        "name": {
+          "ar": "شريف محمد",
+          "en": "Sherif Mohamed"
+        },
+        "role": {
+          "ar": "مدرّس الفيزياء للثانوية العامة",
+          "en": "Physics Teacher"
+        },
+        "quote": {
+          "ar": "«الفيزياء هي لغة الكون، وفهمها هو أول خطوة لتغيير العالم.»",
+          "en": "“Physics is the language of the universe, and understanding it is the first step to changing the world.”"
+        },
+        "experience": {
+          "ar": "+12",
+          "en": "+12"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "98%",
+          "en": "98%"
+        },
+        "target_stage": {
+          "ar": "المرحلة الثانوية",
+          "en": "Secondary Stage"
+        },
+        "students_count": {
+          "ar": "+3,000",
+          "en": "+3,000"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المرحلة التي يدرّسها",
+          "en": "Stage she teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في الفيزياء - شرح مبسط وتطبيقات عملية تجعلك تفهم الطبيعة والكون من حولك بسهولة.",
+          "en": "An educational platform specializing in physics - simplified explanations and practical applications that help you understand nature."
+        },
+        "brand_short": {
+          "ar": "منصة شريف فيزياء",
+          "en": "Sherif Physics Platform"
+        },
+        "hero_title_a": {
+          "ar": "علم الفيزياء الكلاسيكية",
+          "en": "Classical Physics"
+        },
+        "hero_title_b": {
+          "ar": "افهم قوانين الطبيعة",
+          "en": "Discover Nature Laws"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "زورنا في مقرنا",
+          "en": "Visit our center"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب.",
+          "en": "Our main center for lectures and student follow-up."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "physics"
+    },
+    "created_at": "2026-05-27T00:12:02.425143+00:00"
+  },
+  {
+    "id": "0647f1c0-e807-4005-a0ed-3151175dd86e",
+    "slug": "ahmed-math",
+    "domain": null,
+    "name": "الأستاذ أحمد محمد - رياضيات",
+    "logo_url": null,
+    "primary_color": "#ef4444",
+    "secondary_color": "#f97316",
+    "config": {
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "teacher": {
+        "bio": {
+          "ar": "شرح مبسط لقواعد الحساب، الجبر، والهندسة بأساليب حديثة وحلول ذكية تؤهلك للتفوق والدرجة النهائية.",
+          "en": "Simplified explanations of calculus, algebra, and geometry with modern techniques and smart solutions."
+        },
+        "name": {
+          "ar": "محمد علي",
+          "en": "Mohamed Ali"
+        },
+        "role": {
+          "ar": "مدرّس الرياضيات القدير",
+          "en": "Senior Mathematics Teacher"
+        },
+        "quote": {
+          "ar": "«الرياضيات هي مفتاح كل العلوم، وفهمها يفتح لك أبواب المستقبل.»",
+          "en": "“Mathematics is the key to all sciences, and understanding it opens the doors to the future.”"
+        },
+        "experience": {
+          "ar": "+15",
+          "en": "+15"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "99%",
+          "en": "99%"
+        },
+        "target_stage": {
+          "ar": "الإعدادية والثانوية",
+          "en": "Prep & Secondary"
+        },
+        "students_count": {
+          "ar": "+4,000",
+          "en": "+4,000"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المراحل التي يدرّسها",
+          "en": "Stages he teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في الرياضيات - شرح مبسط وتطبيقات عملية تجعلك تتفوق في المعادلات وتتقن الحساب هندسياً وجبرياً.",
+          "en": "An educational platform specializing in mathematics - simplified explanations and practical applications that help you master equations."
+        },
+        "brand_short": {
+          "ar": "منصة الرياضيات",
+          "en": "Math Platform"
+        },
+        "hero_title_a": {
+          "ar": "علم الرياضيات",
+          "en": "Mathematics Science"
+        },
+        "hero_title_b": {
+          "ar": "الأرقام بلغة الفهم",
+          "en": "Numbers made easy"
+        }
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "زورنا في مقرنا",
+          "en": "Visit our center"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب.",
+          "en": "Our main center for lectures and student follow-up."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "math"
+    },
+    "created_at": "2026-05-27T00:12:02.425143+00:00"
+  },
+  {
+    "id": "0c691b86-f138-41a7-b1b9-35a60d688900",
+    "slug": "elsharawy",
+    "domain": null,
+    "name": "منصة الشعراوي",
+    "logo_url": "/images/Elshaarawy Logo.png",
+    "primary_color": "#a86e28",
+    "secondary_color": "#175e54",
+    "config": {
+      "theme": {
+        "bg_dark": "#14110e",
+        "bg_light": "#f5f1e9",
+        "card_dark": "#1e1a15",
+        "text_dark": "#ece7dd",
+        "card_light": "#fdfbf5",
+        "text_light": "#191714",
+        "border_accent": "rgba(168,110,40,0.22)"
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        }
+      ],
+      "contact": {},
+      "socials": {
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "primary-multi",
+      "teacher": {
+        "bio": "معلم متخصص في تدريس وتأسيس مختلف مواد المرحلة الابتدائية (اللغة العربية، الرياضيات، العلوم، الدراسات الاجتماعية، واللغة الإنجليزية) بأسلوب شيق ومبتكر يصنع الأبطال ويبني أساساً تعليمياً متميزاً لكل طالب.",
+        "name": "الشعراوي",
+        "role": "صانع الأبطال — معلم مختلف مواد المرحلة الابتدائية والتأسيس",
+        "quote": "«صناعة الأبطال تبدأ من التأسيس القوي، الفهم الممتع، وحب المعرفة من الصغر.»",
+        "experience": "+10",
+        "image_base": "/images/ELshaarawy Teacher Image.png",
+        "image_hover": "/images/ELshaarawy Teacher Image.png",
+        "satisfaction": "99%",
+        "target_stage": "المرحلة الابتدائية (تأسيس ومواد متعددة)",
+        "students_count": "+2,500",
+        "learning_system": "حضوري وأونلاين تفاعلي",
+        "target_stage_label": "المرحلة والتخصص"
+      },
+      "branding": {
+        "hero_sub": "المنصة التعليمية المتكاملة لتدريس وتأسيس مختلف مواد المرحلة الابتدائية — شرح تفاعلي مبسط، تدريبات مستمرة، ومتابعة دقيقة لصناعة جيل من الأبطال.",
+        "brand_short": "الشعراوي صانع الأبطال",
+        "description": "منصة أستاذ الشعراوي صانع الأبطال لتدريس وتأسيس مختلف مواد المرحلة الابتدائية لجميع الصفوف الابتدائية.",
+        "hero_title_a": "منصة الشعراوي",
+        "hero_title_b": "صانع الأبطال — المرحلة الابتدائية"
+      },
+      "features": {
+        "chat": false,
+        "exams": false,
+        "grades": true,
+        "groups": true,
+        "videos": false,
+        "reports": true,
+        "branches": true,
+        "homework": false,
+        "payments": true,
+        "attendance": true,
+        "exam_reports": false,
+        "grades_entry": true,
+        "announcements": true,
+        "grades_export": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_debts": true,
+        "student_notes": true,
+        "video_reports": false,
+        "center_reports": true,
+        "grades_reports": true,
+        "online_reports": false,
+        "packages_store": false,
+        "student_access": true,
+        "student_resets": true,
+        "finance_reports": true,
+        "homework_reveal": false,
+        "payment_history": true,
+        "pre_assessments": false,
+        "video_playlists": false,
+        "homework_reports": false,
+        "purchases_review": false,
+        "student_accounts": true,
+        "attendance_export": true,
+        "attendance_manual": true,
+        "assistant_accounts": true,
+        "attendance_history": true,
+        "attendance_reports": true,
+        "attendance_scanner": true,
+        "barcode_labels_print": true,
+        "student_content_access": false,
+        "whatsapp_notifications": true,
+        "student_platform_access": false
+      },
+      "location": {
+        "branches": [],
+        "description": "مقر السنتر والمجموعات الدراسية"
+      },
+      "subjects": [
+        "اللغة العربية",
+        "الرياضيات",
+        "العلوم",
+        "الدراسات الاجتماعية",
+        "اللغة الإنجليزية"
+      ],
+      "announcements": [
+        {
+          "icon": "📚",
+          "text": "شرح وتأسيس شامل لمختلف مواد المرحلة الابتدائية بأسلوب ممتع ومبسط"
+        },
+        {
+          "icon": "🏆",
+          "text": "تدريبات واختبارات دورية لصناعة الأبطال وتنمية مهارات التفكير"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات تفاعلية ومتابعة مستمرة لأداء كل طالب مع ولي الأمر"
+        }
+      ],
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-08-20T21:16:32.468983+00:00"
+  },
+  {
+    "id": "f2657349-f2d1-4123-a3d5-31bbed288d55",
+    "slug": "eyad-atef",
+    "domain": null,
+    "name": "اياد العلقامي",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "math",
+      "teacher": {
+        "name": "Admin"
+      },
+      "branding": {
+        "hero_sub": "أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.",
+        "brand_short": "اياد العلقامي",
+        "hero_title_a": "اياد العلقامي"
+      },
+      "features": {
+        "chat": true,
+        "payments": true,
+        "notifications": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "زورنا في مقرنا",
+          "en": "Visit our center"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب.",
+          "en": "Our main center for lectures and student follow-up."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "math"
+    },
+    "created_at": "2026-07-08T02:04:28.45361+00:00"
+  },
+  {
+    "id": "83224f65-5486-416c-ab64-60de979c8eb6",
+    "slug": "mohamed-yasser",
+    "domain": "mrmohamedyasser.com",
+    "name": "مستر محمد ياسر — لغة إنجليزية",
+    "logo_url": "/images/Logo Mr Mohamed Yasser.png",
+    "primary_color": "#ee7d30",
+    "secondary_color": "#1c3257",
+    "config": {
+      "theme": {},
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": false
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": false
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {},
+      "socials": {
+        "youtube": "https://youtube.com/@englishwithmohamedyasser?si=-riciQe2OrXqFAHE",
+        "facebook": "https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr",
+        "whatsapp": "https://wa.me/201036836301"
+      },
+      "subject": "english",
+      "teacher": {
+        "bio": "معلم متميز للغة الإنجليزية بخبرة 9 سنوات في تدريس وتأسيس طلاب المرحلة الثانوية، متخصص في تبسيط القواعد وشرح مهارات الترجمة والفهم والتدريب المكثف على مواصفات الامتحانات الحديثة بأسلوب تفاعلي.",
+        "name": "محمد ياسر",
+        "role": "معلم أول اللغة الإنجليزية للمرحلة الثانوية",
+        "quote": "«The more you learn , the more you earn .»",
+        "experience": "9 سنوات خبرة",
+        "image_base": "/images/Image Mr Mohamed Yasser.png",
+        "image_hover": "/images/Image Mr Mohamed Yasser.png",
+        "satisfaction": "99%",
+        "target_stage": "المرحلة الثانوية",
+        "students_count": "+3,500",
+        "learning_system": "حضوري بالسنتر وأونلاين تفاعلي"
+      },
+      "branding": {
+        "hero_sub": "أكتشف مجموعة واسعة من المحاضرات والامتحانات والفيديوهات التعليمية المصممة خصيصًا لمساعدتك على التفوق وتحقيق أهدافك الدراسية.",
+        "brand_short": "الاستاذ محمد ياسر",
+        "hero_title_a": "الاستاذ محمد ياسر",
+        "hero_title_b": "The More You Earn"
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "exam_reports": true,
+        "grades_entry": true,
+        "announcements": false,
+        "grades_export": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_debts": true,
+        "video_reports": true,
+        "center_reports": true,
+        "grades_reports": true,
+        "online_reports": true,
+        "packages_store": true,
+        "student_resets": true,
+        "finance_reports": true,
+        "homework_reveal": true,
+        "payment_history": true,
+        "pre_assessments": true,
+        "video_playlists": true,
+        "homework_reports": true,
+        "purchases_review": true,
+        "student_accounts": true,
+        "attendance_export": true,
+        "attendance_manual": true,
+        "attendance_history": true,
+        "attendance_reports": true,
+        "attendance_scanner": true,
+        "barcode_labels_print": true,
+        "student_content_access": true,
+        "whatsapp_notifications": false,
+        "student_platform_access": true
+      },
+      "location": {
+        "title": "موقع السنتر",
+        "branches": [
+          {
+            "name": "المقر الرئيسي (السنتر)",
+            "phone": "01036836301",
+            "address": "شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي",
+            "hours_days": "يومياً",
+            "hours_time": "٨:٠٠ ص - ٦:٠٠ م",
+            "map_iframe_url": "https://www.google.com/maps/place/31%C2%B002'34.0%22N+30%C2%B027'33.9%22E/@31.042781,30.459413,17z/data=!3m1!4b1!4m4!3m3!8m2!3d31.042781!4d30.459413!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDgyNi4wIKXMDSoASAFQAw%3D%3D",
+            "directions_link": "https://maps.app.goo.gl/B5A3xiQDpSaqZppG6"
+          }
+        ],
+        "description": "شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي.",
+        "whatsapp_link": "https://wa.me/201036836301"
+      },
+      "announcements": [
+        {
+          "icon": "🚀",
+          "text": "قريبًا: دورات مكثفة للمرحلة الإعدادية"
+        },
+        {
+          "icon": "📅",
+          "text": "امتحانات شهرية جديدة كل أسبوع"
+        },
+        {
+          "icon": "🎁",
+          "text": "خصومات خاصة لأوائل المشتركين"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات حصرية قادمة هذا الشهر"
+        },
+        {
+          "icon": "💬",
+          "text": "انضم لمجتمع الطلاب على الواتساب"
+        },
+        {
+          "icon": "🏆",
+          "text": "مسابقة شهرية بجوائز قيمة"
+        }
+      ],
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-08-27T10:53:53.145456+00:00"
+  },
+  {
+    "id": "f320a316-1ecb-4acb-9ea3-8ea5710de52d",
+    "slug": "sherif-humanities",
+    "domain": null,
+    "name": "الأستاذ شريف - تاريخ وجغرافيا",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "humanities",
+      "teacher": {
+        "bio": {
+          "ar": "شرح مفصل لكافة الأحداث والخرائط التاريخية والجغرافية بأساليب تعليمية حديثة تعزز الحفظ والفهم.",
+          "en": "Detailed lectures covering geography maps and historical events with modern tools."
+        },
+        "name": {
+          "ar": "شريف المواد الأدبية",
+          "en": "Sherif Humanities"
+        },
+        "role": {
+          "ar": "مدرّس التاريخ والجغرافيا للمرحلتين الإعدادية والثانوية",
+          "en": "History & Geography Teacher"
+        },
+        "quote": {
+          "ar": "«التاريخ يعلمنا من أين أتينا، والجغرافيا ترسم لنا أين نحن ذاهبون.»",
+          "en": "“History teaches us where we came from, and geography shows where we are going.”"
+        },
+        "experience": {
+          "ar": "+15",
+          "en": "+15"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "98%",
+          "en": "98%"
+        },
+        "target_stage": {
+          "ar": "الإعدادية والثانوية",
+          "en": "Prep & Secondary"
+        },
+        "students_count": {
+          "ar": "+3,500",
+          "en": "+3,500"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المراحل التي يدرّسها",
+          "en": "Stages he teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في التاريخ والجغرافيا - شرح مبسط للخرائط والأحداث التاريخية بأسلوب سردي ممتع وسهل الحفظ.",
+          "en": "An educational platform specializing in history and geography - simplifying maps and historical events."
+        },
+        "brand_short": {
+          "ar": "منصة الدراسات الاجتماعية",
+          "en": "Humanities Platform"
+        },
+        "hero_title_a": {
+          "ar": "الجغرافيا والتاريخ",
+          "en": "Geography & History"
+        },
+        "hero_title_b": {
+          "ar": "رحلة عبر التاريخ والجغرافيا",
+          "en": "Journey Through Time"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "مقرنا الرئيسي",
+          "en": "Our Location"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للدروس العملية ومتابعة الطلاب بدمنهور.",
+          "en": "Our main center for lectures and student follow-up in Damanhour."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "humanities"
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "b6629d6b-24c6-41a0-b9dc-6e6ca5bb21d8",
+    "slug": "mohamed-abdella",
+    "domain": "mrmohamedabdella.com",
+    "name": "الاستاذ محمد عبداللاه - برمجة وذكاء اصطناعي",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "theme": {},
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": false,
+        "primary-2": false,
+        "primary-3": false,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": false
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {},
+      "gateway": {
+        "type": "wapilot",
+        "token": "",
+        "country_code": "20",
+        "template_lang": "ar",
+        "template_name": "",
+        "wapilot_token": "lfWf0M4LVohTS8qOfvrxJQudvGjP1uZckr41HwVnAL",
+        "phone_number_id": "",
+        "wapilot_api_url": "",
+        "warmup_started_at": "2026-07-13T16:51:58.011454+00:00",
+        "wapilot_instance_id": "instance4698"
+      },
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://youtube.com/@powertec-ai?si=Xa1HYOouu93h5z3K",
+        "facebook": "https://www.facebook.com/share/1CAuoHLo69/",
+        "whatsapp": "https://wa.me/201002780259",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "cyber",
+      "teacher": {
+        "bio": "أستاذ البرمجة بالتربية والتعليم، حاصل على دراسات عليا في الحاسبات والمعلومات وعضو مايكروسوفت الأمريكية. خبرة تزيد عن 20 عاماً في تدريس البرمجة وتأسيس الطلاب على التفكير البرمجي السليم والذكاء الاصطناعي.",
+        "name": "محمد عبد اللاه",
+        "role": "أستاذ البرمجة بالتربية والتعليم - عضو مايكروسوفت الأمريكية - دراسات عليا حاسبات ومعلومات",
+        "quote": "«البرمجة هي البوابة الرئيسية للمستقبل»",
+        "experience": "+20 عاماً",
+        "image_base": "/images/Mr Mohamed Abdella Image.png",
+        "image_hover": "/images/Mr Mohamed Abdella Image.png",
+        "satisfaction": "100%",
+        "target_stage": "المراحل الإعدادية، الثانوية، وبكالوريا عام وازهر",
+        "students_count": "+10,000 طالب",
+        "learning_system": "سنتر و اونلاين تفاعلي",
+        "target_stage_label": {
+          "ar": "المراحل التي يدرّسها",
+          "en": "Stages he teaches"
+        }
+      },
+      "branding": {
+        "tagline": "طريقك إلى التفوق الدراسي",
+        "hero_sub": "منصة متخصصة في تدريس البرمجة والذكاء الاصطناعي - بأساليب تفاعلية حديثة تبسط المفاهيم البرمجية والتقنية لتأسيس قادة المستقبل.",
+        "brand_short": {
+          "ar": "منصة باور",
+          "en": "Power Platform"
+        },
+        "description": "منصة تعليمية متكاملة تقدم محاضرات وامتحانات وفيديوهات تفاعلية للمراحل الإعدادية والثانوية والبكالوريا عام وأزهر، مع متابعة دقيقة لأداء كل طالب.",
+        "hero_title_a": "منصة باور",
+        "hero_title_b": "للبرمجة والذكاء الاصطناعي"
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "title": "مواقع الفروع",
+        "kicker": {
+          "ar": "تواصل معنا في فروعنا",
+          "en": "Visit our branches"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "branches": [
+          {
+            "name": "الفرع الأول",
+            "phone": "الارضي: 0453176310\nواتساب الفرع: 01500339778\nمستر محمد: 01155731401\nواتساب (عام): 01002780259 - 01155731401 - 01500339778",
+            "address": "دمنهور - شارع الراهبات - بجوار السجل المدني (أمام مدرسة الشهيد الرائد أحمد بهجت مناع)",
+            "map_iframe_url": "https://www.google.com/maps/place/31%C2%B002'53.7%22N+30%C2%B027'54.0%22E/@31.048255,30.464995,17z/data=!3m1!4b1!4m4!3m3!8m2!3d31.048255!4d30.464995?entry=ttu&g_ep=EgoyMDI2MDcwOC4wIKXMDSoASAFQAw%3D%3D",
+            "directions_link": "https://maps.app.goo.gl/kWQDirXSKuHqLDzN8"
+          },
+          {
+            "name": "الفرع الثاني",
+            "phone": "اتصال الفرع الثاني: 01142328379\nواتساب (عام): 01002780259 - 01155731401 - 01500339778",
+            "address": "دمنهور - خلف سور الصرف - أول شارع بعد صيدلية منى المر (أمام مسجد عمر بن الخطاب)",
+            "map_iframe_url": "https://www.google.com/maps/place/%D9%85%D8%B3%D8%AC%D8%AF+%D8%B9%D9%85%D8%B1+%D8%A8%D9%86+%D8%A7%D9%84%D8%AE%D8%B7%D8%A7%D8%A8%E2%80%AD/@31.0404425,30.4540429,18z/data=!4m6!3m5!1s0x14f66b1f7c4821b3:0x6146608dc538dd6f!8m2!3d31.0398462!4d30.454073!16s%2Fg%2F11rbnkxsgn?entry=ttu&g_ep=EgoyMDI2MDcwOC4wIKXMDSoASAFQAw%3D%3D",
+            "directions_link": "https://maps.app.goo.gl/sU1rfcVBGQ94dfXm9"
+          }
+        ],
+        "description": "مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب بدمنهور.",
+        "whatsapp_link": "https://wa.me/201002780259"
+      },
+      "announcements": [
+        {
+          "icon": "🚀",
+          "text": "قريبًا: دورات مكثفة للمرحلة الإعدادية"
+        },
+        {
+          "icon": "📅",
+          "text": "امتحانات شهرية جديدة كل أسبوع"
+        },
+        {
+          "icon": "🎁",
+          "text": "خصومات خاصة لأوائل المشتركين"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات حصرية قادمة هذا الشهر"
+        },
+        {
+          "icon": "💬",
+          "text": "انضم لمجتمع الطلاب على الواتساب"
+        },
+        {
+          "icon": "🏆",
+          "text": "مسابقة شهرية بجوائز قيمة"
+        }
+      ],
+      "subject_theme": "power-platform",
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "644257d5-fd1f-4747-98fb-3dc087085732",
+    "slug": "eldad",
+    "domain": "mrkhalidelsharif.com",
+    "name": "الضاد",
+    "logo_url": "/images/eldad-logo.png",
+    "primary_color": "#a86e28",
+    "secondary_color": "#175e54",
+    "config": {
+      "theme": {
+        "bg_dark": "#14110e",
+        "bg_light": "#f5f1e9",
+        "card_dark": "#1e1a15",
+        "text_dark": "#ece7dd",
+        "card_light": "#fdfbf5",
+        "text_light": "#191714",
+        "border_accent": "rgba(168,110,40,0.22)"
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": false
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": false
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {
+        "phone": "01041537102"
+      },
+      "socials": {
+        "facebook": "https://www.facebook.com/share/14iSDaaZFpr/",
+        "whatsapp": "https://wa.me/201041537102"
+      },
+      "subject": "arabic",
+      "teacher": {
+        "bio": "بشرح اللغة العربية بأسلوب بسيط وحديث يقرّب القواعد والنحو والأدب لذهن الطالب. هدفي إن كل طالب يطلع من الدرس فاهم ومستمتع - مش بس حافظ.",
+        "name": "خالد الشريف",
+        "role": "أستاذ اللغة العربية",
+        "quote": "معًا نجني لغة الضاد. وبإصراركم نصنع جيل التميز.",
+        "image_base": "/images/Mr Khalid Elsherif Image Cropped.jpg",
+        "image_hover": "/images/Mr Khalid Elsherif Image Without BG.png",
+        "target_stage": "البكالوريا ( المستوى الثاني )",
+        "target_stage_label": "المرحلة التي يدرّسها"
+      },
+      "branding": {
+        "hero_sub": "منصة متخصصة في شرح اللغة العربية لطلاب نظام البكالوريا المصرية الجديد — نحو وبلاغة وأدب ونصوص وفق مواصفات البكالوريا، مع امتحانات ومتابعة مستمرة.",
+        "description": "منصة تعليمية متخصصة في اللغة العربية لطلاب نظام البكالوريا المصرية الجديد، مع محاضرات وامتحانات ومتابعة دقيقة لأداء كل طالب.",
+        "hero_title_a": "اللغة العربية",
+        "hero_title_b": "لغة الضاد — البكالوريا المصرية"
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": false,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": false,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": false,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "branches": [
+          {
+            "name": "الفرع الرئيسي",
+            "phone": "01041537102",
+            "address": "تشاو مول أعلى سوبر ماركت الإخلاص",
+            "map_iframe_url": "https://www.google.com.eg/maps/place/%D8%A3%D8%B3%D8%AA%D8%A7%D8%B0+%D8%AE%D8%A7%D9%84%D8%AF+%D8%A7%D9%84%D8%B4%D8%B1%D9%8A%D9%81%E2%80%AD/@31.044762,30.4639653,19z/data=!4m7!3m6!1s0x14f66b180b5e7819:0xefbc21cc8633f16a!4b1!8m2!3d31.0447599!4d30.4646362!16s%2Fg%2F11tsr7gx9m?entry=ttu&g_ep=EgoyMDI2MDcyMi4wIKXMDSoASAFQAw%3D%3D",
+            "directions_link": "https://maps.app.goo.gl/sY8DZDmveGb7eTpbA"
+          }
+        ],
+        "description": "عنوان السنتر / تشاو مول أعلى سوبر ماركت الإخلاص",
+        "whatsapp_link": "https://wa.me/201041537102"
+      },
+      "announcements": [
+        {
+          "icon": "📚",
+          "text": "دروس لغة عربية البكالوريا المصرية بأسلوب مبسّط وممتع"
+        },
+        {
+          "icon": "📝",
+          "text": "امتحانات وتدريبات إلكترونية وفق مواصفات البكالوريا"
+        },
+        {
+          "icon": "🎥",
+          "text": "شرح فيديو لكل مادة المنهج بجودة عالية"
+        }
+      ],
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-07-19T23:31:17.887227+00:00"
+  },
+  {
+    "id": "d3b07384-d113-4ec2-a5d6-d005b6be4979",
+    "slug": "default",
+    "domain": null,
+    "name": "GitFekra",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {},
+      "gateway": {
+        "type": "whatsapp_manual",
+        "token": "",
+        "country_code": "20",
+        "template_lang": "ar",
+        "template_name": "",
+        "wapilot_token": "lfWf0M4LVohTS8qOfvrxJQudvGjP1uZckr41HwVnAL",
+        "phone_number_id": "",
+        "wapilot_api_url": "",
+        "wapilot_instance_id": "instance4698"
+      },
+      "socials": {
+        "facebook": "https://www.facebook.com/share/1PUFgzyEv3/?mibextid=wwXIfr"
+      },
+      "subject": "default",
+      "teacher": {},
+      "branding": {},
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {},
+      "announcements": [
+        {
+          "icon": "🚀",
+          "text": "قريبًا: دورات مكثفة للمرحلة الإعدادية"
+        },
+        {
+          "icon": "📅",
+          "text": "امتحانات شهرية جديدة كل أسبوع"
+        },
+        {
+          "icon": "🎁",
+          "text": "خصومات خاصة لأوائل المشتركين"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات حصرية قادمة هذا الشهر"
+        },
+        {
+          "icon": "💬",
+          "text": "انضم لمجتمع الطلاب على الواتساب"
+        },
+        {
+          "icon": "🏆",
+          "text": "مسابقة شهرية بجوائز قيمة"
+        }
+      ],
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-05-26T00:56:31.120755+00:00"
+  },
+  {
+    "id": "acfe2692-e499-4ddc-b759-83fae5eeb0f0",
+    "slug": "sherif-english",
+    "domain": null,
+    "name": "The Miracle In English",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "theme": {},
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": false,
+        "primary-2": false,
+        "primary-3": false,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": false
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {},
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/201005387099",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "english",
+      "teacher": {
+        "bio": "رؤية جديدة.. طرق جديدة.. بداية جديدة. تبسيط شامل لمنهج اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية، القواعد والنصوص والترجمة، باستخدام طرق تعليمية تفاعلية وحديثة تضمن التميز والدرجة النهائية.",
+        "name": "وليد أحمد فوزي",
+        "role": "خبير تعليم اللغة الإنجليزية - عضو جمعية اللغويين والمترجمين سابقاً",
+        "quote": "«السر ليس في الحفظ، بل في امتلاك المفتاح الحقيقي لفهم اللغة والتميز بها.»",
+        "experience": "+20",
+        "image_base": "/images/Mr Waleed Fawzy Image.png",
+        "image_hover": "/images/Mr Waleed Fawzy Image.png",
+        "satisfaction": "99%",
+        "target_stage": "الابتدائية والإعدادية",
+        "students_count": "+5,000",
+        "learning_system": "أونلاين تفاعلي",
+        "target_stage_label": {
+          "ar": "المراحل التي يدرّسها",
+          "en": "Stages he teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": "رؤية جديدة .. طرق جديدة .. بداية جديدة. منصة الأستاذ وليد أحمد فوزي لتعليم اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية.",
+        "brand_short": {
+          "ar": "The Miracle",
+          "en": "The Miracle"
+        },
+        "hero_title_a": "The Miracle",
+        "hero_title_b": "In English"
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "title": "موقع السنتر",
+        "kicker": {
+          "ar": "مقرنا السنتر الرئيسي",
+          "en": "Our main center"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "branches": [
+          {
+            "name": "موقع السنتر",
+            "phone": "01005387099 - 01025684017",
+            "address": "دمنهور - خلف تشاو مول - ش توب جيم امام صيدلية عمرو زكريا الدور الثاني",
+            "map_iframe_url": "https://www.google.com/maps/place/31%C2%B002'45.7%22N+30%C2%B027'55.3%22E/@31.046013,30.4647073,19z/data=!3m1!4b1!4m4!3m3!8m2!3d31.046013!4d30.465351?entry=ttu&g_ep=EgoyMDI2MDcyNy4wIKXMDSoASAFQAw%3D%3D",
+            "directions_link": "https://maps.app.goo.gl/BiAZiKiqjAKBKom68"
+          }
+        ],
+        "description": "دمنهور- خلف تشاو مول - ش توب جيم امام صيدلية عمرو زكريا.",
+        "whatsapp_link": "https://wa.me/201005387099"
+      },
+      "announcements": [
+        {
+          "icon": "🚀",
+          "text": "قريبًا: دورات مكثفة للمرحلة الإعدادية"
+        },
+        {
+          "icon": "📅",
+          "text": "امتحانات شهرية جديدة كل أسبوع"
+        },
+        {
+          "icon": "🎁",
+          "text": "خصومات خاصة لأوائل المشتركين"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات حصرية قادمة هذا الشهر"
+        },
+        {
+          "icon": "💬",
+          "text": "انضم لمجتمع الطلاب على الواتساب"
+        },
+        {
+          "icon": "🏆",
+          "text": "مسابقة شهرية بجوائز قيمة"
+        }
+      ],
+      "subject_theme": "english",
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "0612f4e1-6e11-4bed-b41a-819db90b7361",
+    "slug": "sherif-biology",
+    "domain": null,
+    "name": "الأستاذ شريف - أحياء",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "biology",
+      "teacher": {
+        "bio": {
+          "ar": "خبرة طويلة في تدريس منهج الأحياء للثانوية العامة وتبسيطه للطلاب بأسلوب شيق ونماذج ثلاثية الأبعاد.",
+          "en": "Long experience in teaching biology for secondary stages with interactive visual models."
+        },
+        "name": {
+          "ar": "شريف الأحياء",
+          "en": "Sherif Biology"
+        },
+        "role": {
+          "ar": "مدرّس الأحياء والجيولوجيا القدير",
+          "en": "Senior Biology Lecturer"
+        },
+        "quote": {
+          "ar": "«الأحياء ليست مجرد حفظ، بل رحلة داخل أجهزة جسمك لتعرف كيف تعيش.»",
+          "en": "“Biology is not just memorization, it is a journey inside your body to understand life.”"
+        },
+        "experience": {
+          "ar": "+12",
+          "en": "+12"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "98%",
+          "en": "98%"
+        },
+        "target_stage": {
+          "ar": "المرحلة الثانوية",
+          "en": "Secondary Stage"
+        },
+        "students_count": {
+          "ar": "+3,500",
+          "en": "+3,500"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المرحلة التي يدرّسها",
+          "en": "Stage she teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في الأحياء - شرح تفاعلي ثلاثي الأبعاد يبسط فهم الكائنات الحية وجسم الإنسان.",
+          "en": "An educational platform specializing in biology - interactive 3D explanations that simplify living organisms."
+        },
+        "brand_short": {
+          "ar": "منصة الأحياء",
+          "en": "Biology Platform"
+        },
+        "hero_title_a": {
+          "ar": "علم الأحياء والخلية",
+          "en": "Biology & Cells"
+        },
+        "hero_title_b": {
+          "ar": "أسرار الكائنات الحية",
+          "en": "Secrets of Life"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "مقرنا الرئيسي",
+          "en": "Visit our center"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا للمحاضرات التفاعلية والمراجعات العملية بدمنهور.",
+          "en": "Our main center for lectures and practical reviews in Damanhour."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "biology"
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "02a3dcc1-0a8f-48b0-89eb-bfd629c12442",
+    "slug": "sherif-science",
+    "domain": null,
+    "name": "الأستاذ شريف - علوم",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "science",
+      "teacher": {
+        "bio": {
+          "ar": "خبير تدريس مادة العلوم للمرحلة الإعدادية مع تبسيط الأقسام الفيزيائية والكيميائية والأحيائية للطلاب.",
+          "en": "Expert in teaching general science, bridging physics, chemistry, and biology concepts."
+        },
+        "name": {
+          "ar": "شريف علوم",
+          "en": "Sherif Science"
+        },
+        "role": {
+          "ar": "مدرّس العلوم للمرحلة الإعدادية",
+          "en": "General Science Teacher"
+        },
+        "quote": {
+          "ar": "«العلوم هي المغامرة التي تكشف لنا أسرار الكون من حولنا.»",
+          "en": "“Science is the adventure that reveals the secrets of the universe to us.”"
+        },
+        "experience": {
+          "ar": "+10",
+          "en": "+10"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "98%",
+          "en": "98%"
+        },
+        "target_stage": {
+          "ar": "المرحلة الإعدادية",
+          "en": "Preparatory Stage"
+        },
+        "students_count": {
+          "ar": "+2,500",
+          "en": "+2,500"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المرحلة التي يدرّسها",
+          "en": "Stage he teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متكاملة لتبسيط منهج العلوم للمرحلة الإعدادية باستخدام أحدث الرسوم التوضيحية والتجارب.",
+          "en": "An educational platform simplifying the prep stage science curriculum with modern illustrations."
+        },
+        "brand_short": {
+          "ar": "منصة العلوم",
+          "en": "Science Platform"
+        },
+        "hero_title_a": {
+          "ar": "مادة العلوم العامة",
+          "en": "General Science"
+        },
+        "hero_title_b": {
+          "ar": "اكتشف عالم الطبيعة",
+          "en": "Discover the World"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "مقرنا الرئيسي",
+          "en": "Our Location"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للمحاضرات العملية ومتابعة الطلاب بدمنهور.",
+          "en": "Our main center for lectures and student follow-up in Damanhour."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "science"
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "e281ca64-4bd7-42c2-814b-873eb1fe8ad2",
+    "slug": "sherif-geology",
+    "domain": null,
+    "name": "الأستاذ شريف - جيولوجيا",
+    "logo_url": null,
+    "primary_color": "#7c3aed",
+    "secondary_color": "#06b6d4",
+    "config": {
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الصف الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الصف الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الصف الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الصف الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الصف الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "الصف السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الصف الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الصف الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الصف الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الصف الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الصف الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الصف الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "البكالوريا المصرية / النظام الجديد",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": true
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "socials": {
+        "tiktok": "https://www.tiktok.com",
+        "youtube": "https://www.youtube.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://wa.me/",
+        "instagram": "https://www.instagram.com"
+      },
+      "subject": "geology",
+      "teacher": {
+        "bio": {
+          "ar": "شرح مبسط لكافة التراكيب الصخرية، الفوالق، والألواح التكتونية بأسلوب علمي تفاعلي لضمان الدرجة النهائية.",
+          "en": "Simplified geology lectures covering rock structures, faults, and plate tectonics."
+        },
+        "name": {
+          "ar": "شريف جيولوجيا",
+          "en": "Sherif Geology"
+        },
+        "role": {
+          "ar": "مدرّس الجيولوجيا وعلوم البيئة",
+          "en": "Geology Teacher"
+        },
+        "quote": {
+          "ar": "«الأرض كتاب مفتوح، والجيولوجيا تعلمك كيف تقرأ لغة الصخور وتفهم تاريخ كوكبنا.»",
+          "en": "“Earth is an open book, and geology teaches you how to read the language of rocks.”"
+        },
+        "experience": {
+          "ar": "+12",
+          "en": "+12"
+        },
+        "image_base": "/images/profile.png",
+        "image_hover": "/images/me.png",
+        "satisfaction": {
+          "ar": "98%",
+          "en": "98%"
+        },
+        "target_stage": {
+          "ar": "المرحلة الثانوية",
+          "en": "Secondary Stage"
+        },
+        "students_count": {
+          "ar": "+3,500",
+          "en": "+3,500"
+        },
+        "learning_system": {
+          "ar": "أونلاين تفاعلي",
+          "en": "Online Interactive"
+        },
+        "target_stage_label": {
+          "ar": "المرحلة التي يدرّسها",
+          "en": "Stage he teaches"
+        }
+      },
+      "branding": {
+        "hero_sub": {
+          "ar": "منصة تعليمية متخصصة في الجيولوجيا وعلوم البيئة - شرح مفصل بالخرائط والصور لكافة التراكيب الجيولوجية الصعبة.",
+          "en": "An educational platform specializing in geology and environmental sciences with maps and structures."
+        },
+        "brand_short": {
+          "ar": "منصة الجيولوجيا",
+          "en": "Geology Platform"
+        },
+        "hero_title_a": {
+          "ar": "علم الأرض والجيولوجيا",
+          "en": "Geology Science"
+        },
+        "hero_title_b": {
+          "ar": "أسرار الصخور والطبقات",
+          "en": "Rocks & Layers"
+        }
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "student_notes": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "phone": "+20 100 000 0000",
+        "title": {
+          "ar": "موقع السنتر",
+          "en": "Our Location"
+        },
+        "kicker": {
+          "ar": "مقرنا الرئيسي",
+          "en": "Our Location"
+        },
+        "address": {
+          "ar": "دمنهور، البحيرة",
+          "en": "Damanhour, Beheira"
+        },
+        "country": {
+          "ar": "جمهورية مصر العربية",
+          "en": "Egypt"
+        },
+        "hours_days": {
+          "ar": "السبت - الأربعاء",
+          "en": "Sat - Wed"
+        },
+        "hours_time": {
+          "ar": "٣ مساءً - ٩ مساءً",
+          "en": "3 PM - 9 PM"
+        },
+        "description": {
+          "ar": "مقرنا الرئيسي للدروس العملية ومتابعة الطلاب بدمنهور.",
+          "en": "Our main center for lectures and student follow-up in Damanhour."
+        },
+        "whatsapp_link": "https://wa.me/201000000000",
+        "map_iframe_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3412.5!2d30.4272213!3d31.0379878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDAyJzE2LjgiTiAzMMKwMjUnMzguMCJF!5e0!3m2!1sen!2seg!4v1700000000000",
+        "directions_link": "https://maps.google.com"
+      },
+      "subject_theme": "geology"
+    },
+    "created_at": "2026-06-13T23:05:07.166955+00:00"
+  },
+  {
+    "id": "6f5bc7cc-9741-4e28-826b-8d7966a5ce85",
+    "slug": "sherif-math",
+    "domain": "mrmahmoudelbeliqdar.com",
+    "name": "سنتر البلقدار في الرياضيات والاحصاء",
+    "logo_url": "/images/logo elbeliqdar cropped.png",
+    "primary_color": "#d4af37",
+    "secondary_color": "#a67c00",
+    "config": {
+      "theme": {
+        "bg_dark": "#000000",
+        "bg_light": "#f6f2e9",
+        "card_dark": "#0d0d0d",
+        "text_dark": "#ece6d8",
+        "card_light": "#fdfbf5",
+        "text_light": "#191510",
+        "border_accent": "rgba(200,169,81,0.24)"
+      },
+      "grades": {
+        "bac-1": true,
+        "bac-2": true,
+        "bac-3": true,
+        "first-sec": true,
+        "primary-1": true,
+        "primary-2": true,
+        "primary-3": true,
+        "primary-4": true,
+        "primary-5": true,
+        "primary-6": true,
+        "third-sec": true,
+        "first-prep": true,
+        "second-sec": true,
+        "third-prep": true,
+        "second-prep": true
+      },
+      "stages": [
+        {
+          "id": "primary",
+          "name": "المرحلة الابتدائية",
+          "grades": [
+            {
+              "id": "primary-1",
+              "name": "الأول الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-2",
+              "name": "الثاني الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-3",
+              "name": "الثالث الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-4",
+              "name": "الرابع الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-5",
+              "name": "الخامس الابتدائي",
+              "enabled": true
+            },
+            {
+              "id": "primary-6",
+              "name": "السادس الابتدائي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "preparatory",
+          "name": "المرحلة الإعدادية",
+          "grades": [
+            {
+              "id": "first-prep",
+              "name": "الأول الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "second-prep",
+              "name": "الثاني الإعدادي",
+              "enabled": true
+            },
+            {
+              "id": "third-prep",
+              "name": "الثالث الإعدادي",
+              "enabled": true
+            }
+          ],
+          "enabled": false
+        },
+        {
+          "id": "secondary",
+          "name": "المرحلة الثانوية",
+          "grades": [
+            {
+              "id": "first-sec",
+              "name": "الأول الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "second-sec",
+              "name": "الثاني الثانوي",
+              "enabled": true
+            },
+            {
+              "id": "third-sec",
+              "name": "الثالث الثانوي",
+              "enabled": true
+            }
+          ],
+          "enabled": true
+        },
+        {
+          "id": "baccalaureate",
+          "name": "مرحلة البكالوريا",
+          "grades": [
+            {
+              "id": "bac-1",
+              "name": "البكالوريا المستوى الأول",
+              "enabled": false
+            },
+            {
+              "id": "bac-2",
+              "name": "البكالوريا المستوى الثاني",
+              "enabled": true
+            },
+            {
+              "id": "bac-3",
+              "name": "البكالوريا المستوى الثالث",
+              "enabled": false
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "contact": {
+        "phone": "01016705130",
+        "whatsapp": "https://wa.me/201016705130"
+      },
+      "socials": {
+        "whatsapp": "https://wa.me/201016705130"
+      },
+      "subject": "math",
+      "teacher": {
+        "bio": "خريج كلية العلوم والتربية — قسم الرياضيات. بشرح الرياضيات لطلاب العلمي والإحصاء لطلاب الأدبي بأسلوب مبسّط يقرّب المفاهيم لذهن الطالب ويؤهله للدرجة النهائية.",
+        "name": "محمود البلقدار",
+        "role": "مدرّس الرياضيات والإحصاء",
+        "quote": "الرياضيات لغة، وإتقانها يفتح لك كل الأبواب.",
+        "image_base": "https://pub-c0605b767e8c43849da94ee3ba6954d5.r2.dev/avatars/161dc65c-d01e-426a-907a-0fa5c40b190e/c02013ae-8059-46e9-ae73-eadd82f03fe3.png",
+        "image_hover": "/images/logo elbeliqdar cropped.png",
+        "target_stage": "المراحل البكالوريا والثانوية عام وازهر",
+        "learning_system": "سنتر - اونلاين",
+        "target_stage_label": "المرحلة التي يدرّسها"
+      },
+      "branding": {
+        "tagline": "الرياضيات والإحصاء للمرحلة الثانوية",
+        "hero_sub": "شرح متخصص للرياضيات (للقسم العلمي) والإحصاء (للقسم الأدبي) لطلاب المرحلة الثانوية — بأسلوب مبسّط، مع امتحانات ومتابعة دقيقة لأداء كل طالب.",
+        "brand_short": {
+          "ar": "سنتر البلقدار",
+          "en": "El-Belqadar Center"
+        },
+        "description": "سنتر البلقدار للرياضيات والإحصاء — محاضرات وامتحانات ومتابعة لطلاب المرحلة الثانوية (علمي وأدبي).",
+        "hero_title_a": "الرياضيات والإحصاء",
+        "hero_title_b": "سنتر البلقدار — الثانوية العامة"
+      },
+      "features": {
+        "chat": true,
+        "exams": true,
+        "grades": true,
+        "groups": true,
+        "videos": true,
+        "reports": true,
+        "branches": true,
+        "homework": true,
+        "payments": true,
+        "attendance": true,
+        "notifications": true,
+        "parent_portal": true,
+        "qr_attendance": true,
+        "assistant_accounts": true
+      },
+      "location": {
+        "branches": [
+          {
+            "name": "المقر الرئيسي",
+            "phone": "01016705130",
+            "address": "الكوبري العلوي — شارع بنك أبوظبي — أمام Gym ATP"
+          }
+        ],
+        "description": "الكوبري العلوي — شارع بنك أبوظبي — أمام Gym ATP",
+        "whatsapp_link": "https://wa.me/201016705130"
+      },
+      "announcements": [
+        {
+          "icon": "🚀",
+          "text": "قريبًا: دورات مكثفة للمرحلة الإعدادية"
+        },
+        {
+          "icon": "📅",
+          "text": "امتحانات شهرية جديدة كل أسبوع"
+        },
+        {
+          "icon": "🎁",
+          "text": "خصومات خاصة لأوائل المشتركين"
+        },
+        {
+          "icon": "🎥",
+          "text": "فيديوهات حصرية قادمة هذا الشهر"
+        },
+        {
+          "icon": "💬",
+          "text": "انضم لمجتمع الطلاب على الواتساب"
+        },
+        {
+          "icon": "🏆",
+          "text": "مسابقة شهرية بجوائز قيمة"
+        }
+      ],
+      "subject_theme": "math",
+      "login_sections": {
+        "about": true,
+        "steps": true,
+        "teacher": true,
+        "features": true,
+        "location": true,
+        "packages": true
+      }
+    },
+    "created_at": "2026-06-14T12:52:30.915563+00:00"
+  }
+]

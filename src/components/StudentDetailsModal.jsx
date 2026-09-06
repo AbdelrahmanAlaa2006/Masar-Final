@@ -7,9 +7,16 @@ import { printThermalPaymentReceipt } from '../utils/paymentReceiptPrint'
 import { notify } from '../utils/notify'
 import { invalidate as invalidateCache } from '../utils/cache'
 
-const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+const ORDERED_ACAD_MONTHS = ['أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو']
+
+const getAcadMonthIdx = (d = new Date()) => {
+  const date = new Date(d)
+  const m = isNaN(date.getTime()) ? new Date().getMonth() : date.getMonth()
+  return m >= 7 ? m - 7 : m + 5
+}
 
 const MONTH_PACKAGES = [
+  'اشتراك شهر أغسطس',
   'اشتراك شهر سبتمبر',
   'اشتراك شهر أكتوبر',
   'اشتراك شهر نوفمبر',
@@ -21,14 +28,13 @@ const MONTH_PACKAGES = [
   'اشتراك شهر مايو',
   'اشتراك شهر يونيو',
   'اشتراك شهر يوليو',
-  'اشتراك شهر أغسطس',
   'اشتراك الترم الأول',
   'اشتراك الترم الثاني',
   'اشتراك السنة كاملة'
 ]
 
 const getCurrentMonthPackage = () => {
-  const currentMonth = ARABIC_MONTHS[new Date().getMonth()]
+  const currentMonth = ORDERED_ACAD_MONTHS[getAcadMonthIdx()] || 'سبتمبر'
   return `اشتراك شهر ${currentMonth}`
 }
 
@@ -69,28 +75,21 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
   const confirmBtnRef = useRef(null)
   const modalBoxRef = useRef(null)
 
-  // Payment modal state
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [payMonth, setPayMonth] = useState(() => getCurrentMonthPackage())
-  
-  // Calculate initial amount due
-  const currentMonthName = ARABIC_MONTHS[new Date().getMonth()]
-  const paidThisMonthInitial = typeof student.paid_this_month === 'boolean'
-    ? student.paid_this_month
-    : (() => {
-        const desc = student.last_payment?.description || ''
-        if (desc.includes(currentMonthName)) return true
-        const iso = student.last_payment?.created_at
-        if (!iso) return false
-        const p = new Date(iso), now = new Date()
-        return p.getFullYear() === now.getFullYear() && p.getMonth() === now.getMonth()
-      })()
+  // Multi-month unpaid tracking
+  const unpaidMonthsList = Array.isArray(student.unpaid_months) ? student.unpaid_months : []
+  const initialAmountDue = typeof student.amount_due === 'number'
+    ? student.amount_due
+    : (unpaidMonthsList.reduce((sum, u) => sum + (Number(u.remaining) || 0), 0) || student.outstanding_balance || 0)
 
-  const [paidThisMonth, setPaidThisMonth] = useState(paidThisMonthInitial)
-  const [amountDue, setAmountDue] = useState(() => {
-    if (typeof student.amount_due === 'number') return student.amount_due
-    return student.outstanding_balance || 0
-  })
+  const [unpaidMonths, setUnpaidMonths] = useState(unpaidMonthsList)
+  const [amountDue, setAmountDue] = useState(initialAmountDue)
+  const [paidThisMonth, setPaidThisMonth] = useState(student.paid_this_month ?? (initialAmountDue === 0))
+
+  const defaultPayPackage = unpaidMonthsList.length > 0
+    ? unpaidMonthsList[0].packageName
+    : getCurrentMonthPackage()
+
+  const [payMonth, setPayMonth] = useState(defaultPayPackage)
 
   const calculatedMonthlyDue = Number(student.monthly_fee) > 0 
     ? Math.max(0, Number(student.monthly_fee) - Number(student.discount || 0))
@@ -205,10 +204,14 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
       const remaining = Math.max(0, monthlyDueVal - val)
 
       // Update local state
-      setPaidThisMonth(true)
+      const nextUnpaid = unpaidMonths.filter(u => !payMonth.includes(u.month))
+      setUnpaidMonths(nextUnpaid)
+      const isAllPaid = nextUnpaid.length === 0 && remaining === 0
+      setPaidThisMonth(isAllPaid)
       setAmountDue(remaining)
-      student.paid_this_month = true
+      student.paid_this_month = isAllPaid
       student.amount_due = remaining
+      student.unpaid_months = nextUnpaid
       student.last_payment = {
         amount: val,
         payment_method: payMethod,
@@ -782,14 +785,16 @@ export default function StudentDetailsModal({ student, onClose, onMarkAttendance
             {/* Monthly subscription status */}
             <div style={{
               marginBottom: '18px', padding: '14px 16px', borderRadius: '14px', textAlign: 'center',
-              background: paidThisMonth ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-              border: `1px solid ${paidThisMonth ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-              color: paidThisMonth ? '#10b981' : '#ef4444', fontWeight: 800, fontSize: '1.05rem'
+              background: (unpaidMonths.length === 0 && amountDue === 0) ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+              border: `1px solid ${(unpaidMonths.length === 0 && amountDue === 0) ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              color: (unpaidMonths.length === 0 && amountDue === 0) ? '#10b981' : '#ef4444', fontWeight: 800, fontSize: '1.05rem'
             }}>
-              <i className={`fas ${paidThisMonth ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ marginInlineEnd: '8px' }} />
-              {paidThisMonth
-                ? 'سدّد اشتراك هذا الشهر ✅'
-                : `مطلوب الدفع${amountDue > 0 ? ` — ${amountDue} ج.م` : ''} ⚠️`}
+              <i className={`fas ${(unpaidMonths.length === 0 && amountDue === 0) ? 'fa-circle-check' : 'fa-triangle-exclamation'}`} style={{ marginInlineEnd: '8px' }} />
+              {(unpaidMonths.length === 0 && amountDue === 0)
+                ? 'سدّد اشتراك جميع الشهور المستحقة ✅'
+                : (unpaidMonths.length === 1)
+                  ? `مطلوب سداد اشتراك شهر ${unpaidMonths[0].month} — ${unpaidMonths[0].remaining || amountDue} ج.م ⚠️`
+                  : `مطلوب سداد متأخرات (${unpaidMonths.map(u => u.month).join(' + ')}) — الإجمالي: ${amountDue} ج.م ⚠️`}
             </div>
 
             {/* Missing Required Exams / Quizzes Alert */}

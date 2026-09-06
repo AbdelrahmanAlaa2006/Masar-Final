@@ -249,6 +249,7 @@ export default function AttendancePanel({ onBack, flash }) {
   const playWarningBeep = () => playBellSound()
 
   // Check if student has missing / uncompleted exams or quizzes for their grade (both online & center-based)
+  // Exams and evaluations from today (or the last 20 hours) are excluded from the buzzer alert to allow grading time.
   const checkStudentMissingExams = async (studentId, studentGrade) => {
     if (!studentId) return []
     const missing = []
@@ -284,7 +285,18 @@ export default function AttendancePanel({ onBack, flash }) {
       if (recentExams && recentExams.length > 0) {
         // Filter out video pre-assessments if any
         const mainExams = recentExams.filter(e => e.origin !== 'video_quiz')
-        const examIds = mainExams.map(e => e.id)
+        
+        // Filter out exams created TODAY (or in the last 20 hours) so they don't falsely alert during active session
+        const now = Date.now()
+        const pastMainExams = mainExams.filter(e => {
+          if (!e.created_at) return true
+          const examTime = new Date(e.created_at).getTime()
+          const isToday = new Date(e.created_at).toDateString() === new Date().toDateString()
+          const hoursAgo = (now - examTime) / (1000 * 60 * 60)
+          return !isToday && hoursAgo >= 20
+        })
+
+        const examIds = pastMainExams.map(e => e.id)
 
         if (examIds.length > 0) {
           // Fresh student-specific attempt check (NEVER cached across students)
@@ -295,7 +307,7 @@ export default function AttendancePanel({ onBack, flash }) {
             .in('exam_id', examIds)
 
           const attemptedIds = new Set((attempts || []).map(a => a.exam_id))
-          mainExams.forEach(e => {
+          pastMainExams.forEach(e => {
             if (!attemptedIds.has(e.id)) {
               missing.push({
                 id: e.id,
@@ -337,15 +349,24 @@ export default function AttendancePanel({ onBack, flash }) {
       // Deduplicate recent evaluation titles
       const seenEvals = new Set()
       const uniqueCenterEvals = []
+      const now = Date.now()
+
       relevantCenterEvals.forEach(g => {
         const key = `${g.type}:${(g.title || '').trim()}`
         if (!seenEvals.has(key)) {
           seenEvals.add(key)
-          uniqueCenterEvals.push(g)
+          // Exclude evaluations created TODAY or in the last 20 hours
+          const evalDate = g.created_at ? new Date(g.created_at) : null
+          const isToday = evalDate ? evalDate.toDateString() === new Date().toDateString() : false
+          const hoursAgo = evalDate ? (now - evalDate.getTime()) / (1000 * 60 * 60) : 999
+
+          if (!isToday && hoursAgo >= 20) {
+            uniqueCenterEvals.push(g)
+          }
         }
       })
 
-      // Take up to the 3 most recent unique center evaluations
+      // Take up to the 3 most recent unique center evaluations from previous sessions
       const latestCenterEvals = uniqueCenterEvals.slice(0, 3)
 
       if (latestCenterEvals.length > 0) {
@@ -1050,20 +1071,21 @@ export default function AttendancePanel({ onBack, flash }) {
         throw new Error('لم يتم العثور على طالب مطابق لهذا الباركود أو البطاقة')
       }
 
-      // Compute the REAL monthly amount due: paid this calendar month -> 0,
-      // otherwise max(0, grade fee - this student's exception discount).
-      const ARABIC_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
-      const lastPayIso = studentData.last_payment?.created_at
-      const lastPayDesc = studentData.last_payment?.description || ''
-      const currentMonthName = ARABIC_MONTHS[new Date().getMonth()]
-      const paidThisMonth = (() => {
-        // Check 1: the payment description explicitly mentions the current month
-        if (lastPayDesc.includes(currentMonthName)) return true
-        // Check 2: fallback — payment was created in the same calendar month
-        if (!lastPayIso) return false
-        const d = new Date(lastPayIso), now = new Date()
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-      })()
+      // 1. Fetch student's approved payments from ledger to calculate exact unpaid months
+      const { data: studentPayments } = await supabase
+        .from('student_ledger')
+        .select('id, amount, description, billing_period, created_at, status')
+        .eq('student_id', studentData.student_id)
+        .eq('type', 'payment')
+        .eq('status', 'approved')
+
+      const ORDERED_ACAD_MONTHS = ['أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو']
+      const getAcadMonthIdx = (d = new Date()) => {
+        const date = new Date(d)
+        const m = isNaN(date.getTime()) ? new Date().getMonth() : date.getMonth()
+        return m >= 7 ? m - 7 : m + 5
+      }
+
       const monthlyFee = Number(feesByGrade[studentData.grade]) || 0
       const studentId = studentData.student_id
       let discount = null
@@ -1079,17 +1101,69 @@ export default function AttendancePanel({ onBack, flash }) {
           discount = Number(preloaded.subscription_discount)
         }
       }
-      // Fallback: only query network if the field was genuinely missing/unresolved
+      // Fallback: query network if missing
       if (discount === null || isNaN(discount)) {
         try { discount = Number(await getStudentDiscount(studentId)) || 0 } catch { discount = 0 }
       }
 
-      studentData.monthly_fee = monthlyFee
-      studentData.discount = discount || 0
-      studentData.paid_this_month = paidThisMonth
-      studentData.amount_due = paidThisMonth ? 0 : Math.max(0, monthlyFee - (discount || 0))
+      const effectiveDiscount = discount || 0
+      const monthlyDue = Math.max(0, monthlyFee - effectiveDiscount)
 
-      // Check missing required exams / quizzes
+      // 2. Identify all paid months and determine start month
+      const paidMonthsSet = new Set()
+      const paidMonthIndices = []
+      ;(studentPayments || []).forEach(p => {
+        const desc = (p.description || p.billing_period || '').trim()
+        ORDERED_ACAD_MONTHS.forEach((mName, idx) => {
+          if (desc.includes(mName)) {
+            paidMonthsSet.add(mName)
+            paidMonthIndices.push(idx)
+          }
+        })
+      })
+
+      const studentRegMonthIdx = (() => {
+        if (!studentData.created_at) return 0
+        const d = new Date(studentData.created_at)
+        if (isNaN(d.getTime())) return 0
+        return getAcadMonthIdx(d)
+      })()
+
+      // Effective subscription start month:
+      // If student has previous payments, start from the earliest paid month (any prior month was waived/pre-enrollment)
+      // If student never paid yet, start from the current academic month (so we never demand historical trial months like August before official enrollment)
+      let startAcadIdx = paidMonthIndices.length > 0
+        ? Math.min(...paidMonthIndices)
+        : currentAcadIdx
+
+      // Check all months from startAcadIdx up to currentAcadIdx
+      const unpaidMonths = []
+      let totalAmountDue = 0
+
+      for (let i = startAcadIdx; i <= currentAcadIdx; i++) {
+        const mName = ORDERED_ACAD_MONTHS[i]
+        if (!paidMonthsSet.has(mName)) {
+          unpaidMonths.push({
+            month: mName,
+            packageName: `اشتراك شهر ${mName}`,
+            monthlyDue: monthlyDue,
+            remaining: monthlyDue
+          })
+          totalAmountDue += monthlyDue
+        }
+      }
+
+      const isCurrentMonthPaid = paidMonthsSet.has(ORDERED_ACAD_MONTHS[currentAcadIdx])
+      const hasUnpaidDebt = unpaidMonths.length > 0
+
+      studentData.monthly_fee = monthlyFee
+      studentData.discount = effectiveDiscount
+      studentData.unpaid_months = unpaidMonths
+      studentData.amount_due = totalAmountDue
+      studentData.paid_this_month = isCurrentMonthPaid && !hasUnpaidDebt
+      studentData.student_payments = studentPayments || []
+
+      // Check missing required exams / quizzes (excluding today's in-progress evaluations)
       const missingExams = await checkStudentMissingExams(studentData.student_id, studentData.grade)
       studentData.missing_exams = missingExams
 
@@ -1099,7 +1173,7 @@ export default function AttendancePanel({ onBack, flash }) {
       // 3. Normal / Paid -> Pleasant success chime
       if (missingExams.length > 0) {
         playMissingExamAlert()
-      } else if (!paidThisMonth) {
+      } else if (hasUnpaidDebt) {
         playPaymentDueBell()
       } else {
         playSuccessBeep()

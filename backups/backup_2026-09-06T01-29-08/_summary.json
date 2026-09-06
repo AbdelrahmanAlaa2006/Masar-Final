@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-09-06T01-29-08",
+  "tables_summary": {
+    "tenants": 15,
+    "grades": 0,
+    "groups": 0,
+    "branches": 0,
+    "academic_years": 0,
+    "profiles": 0,
+    "student_groups": 0,
+    "attendance_sessions": 0,
+    "attendance_records": 0,
+    "payments": 0,
+    "subscription_fees": 0,
+    "homeworks": 0,
+    "homework_submissions": 0,
+    "exams": 0,
+    "exam_attempts": 0,
+    "booklets": 0,
+    "student_booklets": 0,
+    "videos": 0,
+    "video_notes": 0,
+    "video_comments": 0,
+    "playlists": 0,
+    "packages": 0,
+    "announcements": 0
+  }
+}

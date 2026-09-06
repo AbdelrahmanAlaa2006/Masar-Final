@@ -49,7 +49,39 @@ export async function updateGroup(id, { name, grade, branchId, academicYearId })
     .select()
     .single()
   if (error) throw error
+
+  // If grade or name changed, cascade update to assigned students in profiles
+  try {
+    const { data: sgRows } = await supabase
+      .from('student_groups')
+      .select('student_id')
+      .eq('group_id', id)
+
+    const studentIds = (sgRows || []).map(r => r.student_id).filter(Boolean)
+    const profileUpdates = {}
+    if (grade) profileUpdates.grade = grade
+    if (name) profileUpdates.group = name
+
+    if (studentIds.length > 0 && Object.keys(profileUpdates).length > 0) {
+      await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .in('id', studentIds)
+    }
+
+    // Also fallback update any profile whose legacy "group" string matches the group name
+    if (grade && name) {
+      await supabase
+        .from('profiles')
+        .update({ grade })
+        .eq('group', name)
+    }
+  } catch (syncErr) {
+    console.warn('Group update student cascade warning:', syncErr)
+  }
+
   invalidateCache('groups-list')
+  invalidatePrefix('students')
   return data
 }
 
@@ -188,21 +220,32 @@ export async function transferStudentGroup(studentId, sourceGroupId, targetGroup
 }
 
 export async function listStudentsByGroup(groupId) {
-  const { data, error } = await supabase
-    .from('student_groups')
-    .select(`
-      student_id,
-      profiles:student_id (
-        id,
-        name,
-        phone,
-        grade,
-        "group",
-        barcode_token,
-        student_groups(group_id)
-      )
-    `)
-    .eq('group_id', groupId)
-  if (error) throw error
-  return data.map(d => d.profiles).filter(Boolean)
+  if (!groupId) return []
+  const CHUNK_SIZE = 1000
+  let allData = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('student_groups')
+      .select(`
+        student_id,
+        profiles:student_id (
+          id,
+          name,
+          phone,
+          grade,
+          "group",
+          barcode_token,
+          student_groups(group_id)
+        )
+      `)
+      .eq('group_id', groupId)
+      .range(from, from + CHUNK_SIZE - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    allData.push(...data)
+    if (data.length < CHUNK_SIZE) break
+    from += CHUNK_SIZE
+  }
+  return allData.map(d => d.profiles).filter(Boolean)
 }

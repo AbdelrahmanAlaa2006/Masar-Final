@@ -111,6 +111,12 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [wiping, setWiping] = useState(false)
   const [selectedTenantForWipe, setSelectedTenantForWipe] = useState(null)
 
+  // Permanent Tenant Delete states
+  const [showDeleteTenantModal, setShowDeleteTenantModal] = useState(false)
+  const [tenantToDelete, setTenantToDelete] = useState(null)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [deletingTenant, setDeletingTenant] = useState(false)
+
   // Create Tenant states
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newName, setNewName] = useState('')
@@ -140,6 +146,13 @@ export default function SuperAdminPanel({ onBack, flash }) {
   const [editDomain, setEditDomain] = useState('')
   const [editPrimaryColor, setEditPrimaryColor] = useState('')
   const [editSecondaryColor, setEditSecondaryColor] = useState('')
+  const [editStatus, setEditStatus] = useState('active')
+  
+  // Platform Suspend / Resume modal states
+  const [showSuspendModal, setShowSuspendModal] = useState(false)
+  const [tenantToSuspend, setTenantToSuspend] = useState(null)
+  const [suspendTargetStatus, setSuspendTargetStatus] = useState('suspended')
+  const [suspendingTenant, setSuspendingTenant] = useState(false)
   // Customization (persisted into tenants.config JSONB)
   const [editSubject, setEditSubject] = useState('arabic')
   const [editTeacherName, setEditTeacherName] = useState('')
@@ -438,6 +451,116 @@ export default function SuperAdminPanel({ onBack, flash }) {
     }
   }
 
+  // Open modal to completely delete a tenant
+  const handleOpenDeleteTenant = (tenant) => {
+    if (!tenant) return
+    if (tenant.slug === 'default') {
+      flash('لا يمكن حذف المنصة الافتراضية للنظام (default)!', 'warning')
+      return
+    }
+    setTenantToDelete(tenant)
+    setDeleteConfirmInput('')
+    setShowDeleteTenantModal(true)
+  }
+
+  // Open Suspend / Unsuspend Confirmation Modal
+  const handleOpenToggleStatus = (tenant) => {
+    if (tenant.slug === 'default') {
+      flash('لا يمكن إيقاف المنصة الافتراضية للنظام (default)!', 'warning')
+      return
+    }
+    const currentStatus = tenant.status || tenant.config?.status || 'active'
+    const nextStatus = currentStatus === 'suspended' ? 'active' : 'suspended'
+    setTenantToSuspend(tenant)
+    setSuspendTargetStatus(nextStatus)
+    setShowSuspendModal(true)
+  }
+
+  // Execute Suspend / Unsuspend
+  const handleConfirmToggleStatus = async () => {
+    if (!tenantToSuspend) return
+    setSuspendingTenant(true)
+    try {
+      const { error: rpcErr } = await supabase.rpc('set_tenant_status', {
+        p_tenant_id: tenantToSuspend.id,
+        p_status: suspendTargetStatus
+      })
+      if (rpcErr) throw rpcErr
+
+      // Update local state
+      setTenants(prev => prev.map(t => {
+        if (t.id === tenantToSuspend.id) {
+          return {
+            ...t,
+            status: suspendTargetStatus,
+            config: { ...(t.config || {}), status: suspendTargetStatus }
+          }
+        }
+        return t
+      }))
+
+      invalidateAll()
+      setShowSuspendModal(false)
+      setTenantToSuspend(null)
+
+      if (suspendTargetStatus === 'suspended') {
+        flash(`تم إيقاف وتجميد منصة (${tenantToSuspend.name}) مؤقتاً بنجاح ⏸️`, 'warning')
+      } else {
+        flash(`تمت إعادة تفعيل منصة (${tenantToSuspend.name}) بنجاح! 🟢`, 'success')
+      }
+    } catch (err) {
+      console.error(err)
+      flash('فشل تغيير حالة المنصة: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally {
+      setSuspendingTenant(false)
+    }
+  }
+
+  // Execute complete permanent tenant deletion
+  const handleDeleteTenantSubmit = async (e) => {
+    e.preventDefault()
+    if (!tenantToDelete) return
+    const input = deleteConfirmInput.trim()
+    if (!input) {
+      flash('يرجى كتابة اسم أو معرف المنصة للتأكيد', 'warning')
+      return
+    }
+
+    if (input.toLowerCase() !== tenantToDelete.slug.toLowerCase() && input !== tenantToDelete.name) {
+      flash(`النص المدخل لا يطابق معرف المنصة (${tenantToDelete.slug}) أو اسمها!`, 'error')
+      return
+    }
+
+    setDeletingTenant(true)
+    try {
+      const { error: rpcErr } = await supabase.rpc('delete_tenant_completely', {
+        p_tenant_id: tenantToDelete.id,
+        p_confirm_slug: input
+      })
+      if (rpcErr) throw rpcErr
+
+      flash(`تم حذف منصة (${tenantToDelete.name}) وجميع بياناتها نهائياً من قاعدة البيانات بنجاح! 🗑️`, 'success')
+      
+      // Update local states
+      setTenants(prev => prev.filter(t => t.id !== tenantToDelete.id))
+      setProfiles(prev => prev.filter(p => p.tenant_id !== tenantToDelete.id))
+      invalidateAll()
+      
+      setShowDeleteTenantModal(false)
+      setTenantToDelete(null)
+      setDeleteConfirmInput('')
+      
+      if (selectedTenantForManage && selectedTenantForManage.id === tenantToDelete.id) {
+        setSelectedTenantForManage(null)
+      }
+    } catch (err) {
+      console.error(err)
+      flash('فشل حذف المنصة: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
+    } finally {
+      setDeletingTenant(false)
+    }
+  }
+
   // Create Platform/Tenant handler
   const handleCreateTenant = async (e) => {
     e.preventDefault()
@@ -570,6 +693,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
       return asText(codeVal)
     }
 
+    setEditStatus(tenant.status || cfg.status || 'active')
     setEditSubject(cfg.subject || codeCfg.subject || 'arabic')
     setEditTeacherName(resolveField(cfg.teacher?.name, codeCfg.teacher?.name, true))
     setEditTeacherRole(resolveField(cfg.teacher?.role, codeCfg.teacher?.role))
@@ -710,6 +834,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
 
       const mergedConfig = {
         ...prevConfig,
+        status: editStatus,
         subject: editSubject,
         teacher: cleaned({ ...(prevConfig.teacher || {}), name: editTeacherName, role: editTeacherRole, ...editTeacherExtra }),
         location: (() => {
@@ -745,6 +870,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
           logo_url: editLogoUrl.trim() || null,
           primary_color: editPrimaryColor,
           secondary_color: editSecondaryColor,
+          status: editStatus,
           config: mergedConfig
         })
         .eq('id', selectedTenantForManage.id)
@@ -1139,6 +1265,15 @@ export default function SuperAdminPanel({ onBack, flash }) {
                                 </h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                   <code className="cp-sa-color-badge" style={{ fontSize: '0.75rem', padding: '2px 6px' }}>{t.slug}</code>
+                                  {t.status === 'suspended' ? (
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <i className="fas fa-pause-circle" style={{ fontSize: '0.7rem' }}></i> متوقفة
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <i className="fas fa-check-circle" style={{ fontSize: '0.7rem' }}></i> نشطة
+                                    </span>
+                                  )}
                                   {t.domain && (
                                     <span style={{ fontSize: '0.72rem', color: 'var(--cp-text-muted)', direction: 'ltr' }}>{t.domain}</span>
                                   )}
@@ -1213,22 +1348,22 @@ export default function SuperAdminPanel({ onBack, flash }) {
                         </div>
 
                         {/* Action Buttons Footer */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto auto', gap: '6px', alignItems: 'center' }}>
                           <button
                             onClick={() => handleOpenAddAdmin(t)}
                             className="cp-btn"
                             style={{
-                              padding: '8px 10px',
+                              padding: '8px 8px',
                               background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%)',
                               color: '#10b981',
                               border: '1px solid rgba(16, 185, 129, 0.3)',
                               borderRadius: '10px',
-                              fontSize: '0.82rem',
+                              fontSize: '0.8rem',
                               fontWeight: 'bold',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px',
+                              gap: '4px',
                               height: '38px',
                               cursor: 'pointer',
                               whiteSpace: 'nowrap'
@@ -1242,37 +1377,59 @@ export default function SuperAdminPanel({ onBack, flash }) {
                             onClick={() => openManageTenant(t)}
                             className="cp-btn"
                             style={{
-                              padding: '8px 10px',
+                              padding: '8px 8px',
                               background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%)',
                               color: 'var(--primary, #7c3aed)',
                               border: '1px solid rgba(124, 58, 237, 0.3)',
                               borderRadius: '10px',
-                              fontSize: '0.82rem',
+                              fontSize: '0.8rem',
                               fontWeight: 'bold',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px',
+                              gap: '4px',
                               height: '38px',
                               cursor: 'pointer',
                               whiteSpace: 'nowrap'
                             }}
                           >
                             <i className="fas fa-gears" style={{ fontSize: '0.75rem' }}></i>
-                            <span>إدارة وتخصيص</span>
+                            <span>إدارة</span>
                           </button>
+
+                          {t.slug !== 'default' && (
+                            <button
+                              onClick={() => handleOpenToggleStatus(t)}
+                              title={t.status === 'suspended' ? 'إعادة تفعيل المنصة' : 'إيقاف المنصة مؤقتاً (تجميد)'}
+                              style={{
+                                padding: '8px 10px',
+                                background: t.status === 'suspended' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                color: t.status === 'suspended' ? '#10b981' : '#f59e0b',
+                                border: `1px solid ${t.status === 'suspended' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                                borderRadius: '10px',
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '38px'
+                              }}
+                            >
+                              <i className={t.status === 'suspended' ? 'fas fa-play' : 'fas fa-pause'}></i>
+                            </button>
+                          )}
 
                           <button
                             onClick={() => {
                               setSelectedTenantForWipe(t)
                               setShowWipeModal(true)
                             }}
-                            title="تصفير بيانات المنصة"
+                            title="تصفير بيانات الطلاب والتجارب لهذه المنصة"
                             style={{
                               padding: '8px 10px',
-                              background: 'rgba(239, 68, 68, 0.08)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              background: 'rgba(245, 158, 11, 0.1)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
                               borderRadius: '10px',
                               fontSize: '0.82rem',
                               cursor: 'pointer',
@@ -1282,8 +1439,30 @@ export default function SuperAdminPanel({ onBack, flash }) {
                               height: '38px'
                             }}
                           >
-                            <i className="fas fa-trash-can"></i>
+                            <i className="fas fa-broom"></i>
                           </button>
+
+                          {t.slug !== 'default' && (
+                            <button
+                              onClick={() => handleOpenDeleteTenant(t)}
+                              title="حذف المنصة بالكامل نهائياً من قاعدة البيانات"
+                              style={{
+                                padding: '8px 10px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: '10px',
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '38px'
+                              }}
+                            >
+                              <i className="fas fa-trash-can"></i>
+                            </button>
+                          )}
                         </div>
                       </div>
                     )
@@ -1368,8 +1547,17 @@ export default function SuperAdminPanel({ onBack, flash }) {
                                 </div>
                               </td>
                               <td style={{ textAlign: 'right', padding: '14px 18px' }}>
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                   <code className="cp-sa-color-badge" style={{ fontSize: '0.82rem', padding: '4px 8px' }}>{t.slug}</code>
+                                  {t.status === 'suspended' ? (
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <i className="fas fa-pause-circle" style={{ fontSize: '0.7rem' }}></i> متوقفة
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <i className="fas fa-check-circle" style={{ fontSize: '0.7rem' }}></i> نشطة
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => handleCopyTenantLink(t.slug, t.domain)}
@@ -1506,6 +1694,34 @@ export default function SuperAdminPanel({ onBack, flash }) {
                                     <i className="fas fa-gears" style={{ fontSize: '0.75rem' }}></i>
                                     <span>إدارة</span>
                                   </button>
+
+                                  {t.slug !== 'default' && (
+                                    <button
+                                      onClick={() => handleOpenToggleStatus(t)}
+                                      className="cp-btn"
+                                      style={{
+                                        padding: '6px 10px',
+                                        background: t.status === 'suspended' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                        color: t.status === 'suspended' ? '#10b981' : '#f59e0b',
+                                        border: `1px solid ${t.status === 'suspended' ? 'rgba(16, 185, 129, 0.28)' : 'rgba(245, 158, 11, 0.28)'}`,
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        whiteSpace: 'nowrap',
+                                        lineHeight: 1,
+                                        height: '34px'
+                                      }}
+                                      title={t.status === 'suspended' ? 'إعادة تفعيل المنصة' : 'إيقاف المنصة مؤقتاً (تجميد)'}
+                                    >
+                                      <i className={t.status === 'suspended' ? 'fas fa-play' : 'fas fa-pause'} style={{ fontSize: '0.75rem' }}></i>
+                                      <span>{t.status === 'suspended' ? 'تفعيل' : 'إيقاف'}</span>
+                                    </button>
+                                  )}
                                   
                                   <button
                                     onClick={() => {
@@ -1515,9 +1731,9 @@ export default function SuperAdminPanel({ onBack, flash }) {
                                     className="cp-btn"
                                     style={{
                                       padding: '6px 12px',
-                                      background: 'rgba(239, 68, 68, 0.12)',
-                                      color: '#ef4444',
-                                      border: '1px solid rgba(239, 68, 68, 0.28)',
+                                      background: 'rgba(245, 158, 11, 0.12)',
+                                      color: '#f59e0b',
+                                      border: '1px solid rgba(245, 158, 11, 0.28)',
                                       borderRadius: '8px',
                                       fontSize: '0.8rem',
                                       fontWeight: 'bold',
@@ -1532,9 +1748,37 @@ export default function SuperAdminPanel({ onBack, flash }) {
                                     }}
                                     title="تصفير بيانات المنصة"
                                   >
-                                    <i className="fas fa-trash-can" style={{ fontSize: '0.75rem' }}></i>
+                                    <i className="fas fa-broom" style={{ fontSize: '0.75rem' }}></i>
                                     <span>تصفير</span>
                                   </button>
+
+                                  {t.slug !== 'default' && (
+                                    <button
+                                      onClick={() => handleOpenDeleteTenant(t)}
+                                      className="cp-btn"
+                                      style={{
+                                        padding: '6px 10px',
+                                        background: 'rgba(239, 68, 68, 0.12)',
+                                        color: '#ef4444',
+                                        border: '1px solid rgba(239, 68, 68, 0.28)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        whiteSpace: 'nowrap',
+                                        lineHeight: 1,
+                                        height: '34px'
+                                      }}
+                                      title="حذف المنصة بالكامل نهائياً"
+                                    >
+                                      <i className="fas fa-trash-can" style={{ fontSize: '0.75rem' }}></i>
+                                      <span>حذف</span>
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1643,26 +1887,47 @@ export default function SuperAdminPanel({ onBack, flash }) {
                             <td><code className="cp-sa-color-badge">{t.slug}</code></td>
                             <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary, #7c3aed)' }}>{t.studentsCount || 0}</td>
                             <td style={{ textAlign: 'center' }}>
-                              <button
-                                onClick={() => {
-                                  setSelectedTenantForWipe(t)
-                                  setShowWipeModal(true)
-                                }}
-                                className="cp-btn"
-                                style={{
-                                  padding: '6px 14px',
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#ef4444',
-                                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                                  borderRadius: '8px',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 'bold',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <i className="fas fa-trash-can" style={{ marginInlineEnd: '6px' }}></i>
-                                <span>تصفير بيانات هذه المنصة</span>
-                              </button>
+                              <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'center' }}>
+                                <button
+                                  onClick={() => {
+                                    setSelectedTenantForWipe(t)
+                                    setShowWipeModal(true)
+                                  }}
+                                  className="cp-btn"
+                                  style={{
+                                    padding: '6px 12px',
+                                    background: 'rgba(245, 158, 11, 0.1)',
+                                    color: '#f59e0b',
+                                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                                    borderRadius: '8px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="fas fa-broom" style={{ marginInlineEnd: '6px' }}></i>
+                                  <span>تصفير البيانات</span>
+                                </button>
+                                {t.slug !== 'default' && (
+                                  <button
+                                    onClick={() => handleOpenDeleteTenant(t)}
+                                    className="cp-btn"
+                                    style={{
+                                      padding: '6px 12px',
+                                      background: 'rgba(239, 68, 68, 0.1)',
+                                      color: '#ef4444',
+                                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                                      borderRadius: '8px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 'bold',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <i className="fas fa-trash-can" style={{ marginInlineEnd: '6px' }}></i>
+                                    <span>حذف المنصة بالكامل</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -2095,6 +2360,71 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   {/* TAB 1: BRANDING & THEME */}
                   {manageActiveTab === 'branding' && (
                     <div>
+                      {/* Platform Operating Status Selector */}
+                      <div style={{
+                        marginBottom: '18px',
+                        padding: '16px',
+                        borderRadius: '14px',
+                        background: editStatus === 'suspended' ? 'rgba(245, 158, 11, 0.09)' : 'rgba(16, 185, 129, 0.08)',
+                        border: `1.5px solid ${editStatus === 'suspended' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.25)'}`
+                      }}>
+                        <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, marginBottom: '10px', color: editStatus === 'suspended' ? '#f59e0b' : '#10b981' }}>
+                          <i className={editStatus === 'suspended' ? 'fas fa-pause-circle' : 'fas fa-check-circle'} style={{ marginInlineEnd: 6 }}></i>
+                          حالة تشغيل المنصة (Platform Status)
+                        </label>
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            padding: '8px 14px',
+                            borderRadius: '10px',
+                            background: editStatus === 'active' ? 'rgba(16, 185, 129, 0.18)' : 'var(--cp-input-bg)',
+                            border: `1.5px solid ${editStatus === 'active' ? '#10b981' : 'var(--cp-input-border)'}`,
+                            fontWeight: editStatus === 'active' ? 800 : 500,
+                            color: 'var(--cp-text-main)'
+                          }}>
+                            <input 
+                              type="radio" 
+                              name="tenant_status_manage" 
+                              value="active" 
+                              checked={editStatus === 'active'} 
+                              onChange={() => setEditStatus('active')} 
+                            />
+                            <span>🟢 نشطة وتعمل بشكل طبيعي</span>
+                          </label>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: selectedTenantForManage?.slug === 'default' ? 'not-allowed' : 'pointer',
+                            padding: '8px 14px',
+                            borderRadius: '10px',
+                            background: editStatus === 'suspended' ? 'rgba(245, 158, 11, 0.18)' : 'var(--cp-input-bg)',
+                            border: `1.5px solid ${editStatus === 'suspended' ? '#f59e0b' : 'var(--cp-input-border)'}`,
+                            fontWeight: editStatus === 'suspended' ? 800 : 500,
+                            color: 'var(--cp-text-main)',
+                            opacity: selectedTenantForManage?.slug === 'default' ? 0.5 : 1
+                          }}>
+                            <input 
+                              type="radio" 
+                              name="tenant_status_manage" 
+                              value="suspended" 
+                              checked={editStatus === 'suspended'} 
+                              onChange={() => setEditStatus('suspended')} 
+                              disabled={selectedTenantForManage?.slug === 'default'}
+                            />
+                            <span>⏸️ متوقفة ومجمدة مؤقتاً</span>
+                          </label>
+                        </div>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--cp-text-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                          {editStatus === 'suspended' 
+                            ? '⚠️ المنصة مجمدة حالياً: يتم حظر تسجيل الدخول وتظهر شاشة التوقف للزوار والطلاب، مع بقاء كافة البيانات والامتحانات وسجلات الطلاب محفوظة 100% في أمان.'
+                            : '✅ المنصة نشطة ومتاحة لكافة الطلاب والمدرسين والمساعدين بشكل طبيعي.'}
+                        </p>
+                      </div>
+
                       <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '14px', color: 'var(--primary, #7c3aed)' }}>
                         <i className="fas fa-palette" style={{ marginInlineEnd: 6 }} /> البيانات الأساسية والألوان
                       </h4>
@@ -2636,11 +2966,31 @@ export default function SuperAdminPanel({ onBack, flash }) {
                   )}
 
                   {/* Sticky Footer Save Button for Tabs 1-4 */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--cp-divider)' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>
-                      <i className="fas fa-info-circle" style={{ marginInlineEnd: '6px', color: 'var(--primary)' }}></i>
-                      اضغط حفظ لتثبيت كافة تعديلات المنصة فوراً.
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--cp-divider)', flexWrap: 'wrap', gap: '12px' }}>
+                    {selectedTenantForManage.slug !== 'default' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDeleteTenant(selectedTenantForManage)}
+                        className="cp-btn"
+                        style={{
+                          padding: '8px 14px',
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <i className="fas fa-trash-can"></i>
+                        <span>حذف هذه المنصة نهائياً</span>
+                      </button>
+                    ) : <div />}
+
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button
                         type="button"
@@ -2899,6 +3249,203 @@ export default function SuperAdminPanel({ onBack, flash }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Tenant Completely Confirmation Modal */}
+      {showDeleteTenantModal && tenantToDelete && createPortal(
+        <div className="cp-portal-overlay">
+          <div className="cp-portal-modal" style={{ maxWidth: '500px', border: '1.5px solid rgba(239, 68, 68, 0.4)' }}>
+            <button 
+              onClick={() => {
+                setShowDeleteTenantModal(false)
+                setTenantToDelete(null)
+                setDeleteConfirmInput('')
+              }}
+              style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: 'var(--cp-text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            <div style={{ color: '#ef4444', fontSize: '2.8rem', marginBottom: '16px', textAlign: 'center' }}>
+              <i className="fas fa-trash-can-arrow-up"></i>
+            </div>
+            
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ef4444', textAlign: 'center', margin: '0 0 12px' }}>
+              حذف منصة ({tenantToDelete.name}) نهائياً
+            </h3>
+            
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '12px', padding: '14px', marginBottom: '20px', fontSize: '0.85rem', color: 'var(--cp-text-main)', lineHeight: '1.6' }}>
+              ⚠️ <strong>تحذير قاطع:</strong> هذا الإجراء سيقوم بحذف المنصة بالكامل وجميع الجداول والبيانات المرتبطة بها نهائياً:
+              <ul style={{ margin: '8px 0 0', paddingRight: '20px', fontSize: '0.82rem', color: 'var(--cp-text-muted)' }}>
+                <li>حسابات المشرفين، المساعدين، والطلاب ({tenantToDelete.studentsCount || 0} طالب)</li>
+                <li>المجموعات، الفروع، والحصص وجداول الغياب</li>
+                <li>المدفوعات وسجلات الخزينة والاشتراكات</li>
+                <li>الامتحانات، الواجبات، الفيديوهات، والمذكرات</li>
+                <li>سجل المنصة في جدول المنصات</li>
+              </ul>
+              <strong style={{ color: '#ef4444', display: 'block', marginTop: '8px' }}>لا يمكن التراجع عن هذا الإجراء إطلاقاً!</strong>
+            </div>
+
+            <form onSubmit={handleDeleteTenantSubmit}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '8px', color: 'var(--cp-text-main)' }}>
+                  لتأكيد الحذف النهائي، اكتب معرف المنصة <code style={{ background: 'var(--cp-bg)', padding: '2px 8px', borderRadius: '6px', color: '#ef4444', fontWeight: 'bold' }}>{tenantToDelete.slug}</code> أو اسمها أدناه:
+                </label>
+                <input 
+                  type="text"
+                  value={deleteConfirmInput}
+                  onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                  placeholder={`اكتب ${tenantToDelete.slug} هنا...`}
+                  className="cp-input"
+                  style={{ width: '100%', padding: '12px 14px', border: '1.5px solid rgba(239, 68, 68, 0.3)', color: 'var(--cp-text-main)', background: 'var(--cp-input-bg)', direction: 'ltr', textAlign: 'center', fontWeight: 'bold' }}
+                  disabled={deletingTenant}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={deletingTenant || (deleteConfirmInput.trim().toLowerCase() !== tenantToDelete.slug.toLowerCase() && deleteConfirmInput.trim() !== tenantToDelete.name)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: (deleteConfirmInput.trim().toLowerCase() === tenantToDelete.slug.toLowerCase() || deleteConfirmInput.trim() === tenantToDelete.name) ? '#ef4444' : 'rgba(239, 68, 68, 0.4)',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    cursor: deletingTenant ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    height: '46px'
+                  }}
+                >
+                  {deletingTenant ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i>
+                      <span>جاري الحذف النهائي...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-trash-can"></i>
+                      <span>نعم، احذف هذه المنصة نهائياً</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteTenantModal(false)
+                    setTenantToDelete(null)
+                    setDeleteConfirmInput('')
+                  }}
+                  disabled={deletingTenant}
+                  className="cp-btn cp-btn-secondary"
+                  style={{ padding: '12px 20px', borderRadius: '12px', height: '46px' }}
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Suspend / Resume Tenant Confirmation Modal */}
+      {showSuspendModal && tenantToSuspend && createPortal(
+        <div className="cp-portal-overlay">
+          <div className="cp-portal-modal" style={{ maxWidth: '480px', border: `1.5px solid ${suspendTargetStatus === 'suspended' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(16, 185, 129, 0.4)'}` }}>
+            <button 
+              onClick={() => {
+                setShowSuspendModal(false)
+                setTenantToSuspend(null)
+              }}
+              style={{ position: 'absolute', top: 20, left: 20, background: 'none', border: 'none', color: 'var(--cp-text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            <div style={{ color: suspendTargetStatus === 'suspended' ? '#f59e0b' : '#10b981', fontSize: '2.8rem', marginBottom: '16px', textAlign: 'center' }}>
+              <i className={suspendTargetStatus === 'suspended' ? 'fas fa-pause-circle' : 'fas fa-circle-check'}></i>
+            </div>
+            
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: suspendTargetStatus === 'suspended' ? '#f59e0b' : '#10b981', textAlign: 'center', margin: '0 0 12px' }}>
+              {suspendTargetStatus === 'suspended' ? `إيقاف مؤقت لمنصة (${tenantToSuspend.name})` : `إعادة تفعيل منصة (${tenantToSuspend.name})`}
+            </h3>
+            
+            <div style={{ background: suspendTargetStatus === 'suspended' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)', border: `1px solid ${suspendTargetStatus === 'suspended' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`, borderRadius: '12px', padding: '14px', marginBottom: '20px', fontSize: '0.86rem', color: 'var(--cp-text-main)', lineHeight: '1.6' }}>
+              {suspendTargetStatus === 'suspended' ? (
+                <>
+                  ⏸️ <strong>تجميد المنصة:</strong>
+                  <ul style={{ margin: '8px 0 0', paddingRight: '20px', fontSize: '0.82rem', color: 'var(--cp-text-muted)' }}>
+                    <li>سيتم حظر تسجيل دخول الطلاب والمساعدين والمشرفين.</li>
+                    <li>ستظهر شاشة توقف راقية لأي زائر للمنصة تفيد بأن المنصة متوقفة مؤقتاً.</li>
+                    <li><strong>جميع البيانات والامتحانات وسجلات الطلاب والماليات تظل محفوظة 100% في أمان.</strong></li>
+                    <li>يمكنك إعادة تفعيلها فوراً في أي وقت بضغطة زر واحدة.</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  🟢 <strong>إعادة تشغيل المنصة:</strong>
+                  <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: 'var(--cp-text-muted)' }}>
+                    ستعود المنصة للعمل فوراً وبشكل كامل لكافة الطلاب والمدرسين والزوار بجميع بياناتها وسجلاتها المحفوظة مسبقاً.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={handleConfirmToggleStatus}
+                disabled={suspendingTenant}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: suspendTargetStatus === 'suspended' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  cursor: suspendingTenant ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  height: '46px'
+                }}
+              >
+                {suspendingTenant ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>جاري المعالجة...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className={suspendTargetStatus === 'suspended' ? 'fas fa-pause' : 'fas fa-play'}></i>
+                    <span>{suspendTargetStatus === 'suspended' ? 'نعم، أوقف المنصة مؤقتاً' : 'نعم، فعّل المنصة الآن'}</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuspendModal(false)
+                  setTenantToSuspend(null)
+                }}
+                disabled={suspendingTenant}
+                className="cp-btn cp-btn-secondary"
+                style={{ padding: '12px 20px', borderRadius: '12px', height: '46px' }}
+              >
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>,
         document.body

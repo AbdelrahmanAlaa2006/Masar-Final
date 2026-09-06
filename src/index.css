@@ -1,3 +1,43 @@
+@font-face {
+  font-family: 'Milan Display';
+  src: url('/fonts/Milan-Display-Black.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Milan Display';
+  src: url('/fonts/Milan-Display-Black.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Milan Display';
+  src: url('/fonts/Milan-Display-Black.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Milan Display';
+  src: url('/fonts/Milan-Display-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Milan';
+  src: url('/fonts/Milan-Display-Black.otf') format('opentype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color: #1a202c;
   /* Warm paper tone — easier on the eyes than the old cold bright #f0f2f8.
@@ -19,7 +59,7 @@ body {
   margin: 0;
   display: block;
   min-width: 320px;
-  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
+  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif;
   line-height: 1.6;
   background: var(--bg-color);
   color: #1a202c;
@@ -31,11 +71,15 @@ body,
 [dir="ltr"],
 [lang="ar"],
 [lang="en"] {
-  font-family: 'El Messiri', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family: 'El Messiri', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6, p, span, a, button, input, select, textarea, optgroup {
-  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
+/* Specific elements using Milan Display */
+.gf-rotator-text,
+.font-milan,
+[data-font="milan"] {
+  font-family: 'Milan Display', 'Milan', 'El Messiri', sans-serif !important;
+  font-weight: 900 !important;
 }
 
 /* Protect Font Awesome Icons from text font-family overrides */

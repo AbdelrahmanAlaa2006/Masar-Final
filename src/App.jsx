@@ -40,6 +40,7 @@ const FinanceGroupReport = lazy(() => import('./pages/FinanceGroupReport'))
 // GitFekra company website — shown on the default tenant only.
 const GitFekraLanding = lazy(() => import('./pages/company/GitFekraLanding'))
 const Credits = lazy(() => import('./pages/Credits'))
+const SuspendedTenant = lazy(() => import('./pages/SuspendedTenant'))
 
 
 import { TenantProvider, useTenant } from './contexts/TenantContext'
@@ -441,7 +442,7 @@ function AppContent() {
   const location = useLocation()
   const cleanPath = location.pathname.replace(/\/+$/, '') || '/'
   const { user, isLoggedIn, loading, logout } = useAuth()
-  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig, isCompanySite } = useTenant()
+  const { tenant, tenantSlug, isFeatureEnabled, isGradeEnabled, themeConfig, isCompanySite, isSuspended } = useTenant()
   const isLoginPage = cleanPath === '/login' || (!isLoggedIn && !isCompanySite && cleanPath === '/')
   const isExamTaking = cleanPath === '/exam-taking'
   const isPublicReportPage = cleanPath === '/public-report'
@@ -597,6 +598,15 @@ function AppContent() {
   const role = user?.role
   const isStaff = isLoggedIn && (role === 'admin' || role === 'assistant' || role === 'super_admin')
   const isUserGradeDisabled = isLoggedIn && user && !isStaff && user.grade && !isGradeEnabled(user.grade)
+
+  // Platform Suspension check: if tenant is suspended and viewer is not super_admin
+  if (isSuspended && (!isLoggedIn || user?.role !== 'super_admin') && cleanPath !== '/login') {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <SuspendedTenant />
+      </Suspense>
+    )
+  }
 
   if (isUserGradeDisabled && !isLoginPage && !isPublicReportPage) {
     return (

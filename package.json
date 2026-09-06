@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/build-seo.mjs",
     "preview": "vite preview",
+    "backup": "node scripts/backup_db.js",
     "cap:sync": "npm run build & npx cap sync",
     "cap:open": "npx cap open android"
   },

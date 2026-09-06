@@ -5,6 +5,11 @@ import { listStudentBooklets, markBookletsPaid } from './bookletsApi'
 import { recordSubscriptionPayment } from './financeApi'
 import { createClient } from '@supabase/supabase-js'
 
+// Lean projection for list tables: same as listStudents minus the sensitive
+// `password` column (which the bulk list should never carry).
+const STUDENT_LIST_COLUMNS =
+  'id, name, phone, grade, "group", avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, subscription_discount, flags, student_groups(group_id)'
+
 /* Admin-only: list every student profile. RLS policy profiles_admin_all
    lets an admin read all rows; a student would only see themselves.
    Uses the lean projection (STUDENT_LIST_COLUMNS, defined below) — notably it
@@ -12,13 +17,23 @@ import { createClient } from '@supabase/supabase-js'
    (a payload + security concern). The only screen that needs a student's
    password (ResetRequestsPanel) fetches it on demand via listStudentsByPhones. */
 export async function listStudents() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(STUDENT_LIST_COLUMNS)
-    .eq('role', 'student')
-    .order('name', { ascending: true })
-  if (error) throw error
-  return data || []
+  const CHUNK_SIZE = 1000
+  let allData = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(STUDENT_LIST_COLUMNS)
+      .eq('role', 'student')
+      .order('name', { ascending: true })
+      .range(from, from + CHUNK_SIZE - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    allData.push(...data)
+    if (data.length < CHUNK_SIZE) break
+    from += CHUNK_SIZE
+  }
+  return allData
 }
 
 /* ---------------------------------------------------------------------------
@@ -29,13 +44,7 @@ export async function listStudents() {
    RLS still scopes every query to the caller's tenant.
    --------------------------------------------------------------------------- */
 
-// Lean projection for list tables: same as listStudents minus the sensitive
-// `password` column (which the bulk list should never carry).
-const STUDENT_LIST_COLUMNS =
-  'id, name, phone, grade, "group", avatar_url, created_at, is_active, is_approved, qr_token, barcode_token, parent_phone, branch_id, academic_year_id, status, enrollment_type, subscription_discount, flags, student_groups(group_id)'
-
 // Apply the same status/grade/search semantics the AccountsPanel used to do
-// client-side, but in the database so only one page of rows is returned.
 // client-side, but in the database so only one page of rows is returned.
 function applyStudentFilters(query, { statusTab, grade, branchId, studentIds, search }) {
   switch (statusTab) {
@@ -160,14 +169,24 @@ export async function getStudentStatusCounts({ grade = 'all', branchId = 'all', 
 // so they never pull the entire tenant. Lean projection, RLS/tenant-scoped.
 export async function listStudentsByGrade(grade) {
   if (!grade) return []
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(STUDENT_LIST_COLUMNS)
-    .eq('role', 'student')
-    .eq('grade', grade)
-    .order('name', { ascending: true })
-  if (error) throw error
-  return data || []
+  const CHUNK_SIZE = 1000
+  let allData = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(STUDENT_LIST_COLUMNS)
+      .eq('role', 'student')
+      .eq('grade', grade)
+      .order('name', { ascending: true })
+      .range(from, from + CHUNK_SIZE - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    allData.push(...data)
+    if (data.length < CHUNK_SIZE) break
+    from += CHUNK_SIZE
+  }
+  return allData
 }
 
 // Targeted lookup: students matching a set of phone numbers. Used by the

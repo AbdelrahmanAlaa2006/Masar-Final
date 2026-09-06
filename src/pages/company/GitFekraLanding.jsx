@@ -1,10 +1,105 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import './GitFekraLanding.css'
 import { PLATFORMS, SERVICES, PROCESS, TOUR } from './products'
+import { supabase } from '@backend/supabase'
+import { cached } from '../../utils/cache'
 
 /* GitFekra — company site (shown on the default tenant / gitfekra.com).
    Editorial, print-inspired design: light paper background, ink typography,
    hairline rules, numbered sections. Self-contained (own header/footer). */
+
+// Helper to convert English digits to Eastern Arabic numerals
+function toArabicDigits(num) {
+  const map = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
+  return String(num).replace(/[0-9]/g, d => map[+d])
+}
+
+function resolveProductsFromTenants(dbTenants) {
+  if (!dbTenants || dbTenants.length === 0) return []
+
+  const presetMap = new Map()
+  PLATFORMS.forEach(p => {
+    presetMap.set(p.id, p)
+    if (p.id === 'miracle-english') {
+      presetMap.set('waled-english', p)
+      presetMap.set('sherif-english', p)
+    }
+    if (p.id === 'power-platform') {
+      presetMap.set('mohamed-abdella', p)
+      presetMap.set('sherif-programming', p)
+    }
+    if (p.id === 'belqadar-math') {
+      presetMap.set('math', p)
+      presetMap.set('sherif-math', p)
+      presetMap.set('belqadar', p)
+      presetMap.set('belqadar-math', p)
+    }
+    if (p.id === 'eldad-arabic') {
+      presetMap.set('eldad', p)
+    }
+    if (p.id === 'elsharawy-primary') {
+      presetMap.set('elsharawy', p)
+      presetMap.set('elshaarawy', p)
+    }
+    if (p.id === 'mohamed-yasser-english') {
+      presetMap.set('mohamed-yasser', p)
+    }
+  })
+
+  return dbTenants
+    .filter(t => t.slug !== 'default')
+    .map(t => {
+      const preset = presetMap.get(t.slug) || presetMap.get(t.id) || null
+      const isSuspended = t.status === 'suspended' || t.config?.status === 'suspended' || t.config?.is_suspended === true
+      const status = isSuspended ? 'suspended' : 'live'
+      const cfg = t.config || {}
+      
+      const teacherName = (cfg.teacher?.name && cfg.teacher.name !== 'Admin') 
+        ? cfg.teacher.name 
+        : (preset?.owner?.ar || t.name)
+        
+      const teacherRole = cfg.teacher?.role 
+        || preset?.subject?.ar 
+        || 'منصة تعليمية متكاملة'
+        
+      const teacherImg = cfg.teacher?.image_base 
+        || cfg.teacher?.image 
+        || preset?.image 
+        || null
+        
+      const logoImg = t.logo_url || preset?.logo || null
+      const primaryCol = t.primary_color || preset?.accent || '#7c3aed'
+      const platformUrl = t.domain ? `https://${t.domain}/login` : `/login?tenant=${t.slug}`
+
+      return {
+        id: t.id,
+        slug: t.slug,
+        status: status,
+        name: {
+          ar: t.name || preset?.name?.ar || 'منصة تعليمية',
+          en: preset?.name?.en || t.name || 'Education Platform'
+        },
+        owner: {
+          ar: teacherName,
+          en: preset?.owner?.en || teacherName
+        },
+        subject: {
+          ar: teacherRole,
+          en: preset?.subject?.en || teacherRole
+        },
+        blurb: {
+          ar: cfg.branding?.hero_sub || cfg.branding?.description || preset?.blurb?.ar || 'منصة متكاملة للمحاضرات والامتحانات والواجبات والمتابعة الدقيقة.',
+          en: preset?.blurb?.en || 'A comprehensive platform for lectures, exams, homework, and student tracking.'
+        },
+        accent: primaryCol,
+        image: teacherImg,
+        imagePosition: preset?.imagePosition || 'center top',
+        imageStyle: preset?.imageStyle || {},
+        logo: logoImg,
+        url: platformUrl
+      }
+    })
+}
 
 const COPY = {
   ar: {
@@ -15,14 +110,10 @@ const COPY = {
     hero_sub: 'من الفكرة إلى الإطلاق: منصة كاملة باسمك وهويتك — فيديوهات محمية، امتحانات إلكترونية، حضور، مدفوعات، ومتابعة أولياء الأمور. أنت تدرّس، ونحن نتولى الباقي.',
     cta_primary: 'اطلب منصتك',
     cta_secondary: 'شاهد أعمالنا',
-    stats: [
-      { v: '٣', l: 'منصات تعمل الآن' },
-      { v: 'آلاف', l: 'الطلاب يستخدمونها يومياً' },
-      { v: '١', l: 'منصة قيد الإطلاق' },
-    ],
     services_kicker: 'ماذا نبني لك',
     services_title: 'كل ما يحتاجه مدرّس ليعمل أونلاين وفي السنتر',
     badge_live: 'يعمل الآن',
+    badge_suspended: 'متوقفة مؤقتاً',
     badge_soon: 'قيد الإطلاق',
     visit_platform: 'زيارة المنصة',
     tour_kicker: 'جولة داخل المنصة',
@@ -60,14 +151,10 @@ const COPY = {
     hero_sub: 'From idea to launch: a complete platform under your name and brand — protected videos, online exams, attendance, payments, and parent follow-up. You teach; we handle the rest.',
     cta_primary: 'Start your platform',
     cta_secondary: 'See our work',
-    stats: [
-      { v: '3', l: 'platforms live today' },
-      { v: 'Thousands', l: 'of students using them daily' },
-      { v: '1', l: 'platform launching soon' },
-    ],
     services_kicker: 'What we build',
     services_title: 'Everything a teacher needs, online and in-center',
     badge_live: 'Live',
+    badge_suspended: 'Suspended',
     badge_soon: 'Launching soon',
     visit_platform: 'Visit platform',
     tour_kicker: 'Product tour',
@@ -150,6 +237,68 @@ export default function GitFekraLanding() {
   const [tourIndex, setTourIndex] = useState(0)
   const [rotIndex, setRotIndex] = useState(0)
   const [isRotating, setIsRotating] = useState(false)
+  const [dbTenants, setDbTenants] = useState([])
+  const [tenantsLoading, setTenantsLoading] = useState(true)
+
+  // Fetch real tenants from database to keep showcase and metrics 100% synchronized
+  useEffect(() => {
+    let isMounted = true
+    async function loadTenants() {
+      try {
+        const data = await cached('gitfekra-public-tenants', 60 * 1000, async () => {
+          const { data: list, error } = await supabase
+            .from('tenants')
+            .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config, status, created_at')
+            .neq('slug', 'default')
+            .order('created_at', { ascending: true })
+          if (error) throw error
+          return list || []
+        })
+        if (isMounted && data) {
+          setDbTenants(data)
+        }
+      } catch (err) {
+        console.error('Failed to load public tenants for GitFekra landing:', err)
+      } finally {
+        if (isMounted) setTenantsLoading(false)
+      }
+    }
+    loadTenants()
+    return () => { isMounted = false }
+  }, [])
+
+  const platforms = useMemo(() => {
+    if (dbTenants && dbTenants.length > 0) {
+      return resolveProductsFromTenants(dbTenants)
+    }
+    return PLATFORMS
+  }, [dbTenants])
+
+  const livePlatforms = useMemo(() => platforms.filter(p => p.status === 'live'), [platforms])
+  const suspendedPlatforms = useMemo(() => platforms.filter(p => p.status === 'suspended'), [platforms])
+  const liveCount = livePlatforms.length
+  const suspendedCount = suspendedPlatforms.length
+
+  const liveCountDisplay = lang === 'ar' ? toArabicDigits(liveCount) : String(liveCount)
+  const suspendedCountDisplay = lang === 'ar' ? toArabicDigits(suspendedCount) : String(suspendedCount)
+
+  const dynamicStats = useMemo(() => [
+    { 
+      v: liveCountDisplay, 
+      l: lang === 'ar' ? 'منصات تعمل الآن' : 'platforms live today' 
+    },
+    { 
+      v: lang === 'ar' ? 'آلاف' : 'Thousands', 
+      l: lang === 'ar' ? 'الطلاب يستخدمونها يومياً' : 'of students using them daily' 
+    },
+    { 
+      v: suspendedCountDisplay, 
+      l: lang === 'ar' 
+        ? (suspendedCount > 0 ? 'منصات متوقفة مؤقتاً' : 'منصة قيد الإطلاق') 
+        : (suspendedCount > 0 ? 'platforms suspended' : 'platform launching soon') 
+    },
+  ], [liveCountDisplay, suspendedCountDisplay, suspendedCount, lang])
+
   const tourShots = TOUR.filter((s) => s.role === tourTab)
   const currentShot = tourShots[Math.min(tourIndex, tourShots.length - 1)]
   const t = COPY[lang]
@@ -253,7 +402,7 @@ export default function GitFekraLanding() {
           <a href="#work" className="gf-btn gf-btn-line">{t.cta_secondary}</a>
         </div>
         <dl className="gf-stats gf-reveal">
-          {t.stats.map((s, i) => (
+          {dynamicStats.map((s, i) => (
             <div className="gf-stat" key={i}>
               <dt className="gf-stat-v">{s.v}</dt>
               <dd>{s.l}</dd>
@@ -317,30 +466,36 @@ export default function GitFekraLanding() {
             </button>
           </div>
           <div className="gf-stage">
-            <button type="button" className="gf-stage-frame" onClick={() => setTourShot(currentShot)} aria-label={currentShot.title[lang]}>
-              <span className="gf-tour-chrome">
-                <i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
-                <em className={`gf-tour-role ${currentShot.role === 'admin' ? 'is-admin' : ''}`}>
-                  {currentShot.role === 'admin' ? t.role_admin : t.role_student}
-                </em>
-              </span>
-              <img key={currentShot.id} src={currentShot.img} alt={currentShot.title[lang]} className="gf-stage-img" />
-            </button>
-            <div className="gf-stage-meta">
-              <div className="gf-stage-text" key={`meta-${currentShot.id}`}>
-                <strong>{currentShot.title[lang]}</strong>
-                <p>{currentShot.caption[lang]}</p>
+            {currentShot && (
+              <button type="button" className="gf-stage-frame" onClick={() => setTourShot(currentShot)} aria-label={currentShot?.title?.[lang] || ''}>
+                <span className="gf-tour-chrome">
+                  <i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
+                  <em className={`gf-tour-role ${currentShot?.role === 'admin' ? 'is-admin' : ''}`}>
+                    {currentShot?.role === 'admin' ? t.role_admin : t.role_student}
+                  </em>
+                </span>
+                {currentShot?.img && (
+                  <img key={currentShot.id} src={currentShot.img} alt={currentShot?.title?.[lang] || ''} className="gf-stage-img" />
+                )}
+              </button>
+            )}
+            {currentShot && (
+              <div className="gf-stage-meta">
+                <div className="gf-stage-text" key={`meta-${currentShot?.id}`}>
+                  <strong>{currentShot?.title?.[lang] || ''}</strong>
+                  <p>{currentShot?.caption?.[lang] || ''}</p>
+                </div>
+                <div className="gf-stage-nav">
+                  <button type="button" onClick={() => setTourIndex((tourIndex - 1 + (tourShots.length || 1)) % (tourShots.length || 1))} aria-label="Previous">
+                    <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-right' : 'fa-arrow-left'}`} />
+                  </button>
+                  <span dir="ltr">{Math.min(tourIndex, (tourShots.length || 1) - 1) + 1} / {tourShots.length}</span>
+                  <button type="button" onClick={() => setTourIndex((tourIndex + 1) % (tourShots.length || 1))} aria-label="Next">
+                    <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-left' : 'fa-arrow-right'}`} />
+                  </button>
+                </div>
               </div>
-              <div className="gf-stage-nav">
-                <button type="button" onClick={() => setTourIndex((tourIndex - 1 + tourShots.length) % tourShots.length)} aria-label="Previous">
-                  <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-right' : 'fa-arrow-left'}`} />
-                </button>
-                <span dir="ltr">{Math.min(tourIndex, tourShots.length - 1) + 1} / {tourShots.length}</span>
-                <button type="button" onClick={() => setTourIndex((tourIndex + 1) % tourShots.length)} aria-label="Next">
-                  <i className={`fas ${t.dir === 'rtl' ? 'fa-arrow-left' : 'fa-arrow-right'}`} />
-                </button>
-              </div>
-            </div>
+            )}
           </div>
           <div className="gf-thumbs" role="tablist">
             {tourShots.map((shot, i) => (
@@ -368,7 +523,17 @@ export default function GitFekraLanding() {
           <p className="gf-section-note">{t.work_note}</p>
         </header>
         <div className="gf-work-grid">
-          {PLATFORMS.map((p, i) => {
+          {platforms.map((p, i) => {
+            const isLive = p.status === 'live'
+            const isSuspended = p.status === 'suspended'
+            const badgeText = isLive ? t.badge_live : (isSuspended ? t.badge_suspended : t.badge_soon)
+            const statusClass = isLive ? 'is-live' : (isSuspended ? 'is-suspended' : 'is-soon')
+
+            const pName = typeof p.name === 'object' ? (p.name[lang] || p.name.ar || p.name.en || '') : (p.name || '')
+            const pOwner = typeof p.owner === 'object' ? (p.owner[lang] || p.owner.ar || p.owner.en || '') : (p.owner || '')
+            const pSubject = typeof p.subject === 'object' ? (p.subject[lang] || p.subject.ar || p.subject.en || '') : (p.subject || '')
+            const pBlurb = typeof p.blurb === 'object' ? (p.blurb[lang] || p.blurb.ar || p.blurb.en || '') : (p.blurb || '')
+
             const inner = (
               <>
                 <div className="gf-work-header">
@@ -378,31 +543,31 @@ export default function GitFekraLanding() {
                         {p.image ? (
                           <img
                             src={p.image}
-                            alt={p.owner[lang]}
+                            alt={pOwner}
                             className="gf-work-avatar-img"
                             loading="lazy"
                             style={{ objectPosition: p.imagePosition || 'center top', ...(p.imageStyle || {}) }}
                           />
                         ) : (
-                          <span className="gf-work-avatar-monogram">{(p.name[lang] || '?').trim().charAt(0)}</span>
+                          <span className="gf-work-avatar-monogram">{(pName || '?').trim().charAt(0)}</span>
                         )}
                       </div>
                       {p.logo && (
-                        <img className="gf-work-badge-logo" src={p.logo} alt={p.name[lang]} loading="lazy" />
+                        <img className="gf-work-badge-logo" src={p.logo} alt={pName} loading="lazy" />
                       )}
                     </div>
                     <div className="gf-work-titles">
-                      <h3>{p.name[lang]}</h3>
-                      <p className="gf-work-owner">{p.owner[lang]}</p>
-                      <p className="gf-work-subject">{p.subject[lang]}</p>
+                      <h3>{pName}</h3>
+                      <p className="gf-work-owner">{pOwner}</p>
+                      <p className="gf-work-subject">{pSubject}</p>
                     </div>
                   </div>
-                  <span className={`gf-work-status ${p.status === 'live' ? 'is-live' : 'is-soon'}`}>
+                  <span className={`gf-work-status ${statusClass}`}>
                     <span className="gf-work-status-dot" />
-                    {p.status === 'live' ? t.badge_live : t.badge_soon}
+                    {badgeText}
                   </span>
                 </div>
-                <p className="gf-work-blurb">{p.blurb[lang]}</p>
+                <p className="gf-work-blurb">{pBlurb}</p>
                 <div className="gf-work-footer">
                   {p.url && (
                     <span className="gf-work-visit">

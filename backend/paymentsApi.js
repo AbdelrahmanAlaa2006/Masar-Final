@@ -12,31 +12,41 @@ import { recordSubscriptionPayment } from './financeApi'
 export async function listPayments() {
   const key = 'admin-payments'
   return cached(key, LIST_TTL, async () => {
-    const { data, error } = await supabase
-      .from('student_ledger')
-      .select(`
-        id,
-        student_id,
-        amount,
-        payment_method,
-        screenshot_url,
-        screenshot_key,
-        status,
-        description,
-        notes,
-        created_at,
-        transaction_date,
-        billing_period,
-        resolved_at,
-        resolved_by,
-        profiles:student_id ( name, phone, grade, "group", branch_id, subscription_discount )
-      `)
-      .eq('type', 'payment')
-      .order('created_at', { ascending: false })
-    if (error) throw error
+    const CHUNK_SIZE = 1000
+    let allData = []
+    let from = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from('student_ledger')
+        .select(`
+          id,
+          student_id,
+          amount,
+          payment_method,
+          screenshot_url,
+          screenshot_key,
+          status,
+          description,
+          notes,
+          created_at,
+          transaction_date,
+          billing_period,
+          resolved_at,
+          resolved_by,
+          profiles:student_id ( name, phone, grade, "group", branch_id, subscription_discount )
+        `)
+        .eq('type', 'payment')
+        .order('created_at', { ascending: false })
+        .range(from, from + CHUNK_SIZE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      allData.push(...data)
+      if (data.length < CHUNK_SIZE) break
+      from += CHUNK_SIZE
+    }
 
     // Map database ledger structure to expected payments keys
-    return (data || []).map(p => ({
+    return allData.map(p => ({
       id: p.id,
       student_id: p.student_id,
       amount: p.amount,

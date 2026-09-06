@@ -16,17 +16,12 @@ import BookletsPanel from './ControlPanel/BookletsPanel'
 import { printThermalPaymentReceipt } from '../utils/paymentReceiptPrint'
 import './Payments.css'
 
-const ACAD_MONTHS = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس']
+const ACAD_MONTHS = ['أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو']
 
 const getAcadMonthIdx = (d) => {
-  if (!d || isNaN(new Date(d).getTime())) {
-    const now = new Date()
-    const m = now.getMonth()
-    return m >= 8 ? m - 8 : m + 4
-  }
-  const date = new Date(d)
+  const date = d && !isNaN(new Date(d).getTime()) ? new Date(d) : new Date()
   const m = date.getMonth()
-  return m >= 8 ? m - 8 : m + 4
+  return m >= 7 ? m - 7 : m + 5
 }
 
 const getPackageNameForIdx = (idx) => {
@@ -66,43 +61,32 @@ const determineSmartDefaultMonth = (studentObj, payments, monthDue) => {
     p => p.student_id === studentObj.id && p.status === 'approved'
   )
 
-  const monthlyPayRecords = studentApprovedPayments.filter(p =>
-    ACAD_MONTHS.some(m => (p.package_name || '').includes(m) || (p.billing_period || '').includes(m))
-  )
-
-  // 1. If student has NO previous monthly subscription payments (first-time payment):
-  //    ALWAYS default to current calendar month (e.g. August).
-  if (monthlyPayRecords.length === 0) {
-    const currentPkg = getPackageNameForIdx(currentAcadIdx)
-    if (!isPackagePaidForStudent(studentObj.id, currentPkg, payments, monthDue)) {
-      return currentPkg
-    }
-  }
-
-  // 2. If student HAS previous monthly payment records, check from their earliest paid month up to current month
-  let earliestPaidAcadIdx = currentAcadIdx
-  monthlyPayRecords.forEach(p => {
+  const paidMonthIndices = []
+  studentApprovedPayments.forEach(p => {
     ACAD_MONTHS.forEach((m, idx) => {
-      if ((p.package_name || '').includes(m) || (p.billing_period || '').includes(m)) {
-        if (idx < earliestPaidAcadIdx) earliestPaidAcadIdx = idx
+      const desc = (p.package_name || p.billing_period || '').trim()
+      if (desc.includes(m)) {
+        paidMonthIndices.push(idx)
       }
     })
   })
 
-  const startAcadIdx = Math.min(earliestPaidAcadIdx, currentAcadIdx)
-  const numMonths = (currentAcadIdx - startAcadIdx + 12) % 12 + 1
+  // If student has paid before, start looking from their earliest paid month (earlier months are waived)
+  // If student never paid yet, start from current calendar month (so August isn't forced on a September joiner)
+  let startAcadIdx = currentAcadIdx
+  if (paidMonthIndices.length > 0) {
+    startAcadIdx = Math.min(...paidMonthIndices)
+  }
 
-  for (let i = 0; i < numMonths; i++) {
-    const idx = (startAcadIdx + i) % 12
-    const pkg = getPackageNameForIdx(idx)
+  for (let i = startAcadIdx; i <= currentAcadIdx; i++) {
+    const pkg = getPackageNameForIdx(i)
     if (!isPackagePaidForStudent(studentObj.id, pkg, payments, monthDue)) {
       return pkg
     }
   }
 
-  for (let i = numMonths; i < 12; i++) {
-    const idx = (startAcadIdx + i) % 12
-    const pkg = getPackageNameForIdx(idx)
+  for (let i = currentAcadIdx + 1; i < 12; i++) {
+    const pkg = getPackageNameForIdx(i)
     if (!isPackagePaidForStudent(studentObj.id, pkg, payments, monthDue)) {
       return pkg
     }
@@ -920,9 +904,8 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   const [branchList, setBranchList] = useState([])
   useEffect(() => { listBranches().then(setBranchList).catch(() => {}) }, [])
 
-  // Subscription months (matches the "اشتراك شهر X" package naming) — a payment
-  // for August counts toward August's total even if paid in July.
-  const SUB_MONTHS = ['سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس']
+  // Subscription months (matches the "اشتراك شهر X" package naming) — ordered by school year
+  const SUB_MONTHS = ['أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو']
   
   // Full student roster for unpaid (debt) and overpaid (surplus) calculations
   const [allStudents, setAllStudents] = useState([])
@@ -1358,13 +1341,15 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
   // Active target month for debt and surplus calculations
   const activeTargetMonth = useMemo(() => {
     if (monthFilter !== 'all') return monthFilter
-    return ACAD_MONTHS[getAcadMonthIdx(new Date())] || 'أغسطس'
+    return ACAD_MONTHS[getAcadMonthIdx(new Date())] || 'سبتمبر'
   }, [monthFilter])
 
   // Financial subscription breakdown per student (for debt & surplus lists)
   const studentFinancialSummary = useMemo(() => {
     if (!Array.isArray(allStudents)) return []
     const q = (searchQuery || '').toLowerCase().trim()
+    const targetMonthIdx = ACAD_MONTHS.indexOf(activeTargetMonth)
+
     return allStudents.map(student => {
       if (!student || !student.id) return null
 
@@ -1385,23 +1370,55 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         }
       }
 
-      // 2. Compute fee, discount, and due
-      const baseFee = parseFloat(feeInputs?.[student.grade]) || 0
-      const discount = parseFloat(student.subscription_discount) || 0
+      // 2. All approved payments for this student
+      const studentApprovedPayments = (payments || []).filter(p =>
+        p && p.student_id === student.id && p.status === 'approved'
+      )
+
+      // Find earliest paid month index for this student
+      const paidMonthIndices = []
+      studentApprovedPayments.forEach(p => {
+        ACAD_MONTHS.forEach((m, idx) => {
+          const desc = (p.package_name || p.billing_period || '').trim()
+          if (desc.includes(m)) {
+            paidMonthIndices.push(idx)
+          }
+        })
+      })
+
+      // Student registration month index
+      const studentRegMonthIdx = (() => {
+        if (!student.created_at) return 0
+        const d = new Date(student.created_at)
+        if (isNaN(d.getTime())) return 0
+        return getAcadMonthIdx(d)
+      })()
+
+      // If student has paid before, their subscription start month is their earliest paid month.
+      // If student never paid yet, their start month is their registration month.
+      const studentStartMonthIdx = paidMonthIndices.length > 0
+        ? Math.min(...paidMonthIndices)
+        : studentRegMonthIdx
+
+      // If the target report month is strictly BEFORE the student's start month:
+      // This student was NOT enrolled/active in this pre-enrollment month, so they owe 0 and are NOT unpaid.
+      const isPreEnrollmentMonth = targetMonthIdx !== -1 && targetMonthIdx < studentStartMonthIdx
+
+      // 3. Compute fee, discount, and due
+      const baseFee = isPreEnrollmentMonth ? 0 : (parseFloat(feeInputs?.[student.grade]) || 0)
+      const discount = isPreEnrollmentMonth ? 0 : (parseFloat(student.subscription_discount) || 0)
       const monthlyDue = Math.max(0, baseFee - discount)
 
-      // 3. Payments made by this student for this month
-      const studentPayments = (payments || []).filter(p => 
-        p && p.student_id === student.id && 
-        p.status === 'approved' &&
+      // 4. Payments made by this student for this month
+      const studentPayments = studentApprovedPayments.filter(p => 
         ((p.package_name || '').includes(activeTargetMonth) || (p.billing_period || '').includes(activeTargetMonth))
       )
       const paidAmount = studentPayments.reduce((sum, p) => sum + (Number(p?.amount) || 0), 0)
 
-      // 4. Balance calculations
+      // 5. Balance calculations
       const remainingDue = Math.max(0, monthlyDue - paidAmount)
       const overpaidAmount = paidAmount > monthlyDue ? (paidAmount - monthlyDue) : 0
-      const isUnpaid = monthlyDue > 0 ? (paidAmount < monthlyDue) : (paidAmount === 0)
+      const isUnpaid = !isPreEnrollmentMonth && (monthlyDue > 0 ? (paidAmount < monthlyDue) : (paidAmount === 0))
       const isOverpaid = overpaidAmount > 0
 
       return {
@@ -1416,6 +1433,7 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
         overpaidAmount,
         isUnpaid,
         isOverpaid,
+        isPreEnrollmentMonth,
         studentPayments
       }
     }).filter(Boolean)
@@ -2854,27 +2872,51 @@ function AdminPaymentsReport({ payments, loading, onRefresh, config, onConfigCha
                     >
                       {availablePackages.map(p => {
                         const isPaid = isPackagePaidForStudent(cashStudentId, p, payments, cashDue)
+                        
+                        // Check if this month is strictly before the student's earliest paid month (waived)
+                        const studentApprovedPayments = (payments || []).filter(
+                          pay => pay && pay.student_id === cashStudentId && pay.status === 'approved'
+                        )
+                        const paidMonthIndices = []
+                        studentApprovedPayments.forEach(pay => {
+                          ACAD_MONTHS.forEach((m, idx) => {
+                            const desc = (pay.package_name || pay.billing_period || '').trim()
+                            if (desc.includes(m)) paidMonthIndices.push(idx)
+                          })
+                        })
+                        let pkgMonthIdx = -1
+                        ACAD_MONTHS.forEach((m, idx) => {
+                          if (p.includes(m)) pkgMonthIdx = idx
+                        })
+                        const isWaived = paidMonthIndices.length > 0 && pkgMonthIdx !== -1 && pkgMonthIdx < Math.min(...paidMonthIndices)
+                        const isDisabled = isPaid || isWaived
+
                         return (
                           <div
                             key={p}
                             onClick={() => {
-                              if (isPaid) return
+                              if (isDisabled) return
                               handleSelectPackage(p)
                             }}
                             className="paypg-modal-student-item"
                             style={{
                               borderBottom: 'none',
-                              opacity: isPaid ? 0.6 : 1,
-                              cursor: isPaid ? 'not-allowed' : 'pointer',
+                              opacity: isDisabled ? 0.6 : 1,
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
                             }}
                           >
-                            <span style={{ fontWeight: 600, color: isPaid ? 'var(--cp-text-muted, #94a3b8)' : 'inherit' }}>{p}</span>
+                            <span style={{ fontWeight: 600, color: isDisabled ? 'var(--cp-text-muted, #94a3b8)' : 'inherit' }}>{p}</span>
                             {isPaid && (
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', padding: '2px 8px', borderRadius: 999, background: 'rgba(239, 68, 68, 0.1)' }}>
-                                تم السداد
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', padding: '2px 8px', borderRadius: 999, background: 'rgba(16, 185, 129, 0.12)' }}>
+                                تم السداد ✓
+                              </span>
+                            )}
+                            {!isPaid && isWaived && (
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', padding: '2px 8px', borderRadius: 999, background: 'rgba(148, 163, 184, 0.12)' }}>
+                                معفى (قبل بدء الاشتراك)
                               </span>
                             )}
                           </div>

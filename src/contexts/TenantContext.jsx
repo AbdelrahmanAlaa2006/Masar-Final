@@ -108,7 +108,7 @@ export function TenantProvider({ children }) {
           if (querySlug && querySlug !== 'default') {
             const { data, error } = await supabase
               .from('tenants')
-              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config')
+              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config, status')
               .or(`slug.eq.${querySlug},domain.eq.${querySlug},slug.eq.${candidate},domain.eq.${candidate}`)
               .maybeSingle()
             if (!error && data) {
@@ -520,7 +520,7 @@ export function TenantProvider({ children }) {
           if (!resolvedData) {
             const { data, error } = await supabase
               .from('tenants')
-              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config')
+              .select('id, slug, name, domain, logo_url, primary_color, secondary_color, config, status')
               .eq('slug', 'default')
               .maybeSingle()
 
@@ -771,6 +771,7 @@ export function TenantProvider({ children }) {
     isFeatureEnabled,
     isGradeEnabled,
     gradesList,
+    isSuspended: (tenant?.status === 'suspended' || tenant?.config?.status === 'suspended' || tenant?.config?.is_suspended === true) && (tenant?.slug !== 'default'),
     // The default tenant is the GitFekra company website (not an educational
     // platform). Every other tenant renders the educational app as before.
     isCompanySite: (tenant?.slug || 'default') === 'default',
