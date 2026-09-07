@@ -186,9 +186,23 @@ export async function createExam(input) {
     target_group_id: input.target_audience === 'group' ? (input.target_group_id || null) : null,
   }
 
-  // Preserve available_hours if provided for legacy exams, but do NOT calculate or overwrite for new exams
+  // Handle available_hours
   if (input.available_hours !== undefined && input.available_hours !== null) {
     payload.available_hours = parseInt(input.available_hours, 10)
+  } else if (payload.availability_days) {
+    payload.available_hours = payload.availability_days * 24
+  }
+
+  // Authoritatively compute and persist expires_at
+  if (input.expires_at !== undefined) {
+    payload.expires_at = input.expires_at
+  } else if (payload.opens_at) {
+    const opensTime = new Date(payload.opens_at).getTime()
+    if (payload.available_hours) {
+      payload.expires_at = new Date(opensTime + payload.available_hours * 3600000).toISOString()
+    } else if (payload.availability_days) {
+      payload.expires_at = new Date(opensTime + payload.availability_days * 86400000).toISOString()
+    }
   }
 
   const { data, error } = await supabase
@@ -212,15 +226,16 @@ export async function updateExam(id, input) {
   if (input.grade             !== undefined) patch.grade = input.grade
   if (input.duration_minutes   !== undefined) patch.duration_minutes = Math.max(1, parseInt(input.duration_minutes, 10) || 1)
   if (input.max_attempts       !== undefined) patch.max_attempts = Math.max(1, parseInt(input.max_attempts, 10) || 1)
-  if (input.available_hours    !== undefined) patch.available_hours = Math.max(1, parseInt(input.available_hours, 10) || 1)
+  if (input.available_hours    !== undefined) patch.available_hours = input.available_hours ? Math.max(1, parseInt(input.available_hours, 10)) : null
   if (input.total_points       !== undefined) patch.total_points = Math.max(0, parseInt(input.total_points, 10) || 0)
   if (input.reveal_grades      !== undefined) patch.reveal_grades = !!input.reveal_grades
   if (input.questions          !== undefined) patch.questions = input.questions || []
   if (input.exam_type          !== undefined) patch.exam_type = input.exam_type
-  if (input.opens_at            !== undefined) patch.opens_at = input.opens_at || null
-  if (input.availability_days   !== undefined) patch.availability_days = input.availability_days ? parseInt(input.availability_days, 10) : null
-  if (input.target_audience     !== undefined) patch.target_audience = input.target_audience
-  if (input.target_group_id     !== undefined) patch.target_group_id = input.target_group_id || null
+  if (input.opens_at           !== undefined) patch.opens_at = input.opens_at || null
+  if (input.availability_days  !== undefined) patch.availability_days = input.availability_days ? parseInt(input.availability_days, 10) : null
+  if (input.target_audience    !== undefined) patch.target_audience = input.target_audience
+  if (input.target_group_id    !== undefined) patch.target_group_id = input.target_group_id || null
+  if (input.expires_at         !== undefined) patch.expires_at = input.expires_at || null
 
   const { data, error } = await supabase
     .from('exams').update(patch).eq('id', id).select().single()

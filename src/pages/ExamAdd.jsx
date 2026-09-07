@@ -60,7 +60,8 @@ export default function ExamAdd() {
     const minutes = String(now.getMinutes()).padStart(2, '0')
     return `${year}-${month}-${day}T${hours}:${minutes}`
   })
-  const [availabilityDays, setAvailabilityDays] = useState(() => initialDraft?.availabilityDays ?? 3)
+  const [availabilityValue, setAvailabilityValue] = useState(() => initialDraft?.availabilityValue ?? (initialDraft?.availabilityDays ?? 3))
+  const [availabilityUnit, setAvailabilityUnit] = useState(() => initialDraft?.availabilityUnit || 'days') // 'days' | 'hours'
   const [targetAudience, setTargetAudience] = useState(() => initialDraft?.targetAudience || 'stage') // 'stage' | 'group'
   const [targetGroupId, setTargetGroupId] = useState(() => initialDraft?.targetGroupId || '')
   const [allGroups, setAllGroups] = useState([])
@@ -302,9 +303,14 @@ export default function ExamAdd() {
       notify('يرجى اختيار المجموعة المستهدفة للامتحان', { type: 'warning' })
       return null
     }
-    const days = parseInt(availabilityDays, 10)
-    if (!days || days <= 0) {
-      notify('يرجى إدخال عدد صحيح لأيام الإتاحة (يوم واحد على الأقل)', { type: 'warning' })
+    const val = parseInt(availabilityValue, 10)
+    if (!val || val <= 0) {
+      notify(
+        availabilityUnit === 'hours'
+          ? 'يرجى إدخال عدد صحيح لساعات الإتاحة (ساعة واحدة على الأقل)'
+          : 'يرجى إدخال عدد صحيح لأيام الإتاحة (يوم واحد على الأقل)',
+        { type: 'warning' }
+      )
       return null
     }
     const isValid = questions.every(q =>
@@ -333,7 +339,23 @@ export default function ExamAdd() {
     // Indices are computed from the FINAL question order, so a question the
     // teacher added or removed mid-session still resolves correctly.
     const blocks = editorBlocksToPayload(sharedBlocks, questions)
-    return { dbGrade, cleanQuestions, total_points, blocks }
+
+    const available_hours = availabilityUnit === 'hours' ? val : val * 24
+    const availability_days = availabilityUnit === 'days' ? val : null
+    const opensAtDate = opensAt ? new Date(opensAt) : new Date()
+    const expires_at = new Date(opensAtDate.getTime() + available_hours * 3600 * 1000).toISOString()
+
+    return {
+      dbGrade,
+      cleanQuestions,
+      total_points,
+      blocks,
+      available_hours,
+      availability_days,
+      expires_at,
+      availabilityValue: val,
+      availabilityUnit,
+    }
   }
 
   // Preview-only — shows the same preview card without writing to DB.
@@ -349,7 +371,10 @@ export default function ExamAdd() {
       targetAudience,
       targetGroupName: selectedGroupObj ? selectedGroupObj.name : '',
       opensAt: opensAt ? new Date(opensAt).toLocaleString('ar-EG') : '—',
-      availabilityDays: parseInt(availabilityDays, 10),
+      availabilityValue: payload.availabilityValue,
+      availabilityUnit: payload.availabilityUnit,
+      availabilityDays: payload.availability_days,
+      availableHours: payload.available_hours,
       duration: parseInt(duration),
       maxAttempts: parseInt(maxAttempts),
       questions: payload.cleanQuestions,
@@ -379,7 +404,8 @@ export default function ExamAdd() {
       duration,
       maxAttempts,
       opensAt,
-      availabilityDays,
+      availabilityValue,
+      availabilityUnit,
       targetAudience,
       targetGroupId,
       numQuestions,
@@ -396,7 +422,7 @@ export default function ExamAdd() {
     } catch (err) {
       console.warn('Draft auto-save error:', err)
     }
-  }, [examTitle, examGrade, examType, duration, maxAttempts, opensAt, availabilityDays, targetAudience, targetGroupId, numQuestions, questions, sharedBlocks, questionsCopy, showCopySection, draftKey])
+  }, [examTitle, examGrade, examType, duration, maxAttempts, opensAt, availabilityValue, availabilityUnit, targetAudience, targetGroupId, numQuestions, questions, sharedBlocks, questionsCopy, showCopySection, draftKey])
 
   const handleDiscardDraft = () => {
     try {
@@ -406,7 +432,8 @@ export default function ExamAdd() {
     setExamTitle('')
     setDuration('')
     setMaxAttempts(1)
-    setAvailabilityDays(3)
+    setAvailabilityValue(3)
+    setAvailabilityUnit('days')
     setTargetAudience('stage')
     setTargetGroupId('')
     setNumQuestions('')
@@ -443,7 +470,9 @@ export default function ExamAdd() {
         created_by: createdBy,
         exam_type: examType,
         opens_at: opensAt ? new Date(opensAt).toISOString() : new Date().toISOString(),
-        availability_days: parseInt(availabilityDays, 10),
+        availability_days: payload.availability_days,
+        available_hours: payload.available_hours,
+        expires_at: payload.expires_at,
         target_audience: targetAudience,
         target_group_id: targetAudience === 'group' ? targetGroupId : null,
       })
@@ -628,14 +657,33 @@ export default function ExamAdd() {
               />
             </div>
             <div>
-              <label htmlFor="availabilityDays">⏳ مدة توفر الامتحان (بالأيام):</label>
-              <input 
-                type="number" 
-                id="availabilityDays"
-                min="1"
-                value={availabilityDays}
-                onChange={(e) => setAvailabilityDays(parseInt(e.target.value, 10) || 1)}
-              />
+              <label htmlFor="availabilityValue">⏳ مدة توفر الامتحان:</label>
+              <div className="availability-input-group">
+                <input 
+                  type="number" 
+                  id="availabilityValue"
+                  min="1"
+                  value={availabilityValue}
+                  onChange={(e) => setAvailabilityValue(parseInt(e.target.value, 10) || '')}
+                  placeholder={availabilityUnit === 'hours' ? 'مثلاً 12' : 'مثلاً 3'}
+                />
+                <select
+                  value={availabilityUnit}
+                  onChange={(e) => {
+                    const newUnit = e.target.value
+                    setAvailabilityUnit(newUnit)
+                    if (newUnit === 'hours' && availabilityUnit === 'days') {
+                      if (availabilityValue === 3) setAvailabilityValue(12)
+                    } else if (newUnit === 'days' && availabilityUnit === 'hours') {
+                      if (availabilityValue === 12) setAvailabilityValue(3)
+                    }
+                  }}
+                  className="availability-unit-select"
+                >
+                  <option value="hours">ساعات ⏱️</option>
+                  <option value="days">أيام 📅</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -895,7 +943,12 @@ export default function ExamAdd() {
                 : 'الدفعة بالكامل'}
             </p>
             <p><strong>وقت فتح الامتحان:</strong> {previewData.opensAt}</p>
-            <p><strong>فترة الإتاحة:</strong> {previewData.availabilityDays} يوم</p>
+            <p>
+              <strong>فترة الإتاحة:</strong>{' '}
+              {previewData.availabilityUnit === 'hours'
+                ? `${previewData.availabilityValue} ساعة`
+                : `${previewData.availabilityValue} يوم`}
+            </p>
             <p><strong>مدة الإجابة:</strong> {previewData.duration} دقيقة</p>
             <p><strong>عدد المحاولات:</strong> {previewData.maxAttempts}</p>
             <p><strong>إجمالي النقاط:</strong> {previewData.totalPoints}</p>

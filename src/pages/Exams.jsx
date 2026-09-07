@@ -963,8 +963,11 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const [grade, setGrade] = useState(exam.grade || 'first-prep')
   const [examType, setExamType] = useState(exam.exam_type || 'exam')
   const [duration, setDur] = useState(exam.duration_minutes || 30)
-  const [maxAtt, setMaxAtt] = useState(exam.max_attempts || 1)
-  const [hours, setHours] = useState(exam.available_hours || 72)
+  const initialUnit = exam.availability_days ? 'days' : 'hours'
+  const [availabilityUnit, setAvailabilityUnit] = useState(initialUnit)
+  const [availabilityVal, setAvailabilityVal] = useState(
+    initialUnit === 'days' ? (exam.availability_days || 3) : (exam.available_hours || 72)
+  )
   const [reveal, setReveal] = useState(!!exam.reveal_grades)
   const [busy, setBusy] = useState(false)
 
@@ -1196,6 +1199,14 @@ function EditExamModal({ exam, onCancel, onSave }) {
       isMultiple: !!q.isMultiple,
     }))
 
+    const val = parseInt(availabilityVal, 10) || 1
+    const effectiveHours = availabilityUnit === 'hours' ? val : val * 24
+    const effectiveDays = availabilityUnit === 'days' ? val : null
+    let expiresAt = null
+    if (exam.opens_at) {
+      expiresAt = new Date(new Date(exam.opens_at).getTime() + effectiveHours * 3600000).toISOString()
+    }
+
     return {
       // Recomputed from the FINAL question order, so deletions and additions
       // made in this session are reflected before the mappings are written.
@@ -1205,7 +1216,9 @@ function EditExamModal({ exam, onCancel, onSave }) {
       grade,
       duration_minutes: parseInt(duration, 10),
       max_attempts: parseInt(maxAtt, 10),
-      available_hours: parseInt(hours, 10),
+      available_hours: effectiveHours,
+      availability_days: effectiveDays,
+      expires_at: expiresAt,
       total_points: totalPoints,
       reveal_grades: reveal,
       exam_type: examType,
@@ -1500,8 +1513,36 @@ function EditExamModal({ exam, onCancel, onSave }) {
               <input type="number" min="1" className="edit-input" value={maxAtt} onChange={(e) => setMaxAtt(parseInt(e.target.value, 10) || 1)} required />
             </div>
             <div className="edit-field">
-              <label>مدة توفر الامتحان (ساعة)</label>
-              <input type="number" min="1" className="edit-input" value={hours} onChange={(e) => setHours(parseInt(e.target.value, 10) || 1)} required />
+              <label>⏳ مدة توفر الامتحان</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="number" 
+                  min="1" 
+                  className="edit-input" 
+                  value={availabilityVal} 
+                  onChange={(e) => setAvailabilityVal(parseInt(e.target.value, 10) || '')} 
+                  placeholder={availabilityUnit === 'hours' ? 'مثلاً 12' : 'مثلاً 3'}
+                  style={{ flex: 1 }}
+                  required 
+                />
+                <select
+                  value={availabilityUnit}
+                  onChange={(e) => {
+                    const newUnit = e.target.value
+                    setAvailabilityUnit(newUnit)
+                    if (newUnit === 'hours' && availabilityUnit === 'days') {
+                      if (availabilityVal === 3) setAvailabilityVal(12)
+                    } else if (newUnit === 'days' && availabilityUnit === 'hours') {
+                      if (availabilityVal === 12) setAvailabilityVal(3)
+                    }
+                  }}
+                  className="edit-select"
+                  style={{ width: '120px', flex: '0 0 120px' }}
+                >
+                  <option value="hours">ساعات ⏱️</option>
+                  <option value="days">أيام 📅</option>
+                </select>
+              </div>
             </div>
             <div className="edit-field">
               <label>الدرجة الكلية (تُحسب تلقائياً)</label>
@@ -1680,7 +1721,12 @@ function EditExamModal({ exam, onCancel, onSave }) {
               <div><strong>العنوان:</strong> {previewData.title}</div>
               <div><strong>المدة:</strong> {previewData.duration_minutes} دقيقة</div>
               <div><strong>عدد المحاولات:</strong> {previewData.max_attempts}</div>
-              <div><strong>مدة توفر الامتحان:</strong> {previewData.available_hours} ساعة</div>
+              <div>
+                <strong>مدة توفر الامتحان:</strong>{' '}
+                {previewData.availability_days
+                  ? `${previewData.availability_days} يوم`
+                  : `${previewData.available_hours} ساعة`}
+              </div>
               <div><strong>الدرجة الإجمالية المحتسبة:</strong> {previewData.total_points} درجة</div>
             </div>
             {previewData.questions.map((q, idx) => (

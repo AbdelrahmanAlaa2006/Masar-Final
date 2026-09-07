@@ -197,6 +197,23 @@ textarea {
   flex: 1;
 }
 
+.availability-input-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.availability-input-group input {
+  flex: 1;
+}
+
+.availability-input-group .availability-unit-select {
+  width: 125px !important;
+  flex: 0 0 125px !important;
+  cursor: pointer;
+  padding: 14px 12px !important;
+}
+
 .restore-exam {
   margin-top: 15px;
   padding: 15px;

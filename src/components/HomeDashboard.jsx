@@ -287,7 +287,7 @@ function StudentDashboard() {
         const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
           supabase
             .from('exams')
-            .select('id, title, created_at, available_hours')
+            .select('id, title, created_at, available_hours, opens_at, expires_at')
             .eq('grade', userGrade)
             // Pre-video gate assessments are not exams the student can go
             // and sit — never surface one as "your next exam".
@@ -301,11 +301,17 @@ function StudentDashboard() {
         if (dbExams && dbExams.length > 0) {
           const nextExam = dbExams.find(e => !completedExs.has(e.id))
           if (nextExam) {
-            const createdTime = new Date(nextExam.created_at).getTime()
-            const availableHours = nextExam.available_hours || 72
-            const availableUntil = createdTime + availableHours * 60 * 60 * 1000
+            const opensTime = nextExam.opens_at ? new Date(nextExam.opens_at).getTime() : new Date(nextExam.created_at).getTime()
+            let availableUntil = 0
+            if (nextExam.expires_at) {
+              availableUntil = new Date(nextExam.expires_at).getTime()
+            } else {
+              const availableHours = nextExam.available_hours || 72
+              availableUntil = opensTime + availableHours * 60 * 60 * 1000
+            }
             
-            if (availableUntil > Date.now()) {
+            const now = Date.now()
+            if (now >= opensTime && availableUntil > now) {
               setActiveExam({
                 id: nextExam.id,
                 title: nextExam.title,
