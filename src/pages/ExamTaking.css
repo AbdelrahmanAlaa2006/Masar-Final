@@ -252,9 +252,18 @@ body.dark .et-quick-pill {
 ───────────────────────────────────────── */
 .et-question-area {
   padding: 24px 24px 14px;
-  direction: rtl;
   box-sizing: border-box;
   width: 100%;
+}
+
+.et-question-area[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.et-question-area[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
 }
 
 .et-question-meta {
@@ -263,6 +272,34 @@ body.dark .et-quick-pill {
   gap: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.et-copy-q-btn {
+  margin-inline-start: auto;
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  background: rgba(102, 126, 234, 0.08);
+  color: var(--primary, #6366f1);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.et-copy-q-btn:hover {
+  background: var(--primary, #6366f1);
+  color: #fff;
+}
+
+.et-copy-q-btn.is-copied {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
 }
 
 .et-q-badge {
@@ -287,6 +324,17 @@ body.dark .et-quick-pill {
   margin: 0;
   word-break: break-word;
   overflow-wrap: break-word;
+  unicode-bidi: isolate;
+}
+
+.et-question-text[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.et-question-text[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
 }
 
 /* Optional image attached to a question */
@@ -318,9 +366,16 @@ body.dark .et-quick-pill {
   flex-direction: column;
   gap: 10px;
   padding: 0 24px 22px;
-  direction: rtl;
   box-sizing: border-box;
   width: 100%;
+}
+
+.et-options[dir="ltr"] {
+  direction: ltr;
+}
+
+.et-options[dir="rtl"] {
+  direction: rtl;
 }
 
 .et-option {
@@ -333,11 +388,21 @@ body.dark .et-quick-pill {
   background: rgba(102, 126, 234, 0.04);
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  user-select: none;
+  user-select: text;
   box-sizing: border-box;
   width: 100%;
   min-height: 52px;
   -webkit-tap-highlight-color: transparent;
+}
+
+.et-option[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+.et-option[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
 }
 
 .et-option:hover {

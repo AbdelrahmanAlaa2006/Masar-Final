@@ -7,6 +7,7 @@ import {
   submitPreVideoAttempt,
   getPreVideoAttemptReview,
 } from '@backend/videoAssessmentsApi'
+import { detectTextDir } from '../utils/questionUtils'
 
 /**
  * Pre-Video Assessment gate.
@@ -234,43 +235,52 @@ export default function AssessmentRunner({ gate, onUnlock, onClose }) {
               </p>
 
               <ol className="qr-questions">
-                {questions.map((q, qIdx) => (
-                  <li key={qIdx} className="qr-q">
-                    <div className="qr-q-head">
-                      <span className="qr-q-num">{qIdx + 1}</span>
-                      <span className="qr-q-text">{q.question}</span>
-                      <span className="qr-q-points">{q.points || 1} نقطة</span>
-                    </div>
-                    {q.image && (
-                      <div className="qr-q-image">
-                        <img src={q.image} alt="صورة السؤال" />
+                {questions.map((q, qIdx) => {
+                  const qDir = detectTextDir(q.question)
+                  const isLtr = qDir === 'ltr'
+                  return (
+                    <li key={qIdx} className="qr-q" dir={qDir}>
+                      <div className="qr-q-head" dir={qDir}>
+                        <span className="qr-q-num">{qIdx + 1}</span>
+                        <span className="qr-q-text" dir={qDir} style={{ textAlign: isLtr ? 'left' : 'right' }}>{q.question}</span>
+                        <span className="qr-q-points">{q.points || 1} نقطة</span>
                       </div>
-                    )}
-                    <div className="qr-options">
-                      {(q.options || []).map((opt, oIdx) => (
-                        <button
-                          type="button"
-                          key={oIdx}
-                          className={`qr-opt ${isOptionSelected(qIdx, oIdx) ? 'is-selected' : ''}`}
-                          onClick={() => toggleOption(qIdx, oIdx, q.isMultiple)}
-                          disabled={phase !== 'answering'}
-                        >
-                          <span className="qr-opt-mark">
-                            {q.isMultiple
-                              ? <i className={`far ${isOptionSelected(qIdx, oIdx) ? 'fa-square-check' : 'fa-square'}`}></i>
-                              : <i className={`far ${isOptionSelected(qIdx, oIdx) ? 'fa-circle-dot' : 'fa-circle'}`}></i>}
-                          </span>
-                          <span className="qr-opt-text">{opt}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {q.isMultiple && (
-                      <div className="qr-q-hint">
-                        <i className="fas fa-circle-info"></i> اختر كل الإجابات الصحيحة
+                      {q.image && (
+                        <div className="qr-q-image">
+                          <img src={q.image} alt="صورة السؤال" />
+                        </div>
+                      )}
+                      <div className="qr-options" dir={qDir}>
+                        {(q.options || []).map((opt, oIdx) => {
+                          const optDir = detectTextDir(opt) || qDir
+                          return (
+                            <button
+                              type="button"
+                              key={oIdx}
+                              className={`qr-opt ${isOptionSelected(qIdx, oIdx) ? 'is-selected' : ''}`}
+                              onClick={() => toggleOption(qIdx, oIdx, q.isMultiple)}
+                              disabled={phase !== 'answering'}
+                              dir={optDir}
+                              style={{ textAlign: optDir === 'ltr' ? 'left' : 'right' }}
+                            >
+                              <span className="qr-opt-mark">
+                                {q.isMultiple
+                                  ? <i className={`far ${isOptionSelected(qIdx, oIdx) ? 'fa-square-check' : 'fa-square'}`}></i>
+                                  : <i className={`far ${isOptionSelected(qIdx, oIdx) ? 'fa-circle-dot' : 'fa-circle'}`}></i>}
+                              </span>
+                              <span className="qr-opt-text" dir={optDir}>{opt}</span>
+                            </button>
+                          )
+                        })}
                       </div>
-                    )}
-                  </li>
-                ))}
+                      {q.isMultiple && (
+                        <div className="qr-q-hint">
+                          <i className="fas fa-circle-info"></i> اختر كل الإجابات الصحيحة
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
               </ol>
             </>
           )}
@@ -325,11 +335,13 @@ export default function AssessmentRunner({ gate, onUnlock, onClose }) {
                       const picked = new Set(
                         (review.responses || []).find(r => r.questionId === qIdx)?.selected || []
                       )
+                      const qDir = detectTextDir(q.question)
+                      const isLtr = qDir === 'ltr'
                       return (
-                        <li key={qIdx} className="qr-q">
-                          <div className="qr-q-head">
+                        <li key={qIdx} className="qr-q" dir={qDir}>
+                          <div className="qr-q-head" dir={qDir}>
                             <span className="qr-q-num">{qIdx + 1}</span>
-                            <span className="qr-q-text">{q.question}</span>
+                            <span className="qr-q-text" dir={qDir} style={{ textAlign: isLtr ? 'left' : 'right' }}>{q.question}</span>
                             <span className="qr-q-points">{q.points || 1} نقطة</span>
                           </div>
                           {q.image && (
@@ -337,17 +349,18 @@ export default function AssessmentRunner({ gate, onUnlock, onClose }) {
                               <img src={q.image} alt="صورة السؤال" />
                             </div>
                           )}
-                          <div className="qr-options">
+                          <div className="qr-options" dir={qDir}>
                             {(q.options || []).map((opt, oIdx) => {
                               const isCorrect = correctSet.has(oIdx)
                               const wasPicked = picked.has(oIdx)
                               const cls = isCorrect ? 'is-correct' : (wasPicked ? 'is-wrong' : '')
+                              const optDir = detectTextDir(opt) || qDir
                               return (
-                                <button type="button" key={oIdx} className={`qr-opt ${cls}`} disabled>
+                                <button type="button" key={oIdx} className={`qr-opt ${cls}`} dir={optDir} style={{ textAlign: optDir === 'ltr' ? 'left' : 'right' }} disabled>
                                   <span className="qr-opt-mark">
                                     <i className={`far ${wasPicked ? 'fa-circle-dot' : 'fa-circle'}`}></i>
                                   </span>
-                                  <span className="qr-opt-text">{opt}</span>
+                                  <span className="qr-opt-text" dir={optDir}>{opt}</span>
                                   {isCorrect && <i className="fas fa-check qr-opt-flag"></i>}
                                   {!isCorrect && wasPicked && <i className="fas fa-xmark qr-opt-flag"></i>}
                                 </button>

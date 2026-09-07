@@ -8,6 +8,7 @@ import SharedTextCard from '../components/SharedTextCard'
 import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
+import { detectTextDir, copyQuestionToClipboard } from '../utils/questionUtils'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
@@ -429,8 +430,22 @@ export default function ExamTaking() {
   }
 
   const currentQ = questions[currentQuestion]
-  const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
+  const qDir = detectTextDir(currentQ?.question)
+  const isLtr = qDir === 'ltr'
+  const letters = isLtr
+    ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    : ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
   const progress = ((currentQuestion + 1) / questions.length) * 100
+  const [copiedQ, setCopiedQ] = useState(false)
+
+  const handleCopyQuestion = async () => {
+    if (!currentQ) return
+    const ok = await copyQuestionToClipboard(currentQ)
+    if (ok) {
+      setCopiedQ(true)
+      setTimeout(() => setCopiedQ(false), 2000)
+    }
+  }
 
   // Watermark text parameters (guardLabel/isAdmin extracted at top-level)
 
@@ -556,7 +571,7 @@ export default function ExamTaking() {
                 the student never has to navigate back to re-read it. */}
             <SharedTextCard block={sharedBlockMap.get(currentQuestion)} />
 
-            <div className="et-question-area">
+            <div className="et-question-area" dir={qDir}>
               <div className="et-question-meta">
                 <span className="et-q-badge et-q-num">س {currentQuestion + 1}</span>
                 <span className="et-q-badge et-q-pts">{currentQ.points || 1} درجات</span>
@@ -564,8 +579,17 @@ export default function ExamTaking() {
                 {currentQ.isMultiple && (
                   <span className="et-q-badge et-q-rem">اختيارات متعددة</span>
                 )}
+                <button
+                  type="button"
+                  className={`et-copy-q-btn ${copiedQ ? 'is-copied' : ''}`}
+                  onClick={handleCopyQuestion}
+                  title="نسخ السؤال بالتنسيق المطلوب"
+                >
+                  <i className={`fas ${copiedQ ? 'fa-check' : 'fa-copy'}`}></i>
+                  <span>{copiedQ ? 'تم النسخ' : 'نسخ السؤال'}</span>
+                </button>
               </div>
-              <p className="et-question-text">{currentQ.question}</p>
+              <p className="et-question-text" dir={qDir}>{currentQ.question}</p>
               {currentQ.image && (
                 <div className="et-question-image">
                   <img src={currentQ.image} alt="صورة السؤال" />
@@ -573,17 +597,21 @@ export default function ExamTaking() {
               )}
             </div>
 
-            <div className="et-options">
-              {currentQ.options.map((opt, idx) => (
-                <div
-                  key={idx}
-                  className={`et-option ${isSelected(currentQuestion, idx) ? 'et-option-selected' : ''}`}
-                  onClick={() => toggleOption(currentQuestion, idx)}
-                >
-                  <span className="et-option-letter">{letters[idx] || String.fromCharCode(65 + idx)}</span>
-                  <span className="et-option-text">{opt}</span>
-                </div>
-              ))}
+            <div className="et-options" dir={qDir}>
+              {currentQ.options.map((opt, idx) => {
+                const optDir = detectTextDir(opt) || qDir
+                return (
+                  <div
+                    key={idx}
+                    className={`et-option ${isSelected(currentQuestion, idx) ? 'et-option-selected' : ''}`}
+                    onClick={() => toggleOption(currentQuestion, idx)}
+                    dir={optDir}
+                  >
+                    <span className="et-option-letter">{letters[idx] || String.fromCharCode(65 + idx)}</span>
+                    <span className="et-option-text" dir={optDir}>{opt}</span>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="et-footer">

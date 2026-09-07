@@ -5,6 +5,7 @@ import { listHomeworks, getMySubmissionsBatch, listSubmissionsForHomework } from
 import { getProfile } from '@backend/profilesApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
+import { detectTextDir, copyQuestionToClipboard } from '../utils/questionUtils'
 import './HomeworkReport.css'
 
 /* Format a JS date as dd/mm/yyyy */
@@ -648,24 +649,55 @@ export default function HomeworkReport() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '50vh', overflowY: 'auto', paddingLeft: 4, paddingRight: 4 }}>
                 {selectedHw.questions.map((q, qi) => {
                   const isCorrect = q.studentAnswer === q.correct
+                  const qDir = detectTextDir(q.text)
+                  const isLtr = qDir === 'ltr'
+                  const qLetters = isLtr ? ['A', 'B', 'C', 'D', 'E', 'F'] : letters
+
+                  const handleCopy = async () => {
+                    await copyQuestionToClipboard({
+                      question: q.text,
+                      options: q.options,
+                      answers: [q.correct]
+                    })
+                  }
+
                   return (
-                    <div key={qi} style={{
+                    <div key={qi} dir={qDir} style={{
                       borderRadius: 14,
                       padding: 16,
                       border: `1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
                       background: isCorrect ? 'rgba(16, 185, 129, 0.02)' : 'rgba(239, 68, 68, 0.02)',
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cp-text-muted)', background: 'var(--cp-hover-bg)', padding: '3px 10px', borderRadius: 8 }}>س{qi + 1}</span>
-                        <span className={`cp-badge ${isCorrect ? 'cp-badge-success' : 'cp-badge-danger'}`}>
-                          {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--cp-text-muted)', background: 'var(--cp-hover-bg)', padding: '3px 10px', borderRadius: 8 }}>س{qi + 1}</span>
+                          <span className={`cp-badge ${isCorrect ? 'cp-badge-success' : 'cp-badge-danger'}`}>
+                            {isCorrect ? (<><i className="fas fa-check"></i> صحيح</>) : (<><i className="fas fa-times"></i> خطأ</>)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopy}
+                          title="نسخ السؤال"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--cp-divider)',
+                            color: 'var(--cp-text-muted)',
+                            borderRadius: 6,
+                            padding: '3px 8px',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <i className="fas fa-copy"></i> نسخ
+                        </button>
                       </div>
-                      <p style={{ color: 'var(--cp-text-main)', fontSize: '0.92rem', margin: '0 0 12px', lineHeight: 1.6 }}>{q.text}</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <p dir={qDir} style={{ color: 'var(--cp-text-main)', fontSize: '0.92rem', margin: '0 0 12px', lineHeight: 1.6, textAlign: isLtr ? 'left' : 'right' }}>{q.text}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} dir={qDir}>
                         {q.options.map((opt, oi) => {
                           const isStudentPick = oi === q.studentAnswer
                           const isCorrectOpt = oi === q.correct
+                          const optDir = detectTextDir(opt) || qDir
                           let bg = 'var(--cp-hover-bg)'
                           let border = '1px solid var(--cp-divider)'
                           let color = 'var(--cp-text-muted)'
@@ -679,7 +711,7 @@ export default function HomeworkReport() {
                             color = '#ef4444'
                           }
                           return (
-                            <div key={oi} style={{
+                            <div key={oi} dir={optDir} style={{
                               display: 'flex',
                               alignItems: 'center',
                               gap: 10,
@@ -688,7 +720,8 @@ export default function HomeworkReport() {
                               background: bg,
                               border: border,
                               fontSize: '0.85rem',
-                              color: color
+                              color: color,
+                              textAlign: optDir === 'ltr' ? 'left' : 'right'
                             }}>
                               <span style={{
                                 width: 24,
@@ -701,8 +734,8 @@ export default function HomeworkReport() {
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 flexShrink: 0
-                              }}>{letters[oi] || oi + 1}</span>
-                              <span style={{ flex: 1, color: isCorrectOpt || isStudentPick ? 'inherit' : 'var(--cp-text-main)' }}>{opt}</span>
+                              }}>{qLetters[oi] || oi + 1}</span>
+                              <span dir={optDir} style={{ flex: 1, color: isCorrectOpt || isStudentPick ? 'inherit' : 'var(--cp-text-main)' }}>{opt}</span>
                               <span style={{ flexShrink: 0, fontSize: '0.9rem' }}>
                                 {isCorrectOpt && <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>}
                                 {isStudentPick && !isCorrectOpt && <i className="fas fa-times-circle" style={{ color: '#ef4444' }}></i>}
@@ -712,10 +745,10 @@ export default function HomeworkReport() {
                         })}
                       </div>
                       {!isCorrect && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', fontSize: '0.82rem' }}>
+                        <div dir={qDir} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', fontSize: '0.82rem' }}>
                           <i className="fas fa-lightbulb"></i>
                           <span> الإجابة الصحيحة: </span>
-                          <strong>{letters[q.correct] || q.correct + 1}. {q.options[q.correct]}</strong>
+                          <strong dir={detectTextDir(q.options[q.correct]) || qDir}>{qLetters[q.correct] || q.correct + 1}. {q.options[q.correct]}</strong>
                         </div>
                       )}
                     </div>

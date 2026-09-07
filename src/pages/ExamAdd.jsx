@@ -13,6 +13,12 @@ import SharedTextBlocksEditor, {
   validateEditorBlocks,
 } from '../components/SharedTextBlocksEditor'
 import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
+import {
+  detectTextDir,
+  copyQuestionToClipboard,
+  copyAllQuestionsToClipboard,
+  parseNaturalFormat as parseQuestionsNatural,
+} from '../utils/questionUtils'
 
 function getStoredDraft(slug) {
   try {
@@ -227,7 +233,7 @@ export default function ExamAdd() {
       notify('يرجى إدخال الأسئلة', { type: 'warning' })
       return
     }
-    const parsedQuestions = parseNaturalFormat(text)
+    const parsedQuestions = parseQuestionsNatural(text)
     if (parsedQuestions.length === 0) {
       notify('لم يتم العثور على أسئلة — تأكد من التنسيق', { type: 'warning' })
       return
@@ -237,53 +243,26 @@ export default function ExamAdd() {
     notify(`تم استيراد ${parsedQuestions.length} سؤال بنجاح`, { type: 'success' })
   }
 
-  // Splits the input on blank lines, then turns each block into a question.
-  // First line = question; subsequent lines = options. `*` (or `★`) prefix
-  // marks correct. A trailing `!N` line (or `[N]` after the question) sets
-  // points. Lenient whitespace and Arabic punctuation.
-  const parseNaturalFormat = (text) => {
-    const blocks = text
-      .split(/\n\s*\n+/) // blank-line separator
-      .map((b) => b.trim())
-      .filter((b) => b.length > 0)
-    return blocks.map((block, i) => {
-      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
-      let points = 1
-      // Trailing "!2" line sets points
-      if (lines.length > 1 && /^!\s*\d+/.test(lines[lines.length - 1])) {
-        const m = lines.pop().match(/\d+/)
-        if (m) points = Math.max(1, parseInt(m[0], 10))
-      }
-      // Inline "[2]" right after the question text
-      let questionLine = lines[0] || ''
-      const inlinePts = questionLine.match(/[\[\(](\d+)[\]\)]\s*$/)
-      if (inlinePts) {
-        points = Math.max(1, parseInt(inlinePts[1], 10))
-        questionLine = questionLine.replace(/[\[\(](\d+)[\]\)]\s*$/, '').trim()
-      }
-      const options = []
-      const correctAnswers = []
-      for (let j = 1; j < lines.length; j++) {
-        let opt = lines[j]
-        // Strip optional bullet markers like "- ", "1. ", "أ) "
-        opt = opt.replace(/^[-•·]\s+/, '')
-                 .replace(/^[٠-٩\d]+[\.\)\-]\s*/, '')
-                 .replace(/^[a-zA-Zء-ي][\.\)\-]\s*/, '')
-        const isCorrect = /^[\*★✓✔]\s*/.test(opt)
-        if (isCorrect) opt = opt.replace(/^[\*★✓✔]\s*/, '').trim()
-        if (!opt) continue
-        options.push(opt)
-        if (isCorrect) correctAnswers.push(options.length - 1)
-      }
-      return {
-        id: i,
-        question: questionLine,
-        options: options.length >= 2 ? options : (options.length ? [...options, ''] : ['', '']),
-        answers: correctAnswers.length > 0 ? correctAnswers : [0],
-        points,
-        isMultiple: correctAnswers.length > 1,
-      }
-    })
+  const handleCopySingle = async (q) => {
+    const ok = await copyQuestionToClipboard(q)
+    if (ok) {
+      notify('تم نسخ السؤال بنجاح 📋', { type: 'success' })
+    } else {
+      notify('تعذر نسخ السؤال', { type: 'error' })
+    }
+  }
+
+  const handleCopyAllQuestions = async () => {
+    if (!questions || questions.length === 0) {
+      notify('لا توجد أسئلة لنسخها', { type: 'warning' })
+      return
+    }
+    const ok = await copyAllQuestionsToClipboard(questions)
+    if (ok) {
+      notify(`تم نسخ ${questions.length} سؤال بنجاح 📋`, { type: 'success' })
+    } else {
+      notify('تعذر نسخ الأسئلة', { type: 'error' })
+    }
   }
 
 
@@ -773,111 +752,144 @@ export default function ExamAdd() {
               value={questionsCopy}
               onChange={(e) => setQuestionsCopy(e.target.value)}
               placeholder={`ما عاصمة مصر؟\n*القاهرة\nالإسكندرية\nالجيزة\n\nما ناتج 3 + 2؟\n2\n3\n*5\n4`}
+              dir="auto"
             />
-            <button className="btn" onClick={parseCopiedQuestions}>📥 استيراد الأسئلة</button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+              <button type="button" className="btn" onClick={parseCopiedQuestions} style={{ marginTop: 0 }}>📥 استيراد الأسئلة</button>
+              {questions.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleCopyAllQuestions}
+                  style={{ marginTop: 0, padding: '12px 20px', fontSize: 14 }}
+                  title="نسخ جميع الأسئلة الحالية بالتنسيق المطلوب"
+                >
+                  <i className="fas fa-copy"></i> نسخ جميع الأسئلة ({questions.length})
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         <div className="questions-container">
-          {questions.map((q, i) => (
-            <div key={q.id} className="question-block">
-              <div className="question-controls">
-                <button className="btn-icon" onClick={() => addOption(q.id)}>
-                  <i className="fas fa-plus"></i> إضافة اختيار
-                </button>
-                <button className="btn-icon" onClick={() => removeOption(q.id)}>
-                  <i className="fas fa-minus"></i> حذف اختيار
-                </button>
-                <button
-                  className={`btn-icon ${q.isMultiple ? 'active' : ''}`}
-                  onClick={() => toggleMultipleAnswers(q.id)}
-                >
-                  <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
-                </button>
-                <span className="points-wrap">
-                  <span className="points-lbl">النقاط:</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={q.points}
-                    onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value))}
-                    className="points-input"
-                  />
-                </span>
-                <button
-                  className="btn-icon"
-                  onClick={() => removeQuestion(q.id)}
-                  title="حذف هذا السؤال"
-                  style={{
-                    marginInlineStart: 'auto',
-                    color: '#dc2626',
-                    borderColor: 'rgba(239, 68, 68, 0.35)',
-                  }}
-                >
-                  <i className="fas fa-trash"></i> حذف السؤال
-                </button>
-              </div>
-
-              <label>❓ السؤال {i + 1}:</label>
-              <textarea
-                value={q.question}
-                onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
-                placeholder="اكتب السؤال هنا..."
-              />
-
-              <QuestionImagePicker
-                value={q.image}
-                onChange={(url) => updateQuestion(q.id, 'image', url)}
-              />
-
-              <label>📋 الاختيارات:</label>
-              <div className="options-wrapper">
-                {q.options.map((opt, optIdx) => (
-                  <div key={optIdx} className="option-container">
-                    <input 
-                      type="text"
-                      value={opt}
-                      onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
-                      placeholder={`الخيار ${optIdx + 1}`}
-                      className="option-input"
+          {questions.map((q, i) => {
+            const qDir = detectTextDir(q.question)
+            return (
+              <div key={q.id} className="question-block" dir={qDir}>
+                <div className="question-controls">
+                  <button className="btn-icon" onClick={() => addOption(q.id)}>
+                    <i className="fas fa-plus"></i> إضافة اختيار
+                  </button>
+                  <button className="btn-icon" onClick={() => removeOption(q.id)}>
+                    <i className="fas fa-minus"></i> حذف اختيار
+                  </button>
+                  <button
+                    className={`btn-icon ${q.isMultiple ? 'active' : ''}`}
+                    onClick={() => toggleMultipleAnswers(q.id)}
+                  >
+                    <i className="fas fa-check-double"></i> {q.isMultiple ? 'إجابة واحدة' : 'متعدد الإجابات'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => handleCopySingle(q)}
+                    title="نسخ هذا السؤال"
+                  >
+                    <i className="fas fa-copy"></i> نسخ السؤال
+                  </button>
+                  <span className="points-wrap">
+                    <span className="points-lbl">النقاط:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={q.points}
+                      onChange={(e) => updateQuestion(q.id, 'points', parseInt(e.target.value))}
+                      className="points-input"
                     />
-                  </div>
-                ))}
-              </div>
+                  </span>
+                  <button
+                    className="btn-icon"
+                    onClick={() => removeQuestion(q.id)}
+                    title="حذف هذا السؤال"
+                    style={{
+                      marginInlineStart: 'auto',
+                      color: '#dc2626',
+                      borderColor: 'rgba(239, 68, 68, 0.35)',
+                    }}
+                  >
+                    <i className="fas fa-trash"></i> حذف السؤال
+                  </button>
+                </div>
 
-              <label>✅ الإجابة الصحيحة:</label>
-              <div className="answers-wrapper">
-                {q.options.map((opt, optIdx) => (
-                  <div key={optIdx}>
-                    {q.isMultiple ? (
-                      <>
+                <label>❓ السؤال {i + 1}:</label>
+                <textarea
+                  dir={qDir}
+                  value={q.question}
+                  onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
+                  placeholder="اكتب السؤال هنا..."
+                />
+
+                <QuestionImagePicker
+                  value={q.image}
+                  onChange={(url) => updateQuestion(q.id, 'image', url)}
+                />
+
+                <label>📋 الاختيارات:</label>
+                <div className="options-wrapper" dir={qDir}>
+                  {q.options.map((opt, optIdx) => {
+                    const optDir = detectTextDir(opt) || qDir
+                    return (
+                      <div key={optIdx} className="option-container" dir={optDir}>
                         <input 
-                          type="checkbox"
-                          id={`answer-${q.id}-${optIdx}`}
-                          checked={q.answers.includes(optIdx)}
-                          onChange={(e) => updateAnswer(q.id, optIdx, e.target.checked)}
+                          type="text"
+                          dir={optDir}
+                          value={opt}
+                          onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                          placeholder={`الخيار ${optIdx + 1}`}
+                          className="option-input"
                         />
-                        <label htmlFor={`answer-${q.id}-${optIdx}`}>{opt || `الخيار ${optIdx + 1}`}</label>
-                      </>
-                    ) : (
-                      <>
-                        <input 
-                          type="radio"
-                          name={`correct-answer-${q.id}`}
-                          id={`answer-${q.id}-${optIdx}`}
-                          checked={q.answers.includes(optIdx)}
-                          onChange={(e) => {
-                            if (e.target.checked) updateAnswer(q.id, optIdx, true)
-                          }}
-                        />
-                        <label htmlFor={`answer-${q.id}-${optIdx}`}>{opt || `الخيار ${optIdx + 1}`}</label>
-                      </>
-                    )}
-                  </div>
-                ))}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <label>✅ الإجابة الصحيحة:</label>
+                <div className="answers-wrapper" dir={qDir}>
+                  {q.options.map((opt, optIdx) => {
+                    const optDir = detectTextDir(opt) || qDir
+                    return (
+                      <div key={optIdx} dir={optDir}>
+                        {q.isMultiple ? (
+                          <>
+                            <input 
+                              type="checkbox"
+                              id={`answer-${q.id}-${optIdx}`}
+                              checked={q.answers.includes(optIdx)}
+                              onChange={(e) => updateAnswer(q.id, optIdx, e.target.checked)}
+                            />
+                            <label htmlFor={`answer-${q.id}-${optIdx}`} dir={optDir}>{opt || `الخيار ${optIdx + 1}`}</label>
+                          </>
+                        ) : (
+                          <>
+                            <input 
+                              type="radio"
+                              name={`correct-answer-${q.id}`}
+                              id={`answer-${q.id}-${optIdx}`}
+                              checked={q.answers.includes(optIdx)}
+                              onChange={(e) => {
+                                if (e.target.checked) updateAnswer(q.id, optIdx, true)
+                              }}
+                            />
+                            <label htmlFor={`answer-${q.id}-${optIdx}`} dir={optDir}>{opt || `الخيار ${optIdx + 1}`}</label>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {questions.length > 0 && (
@@ -953,20 +965,57 @@ export default function ExamAdd() {
             <p><strong>عدد المحاولات:</strong> {previewData.maxAttempts}</p>
             <p><strong>إجمالي النقاط:</strong> {previewData.totalPoints}</p>
             <hr />
-            {previewData.questions.map((q, idx) => (
-              <div key={idx} className="question-block preview-question">
-                <strong>س{idx + 1} ({q.points} نقطة): {q.question}</strong>
-                <br /><br />
-                {q.options.map((opt, i) => (
-                  <div 
-                    key={i}
-                    className={`preview-option ${q.answers.includes(i) ? 'correct' : ''}`}
-                  >
-                    {String.fromCharCode(65 + i)}. {opt} {q.answers.includes(i) ? '✅' : ''}
+            {previewData.questions.map((q, idx) => {
+              const qDir = detectTextDir(q.question)
+              return (
+                <div key={idx} className="question-block preview-question" dir={qDir}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div>
+                      <span className="et-q-badge et-q-num" style={{ marginInlineEnd: 8 }}>س {idx + 1}</span>
+                      <span className="et-q-badge et-q-pts">{q.points || 1} نقطة</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      onClick={() => handleCopySingle(q)}
+                      title="نسخ السؤال"
+                      style={{ padding: '4px 10px', fontSize: 12 }}
+                    >
+                      <i className="fas fa-copy"></i> نسخ
+                    </button>
                   </div>
-                ))}
-              </div>
-            ))}
+                  <div className="preview-q-text" dir={qDir} style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 14 }}>
+                    {q.question}
+                  </div>
+                  {q.image && (
+                    <div style={{ margin: '10px 0' }}>
+                      <img src={q.image} alt="" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {q.options.map((opt, i) => {
+                      const isCorrect = q.answers.includes(i)
+                      const optDir = detectTextDir(opt) || qDir
+                      const hasLetterPrefix = /^[a-zA-Zء-ي0-9٠-٩][\.\)\-]\s*/.test(opt)
+                      const prefix = hasLetterPrefix ? '' : `${String.fromCharCode(65 + i)}. `
+                      return (
+                        <div 
+                          key={i}
+                          className={`preview-option ${isCorrect ? 'correct' : ''}`}
+                          dir={optDir}
+                          style={{ textAlign: optDir === 'ltr' ? 'left' : 'right' }}
+                        >
+                          <span dir={optDir}>
+                            {isCorrect ? '* ' : ''}{prefix}{opt}
+                          </span>
+                          {isCorrect && <span dir="rtl" style={{ color: '#10b981', fontWeight: 700 }}> ✅ (إجابة صحيحة)</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -490,3 +490,67 @@ body:not(.dark) .toast-notification {
   pointer-events: auto;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Bi-directional Isolation & Direction Styling for Questions
+   Ensures English questions/options render strictly LTR without
+   reversing leading dots (...............), asterisks (*), or
+   punctuation, while Arabic UI stays fully RTL.
+───────────────────────────────────────────────────────────── */
+
+[dir="ltr"],
+.is-ltr {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate;
+}
+
+[dir="rtl"],
+.is-rtl {
+  direction: rtl !important;
+  text-align: right !important;
+  unicode-bidi: isolate;
+}
+
+/* Bi-directional isolation for question text, options and inputs */
+.et-question-text,
+.et-option-text,
+.question-textarea,
+.edit-textarea,
+.preview-question,
+.preview-opt-text,
+.option-input,
+.edit-input,
+.qr-q-text,
+.qr-opt-text,
+.pae-preview-q {
+  unicode-bidi: isolate;
+}
+
+.et-question-text[dir="ltr"],
+.question-textarea[dir="ltr"],
+.edit-textarea[dir="ltr"],
+.preview-question[dir="ltr"],
+.preview-opt-text[dir="ltr"],
+.option-input[dir="ltr"],
+.edit-input[dir="ltr"],
+.et-option-text[dir="ltr"],
+.qr-q-text[dir="ltr"],
+.qr-opt-text[dir="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.et-question-text[dir="rtl"],
+.question-textarea[dir="rtl"],
+.edit-textarea[dir="rtl"],
+.preview-question[dir="rtl"],
+.preview-opt-text[dir="rtl"],
+.option-input[dir="rtl"],
+.edit-input[dir="rtl"],
+.et-option-text[dir="rtl"],
+.qr-q-text[dir="rtl"],
+.qr-opt-text[dir="rtl"] {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
