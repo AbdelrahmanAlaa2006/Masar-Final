@@ -59,7 +59,7 @@ body {
   margin: 0;
   display: block;
   min-width: 320px;
-  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif;
+  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
   line-height: 1.6;
   background: var(--bg-color);
   color: #1a202c;
@@ -71,14 +71,18 @@ body,
 [dir="ltr"],
 [lang="ar"],
 [lang="en"] {
-  font-family: 'El Messiri', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'El Messiri', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
-/* Specific elements using Milan Display */
-.gf-rotator-text,
-.font-milan,
-[data-font="milan"] {
-  font-family: 'Milan Display', 'Milan', 'El Messiri', sans-serif !important;
+h1, h2, h3, h4, h5, h6, p, span, a, button, input, select, textarea, optgroup {
+  font-family: 'El Messiri', 'Cairo', -apple-system, sans-serif !important;
+}
+
+/* Specific elements in GitFekra landing using Milan Display */
+.gf-root .gf-rotator-text,
+.gf-root .font-milan,
+.gf-root [data-font="milan"] {
+  font-family: 'Milan Display', 'Milan', sans-serif !important;
   font-weight: 900 !important;
 }
 

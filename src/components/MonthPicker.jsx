@@ -39,7 +39,16 @@ export default function MonthPicker({ value = '', onChange, placeholder = 'اخ�
   const isNow = (m) => now.getFullYear() === viewYear && now.getMonth() + 1 === m
 
   return (
-    <div className="dpk" ref={ref} dir="rtl" style={style}>
+    <div
+      className={`dpk ${open ? 'is-open' : ''}`}
+      ref={ref}
+      dir="rtl"
+      style={{
+        zIndex: open ? 9999999 : 1,
+        position: 'relative',
+        ...style
+      }}
+    >
       <button type="button" className={`dpk-trigger ${selected ? 'has-val' : ''} ${open ? 'open' : ''}`} onClick={() => setOpen(o => !o)}>
         <i className="fas fa-calendar-days dpk-tico" />
         <span className="dpk-label">{label}</span>

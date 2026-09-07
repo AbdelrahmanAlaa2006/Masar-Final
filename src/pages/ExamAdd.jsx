@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './ExamAdd.css'
@@ -6,6 +6,7 @@ import { notify } from '../utils/notify'
 import { createExam, uiToDbGrade, dbToUiGrade } from '@backend/examsApi'
 import { listGroups } from '@backend/groupsApi'
 import QuestionImagePicker from '../components/QuestionImagePicker'
+import DateTimePicker from '../components/DateTimePicker'
 import { invalidatePrefix } from '../utils/cache'
 import SharedTextBlocksEditor, {
   editorBlocksToPayload,
@@ -13,11 +14,25 @@ import SharedTextBlocksEditor, {
 } from '../components/SharedTextBlocksEditor'
 import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 
+function getStoredDraft(slug) {
+  try {
+    const raw = localStorage.getItem(`masar_exam_add_draft_${slug || 'default'}`) || localStorage.getItem('masar_exam_add_draft')
+    if (raw) return JSON.parse(raw)
+  } catch (e) {
+    console.error('Failed to parse exam draft:', e)
+  }
+  return null
+}
+
 export default function ExamAdd() {
   const navigate = useNavigate()
-  const { isGradeEnabled, gradesList } = useTenant()
-  const [examTitle, setExamTitle] = useState('')
+  const { isGradeEnabled, gradesList, tenant } = useTenant()
+  const draftKey = `masar_exam_add_draft_${tenant?.slug || 'default'}`
+  const initialDraft = useMemo(() => getStoredDraft(tenant?.slug), [tenant?.slug])
+
+  const [examTitle, setExamTitle] = useState(() => initialDraft?.examTitle || '')
   const [examGrade, setExamGrade] = useState(() => {
+    if (initialDraft?.examGrade) return initialDraft.examGrade
     const selected = localStorage.getItem('selectedGrade')
     const dbSelected = uiToDbGrade(selected) || selected
     if (dbSelected && (gradesList || []).some(g => g.id === dbSelected)) {
@@ -30,11 +45,13 @@ export default function ExamAdd() {
     return 'first'
   })
   const [examType, setExamType] = useState(() => {
+    if (initialDraft?.examType) return initialDraft.examType
     return localStorage.getItem('selectedExamType') || 'exam'
   })
-  const [duration, setDuration] = useState('')
-  const [maxAttempts, setMaxAttempts] = useState(1)
+  const [duration, setDuration] = useState(() => initialDraft?.duration || '')
+  const [maxAttempts, setMaxAttempts] = useState(() => initialDraft?.maxAttempts ?? 1)
   const [opensAt, setOpensAt] = useState(() => {
+    if (initialDraft?.opensAt) return initialDraft.opensAt
     const now = new Date()
     const year = now.getFullYear()
     const month = String(now.getMonth() + 1).padStart(2, '0')
@@ -43,22 +60,24 @@ export default function ExamAdd() {
     const minutes = String(now.getMinutes()).padStart(2, '0')
     return `${year}-${month}-${day}T${hours}:${minutes}`
   })
-  const [availabilityDays, setAvailabilityDays] = useState(3)
-  const [targetAudience, setTargetAudience] = useState('stage') // 'stage' | 'group'
-  const [targetGroupId, setTargetGroupId] = useState('')
+  const [availabilityDays, setAvailabilityDays] = useState(() => initialDraft?.availabilityDays ?? 3)
+  const [targetAudience, setTargetAudience] = useState(() => initialDraft?.targetAudience || 'stage') // 'stage' | 'group'
+  const [targetGroupId, setTargetGroupId] = useState(() => initialDraft?.targetGroupId || '')
   const [allGroups, setAllGroups] = useState([])
   const [loadingGroups, setLoadingGroups] = useState(false)
-  const [numQuestions, setNumQuestions] = useState('')
-  const [questions, setQuestions] = useState([])
+  const [numQuestions, setNumQuestions] = useState(() => initialDraft?.numQuestions || (initialDraft?.questions?.length ? String(initialDraft.questions.length) : ''))
+  const [questions, setQuestions] = useState(() => (Array.isArray(initialDraft?.questions) ? initialDraft.questions : []))
   // Shared reading passages. Held here and written straight after the exam
   // row is created, because a block references the exam by id.
-  const [sharedBlocks, setSharedBlocks] = useState([])
-  const [questionsCopy, setQuestionsCopy] = useState('')
-  const [showCopySection, setShowCopySection] = useState(false)
+  const [sharedBlocks, setSharedBlocks] = useState(() => (Array.isArray(initialDraft?.sharedBlocks) ? initialDraft.sharedBlocks : []))
+  const [questionsCopy, setQuestionsCopy] = useState(() => initialDraft?.questionsCopy || '')
+  const [showCopySection, setShowCopySection] = useState(() => Boolean(initialDraft?.showCopySection || (initialDraft?.questions && initialDraft.questions.length > 0)))
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(() => Boolean(initialDraft && (initialDraft.examTitle || initialDraft.questions?.length > 0)))
+  const [lastAutoSaved, setLastAutoSaved] = useState(null)
 
   useEffect(() => {
     if (gradesList && gradesList.length > 0) {
@@ -343,9 +362,64 @@ export default function ExamAdd() {
     }, 60)
   }
 
-  // Save-only — writes the exam and navigates to the exams list. Does NOT
-  // flash the preview card; admins who want to verify use the preview
-  // button first.
+  // Auto-save draft effect: persists form changes continuously
+  useEffect(() => {
+    const hasContent = examTitle.trim() || questions.length > 0 || duration || questionsCopy.trim() || sharedBlocks.length > 0
+    if (!hasContent) {
+      try {
+        localStorage.removeItem(draftKey)
+      } catch { /* ignore */ }
+      return
+    }
+
+    const payload = {
+      examTitle,
+      examGrade,
+      examType,
+      duration,
+      maxAttempts,
+      opensAt,
+      availabilityDays,
+      targetAudience,
+      targetGroupId,
+      numQuestions,
+      questions,
+      sharedBlocks,
+      questionsCopy,
+      showCopySection,
+      updatedAt: Date.now()
+    }
+
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(payload))
+      setLastAutoSaved(new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
+    } catch (err) {
+      console.warn('Draft auto-save error:', err)
+    }
+  }, [examTitle, examGrade, examType, duration, maxAttempts, opensAt, availabilityDays, targetAudience, targetGroupId, numQuestions, questions, sharedBlocks, questionsCopy, showCopySection, draftKey])
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(draftKey)
+      localStorage.removeItem('masar_exam_add_draft')
+    } catch { /* ignore */ }
+    setExamTitle('')
+    setDuration('')
+    setMaxAttempts(1)
+    setAvailabilityDays(3)
+    setTargetAudience('stage')
+    setTargetGroupId('')
+    setNumQuestions('')
+    setQuestions([])
+    setSharedBlocks([])
+    setQuestionsCopy('')
+    setShowCopySection(false)
+    setShowPreview(false)
+    setDraftRestored(false)
+    notify('تم مسح المسودة وبدء امتحان جديد فارغ', { type: 'info' })
+  }
+
+  // Save-only — writes the exam and navigates to the exams list.
   const saveExam = async () => {
     if (saving) return
     const payload = buildExamPayload()
@@ -381,6 +455,11 @@ export default function ExamAdd() {
         await saveExamSharedBlocks(created.id, payload.blocks)
       }
 
+      try {
+        localStorage.removeItem(draftKey)
+        localStorage.removeItem('masar_exam_add_draft')
+      } catch { /* ignore */ }
+
       invalidatePrefix('exams')
       setShowSuccess(true)
       setTimeout(() => { navigate('/exams') }, 1200)
@@ -393,6 +472,37 @@ export default function ExamAdd() {
   return (
     <div className="exam-add-page" dir="rtl">
       <div className="exam-add-container">
+        {draftRestored && (
+          <div className="exam-draft-banner">
+            <div className="exam-draft-banner-content">
+              <i className="fas fa-floppy-disk exam-draft-banner-icon" />
+              <div>
+                <strong>تم استرجاع مسودة الامتحان تلقائياً</strong>
+                <div style={{ fontSize: '0.82rem', opacity: 0.85, marginTop: 2 }}>
+                  بيانات وأسئلة الامتحان التي كنت تكتبها محفوظة ومستعادة بالكامل حتى لا تفقد عملك.
+                </div>
+              </div>
+            </div>
+            <div className="exam-draft-actions">
+              <button
+                type="button"
+                className="exam-draft-btn-discard"
+                onClick={handleDiscardDraft}
+              >
+                <i className="fas fa-trash-can" /> مسح المسودة والبدء من جديد
+              </button>
+              <button
+                type="button"
+                className="exam-draft-btn-dismiss"
+                onClick={() => setDraftRestored(false)}
+                title="إخفاء التنبيه"
+              >
+                <i className="fas fa-xmark" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="page-header">
           <button
             type="button"
@@ -403,6 +513,14 @@ export default function ExamAdd() {
           </button>
           <div className="page-header-text">
             <h1 className="page-title" style={{ margin: '0 0 6px' }}>إنشاء امتحان</h1>
+            {lastAutoSaved && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                <span className="exam-draft-badge">
+                  <span className="exam-draft-badge-dot" />
+                  تم الحفظ تلقائياً ({lastAutoSaved})
+                </span>
+              </div>
+            )}
           </div>
           <div className="page-header-spacer"></div>
         </div>
@@ -467,12 +585,12 @@ export default function ExamAdd() {
         )}
 
         <div className="form-group">
-          <label htmlFor="opensAt">📅 وقت فتح الامتحان:</label>
-          <input 
-            type="datetime-local" 
+          <label htmlFor="opensAt">📅 وقت وتاريخ فتح الامتحان (جدولة النشر):</label>
+          <DateTimePicker
             id="opensAt"
             value={opensAt}
-            onChange={(e) => setOpensAt(e.target.value)}
+            onChange={(val) => setOpensAt(val)}
+            placeholder="اختر موعد بدء الامتحان"
           />
         </div>
 
