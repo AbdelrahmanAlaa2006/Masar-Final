@@ -969,6 +969,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const [grade, setGrade] = useState(exam.grade || 'first-prep')
   const [examType, setExamType] = useState(exam.exam_type || 'exam')
   const [duration, setDur] = useState(exam.duration_minutes || 30)
+  const [maxAtt, setMaxAtt] = useState(exam.max_attempts || 1)
   const initialUnit = exam.availability_days ? 'days' : 'hours'
   const [availabilityUnit, setAvailabilityUnit] = useState(initialUnit)
   const [availabilityVal, setAvailabilityVal] = useState(
