@@ -43,6 +43,7 @@ export default function ExamTaking() {
   const startedRef = useRef(false)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [mobileMapOpen, setMobileMapOpen] = useState(false)
+  const [copiedQ, setCopiedQ] = useState(false)
   const quickNavRef = useRef(null)
 
   // Extract user parameters and role once per component lifecycle
@@ -436,7 +437,6 @@ export default function ExamTaking() {
     ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     : ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
   const progress = ((currentQuestion + 1) / questions.length) * 100
-  const [copiedQ, setCopiedQ] = useState(false)
 
   const handleCopyQuestion = async () => {
     if (!currentQ) return
