@@ -26,6 +26,11 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
       "destination": "/sitemap-mohamed-yasser.xml"
     },
+    {
+      "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "(www\\.)?mrwaleedfawzy\\.com" }],
+      "destination": "/sitemap-waled-english.xml"
+    },
     { "source": "/sitemap.xml", "destination": "/sitemap-default.xml" },
     {
       "source": "/robots.txt",
@@ -52,6 +57,11 @@
       "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
       "destination": "/robots-mohamed-yasser.txt"
     },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "(www\\.)?mrwaleedfawzy\\.com" }],
+      "destination": "/robots-waled-english.txt"
+    },
     { "source": "/robots.txt", "destination": "/robots-default.txt" },
     {
       "source": "/(.*)",
@@ -77,6 +87,11 @@
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
       "destination": "/mohamed-yasser.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?mrwaleedfawzy\\.com" }],
+      "destination": "/waled-english.html"
     },
     {
       "source": "/(.*)",

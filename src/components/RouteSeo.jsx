@@ -29,7 +29,7 @@ import { useTenant } from '../contexts/TenantContext'
    be production. Keep in sync with seo/domains.mjs + vercel.json.
    NOTE: a single hardcoded host here used to delete the canonical on every
    OTHER custom domain, which would have de-indexed each new teacher site. */
-const PRODUCTION_HOSTS = ['gitfekra.com', 'mrmohamedabdella.com', 'mrkhalidelsharif.com', 'mrmahmoudelbeliqdar.com', 'mrmohamedyasser.com']
+const PRODUCTION_HOSTS = ['gitfekra.com', 'mrmohamedabdella.com', 'mrkhalidelsharif.com', 'mrmahmoudelbeliqdar.com', 'mrmohamedyasser.com', 'mrwaleedfawzy.com']
 const PUBLIC_PATHS = ['/', '/login', '/register', '/credits']
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1'
 
@@ -60,6 +60,12 @@ export default function RouteSeo() {
     const isEldad = tenant.slug === 'eldad'
     const isElsharawy = tenant.slug === 'elsharawy' || tenant.slug === 'elshaarawy'
     const isMohamedYasser = tenant.slug === 'mohamed-yasser' || (tenant.slug || '').includes('yasser')
+    const isWaledEnglish =
+      tenant.slug === 'waled-english' ||
+      tenant.slug === 'sherif-english' ||
+      (tenant.slug || '').includes('waleed') ||
+      (tenant.slug || '').includes('waled') ||
+      (tenant.domain || '').includes('mrwaleedfawzy')
     const host = window.location.hostname.replace(/^www\./, '')
 
     // 1. Robots: public pages indexable, app pages not.
@@ -164,6 +170,27 @@ export default function RouteSeo() {
               title: 'فريق التطوير والهندسة البرمجية — منصة مستر محمد ياسر',
               description:
                 'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة مستر محمد ياسر (Abdelrahman Alaa & Eyad Elalkamy).'
+            }
+          }
+        : isWaledEnglish
+        ? {
+            '/': {
+              description:
+                'منصة The Miracle in English للأستاذ وليد أحمد فوزي (Mr. Waleed Fawzy) — المنصة التعليمية لتدريس وتأسيس مادة اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية مع امتحانات إلكترونية ومتابعة مستمرة.'
+            },
+            '/login': {
+              description:
+                'تسجيل الدخول إلى منصة The Miracle in English — منصة مستر وليد أحمد فوزي لتعليم اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية. تابع محاضراتك وواجباتك وامتحاناتك.'
+            },
+            '/register': {
+              title: 'إنشاء حساب — The Miracle in English | مستر وليد أحمد فوزي',
+              description:
+                'أنشئ حسابك في منصة The Miracle in English لمستر وليد فوزي وابدأ رحلة التفوق في اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية.'
+            },
+            '/credits': {
+              title: 'فريق التطوير والهندسة البرمجية — The Miracle in English',
+              description:
+                'تعرّف على المهندسين ومطوري البنية البرمجية لمنصة The Miracle in English (Abdelrahman Alaa & Eyad Elalkamy).'
             }
           }
         : {

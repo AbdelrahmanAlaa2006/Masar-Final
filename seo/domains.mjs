@@ -318,4 +318,72 @@ export const DOMAINS = {
       },
     },
   },
+
+  'waled-english': {
+    hosts: ['mrwaleedfawzy.com', 'www.mrwaleedfawzy.com', 'waled-english.masaar.app'],
+    lang: 'ar',
+    title: 'The Miracle in English — مستر وليد أحمد فوزي | منصة English للمرحلتين الابتدائية والإعدادية',
+    description:
+      'منصة The Miracle in English للأستاذ وليد أحمد فوزي (Mr. Waleed Fawzy) — المنصة التعليمية المتكاملة لتدريس وتأسيس مادة اللغة الإنجليزية للمرحلتين الابتدائية والإعدادية، شرح مبسط، امتحانات وتصحيح إلكتروني ومتابعة مستمرة.',
+    keywords:
+      'وليد أحمد فوزي, وليد فوزي, مستر وليد فوزي, أستاذ وليد فوزي, أ. وليد فوزي, مستر وليد احمد فوزي, وليد فوزى, مستر وليد فوزى, وليد احمد فوزي, Waleed Fawzy, Mr Waleed Fawzy, Mr. Waleed Fawzy, Waled Fawzy, Mr Waled Fawzy, Waleed Ahmed Fawzy, Waled Ahmed Fawzy, Walid Fawzy, Mr Walid Fawzy, The Miracle, The Miracle in English, The miracle, Miracle English, The Miracle English, منصة The Miracle, منصة English, ذا ميراكل, منصة ذا ميراكل, المعجزة, منصة المعجزة, المعجزة في اللغة الإنجليزية, مستر وليد فوزي انجليزي, لغة إنجليزية, انجليزي, إنجليزي, إنجليزي دمنهور, سنتر دمنهور, إنجليزي ابتدائي, إنجليزي إعدادي, تأسيس لغة إنجليزية, جرامر, قواعد اللغة الإنجليزية, Primary English, Preparatory English, English Language, English Teacher Damanhour, منصة تعليمية, تعليم أونلاين, امتحانات إلكترونية, تدريس إنجليزي',
+    author: 'مستر وليد أحمد فوزي — Mr. Waleed Fawzy',
+    canonical: 'https://mrwaleedfawzy.com/',
+    ogImage: 'https://mrwaleedfawzy.com/images/Logo%20The%20Miracle.png',
+    themeColor: '#d4af37',
+    favicon: '/images/Logo The Miracle.png',
+    faviconType: 'image/png',
+    siteName: 'The Miracle in English — مستر وليد أحمد فوزي',
+    jsonLd: {
+      person: {
+        name: 'Waleed Ahmed Fawzy',
+        alternateName: [
+          'وليد أحمد فوزي',
+          'وليد فوزي',
+          'مستر وليد فوزي',
+          'أستاذ وليد فوزي',
+          'أ. وليد فوزي',
+          'Mr Waleed Fawzy',
+          'Mr. Waleed Fawzy',
+          'Waled Fawzy',
+          'Mr Waled Fawzy',
+          'Waleed Fawzy',
+          'Walid Fawzy',
+        ],
+        jobTitle: 'Senior English Language Expert & Teacher — Primary & Preparatory Stages',
+        image: 'https://mrwaleedfawzy.com/images/Mr%20Waleed%20Fawzy%20Image.png',
+        knowsAbout: [
+          'English Language',
+          'English Grammar',
+          'Phonics & Pronunciation',
+          'Translation',
+          'Primary English',
+          'Preparatory English',
+          'اللغة الإنجليزية',
+          'تأسيس إنجليزي',
+          'المرحلة الابتدائية',
+          'المرحلة الإعدادية',
+        ],
+        sameAs: ['https://wa.me/201005387099'],
+      },
+      org: {
+        name: 'The Miracle in English',
+        alternateName: [
+          'منصة The Miracle',
+          'منصة English',
+          'ذا ميراكل',
+          'The Miracle Platform',
+          'منصة مستر وليد فوزي للغة الإنجليزية',
+          'المعجزة في اللغة الإنجليزية',
+        ],
+        logo: 'https://mrwaleedfawzy.com/images/Logo%20The%20Miracle.png',
+        description:
+          'منصة تعليمية متكاملة ومتخصصة في تدريس وتأسيس مادة اللغة الإنجليزية لطلاب المرحلتين الابتدائية والإعدادية مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
+        telephone: '+201005387099',
+        addressLocality: 'Damanhour',
+        addressRegion: 'Beheira',
+      },
+    },
+  },
 }
+

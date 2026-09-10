@@ -83,7 +83,16 @@ export function TenantProvider({ children }) {
 
         // 3. Fetch tenant config from database (cached for 10 minutes)
         let querySlug = candidate
-        if (candidate === 'waled-english') {
+        if (
+          candidate === 'waled-english' ||
+          candidate === 'mrwaleedfawzy.com' ||
+          candidate.includes('mrwaleedfawzy') ||
+          candidate.includes('waleedfawzy') ||
+          candidate.includes('waledfawzy') ||
+          candidate === 'miracle' ||
+          candidate === 'the-miracle' ||
+          candidate === 'miracle-english'
+        ) {
           querySlug = 'sherif-english'
         }
         // Physical slug is mohamed-abdella (renamed from sherif-programming);

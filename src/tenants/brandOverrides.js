@@ -38,6 +38,13 @@ const BRAND_OVERRIDES = [
       !t.slug?.includes('yasser') &&
       (t.slug === 'sherif-english' ||
         t.slug === 'waled-english' ||
+        t.slug === 'miracle' ||
+        t.slug === 'the-miracle' ||
+        t.slug === 'miracle-english' ||
+        t.domain === 'mrwaleedfawzy.com' ||
+        (t.domain || '').includes('mrwaleedfawzy') ||
+        (t.slug || '').includes('waleed') ||
+        (t.slug || '').includes('waled') ||
         t.config?.subject === 'english'),
     apply: {
       name: 'The Miracle in English',
