@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import './GitFekraLanding.css'
 import { PLATFORMS, SERVICES, PROCESS, TOUR } from './products'
 import { supabase } from '@backend/supabase'
 import { cached } from '../../utils/cache'
+import { initSiteAnalytics, trackEvent, getUtm } from '../../utils/siteAnalytics'
+import { CONTACT_EMAIL, hasWhatsApp, whatsappLink } from './contact'
 
 /* GitFekra — company site (shown on the default tenant / gitfekra.com).
    Editorial, print-inspired design: light paper background, ink typography,
@@ -40,9 +42,6 @@ function resolveProductsFromTenants(dbTenants) {
     if (p.id === 'elsharawy-primary') {
       presetMap.set('elsharawy', p)
       presetMap.set('elshaarawy', p)
-    }
-    if (p.id === 'mohamed-yasser-english') {
-      presetMap.set('mohamed-yasser', p)
     }
   })
 
@@ -139,6 +138,19 @@ const COPY = {
     contact_title: 'جاهز تبدأ منصتك؟',
     contact_body: 'احكِ لنا عن مادتك وطريقة شغلك، ونعود إليك بتصوّر كامل خلال أيام.',
     contact_cta: 'راسلنا على البريد',
+    contact_whatsapp: 'كلّمنا على واتساب',
+    form_title: 'أو سيب رقمك ونكلمك إحنا',
+    form_name: 'اسمك',
+    form_phone: 'رقم الموبايل (واتساب)',
+    form_subject: 'بتدرّس إيه؟ (مثال: كيمياء ثانوي)',
+    form_message: 'حابب توصلنا حاجة؟ (اختياري)',
+    form_submit: 'ابعت البيانات',
+    form_sending: 'جاري الإرسال...',
+    form_done_title: 'وصلنا 👌',
+    form_done_body: 'هنكلمك على الرقم ده في أقرب وقت.',
+    form_err_name: 'اكتب اسمك من فضلك.',
+    form_err_phone: 'اكتب رقم موبايل صحيح.',
+    form_err_generic: 'حصلت مشكلة، جرّب تاني أو كلّمنا على واتساب.',
     footer_tag: 'برمجيات تعليمية تُبنى بعناية.',
     footer_made: 'صُنع في مصر',
     rights: 'جميع الحقوق محفوظة',
@@ -180,24 +192,55 @@ const COPY = {
     contact_title: 'Ready to start your platform?',
     contact_body: 'Tell us about your subject and how you work, and we’ll come back with a full plan within days.',
     contact_cta: 'Email us',
+    contact_whatsapp: 'Chat on WhatsApp',
+    form_title: 'Or leave your number and we will call you',
+    form_name: 'Your name',
+    form_phone: 'Phone number (WhatsApp)',
+    form_subject: 'What do you teach? (e.g. secondary chemistry)',
+    form_message: 'Anything you want to tell us? (optional)',
+    form_submit: 'Send',
+    form_sending: 'Sending...',
+    form_done_title: 'Got it 👌',
+    form_done_body: 'We will contact you on this number shortly.',
+    form_err_name: 'Please type your name.',
+    form_err_phone: 'Please type a valid phone number.',
+    form_err_generic: 'Something went wrong — try again, or reach us on WhatsApp.',
     footer_tag: 'Education software, built with care.',
     footer_made: 'Made in Egypt',
     rights: 'All rights reserved',
   },
 }
 
-const CONTACT_EMAIL = 'hello@gitfekra.com'
 
-// Reveal-on-scroll: adds .in when an element enters the viewport.
-function useReveal(lang) {
+/* Reveal-on-scroll: adds .in when an element enters the viewport.
+   Scanning once on mount is not enough — the work cards are REPLACED when the
+   real tenants arrive from the database (their keys change from preset ids to
+   tenant ids), and the new cards were never observed, so they stayed at
+   `opacity: 0` and the section looked empty. Keep one observer for the life of
+   the page and hand it every not-yet-revealed element after each render. */
+function useReveal() {
+  const observerRef = useRef(null)
+
   useEffect(() => {
-    const els = document.querySelectorAll('.gf-reveal')
+    if (typeof IntersectionObserver === 'undefined') {
+      document.querySelectorAll('.gf-reveal').forEach((el) => el.classList.add('in'))
+      return undefined
+    }
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } })
     }, { threshold: 0.12 })
-    els.forEach((el) => io.observe(el))
-    return () => io.disconnect()
-  }, [lang])
+    observerRef.current = io
+    return () => { io.disconnect(); observerRef.current = null }
+  }, [])
+
+  // No dependency list on purpose: every render re-checks for new elements.
+  // Re-observing one already being watched is a no-op, and revealed elements
+  // are filtered out by the selector.
+  useEffect(() => {
+    const io = observerRef.current
+    if (!io) return
+    document.querySelectorAll('.gf-reveal:not(.in)').forEach((el) => io.observe(el))
+  })
 }
 
 function Wordmark() {
@@ -239,6 +282,46 @@ export default function GitFekraLanding() {
   const [isRotating, setIsRotating] = useState(false)
   const [dbTenants, setDbTenants] = useState([])
   const [tenantsLoading, setTenantsLoading] = useState(true)
+
+  // ── Lead form (contact section) ──
+  const [lead, setLead] = useState({ name: '', phone: '', subject: '', message: '' })
+  const [leadState, setLeadState] = useState('idle') // idle | sending | done
+  const [leadError, setLeadError] = useState('')
+
+  // Analytics: third-party tags load only if their ids are configured.
+  useEffect(() => {
+    initSiteAnalytics()
+    trackEvent('page_view')
+  }, [])
+
+  const submitLead = async (e) => {
+    e.preventDefault()
+    if (leadState === 'sending') return
+    if (lead.name.trim().length < 2) { setLeadError(t.form_err_name); return }
+    if (lead.phone.replace(/\D/g, '').length < 8) { setLeadError(t.form_err_phone); return }
+    setLeadError('')
+    setLeadState('sending')
+    try {
+      const { error } = await supabase.rpc('submit_lead', {
+        p_name: lead.name.trim(),
+        p_phone: lead.phone.trim(),
+        p_subject: lead.subject.trim() || null,
+        p_stage: null,
+        p_message: lead.message.trim() || null,
+        p_source: 'site_form',
+        p_page: window.location.pathname,
+        p_referrer: document.referrer || '',
+        p_utm: getUtm(),
+      })
+      if (error) throw error
+      trackEvent('lead_submitted')
+      setLeadState('done')
+    } catch (err) {
+      console.error('Lead submit failed:', err)
+      setLeadError(t.form_err_generic)
+      setLeadState('idle')
+    }
+  }
 
   // Fetch real tenants from database to keep showcase and metrics 100% synchronized
   useEffect(() => {
@@ -302,7 +385,7 @@ export default function GitFekraLanding() {
   const tourShots = TOUR.filter((s) => s.role === tourTab)
   const currentShot = tourShots[Math.min(tourIndex, tourShots.length - 1)]
   const t = COPY[lang]
-  useReveal(lang)
+  useReveal()
 
   // Rotate hero keyword every 3.2s with a smooth slide transition
   useEffect(() => {
@@ -398,8 +481,8 @@ export default function GitFekraLanding() {
         </h1>
         <p className="gf-hero-sub gf-reveal">{t.hero_sub}</p>
         <div className="gf-hero-cta gf-reveal">
-          <a href="#contact" className="gf-btn gf-btn-ink">{t.cta_primary}</a>
-          <a href="#work" className="gf-btn gf-btn-line">{t.cta_secondary}</a>
+          <a href="#contact" className="gf-btn gf-btn-ink" onClick={() => trackEvent('cta_click', { cta: 'hero_primary' })}>{t.cta_primary}</a>
+          <a href="#work" className="gf-btn gf-btn-line" onClick={() => trackEvent('cta_click', { cta: 'hero_secondary' })}>{t.cta_secondary}</a>
         </div>
         <dl className="gf-stats gf-reveal">
           {dynamicStats.map((s, i) => (
@@ -713,11 +796,80 @@ export default function GitFekraLanding() {
           <h2>{t.contact_title}</h2>
           <p>{t.contact_body}</p>
           <div className="gf-contact-actions">
-            <a href={`mailto:${CONTACT_EMAIL}`} className="gf-btn gf-btn-ink">
+            {hasWhatsApp() && (
+              <a
+                href={whatsappLink(lang)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gf-btn gf-btn-wa"
+                onClick={() => trackEvent('whatsapp_click', { place: 'contact' })}
+              >
+                <i className="fab fa-whatsapp" /> {t.contact_whatsapp}
+              </a>
+            )}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="gf-btn gf-btn-paper"
+              onClick={() => trackEvent('contact_email_click')}
+            >
               <i className="fas fa-envelope" /> {t.contact_cta}
             </a>
             <div className="gf-contact-email" dir="ltr">{CONTACT_EMAIL}</div>
           </div>
+
+          {/* A teacher who does not use e-mail can just leave a number. */}
+          {leadState === 'done' ? (
+            <div className="gf-lead-done" role="status">
+              <div className="gf-lead-done-icon" aria-hidden="true">✅</div>
+              <h3>{t.form_done_title}</h3>
+              <p>{t.form_done_body}</p>
+            </div>
+          ) : (
+            <form className="gf-lead-form" onSubmit={submitLead} noValidate>
+              <h3 className="gf-lead-form-title">{t.form_title}</h3>
+              <div className="gf-lead-row">
+                <input
+                  className="gf-lead-input"
+                  type="text"
+                  name="lead_name"
+                  autoComplete="name"
+                  placeholder={t.form_name}
+                  value={lead.name}
+                  onChange={(e) => setLead((v) => ({ ...v, name: e.target.value }))}
+                />
+                <input
+                  className="gf-lead-input"
+                  type="tel"
+                  name="lead_phone"
+                  dir="ltr"
+                  autoComplete="tel"
+                  placeholder={t.form_phone}
+                  value={lead.phone}
+                  onChange={(e) => setLead((v) => ({ ...v, phone: e.target.value }))}
+                />
+              </div>
+              <input
+                className="gf-lead-input"
+                type="text"
+                name="lead_subject"
+                placeholder={t.form_subject}
+                value={lead.subject}
+                onChange={(e) => setLead((v) => ({ ...v, subject: e.target.value }))}
+              />
+              <textarea
+                className="gf-lead-input gf-lead-textarea"
+                name="lead_message"
+                rows={3}
+                placeholder={t.form_message}
+                value={lead.message}
+                onChange={(e) => setLead((v) => ({ ...v, message: e.target.value }))}
+              />
+              {leadError && <div className="gf-lead-error" role="alert">{leadError}</div>}
+              <button type="submit" className="gf-btn gf-btn-paper gf-lead-submit" disabled={leadState === 'sending'}>
+                {leadState === 'sending' ? t.form_sending : t.form_submit}
+              </button>
+            </form>
+          )}
         </div>
       </section>
 

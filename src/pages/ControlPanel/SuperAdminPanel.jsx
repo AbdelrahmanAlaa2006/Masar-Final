@@ -8,6 +8,8 @@ import DevToolsViolationsPanel from './DevToolsViolationsPanel'
 // Company finance & business management — heavy module, super admin only,
 // lazy-loaded so it never weighs on the shared bundle.
 const BusinessPanel = lazy(() => import('./BusinessPanel'))
+// Teachers who asked for a platform on gitfekra.com + site analytics.
+const LeadsPanel = lazy(() => import('./LeadsPanel'))
 import { GRADE_LABEL } from './shared'
 import { uploadAvatarImage } from '@backend/r2'
 import { DEFAULT_ANNOUNCEMENTS } from '../../utils/announcements'
@@ -1047,6 +1049,7 @@ export default function SuperAdminPanel({ onBack, flash }) {
           { id: 'tenants', label: `المنصات والمدرسين (${tenants.length})`, icon: 'fa-cubes' },
           { id: 'database', label: 'صيانة وقاعدة البيانات', icon: 'fa-server' },
           { id: 'business', label: 'إدارة الأعمال والمالية', icon: 'fa-briefcase' },
+          { id: 'leads', label: 'العملاء المحتملين والتسويق', icon: 'fa-bullhorn' },
           { id: 'security', label: 'سجلات الحماية والأمان', icon: 'fa-shield-halved' },
           { id: 'themes', label: 'السمات الموسمية', icon: 'fa-moon' },
         ].map(tab => (
@@ -1974,6 +1977,15 @@ export default function SuperAdminPanel({ onBack, flash }) {
             <div>
               <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل لوحة الأعمال والمالية...</p></div>}>
                 <BusinessPanel flash={flash} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: MARKETING LEADS FROM THE COMPANY SITE */}
+          {activeMainTab === 'leads' && (
+            <div>
+              <Suspense fallback={<div className="cp-empty"><i className="fas fa-spinner fa-spin" /><p>جاري تحميل العملاء المحتملين...</p></div>}>
+                <LeadsPanel flash={flash} />
               </Suspense>
             </div>
           )}

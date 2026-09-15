@@ -1966,3 +1966,102 @@
     text-align: center;
   }
 }
+
+/* Shield headings from tenant theme sheets. A tenant's stylesheet repaints
+   bare h1/h2 with `body.aa-*-theme h1 { ... !important }` — gold in dark mode,
+   navy in light. The company page is reachable from inside any tenant (the
+   "developers" link in the footer), and the theme class sits on <body>, so the
+   markup cannot dodge it: out-specify it instead. Deliberate gradient text
+   lives on child elements (.gf-rotator-text, .gf-wordmark em) and still wins
+   on those, because it is declared on the element itself. Mirrors the same
+   guard in login-editorial.css. */
+.gf-root.gf-root.gf-root h1,
+.gf-root.gf-root.gf-root h2,
+.gf-root.gf-root.gf-root .section-heading {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  /* `inherit`, never a fixed colour: some blocks are deliberately inverted
+     (.gf-contact-inner is dark with light text), so each heading must keep the
+     colour of the section it sits in. */
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* ── Contact: lead form ────────────────────────────────────────── */
+/* .gf-contact-inner is inverted (its background is var(--ink), its text
+   var(--paper)), so the form uses transparent fields with paper-coloured text
+   instead of the page's normal surfaces — that works in light and dark alike.
+   Buttons inside this block must be .gf-btn-paper; .gf-btn-ink would be
+   ink-on-ink and read as bare text. */
+.gf-lead-form {
+  margin: 28px auto 0;
+  max-width: 560px;
+  text-align: start;
+  display: grid;
+  gap: 12px;
+}
+.gf-lead-form-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: .8;
+  text-align: center;
+}
+.gf-lead-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* The repeated .gf-root beats the tenant theme sheets, which repaint every
+   bare input/textarea with their own navy/white surface and !important — the
+   same reason headings need out-specifying above. Without this the fields turn
+   into dark navy boxes when the page is opened from inside a tenant. */
+.gf-root.gf-root.gf-root .gf-lead-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 128, 128, .45) !important;
+  background: transparent !important;
+  color: var(--paper) !important;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.gf-root.gf-root.gf-root .gf-lead-input::placeholder {
+  color: var(--paper) !important;
+  opacity: .55 !important;
+}
+.gf-root.gf-root.gf-root .gf-lead-input:focus {
+  border-color: var(--accent-on-ink) !important;
+  background: transparent !important;
+  color: var(--paper) !important;
+  box-shadow: 0 0 0 3px rgba(128, 128, 128, .28) !important;
+}
+.gf-lead-textarea { resize: vertical; min-height: 92px; }
+.gf-lead-submit { justify-self: start; }
+
+.gf-lead-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, .16);
+  border: 1px solid rgba(220, 38, 38, .5);
+  color: #ff8a80;
+  font-weight: 700;
+}
+
+.gf-lead-done {
+  margin: 28px auto 0;
+  max-width: 560px;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(128, 128, 128, .4);
+  text-align: center;
+}
+.gf-lead-done-icon { font-size: 2rem; line-height: 1; margin-bottom: 8px; }
+.gf-lead-done h3 { margin: 0 0 6px; font-size: 1.25rem; }
+.gf-lead-done p { margin: 0; opacity: .85; }
+
+@media (max-width: 600px) {
+  .gf-lead-row { grid-template-columns: 1fr; }
+  .gf-lead-submit { justify-self: stretch; text-align: center; justify-content: center; }
+}
