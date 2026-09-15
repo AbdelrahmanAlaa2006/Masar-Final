@@ -591,3 +591,158 @@ body:not(.dark) .error-message {
   color: #c0392b !important;
   border-color: rgba(231, 76, 60, 0.4) !important;
 }
+
+/* ─────────── Step-by-step registration (rw-*) ─────────── */
+.rw-progress { margin: 2px 0 24px; }
+.rw-progress-label {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: .88rem; font-weight: 700; color: #94a3b8; margin-bottom: 8px;
+}
+.rw-progress-track { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.rw-progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--primary, #7c3aed), var(--primary-hover, #ec4899));
+  transition: width .35s ease;
+}
+
+/* Beats the gradient-text rule on `.register-form-col h2`. */
+.register-form-col h2.rw-question {
+  font-size: 1.65rem; font-weight: 800; line-height: 1.45; margin: 0 0 8px; color: #fff;
+  background: none; -webkit-text-fill-color: currentColor; text-shadow: none;
+}
+.rw-hint { font-size: 1.02rem; color: #94a3b8; margin: 0 0 22px; line-height: 1.75; }
+
+.rw-input {
+  width: 100%; box-sizing: border-box; font-family: inherit; font-size: 1.25rem;
+  padding: 16px 18px; border-radius: 16px; outline: none; color: #fff; margin-bottom: 14px;
+  border: 2px solid rgba(255, 255, 255, .12); background: var(--dynamic-card, rgba(15, 23, 42, .35));
+  transition: border-color .2s, box-shadow .2s;
+}
+.rw-input:focus { border-color: var(--primary, #7c3aed); box-shadow: 0 0 0 4px var(--primary-soft, rgba(124, 58, 237, .25)); }
+.rw-input.is-ltr { direction: ltr; text-align: center; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+
+.rw-pw { position: relative; }
+.rw-pw .rw-input { padding-inline-end: 96px; }
+.rw-pw-toggle {
+  position: absolute; top: 8px; inset-inline-end: 10px; height: 44px;
+  border: none; border-radius: 10px; padding: 0 12px; cursor: pointer;
+  font-family: inherit; font-weight: 700; color: #cbd5e1; background: rgba(255, 255, 255, .08);
+}
+
+.rw-confirm {
+  text-align: center; padding: 26px 16px; margin-bottom: 18px; border-radius: 20px;
+  border: 2px dashed var(--primary, #7c3aed); background: var(--primary-soft, rgba(124, 58, 237, .12));
+}
+.rw-confirm-label { font-size: .95rem; color: #cbd5e1; margin-bottom: 8px; }
+.rw-confirm-value {
+  direction: ltr; font-size: clamp(1.8rem, 7vw, 2.6rem); font-weight: 800; color: #fff;
+  letter-spacing: 2px; font-variant-numeric: tabular-nums; word-break: break-all;
+}
+
+.rw-warn {
+  display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; margin-bottom: 18px;
+  border-radius: 14px; background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .45);
+  color: #fbbf24; font-weight: 700; line-height: 1.7;
+}
+
+.rw-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.rw-choice {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 84px; padding: 16px 12px; border-radius: 18px; cursor: pointer; text-align: center;
+  font-family: inherit; font-size: 1.1rem; font-weight: 800; color: #fff;
+  border: 2px solid rgba(255, 255, 255, .12); background: var(--dynamic-card, rgba(15, 23, 42, .35));
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.rw-choice:hover { border-color: rgba(255, 255, 255, .28); }
+.rw-choice.is-selected {
+  border-color: var(--primary, #7c3aed); background: var(--primary-soft, rgba(124, 58, 237, .18));
+  box-shadow: 0 0 0 4px var(--primary-soft, rgba(124, 58, 237, .2));
+}
+.rw-choice-icon { font-size: 1.8rem; line-height: 1; }
+.rw-choice-sub { font-size: .85rem; font-weight: 500; color: #94a3b8; }
+.rw-choice-check {
+  position: absolute; top: 8px; inset-inline-start: 8px; width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: .75rem;
+  color: #fff; background: var(--primary, #7c3aed);
+}
+.rw-stage-title { font-size: .95rem; font-weight: 800; color: #cbd5e1; margin: 16px 0 10px; }
+
+.rw-error {
+  margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; line-height: 1.6; font-weight: 700;
+  background: rgba(231, 76, 60, .15); border: 1px solid rgba(231, 76, 60, .5); color: #ff8a80;
+}
+
+.rw-actions { display: flex; gap: 12px; margin-top: 24px; }
+.rw-actions .modern-btn { flex: 1 1 auto; width: auto; font-size: 1.1rem; padding: 16px; }
+.rw-btn-secondary {
+  flex: 0 0 auto; padding: 16px 20px; border-radius: 14px; cursor: pointer; background: transparent;
+  font-family: inherit; font-size: 1rem; font-weight: 700; color: #cbd5e1; border: 2px solid rgba(255, 255, 255, .14);
+}
+
+.rw-review { list-style: none; margin: 0; padding: 0; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .1); }
+.rw-review li { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.rw-review li:last-child { border-bottom: none; }
+.rw-review-label { flex: 0 0 36%; font-size: .9rem; font-weight: 700; color: #94a3b8; }
+.rw-review-value { flex: 1 1 auto; min-width: 0; font-size: 1.02rem; font-weight: 700; color: #fff; word-break: break-word; }
+.rw-review-value.is-ltr { direction: ltr; text-align: end; font-variant-numeric: tabular-nums; }
+.rw-review-edit {
+  flex: 0 0 auto; padding: 6px 8px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-weight: 800; color: var(--primary, #a78bfa);
+}
+
+.rw-done { text-align: center; }
+.rw-done-emoji { font-size: 3rem; line-height: 1.2; margin-bottom: 6px; }
+.rw-credentials {
+  margin: 18px 0; padding: 20px 16px; border-radius: 20px; text-align: center;
+  border: 2px solid var(--primary, #7c3aed); background: var(--primary-soft, rgba(124, 58, 237, .12));
+}
+.rw-cred-heading { font-size: 1rem; font-weight: 800; color: #e2e8f0; margin-bottom: 6px; }
+.rw-cred-row { margin: 12px 0; }
+.rw-cred-label { font-size: .9rem; color: #cbd5e1; margin-bottom: 4px; }
+.rw-cred-value {
+  direction: ltr; font-size: clamp(1.5rem, 6vw, 2.2rem); font-weight: 800; color: #fff;
+  letter-spacing: 1.5px; font-variant-numeric: tabular-nums; word-break: break-all;
+}
+.rw-reveal-btn {
+  margin-top: 8px; padding: 6px 14px; border-radius: 10px; border: none; cursor: pointer;
+  font-family: inherit; font-weight: 700; color: #cbd5e1; background: rgba(255, 255, 255, .1);
+}
+.rw-shot-hint { font-size: 1.05rem; font-weight: 800; line-height: 1.7; color: #fbbf24; margin: 0 0 18px; }
+
+.rw-link-row { text-align: center; margin-top: 18px; font-size: .95rem; color: #94a3b8; }
+.rw-link-row a { margin-inline-start: 4px; font-weight: 800; text-decoration: none; color: var(--primary, #a78bfa); }
+
+@media (max-width: 768px) {
+  .register-form-col h2.rw-question { font-size: 1.35rem; }
+  .rw-choices { grid-template-columns: 1fr 1fr; }
+  .rw-review-label { flex-basis: 40%; }
+}
+
+body:not(.dark) .register-form-col h2.rw-question {
+  background: none !important; -webkit-text-fill-color: currentColor !important; color: #0f172a !important;
+}
+body:not(.dark) .rw-confirm-value,
+body:not(.dark) .rw-cred-value,
+body:not(.dark) .rw-review-value,
+body:not(.dark) .rw-choice { color: #0f172a !important; }
+body:not(.dark) .rw-hint,
+body:not(.dark) .rw-review-label,
+body:not(.dark) .rw-choice-sub,
+body:not(.dark) .rw-progress-label,
+body:not(.dark) .rw-link-row,
+body:not(.dark) .rw-confirm-label,
+body:not(.dark) .rw-cred-label,
+body:not(.dark) .rw-stage-title,
+body:not(.dark) .rw-cred-heading { color: #475569 !important; }
+body:not(.dark) .rw-input { background: #fff !important; color: #0f172a !important; border-color: rgba(0, 0, 0, .15) !important; }
+body:not(.dark) .rw-choice { background: #fff !important; border-color: rgba(0, 0, 0, .12) !important; }
+body:not(.dark) .rw-choice.is-selected { border-color: var(--primary, #7c3aed) !important; background: var(--primary-soft, #f5f3ff) !important; }
+body:not(.dark) .rw-progress-track { background: rgba(0, 0, 0, .08) !important; }
+body:not(.dark) .rw-review { border-color: rgba(0, 0, 0, .1) !important; }
+body:not(.dark) .rw-review li { border-bottom-color: rgba(0, 0, 0, .07) !important; }
+body:not(.dark) .rw-btn-secondary { color: #334155 !important; border-color: rgba(0, 0, 0, .15) !important; }
+body:not(.dark) .rw-pw-toggle,
+body:not(.dark) .rw-reveal-btn { background: rgba(0, 0, 0, .06) !important; color: #334155 !important; }
+body:not(.dark) .rw-warn { color: #92400e !important; }
+body:not(.dark) .rw-shot-hint { color: #b45309 !important; }
+body:not(.dark) .rw-error { color: #b91c1c !important; }

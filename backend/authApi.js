@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { authStore, clearAuth } from './authStorage'
 
 // Convert phone number to a fake email for Supabase auth, scoped per tenant
 const phoneToEmail = (phone, tenantId) => {
@@ -65,7 +66,9 @@ export const authAPI = {
 
     // Cross-tenant login validation (Super Admins are allowed to bypass tenant checks)
     if (clientTenantId && profile.tenant_id !== clientTenantId && profile.role !== 'super_admin') {
-      await supabase.auth.signOut()
+      // 'local': the default 'global' would also sign this account out of
+      // every other device it is logged in on.
+      await supabase.auth.signOut({ scope: 'local' })
       throw new Error('المستخدم غير مسجل في هذه المنصة')
     }
 
@@ -74,8 +77,8 @@ export const authAPI = {
 
   // Logout
   logout: async () => {
-    await supabase.auth.signOut()
-    tokenAPI.removeToken()
+    clearAuth()
+    await supabase.auth.signOut({ scope: 'local' })
   },
 
   // Register with name + phone + password (always student role)
@@ -168,20 +171,12 @@ export const authAPI = {
   },
 }
 
-/* Session-only storage so closing the browser/tab requires a fresh
-   login next visit. We also clean up any old localStorage keys from
-   previous builds where tokens were persisted across sessions. */
-if (typeof window !== 'undefined') {
-  localStorage.removeItem('masar-token')
-  localStorage.removeItem('masar-user')
-}
-
+/* Which store holds the login (this device vs. until the tab closes) is
+   decided in ./authStorage. Do not clear masar-* keys from localStorage on
+   load here: persisted logins live there now. */
 export const tokenAPI = {
-  setToken: (token) => sessionStorage.setItem('masar-token', token),
-  getToken: () => sessionStorage.getItem('masar-token'),
-  removeToken: () => {
-    sessionStorage.removeItem('masar-token')
-    sessionStorage.removeItem('masar-user')
-  },
-  isLoggedIn: () => !!sessionStorage.getItem('masar-token'),
+  setToken: (token) => authStore.setItem('masar-token', token),
+  getToken: () => authStore.getItem('masar-token'),
+  removeToken: () => clearAuth(),
+  isLoggedIn: () => !!authStore.getItem('masar-token'),
 }

@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -25,7 +26,7 @@ export default function HomeworkReport() {
         const params = new URLSearchParams(window.location.search)
         const student = params.get('student')
         if (student) return student
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           return u?.name || ''
@@ -40,7 +41,7 @@ export default function HomeworkReport() {
         const params = new URLSearchParams(window.location.search)
         const idParam = params.get('id')
         if (idParam) return idParam
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           return u?.phone || ''
@@ -52,7 +53,7 @@ export default function HomeworkReport() {
   const [currentFilter, setCurrentFilter] = useState('all')
   const initialViewMode = (() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       return (u?.role === 'admin' || u?.role === 'assistant') ? 'table' : 'cards'
     } catch { return 'cards' }
   })()
@@ -67,7 +68,7 @@ export default function HomeworkReport() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       setIsAdmin(u?.role === 'admin' || u?.role === 'assistant')
     } catch { setIsAdmin(false) }
   }, [])
@@ -77,7 +78,7 @@ export default function HomeworkReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user')) || null
+        const u = JSON.parse(authStore.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
         const targetId = paramId || u?.id
         if (!targetId) return
@@ -193,7 +194,7 @@ export default function HomeworkReport() {
       setStudentId(idParam || '')
     } else {
       try {
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           if (u?.name) setStudentName(u.name)

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { invalidateAll } from '../utils/cache'
 import { invalidateViewerContext } from '@backend/viewerContext'
+import { authStore, setPersistent, clearAuth } from '@backend/authStorage'
 import { useTenant } from './TenantContext'
 import { supabase } from '@backend/supabase'
 
@@ -17,9 +18,9 @@ export function AuthProvider({ children }) {
 
   const syncAuth = useCallback(() => {
     try {
-      const token = sessionStorage.getItem('masar-token')
-      const userData = sessionStorage.getItem('masar-user')
-      const permsData = sessionStorage.getItem('masar-permissions')
+      const token = authStore.getItem('masar-token')
+      const userData = authStore.getItem('masar-user')
+      const permsData = authStore.getItem('masar-permissions')
       if (token && userData) {
         const parsedUser = JSON.parse(userData)
         setUser(parsedUser)
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
     let activeUser = user
     if (!activeUser) {
       try {
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) activeUser = JSON.parse(stored)
       } catch {}
     }
@@ -74,8 +75,8 @@ export function AuthProvider({ children }) {
           }
         }
 
-        sessionStorage.setItem('masar-user', JSON.stringify(data))
-        sessionStorage.setItem('masar-permissions', JSON.stringify(userPerms))
+        authStore.setItem('masar-user', JSON.stringify(data))
+        authStore.setItem('masar-permissions', JSON.stringify(userPerms))
         setUser(data)
         setPermissions(userPerms)
         window.dispatchEvent(new Event('masar-user-updated'))
@@ -87,9 +88,14 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = useCallback((token, userData) => {
-    sessionStorage.setItem('masar-token', token)
-    sessionStorage.setItem('masar-user', JSON.stringify(userData))
+  const login = useCallback((token, userData, options = {}) => {
+    // Students keep their login on this device by default; staff only when
+    // they ticked «تذكرني». Decided here, after sign-in, because the role is
+    // not known before it — setPersistent carries over the Supabase session
+    // that sign-in already wrote.
+    setPersistent(options.persist ?? (userData?.role === 'student'))
+    authStore.setItem('masar-token', token)
+    authStore.setItem('masar-user', JSON.stringify(userData))
     // Drop any stale (logged-out) viewer context so content gating resolves
     // for the new user immediately.
     invalidateViewerContext()
@@ -100,9 +106,13 @@ export function AuthProvider({ children }) {
   }, [refreshProfile])
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('masar-token')
-    sessionStorage.removeItem('masar-user')
-    sessionStorage.removeItem('masar-permissions')
+    // Wipe the login from BOTH stores synchronously first: several callers
+    // reload the page right after logout(), and a persisted session left in
+    // localStorage would sign the student straight back in on a shared phone.
+    clearAuth()
+    // Then drop the Supabase client's in-memory session as well. 'local' ends
+    // this device only — 'global' would sign the account out everywhere.
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {})
     setUser(null)
     setIsLoggedIn(false)
     setPermissions([])
@@ -132,7 +142,7 @@ export function AuthProvider({ children }) {
   }, [user, tenantId, logout])
 
   useEffect(() => {
-    // 1. Initial sync from sessionStorage
+    // 1. Initial sync from the stored login (see authStorage)
     syncAuth()
 
     // 2. Subscribe to Supabase auth state change events
@@ -140,7 +150,12 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         syncAuth()
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && authStore.getItem('masar-token'))) {
+        // No live Supabase session behind the app's stored login: it was ended
+        // elsewhere (a password reset, expiry) or could not be restored. Clear
+        // it, or a stale login keeps "logging in" a student whose every query
+        // then fails.
+        clearAuth()
         setUser(null)
         setIsLoggedIn(false)
         setPermissions([])
@@ -156,8 +171,8 @@ export function AuthProvider({ children }) {
     window.addEventListener('storage', syncAuth)
 
     // 4. Proactively refresh profile/permissions in the background on mount
-    const token = sessionStorage.getItem('masar-token')
-    const userData = sessionStorage.getItem('masar-user')
+    const token = authStore.getItem('masar-token')
+    const userData = authStore.getItem('masar-user')
     if (token && userData) {
       refreshProfile().catch(err => console.error('Initial background profile refresh failed:', err))
     }

@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import './Lectures.css'
@@ -112,7 +113,7 @@ export default function Lectures() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       setUserRole(u?.role || null)
       setUserId(u?.id || null)
       // auto-select the student's own grade; admins still pick

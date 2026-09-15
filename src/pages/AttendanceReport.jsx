@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getCenterStudentAttendance } from '@backend/reportsApi'
@@ -75,7 +76,7 @@ export default function AttendanceReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user')) || null
+        const u = JSON.parse(authStore.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
         const targetId = paramId || u?.id
         

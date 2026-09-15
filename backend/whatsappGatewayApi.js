@@ -1,3 +1,4 @@
+import { authStore } from './authStorage'
 import { supabase } from './supabase'
 
 /* Client for the self-hosted multi-tenant WhatsApp gateway.
@@ -16,7 +17,7 @@ async function authedFetch(path, options = {}) {
   if (!GATEWAY_URL) throw new Error('لم يتم ضبط عنوان بوابة الواتساب (VITE_WHATSAPP_GATEWAY_URL)')
   // The app persists the Supabase session in sessionStorage; getSession reads it.
   const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token || sessionStorage.getItem('masar-token')
+  const token = session?.access_token || authStore.getItem('masar-token')
   const res = await fetch(`${GATEWAY_URL}${path}`, {
     ...options,
     headers: {

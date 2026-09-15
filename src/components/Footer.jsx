@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
@@ -37,11 +38,11 @@ export default function Footer() {
   // Resolve the viewer's role so contact info targets the right audience:
   // students/visitors → the teacher/platform channels, staff → the developer.
   const [viewerRole, setViewerRole] = React.useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('masar-user'))?.role || null } catch { return null }
+    try { return JSON.parse(authStore.getItem('masar-user'))?.role || null } catch { return null }
   })
   React.useEffect(() => {
     const sync = () => {
-      try { setViewerRole(JSON.parse(sessionStorage.getItem('masar-user'))?.role || null) } catch { setViewerRole(null) }
+      try { setViewerRole(JSON.parse(authStore.getItem('masar-user'))?.role || null) } catch { setViewerRole(null) }
     }
     window.addEventListener('masar-user-updated', sync)
     return () => window.removeEventListener('masar-user-updated', sync)

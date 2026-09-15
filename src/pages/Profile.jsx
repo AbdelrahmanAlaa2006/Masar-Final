@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@backend/supabase'
@@ -30,7 +31,7 @@ export default function Profile() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       if (!u) { navigate('/login'); return }
       setUser(u)
       if (u.avatar_url) setAvatarUrl(u.avatar_url)
@@ -159,7 +160,7 @@ export default function Profile() {
       setAvatarUrl(urlWithCacheBust)
 
       const updated = { ...user, avatar_url: urlWithCacheBust }
-      sessionStorage.setItem('masar-user', JSON.stringify(updated))
+      authStore.setItem('masar-user', JSON.stringify(updated))
       window.dispatchEvent(new Event('masar-user-updated'))
       setUser(updated)
       setSuccessMsg('تم تحديث الصورة بنجاح')
@@ -196,7 +197,7 @@ export default function Profile() {
 
       setAvatarUrl(null)
       const updated = { ...user, avatar_url: null }
-      sessionStorage.setItem('masar-user', JSON.stringify(updated))
+      authStore.setItem('masar-user', JSON.stringify(updated))
       window.dispatchEvent(new Event('masar-user-updated'))
       setUser(updated)
       setSuccessMsg('تم حذف الصورة')

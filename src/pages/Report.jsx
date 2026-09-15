@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -12,7 +13,7 @@ export default function Report() {
   const { isFeatureEnabled } = useTenant()
 
   const [currentUser] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('masar-user')) || null } catch { return null }
+    try { return JSON.parse(authStore.getItem('masar-user')) || null } catch { return null }
   })
   const isStudent = currentUser?.role !== 'admin' && currentUser?.role !== 'assistant' && currentUser?.role !== 'super_admin'
   const studentGradeLabel = GRADE_LABEL[currentUser?.grade] || ''

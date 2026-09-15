@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useRef } from 'react'
 import { uploadQuestionImage } from '@backend/quizImagesApi'
 import { deleteR2Object } from '@backend/r2'
@@ -19,7 +20,7 @@ export default function QuestionImagePicker({ value, onChange, label = 'صورة
   const fileRef = useRef(null)
 
   const userId = (() => {
-    try { return JSON.parse(sessionStorage.getItem('masar-user'))?.id || null }
+    try { return JSON.parse(authStore.getItem('masar-user'))?.id || null }
     catch { return null }
   })()
 

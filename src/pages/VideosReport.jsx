@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { listVideos } from '@backend/videosApi'
@@ -24,7 +25,7 @@ export default function VideosReport() {
         const params = new URLSearchParams(window.location.search)
         const student = params.get('student')
         if (student) return student
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           return u?.name || ''
@@ -39,7 +40,7 @@ export default function VideosReport() {
         const params = new URLSearchParams(window.location.search)
         const idParam = params.get('id')
         if (idParam) return idParam
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           return u?.phone || ''
@@ -52,7 +53,7 @@ export default function VideosReport() {
   // Students never see the detailed table view — force cards.
   const initialViewMode = (() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       return (u?.role === 'admin' || u?.role === 'assistant') ? 'table' : 'cards'
     } catch { return 'cards' }
   })()
@@ -66,7 +67,7 @@ export default function VideosReport() {
 
   useEffect(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       setIsAdmin(u?.role === 'admin' || u?.role === 'assistant')
     } catch { setIsAdmin(false) }
   }, [])
@@ -77,7 +78,7 @@ export default function VideosReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user')) || null
+        const u = JSON.parse(authStore.getItem('masar-user')) || null
         const paramId = searchParams.get('id')
         const targetId = paramId || u?.id
         if (!targetId) return
@@ -229,7 +230,7 @@ export default function VideosReport() {
       setStudentId(idParam || '')
     } else {
       try {
-        const stored = sessionStorage.getItem('masar-user')
+        const stored = authStore.getItem('masar-user')
         if (stored) {
           const u = JSON.parse(stored)
           if (u?.name)  setStudentName(u.name)

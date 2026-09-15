@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
@@ -433,7 +434,7 @@ export default function ExamAdd() {
 
     let createdBy = null
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       createdBy = u?.id || null
     } catch { /* ignore */ }
 

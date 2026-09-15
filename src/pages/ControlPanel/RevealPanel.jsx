@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { listExams, setExamRevealGrades } from '@backend/examsApi'
 import { listStudentsByGrade, searchStudents } from '@backend/profilesApi'
@@ -157,7 +158,7 @@ export default function RevealPanel({ onBack, flash }) {
     const title = `تم إعلان نتيجة: ${exam.title}`
     const message = `أصبحت نتيجة الامتحان متاحة الآن في صفحة تقاريرك.`
     try {
-      const me = JSON.parse(sessionStorage.getItem('masar-user') || 'null')
+      const me = JSON.parse(authStore.getItem('masar-user') || 'null')
       const createdBy = me?.id || null
 
       let checkQuery = supabase

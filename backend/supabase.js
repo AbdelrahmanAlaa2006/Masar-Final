@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { authStore } from './authStorage'
 
 const env = (typeof import.meta.env !== 'undefined' ? import.meta.env : (typeof process !== 'undefined' ? process.env : {})) || {}
 const SUPABASE_URL = env.VITE_SUPABASE_URL
@@ -10,14 +11,13 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   )
 }
 
-/* Session lives in sessionStorage instead of the default localStorage,
-   so closing the browser/tab logs the user out — they must sign in
-   again next visit. Refreshing the page mid-session still keeps them
-   in (sessionStorage survives reloads, just not new browsing
-   sessions). */
+/* The session is stored through authStore, which routes it either to
+   sessionStorage (logged out when the tab or app closes) or to localStorage
+   (stays logged in on this device). Students stay logged in by default;
+   staff only when they tick «تذكرني». See ./authStorage. */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+    storage: typeof window !== 'undefined' ? authStore : undefined,
     persistSession: true,
     autoRefreshToken: true,
   },

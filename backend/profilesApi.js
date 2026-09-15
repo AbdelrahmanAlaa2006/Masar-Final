@@ -278,11 +278,26 @@ export async function updateStudentStatus(studentId, { is_approved, is_active })
 }
 
 export async function updateStudentProfile(studentId, updates) {
+  // The credential a student logs in with is a Supabase Auth email derived
+  // from their phone/code (see phoneToEmail in authApi.js), stored separately
+  // from profiles.phone. Writing only the profile left the old login in place,
+  // so an edited number kept failing while the mistyped one still worked.
+  // This RPC moves the login and the profile phone together, server-side.
+  let phone = updates.phone
+  if (typeof updates.phone === 'string' && updates.phone.trim()) {
+    const { data: handle, error: handleError } = await supabase.rpc('update_student_login_handle', {
+      p_student_id: studentId,
+      p_new_handle: updates.phone,
+    })
+    if (handleError) throw handleError
+    phone = handle
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .update({
       name: updates.name,
-      phone: updates.phone,
+      phone,
       grade: updates.grade,
       branch_id: updates.branch_id || null,
       academic_year_id: updates.academic_year_id || null,

@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { listChatsOverview, listChatMessages, sendChatMessage, markMessagesAsRead, clearChatMessages } from '@backend/chatApi'
@@ -14,7 +15,7 @@ export default function ChatsPanel({ onBack, flash, initialStudentId }) {
   // Get Admin profile info from sessionStorage to use as senderId
   const adminId = (() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       return u?.id || null
     } catch {
       return null

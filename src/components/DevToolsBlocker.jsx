@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@backend/supabase'
 import './DevToolsBlocker.css'
@@ -30,7 +31,7 @@ export default function DevToolsBlocker() {
     // 3. Resolve student session username
     let currentUsername = 'غير مسجل الدخول'
     try {
-      const user = JSON.parse(sessionStorage.getItem('masar-user'))
+      const user = JSON.parse(authStore.getItem('masar-user'))
       if (user && user.name) {
         currentUsername = user.name
         setUsername(user.name)

@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
@@ -240,7 +241,7 @@ export default function VideoAdd() {
 
     let createdBy = null
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       createdBy = u?.id || null
     } catch { /* ignore */ }
 

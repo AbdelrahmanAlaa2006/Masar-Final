@@ -15,6 +15,7 @@ import { supabase } from '@backend/supabase'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { useTenant } from '../../contexts/TenantContext'
 import { generateTenantPassword } from '../../utils/tenantPassword'
+import RegistrationSwitch from './RegistrationSwitch'
 
 const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
 
@@ -750,6 +751,8 @@ export default function AccountsPanel({ onBack, flash }) {
         <h2><i className="fas fa-user-check" style={{ color: '#10b981' }}></i> حسابات الطلاب والتفعيل</h2>
         <p>مراجعة وتعديل بيانات الطلاب، تفاصيل أولياء الأمور، الفروع والأعوام الدراسية.</p>
       </div>
+
+      <RegistrationSwitch />
 
       {/* Tabs Row */}
       <div className="cp-subtabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '24px' }}>

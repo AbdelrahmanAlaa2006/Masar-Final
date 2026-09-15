@@ -75,6 +75,10 @@ const translations = {
   },
 }
 
+// Accounts that usually sit on a shared centre computer. They do not stay
+// logged in unless «تذكرني» is ticked on purpose.
+const STAFF_ROLES = ['admin', 'assistant', 'super_admin']
+
 export default function Login() {
   const { login, isLoggedIn, user } = useAuth()
   const { tenant, tenantId, tenantSlug, tenantName, isGradeEnabled, isFeatureEnabled, themeConfig } = useTenant()
@@ -90,7 +94,16 @@ export default function Login() {
   const [phone, setPhone] = useState('')
   const [parentPhone, setParentPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
+  // «تذكرني» keeps the login on this device (and remembers the number). On by
+  // default, since most students use their own phone — except where the last
+  // login on this device was a staff account, which usually means a shared
+  // centre computer.
+  const [rememberMe, setRememberMe] = useState(() => {
+    try { return !STAFF_ROLES.includes(localStorage.getItem('masar-last-role')) } catch { return true }
+  })
+  // Staff only stay logged in when they ticked the box themselves; a box left
+  // on by default is not taken as consent for an admin account.
+  const [rememberTouched, setRememberTouched] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -307,12 +320,16 @@ export default function Login() {
     document.title = localizedTitle
   }, [lang, themeConfig, tenantName])
 
-  // Remember Me: prefill phone
+  // Remember Me: prefill the number. On a device where staff logged in last,
+  // keep the number but do not re-tick «تذكرني»: that box now also means
+  // "stay logged in", which staff have to choose deliberately.
   useEffect(() => {
     const remembered = localStorage.getItem('masaar-remembered-phone')
     if (remembered) {
       setPhone(remembered)
-      setRememberMe(true)
+      let staffDevice = false
+      try { staffDevice = STAFF_ROLES.includes(localStorage.getItem('masar-last-role')) } catch { }
+      if (!staffDevice) setRememberMe(true)
     }
   }, [])
 
@@ -538,14 +555,17 @@ export default function Login() {
 
       if (rememberMe) localStorage.setItem('masaar-remembered-phone', phone.trim())
       else localStorage.removeItem('masaar-remembered-phone')
+      const isStaff = STAFF_ROLES.includes(response.user.role)
+      const persist = rememberMe && (!isStaff || rememberTouched)
+      try { localStorage.setItem('masar-last-role', response.user.role) } catch { }
       clearFailures()
       showSuccessMessage()
       const pendingPkg = localStorage.getItem('pendingCheckoutPkgId')
       if (pendingPkg) {
         localStorage.removeItem('pendingCheckoutPkgId')
-        setTimeout(() => { login(response.token, response.user); window.location.href = '/shop?packageId=' + pendingPkg }, 1500)
+        setTimeout(() => { login(response.token, response.user, { persist }); window.location.href = '/shop?packageId=' + pendingPkg }, 1500)
       } else {
-        setTimeout(() => { login(response.token, response.user); window.location.href = '/' }, 1500)
+        setTimeout(() => { login(response.token, response.user, { persist }); window.location.href = '/' }, 1500)
       }
     } catch (err) {
       console.error('Login error:', err); recordFailure()
@@ -1181,7 +1201,7 @@ export default function Login() {
               </div>
               <div className="form-options">
                 <label className="switch">
-                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                  <input type="checkbox" checked={rememberMe} onChange={e => { setRememberMe(e.target.checked); setRememberTouched(true) }} />
                   <span className="slider"></span>
                 </label>
                 <span className="remember-text">{t.remember}</span>

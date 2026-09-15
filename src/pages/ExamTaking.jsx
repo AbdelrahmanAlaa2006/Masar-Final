@@ -1,3 +1,4 @@
+import { authStore } from '@backend/authStorage'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
@@ -49,7 +50,7 @@ export default function ExamTaking() {
   // Extract user parameters and role once per component lifecycle
   const { guardLabel, isAdmin } = useMemo(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('masar-user'))
+      const u = JSON.parse(authStore.getItem('masar-user'))
       return {
         guardLabel: u ? `${u.name || ''} · ${u.phone || ''}` : '',
         isAdmin: u?.role === 'admin' || u?.role === 'assistant',
@@ -69,7 +70,7 @@ export default function ExamTaking() {
     const run = async () => {
       if (!examId) { setLoadError('لم يتم تحديد الامتحان'); return }
       try {
-        const u = JSON.parse(sessionStorage.getItem('masar-user'))
+        const u = JSON.parse(authStore.getItem('masar-user'))
         const sid = u?.id
         if (!sid) { setLoadError('يجب تسجيل الدخول'); return }
         setUserId(sid)
