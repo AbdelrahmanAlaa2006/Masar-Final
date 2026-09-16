@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { runInChunks } from './fetchAllRows'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 export async function listGroups() {
@@ -63,10 +64,11 @@ export async function updateGroup(id, { name, grade, branchId, academicYearId })
     if (name) profileUpdates.group = name
 
     if (studentIds.length > 0 && Object.keys(profileUpdates).length > 0) {
-      await supabase
+      // Chunked: a large group's ids would not fit in one request URL.
+      await runInChunks(studentIds, (part) => supabase
         .from('profiles')
         .update(profileUpdates)
-        .in('id', studentIds)
+        .in('id', part))
     }
 
     // Also fallback update any profile whose legacy "group" string matches the group name

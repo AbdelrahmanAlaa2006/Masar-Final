@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { invalidate as invalidateCache } from '../src/utils/cache'
 
 export async function listLedgerForStudent(studentId) {
@@ -98,7 +99,7 @@ export async function getStudentBalance(studentId) {
 
 // Admin helper: list all pending payment verification requests
 export async function listPendingPayments() {
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from('student_ledger')
     .select(`
       id,
@@ -116,6 +117,5 @@ export async function listPendingPayments() {
     .eq('type', 'payment')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
-  if (error) throw error
-  return data || []
+    .order('id', { ascending: true }))
 }

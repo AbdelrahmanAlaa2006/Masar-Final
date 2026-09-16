@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { fetchAllRows } from '@backend/fetchAllRows'
+import { getStudentCountsByGrade } from '@backend/profilesApi'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import './ExamsGroupReport.css'
 import { listStudentsByGrade } from '@backend/profilesApi'
@@ -38,15 +40,9 @@ export default function ExamsGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('grade')
-          .eq('role', 'student')
-        if (error || cancelled) return
-        const counts = {}
-        (data || []).forEach(r => {
-          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
-        })
+        // Counted in the database: one row per stage, correct past 1000 students.
+        const counts = await getStudentCountsByGrade()
+        if (cancelled) return
         setGradeStudentCounts(counts)
       } catch (err) {
         console.error('Failed to count students per grade:', err)
@@ -251,8 +247,7 @@ export default function ExamsGroupReport() {
 
     setReportLoading(true)
     try {
-      const ids = gradeStudents.map(s => s.id)
-      // Cache the attempts payload per exam+grade. Flipping the dropdown
+// Cache the attempts payload per exam+grade. Flipping the dropdown
       // back to a previously-viewed exam serves from memory; the 5min TTL
       // is fine because admins refresh the page if they need live numbers.
       let attempts = []
@@ -268,19 +263,23 @@ export default function ExamsGroupReport() {
         }))
       } else {
         const cacheKey = `exam_attempts:${examId}:${currentGrade || 'all'}`
-        attempts = await cached(cacheKey, LIST_TTL, async () => {
-          const { data, error } = await supabase
+        attempts = await cached(cacheKey, LIST_TTL, () => fetchAllRows(() => {
+          // Filtered by stage in the database. Sending every student's id in
+          // the URL failed outright once a stage passed ~390 students.
+          // Group/branch narrowing still happens below via gradeStudents.
+          let q = supabase
             .from('exam_attempts')
-            .select('student_id, score, max_score, submitted_at')
+            .select(currentGrade
+              ? 'id, student_id, score, max_score, submitted_at, profiles!student_id!inner(grade)'
+              : 'id, student_id, score, max_score, submitted_at')
             .eq('exam_id', examId)
-            .in('student_id', ids)
             .not('submitted_at', 'is', null)
             // The same exam can also gate a video; those sittings are reported
             // in /pre-assessment-report and must not inflate this one.
             .is('video_assessment_id', null)
-          if (error) throw error
-          return data || []
-        })
+          if (currentGrade) q = q.eq('profiles.grade', currentGrade)
+          return q.order('id', { ascending: true })
+        }))
       }
 
       // group attempts by student — keep best score + count

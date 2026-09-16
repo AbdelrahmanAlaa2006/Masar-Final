@@ -1,10 +1,12 @@
 import { supabase } from './supabase'
+import { fetchAllRows, selectInChunks, runInChunks } from './fetchAllRows'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
 import { queueNotification } from './unifiedNotificationsApi'
 import { renderNotificationTemplate, getGradeUiLabel } from './whatsappTemplates'
 
 // Fetch sessions for a grade, optionally filtered by branch
 export async function listAttendanceSessions(grade, branchId = null) {
+  const build = () => {
   let query = supabase
     .from('attendance_sessions')
     .select(`
@@ -23,10 +25,10 @@ export async function listAttendanceSessions(grade, branchId = null) {
     query = query.eq('branch_id', branchId)
   }
 
-  const { data, error } = await query.order('date', { ascending: false })
-  if (error) throw error
-
-  return data || []
+  return query.order('date', { ascending: false }).order('id', { ascending: true })
+  }
+  // Every page: sessions pile up over the school years.
+  return fetchAllRows(build)
 }
 
 // Create a new attendance session
@@ -52,7 +54,8 @@ export async function createAttendanceSession({ title, date, branchId, academicY
 
 // Get attendance for a class on a specific date/session
 export async function listAttendanceForSession(sessionId, dateStr = null) {
-  let query = supabase.from('attendance_records').select(`
+  let scope = null
+  const select = () => supabase.from('attendance_records').select(`
     id,
     student_id,
     status,
@@ -69,7 +72,7 @@ export async function listAttendanceForSession(sessionId, dateStr = null) {
   `)
 
   if (sessionId) {
-    query = query.eq('session_id', sessionId)
+    scope = (q) => q.eq('session_id', sessionId)
   } else if (dateStr) {
     // If no sessionId, find session matching dateStr
     const { data: sessions } = await supabase
@@ -78,7 +81,8 @@ export async function listAttendanceForSession(sessionId, dateStr = null) {
       .eq('date', dateStr)
     
     if (sessions && sessions.length > 0) {
-      query = query.in('session_id', sessions.map(s => s.id))
+      const sessionIds = sessions.map(s => s.id)
+      scope = (q) => q.in('session_id', sessionIds)
     } else {
       return []
     }
@@ -86,8 +90,7 @@ export async function listAttendanceForSession(sessionId, dateStr = null) {
     return []
   }
 
-  const { data, error } = await query
-  if (error) throw error
+  const data = await fetchAllRows(() => scope(select()).order('id', { ascending: true }))
 
   // Format to match expected legacy keys if needed
   return (data || []).map(r => ({
@@ -135,18 +138,20 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
   // Fetch updated records first to obtain the database-generated attendance_records IDs
   const sessionIds = [...new Set(records.map(r => r.session_id))]
   const studentIds = [...new Set(records.map(r => r.student_id).filter(Boolean))]
-  let attQuery = supabase
-    .from('attendance_records')
-    .select('*')
-    .in('session_id', sessionIds)
-
-  if (studentIds.length > 0) {
-    attQuery = attQuery.in('student_id', studentIds)
+  // Read the saved rows by session and keep the saved students here: a
+  // session can hold a whole stage, too many ids to send in one URL.
+  let activeRecords = []
+  try {
+    const wanted = new Set(studentIds)
+    const rows = await selectInChunks(sessionIds, (part) => supabase
+      .from('attendance_records')
+      .select('*')
+      .in('session_id', part)
+      .order('id', { ascending: true }))
+    activeRecords = studentIds.length > 0 ? rows.filter(r => wanted.has(r.student_id)) : rows
+  } catch (err) {
+    console.error('Failed to reload saved attendance records:', err)
   }
-
-  const { data: updatedRecords } = await attQuery
-
-  const activeRecords = updatedRecords || []
 
   // Step 2: Queue notifications for absent/late students using the unified queue (idempotent)
   let tenant = null
@@ -155,11 +160,12 @@ export async function saveAttendanceBatch(records, sessionTitle = '') {
   if (records.length > 0) {
     try {
       const studentIds = records.map(r => r.student_id)
-      const { data: profilesList } = await supabase
+      const profilesList = await selectInChunks(studentIds, (part) => supabase
         .from('profiles')
         .select('id, tenant_id, grade, "group"')
-        .in('id', studentIds)
-      
+        .in('id', part)
+        .order('id', { ascending: true }))
+
       if (profilesList && profilesList.length > 0) {
         profilesList.forEach(p => profilesMap.set(p.id, p))
         
@@ -368,11 +374,10 @@ export async function getStudentAttendanceHistory(studentId) {
 
 // Get list of unique dates where attendance has been saved for this grade
 export async function listCustomAttendanceDates(grade) {
-  const { data, error } = await supabase
+  const data = await fetchAllRows(() => supabase
     .from('attendance_sessions')
-    .select('date')
-  
-  if (error) throw error
+    .select('id, date')
+    .order('id', { ascending: true }))
 
   const filtered = (data || []).map(r => r.date)
   return [...new Set(filtered)].sort((a, b) => new Date(b) - new Date(a))
@@ -430,13 +435,12 @@ export async function rebuildAndSendAttendanceNotifications(sessionId, tenantId,
   const studentIds = records.map(r => r.student_id)
 
   // 2. Fetch profiles of all students
-  const { data: profilesList, error: profileError } = await supabase
+  const profilesList = await selectInChunks(studentIds, (part) => supabase
     .from('profiles')
     .select('id, name, phone, parent_phone, grade, "group"')
-    .in('id', studentIds)
-
-  if (profileError) throw profileError
-  const profilesMap = new Map((profilesList || []).map(p => [p.id, p]))
+    .in('id', part)
+    .order('id', { ascending: true }))
+  const profilesMap = new Map(profilesList.map(p => [p.id, p]))
 
   // 3. Fetch tenant config
   const { data: tenant, error: tenantError } = await supabase
@@ -450,12 +454,11 @@ export async function rebuildAndSendAttendanceNotifications(sessionId, tenantId,
   }
 
   // 4. Fetch all existing notifications for these attendance records to identify sent, failed, or pending status
-  const { data: existingNotifs, error: notifFetchError } = await supabase
+  const existingNotifs = await selectInChunks(attendanceRecordIds, (part) => supabase
     .from('unified_notifications')
     .select('id, attendance_record_id, status')
-    .in('attendance_record_id', attendanceRecordIds)
-
-  if (notifFetchError) throw notifFetchError
+    .in('attendance_record_id', part)
+    .order('id', { ascending: true }))
 
   const hasSentOrFailed = new Set()
   const pendingNotifIdsToDelete = []
@@ -473,12 +476,10 @@ export async function rebuildAndSendAttendanceNotifications(sessionId, tenantId,
 
   // 5. Delete only the PENDING notifications related to this session
   if (pendingNotifIdsToDelete.length > 0) {
-    const { error: deleteError } = await supabase
+    await runInChunks(pendingNotifIdsToDelete, (part) => supabase
       .from('unified_notifications')
       .delete()
-      .in('id', pendingNotifIdsToDelete)
-
-    if (deleteError) throw deleteError
+      .in('id', part))
   }
 
   // 6. Generate and insert new notifications for students who haven't received them yet

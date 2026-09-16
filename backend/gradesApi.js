@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows, selectInChunks, runInChunks } from './fetchAllRows'
 import { cached, invalidate as invalidateCache, LIST_TTL } from '../src/utils/cache'
 import { renderNotificationTemplate, getGradeUiLabel } from './whatsappTemplates'
 
@@ -68,11 +69,12 @@ export async function saveGradesBatch(records) {
   if (records.length > 0) {
     try {
       const studentIds = records.map(r => r.student_id)
-      const { data: profilesList } = await supabase
+      const profilesList = await selectInChunks(studentIds, (part) => supabase
         .from('profiles')
         .select('id, tenant_id, grade, "group"')
-        .in('id', studentIds)
-      
+        .in('id', part)
+        .order('id', { ascending: true }))
+
       if (profilesList && profilesList.length > 0) {
         profilesList.forEach(p => profilesMap.set(p.id, p))
         
@@ -345,7 +347,7 @@ export async function listUniqueEvaluations(grade) {
 
 // Get grades records for a specific evaluation type and title
 export async function listGradesForEvaluation(type, title) {
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from('grades')
     .select(`
       id,
@@ -367,9 +369,7 @@ export async function listGradesForEvaluation(type, title) {
     `)
     .eq('type', type)
     .eq('title', title)
-
-  if (error) throw error
-  return data || []
+    .order('id', { ascending: true }))
 }
 
 // Delete a whole evaluation (كشف درجات) and invalidate caches
@@ -377,13 +377,17 @@ export async function deleteEvaluation(type, title) {
   if (!type || !title) return null
 
   // 1. Fetch all student IDs who have a grade in this evaluation
-  const { data: records, error: fetchError } = await supabase
-    .from('grades')
-    .select('student_id')
-    .eq('type', type)
-    .eq('title', title)
-
-  if (fetchError) console.error('Error fetching student IDs for evaluation cache invalidation:', fetchError)
+  let records = []
+  try {
+    records = await fetchAllRows(() => supabase
+      .from('grades')
+      .select('id, student_id')
+      .eq('type', type)
+      .eq('title', title)
+      .order('id', { ascending: true }))
+  } catch (fetchError) {
+    console.error('Error fetching student IDs for evaluation cache invalidation:', fetchError)
+  }
 
   // 2. Delete the grade records
   const { data, error } = await supabase
@@ -432,14 +436,13 @@ export async function rebuildAndSendGradeNotifications(type, title, tenantId, cr
   }
 
   // 3. Fetch all existing notifications for these students to identify sent, failed, or pending status
-  const { data: existingNotifs, error: notifFetchError } = await supabase
+  const existingNotifs = await selectInChunks(studentIds, (part) => supabase
     .from('unified_notifications')
     .select('id, student_id, status, grade_id, message')
     .eq('tenant_id', tenantId)
     .eq('type', 'grade_added')
-    .in('student_id', studentIds)
-
-  if (notifFetchError) throw notifFetchError
+    .in('student_id', part)
+    .order('id', { ascending: true }))
 
   const hasSentOrFailed = new Set()
   const pendingNotifIdsToDelete = []
@@ -463,12 +466,10 @@ export async function rebuildAndSendGradeNotifications(type, title, tenantId, cr
 
   // 4. Delete only the PENDING notifications related to this session
   if (pendingNotifIdsToDelete.length > 0) {
-    const { error: deleteError } = await supabase
+    await runInChunks(pendingNotifIdsToDelete, (part) => supabase
       .from('unified_notifications')
       .delete()
-      .in('id', pendingNotifIdsToDelete)
-
-    if (deleteError) throw deleteError
+      .in('id', part))
   }
 
   // 5. Generate and insert new notifications for students who haven't received them yet

@@ -17,10 +17,13 @@ export default function DevToolsViolationsPanel({ onBack, flash }) {
     try {
       setLoading(true)
       const fetchViolations = async () => {
+        // Newest 1000 on purpose: a security log grows forever and nobody
+        // reads years of it, so this is NOT paged like the data screens.
         const { data, error: fetchError } = await supabase
           .from('devtools_violations')
           .select('*')
           .order('created_at', { ascending: false })
+          .limit(1000)
         if (fetchError) throw fetchError
         return data || []
       }

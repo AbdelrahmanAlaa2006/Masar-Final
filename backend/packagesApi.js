@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
 
@@ -198,8 +199,7 @@ export async function purchasePackage({ studentId, packageId, paymentMethod, scr
 // Fetch all purchases (pending/resolved) for admin control dashboard
 export async function listPurchases() {
   const key = 'purchases:list'
-  return cached(key, LIST_TTL, async () => {
-    const { data, error } = await supabase
+  return cached(key, LIST_TTL, () => fetchAllRows(() => supabase
       .from('package_purchases')
       .select(`
         id, tenant_id, student_id, package_id, payment_method, payment_status, screenshot_url, approved_by, approved_at, created_at,
@@ -207,9 +207,7 @@ export async function listPurchases() {
         packages:package_id ( id, title, price )
       `)
       .order('created_at', { ascending: false })
-    if (error) throw error
-    return data || []
-  })
+      .order('id', { ascending: true })))
 }
 
 // Fetch student's own purchase history

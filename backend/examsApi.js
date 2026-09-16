@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { getViewerContext } from './viewerContext'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
@@ -38,6 +39,7 @@ export async function listExams({ lean = false } = {}) {
     ? 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, reveal_grades, is_archived, exam_type, origin, created_at, questions_count, opens_at, availability_days, expires_at, target_audience, target_group_id, groups:target_group_id(id, name)'
     : 'id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions, questions_count, reveal_grades, is_archived, exam_type, origin, created_at, opens_at, availability_days, expires_at, target_audience, target_group_id, groups:target_group_id(id, name)'
 
+  const build = () => {
   let query = supabase
     .from('exams')
     .select(cols)
@@ -51,9 +53,10 @@ export async function listExams({ lean = false } = {}) {
     query = query.eq('is_archived', false)
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) throw error
-  let rows = data || []
+  return query.order('created_at', { ascending: false }).order('id', { ascending: true })
+  }
+  // Every page: exams accumulate across school years.
+  let rows = await fetchAllRows(build)
 
   // Gating for student role (packages + group targeting)
   if (userId && isStudent) {

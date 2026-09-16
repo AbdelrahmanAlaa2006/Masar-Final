@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 
 // UI grade id  ('first'/'second'/'third'/'first-sec'/...)  <->  DB grade enum  ('first-prep'/...)
 const UI_TO_DB = {
@@ -22,12 +23,11 @@ export const dbToUiGrade = (db) => DB_TO_UI[db] || db
 
 // List lectures. RLS scopes students to their own grade; admins see all.
 export async function listLectures() {
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from('lectures')
     .select('id, title, description, subject, teacher, week, grade, cover_url, pdf_url, pdf_key, created_at')
     .order('created_at', { ascending: false })
-  if (error) throw error
-  return data || []
+    .order('id', { ascending: true }))
 }
 
 export async function createLecture(input) {

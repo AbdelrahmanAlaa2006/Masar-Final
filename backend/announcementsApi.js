@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { createNotification } from './notificationsApi'
 import { invalidatePrefix } from '../src/utils/cache'
 
@@ -93,6 +94,11 @@ export async function deleteTemplate(id) {
 //   group  -> targetGrade + targetGroupName (a group always belongs to a grade)
 //   student-> targetStudentId
 export async function resolveRecipients({ scope, targetGrade = null, targetGroupName = null, targetStudentId = null }) {
+  if (!['all', 'grade', 'group', 'student'].includes(scope)) {
+    throw new Error('نطاق مستلمين غير مدعوم: ' + scope)
+  }
+  // Every page: an announcement to "all students" must reach student 1001 too.
+  return fetchAllRows(() => {
   let query = supabase
     .from('profiles')
     .select('id, name, phone, parent_phone, grade, "group"')
@@ -105,13 +111,10 @@ export async function resolveRecipients({ scope, targetGrade = null, targetGroup
     query = query.eq('grade', targetGrade).eq('group', targetGroupName)
   } else if (scope === 'student') {
     query = query.eq('id', targetStudentId)
-  } else if (scope !== 'all') {
-    throw new Error('نطاق مستلمين غير مدعوم: ' + scope)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+  return query.order('id', { ascending: true })
+  })
 }
 
 // ── Sending ─────────────────────────────────────────────────────────────────

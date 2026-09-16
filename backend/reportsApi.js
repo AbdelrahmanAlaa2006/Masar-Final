@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { cached, LIST_TTL } from '../src/utils/cache'
 
 /**
@@ -76,7 +77,7 @@ export async function listCenterUniqueEvaluations(grade, type) {
  */
 export async function listCenterGradesForEvaluation(type, title) {
   if (!title) return []
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from('grades')
     .select(`
       id,
@@ -102,9 +103,7 @@ export async function listCenterGradesForEvaluation(type, title) {
     `)
     .eq('type', type)
     .eq('title', title)
-
-  if (error) throw error
-  return data || []
+    .order('id', { ascending: true }))
 }
 
 /**
@@ -135,19 +134,6 @@ export async function getCenterStudentGradesCombined(studentId) {
 /**
  * Fetch manual grades for all students in a grade/group for the collective report.
  */
-/* PostgREST returns at most 1000 rows per request. Page through with a stable
-   order so a large stage never loses its oldest rows. */
-async function fetchAllRows(buildQuery, pageSize = 1000) {
-  const rows = []
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await buildQuery().range(from, from + pageSize - 1)
-    if (error) throw error
-    rows.push(...(data || []))
-    if (!data || data.length < pageSize) break
-  }
-  return rows
-}
-
 export async function listCenterGradesGroupCombined(grade, groupId = 'all') {
   if (!grade) return []
   // Filter by stage in SQL (inner join) instead of downloading the whole
@@ -223,14 +209,16 @@ export async function getCenterStudentAttendance(studentId) {
  */
 export async function listCenterAttendanceGroup(grade, groupId = 'all', branchId = 'all') {
   if (!grade) return []
-  const { data, error } = await supabase
+  // Stage filter in SQL + every page: this used to download the whole tenant's
+  // attendance and filter here, which past 1000 records silently undercounted.
+  const data = await fetchAllRows(() => supabase
     .from('attendance_records')
     .select(`
       id,
       status,
       student_id,
       session_id,
-      profiles!student_id (
+      profiles!student_id!inner (
         id,
         name,
         phone,
@@ -240,10 +228,10 @@ export async function listCenterAttendanceGroup(grade, groupId = 'all', branchId
         branches ( name )
       )
     `)
+    .eq('profiles.grade', grade)
+    .order('id', { ascending: true }))
 
-  if (error) throw error
-
-  let filtered = (data || []).filter(r => r.profiles?.grade === grade)
+  let filtered = data.filter(r => r.profiles?.grade === grade)
   if (groupId && groupId !== 'all') {
     filtered = filtered.filter(r => r.profiles?.group === groupId)
   }
@@ -306,7 +294,9 @@ export async function getCenterStudentFinance(studentId) {
  */
 export async function listCenterFinanceGroup(grade, groupId = 'all', branchId = 'all') {
   if (!grade) return []
-  const { data, error } = await supabase
+  // Stage filter in SQL + every page: the whole-tenant download silently
+  // dropped ledger rows past 1000, understating collected/owed totals.
+  const data = await fetchAllRows(() => supabase
     .from('student_ledger')
     .select(`
       id,
@@ -315,7 +305,7 @@ export async function listCenterFinanceGroup(grade, groupId = 'all', branchId = 
       status,
       billing_period,
       transaction_date,
-      profiles!student_id (
+      profiles!student_id!inner (
         id,
         name,
         phone,
@@ -325,10 +315,10 @@ export async function listCenterFinanceGroup(grade, groupId = 'all', branchId = 
         branches ( name )
       )
     `)
+    .eq('profiles.grade', grade)
+    .order('id', { ascending: true }))
 
-  if (error) throw error
-
-  let filtered = (data || []).filter(r => r.profiles?.grade === grade)
+  let filtered = data.filter(r => r.profiles?.grade === grade)
   if (groupId && groupId !== 'all') {
     filtered = filtered.filter(r => r.profiles?.group === groupId)
   }

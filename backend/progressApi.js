@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows, chunk } from './fetchAllRows'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
 // ──────────── Quiz attempts (REMOVED) ────────────
@@ -68,24 +69,29 @@ export async function resetStudentVideoAttempts({ student_id, video_id }) {
 // counters for one video. Used when a grade-scoped override is reset.
 export async function resetGradeVideoAttempts({ grade, video_id }) {
   // First find every student in that grade. RLS for admin role allows this.
-  const { data: students, error: sErr } = await supabase
+  const students = await fetchAllRows(() => supabase
     .from('profiles')
     .select('id')
     .eq('grade', grade)
     .eq('role', 'student')
-  if (sErr) throw sErr
-  const ids = (students || []).map((s) => s.id)
+    .order('id', { ascending: true }))
+  const ids = students.map((s) => s.id)
   if (ids.length === 0) return
-  const { error } = await supabase
-    .from('video_progress')
-    .update({
-      views_used: 0,
-      seconds_watched: 0,
-      last_watched_at: new Date().toISOString(),
-    })
-    .eq('video_id', video_id)
-    .in('student_id', ids)
-  if (error) throw error
+  // Chunked: every id goes into the request URL, and a large stage would
+  // push a single request past the gateway's URL limit.
+  const resetAt = new Date().toISOString()
+  for (const part of chunk(ids)) {
+    const { error } = await supabase
+      .from('video_progress')
+      .update({
+        views_used: 0,
+        seconds_watched: 0,
+        last_watched_at: resetAt,
+      })
+      .eq('video_id', video_id)
+      .in('student_id', part)
+    if (error) throw error
+  }
 }
 
 // Persist watched seconds for a part, monotonically — we only ever raise

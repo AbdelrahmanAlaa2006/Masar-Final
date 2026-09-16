@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { getStudentCountsByGrade } from '@backend/profilesApi'
 import { useNavigate } from 'react-router-dom'
 import { listCenterAttendanceGroup } from '@backend/reportsApi'
 import { listBranches } from '@backend/branchesApi'
@@ -34,15 +35,9 @@ export default function AttendanceGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('grade')
-          .eq('role', 'student')
-        if (error || cancelled) return
-        const counts = {}
-        (data || []).forEach(r => {
-          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
-        })
+        // Counted in the database: one row per stage, correct past 1000 students.
+        const counts = await getStudentCountsByGrade()
+        if (cancelled) return
         setGradeStudentCounts(counts)
       } catch (err) {
         console.error('Failed to count students per grade:', err)

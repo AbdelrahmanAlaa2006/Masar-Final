@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 
 export async function listNotificationsForStudent(studentId) {
   const { data, error } = await supabase
@@ -60,8 +61,10 @@ export async function updateNotificationStatus(id, channel, status, errorMsg = '
 }
 
 export async function listPendingNotifications(channel) {
-  // Select rows where status->>channel = 'pending'
-  const { data, error } = await supabase
+  // Pending filter in SQL + every page. This used to download the tenant's
+  // whole notification history and filter here, which past 1000 rows missed
+  // pending messages entirely.
+  const data = await fetchAllRows(() => supabase
     .from('unified_notifications')
     .select(`
       id,
@@ -73,8 +76,9 @@ export async function listPendingNotifications(channel) {
       created_at,
       profiles:student_id ( name, parent_phone, phone )
     `)
-  
-  if (error) throw error
+    .eq(`status->>${channel}`, 'pending')
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true }))
 
   // Filter rows client-side or build Postgres query
   // For safety, filter where row.status[channel] === 'pending'

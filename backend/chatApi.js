@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 
 /**
  * Fetch chat messages for a specific student.
@@ -103,49 +104,40 @@ export async function sendChatMessage({ studentId, content, fileUrl, fileType, s
  * Groups messages by student and calculates unread count.
  */
 export async function listChatsOverview() {
-  const { data, error } = await supabase
-    .from('chat_messages')
-    .select(`
-      id,
-      student_id,
-      sender_id,
-      content,
-      file_url,
-      file_type,
-      is_read,
-      created_at,
-      student:profiles!chat_messages_student_id_fkey(
-        id,
-        name,
-        avatar_url,
-        phone
-      )
-    `)
-    .order('created_at', { ascending: false })
-
-  if (error) {
+  // One row per conversation, built in the database (list_chat_threads).
+  // This used to download every chat message ever sent just to keep the
+  // latest one per student: the transfer grew forever, and past 1000
+  // messages older conversations dropped out of the list.
+  let threads = []
+  try {
+    threads = await fetchAllRows(() => supabase
+      .rpc('list_chat_threads')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true }))
+  } catch (error) {
     console.error('Error listing chats overview:', error)
     throw error
   }
 
-  // Process in memory to get unique threads
-  const map = new Map()
-  for (const msg of (data || [])) {
-    const sid = msg.student_id
-    if (!map.has(sid)) {
-      map.set(sid, {
-        student: msg.student,
-        latestMessage: msg,
-        unreadCount: 0
-      })
-    }
-    // Increment unread count for teacher if message is from the student
-    if (!msg.is_read && msg.sender_id === sid) {
-      map.get(sid).unreadCount += 1
-    }
-  }
-
-  return Array.from(map.values())
+  return threads.map(t => ({
+    student: t.student_name == null && t.student_phone == null
+      ? null
+      : { id: t.student_id, name: t.student_name, avatar_url: t.student_avatar_url, phone: t.student_phone },
+    latestMessage: {
+      id: t.id,
+      student_id: t.student_id,
+      sender_id: t.sender_id,
+      content: t.content,
+      file_url: t.file_url,
+      file_type: t.file_type,
+      is_read: t.is_read,
+      created_at: t.created_at,
+      student: t.student_name == null && t.student_phone == null
+        ? null
+        : { id: t.student_id, name: t.student_name, avatar_url: t.student_avatar_url, phone: t.student_phone },
+    },
+    unreadCount: Number(t.unread_count) || 0,
+  }))
 }
 
 /**

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { invalidate as invalidateCache } from '../src/utils/cache'
 import { updateNotificationStatus } from './unifiedNotificationsApi'
 
@@ -226,11 +227,12 @@ export async function retryAllFailed(tenantId) {
   // downloaded EVERY notification row for the tenant and filtered in JS, which
   // grows unbounded with message history. (A partial index on
   // status->>'whatsapp'='failed' — see the audit — makes this scan instant.)
-  const { data: failedWhatsapp } = await supabase
+  const failedWhatsapp = await fetchAllRows(() => supabase
     .from('unified_notifications')
     .select('id, status')
     .eq('tenant_id', tenantId)
     .eq('status->>whatsapp', 'failed')
+    .order('id', { ascending: true }))
 
   const promises = (failedWhatsapp || []).map(async (row) => {
     const updatedStatus = { ...(row.status || {}) }

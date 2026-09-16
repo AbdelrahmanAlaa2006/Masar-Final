@@ -46,5 +46,8 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.list_grade_evaluations(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.list_grade_evaluations(text, text) TO authenticated, service_role;
+-- Supabase grants EXECUTE on new public functions to anon directly, so
+-- REVOKE ... FROM PUBLIC alone does not remove it. Staff-only: block anon.
+REVOKE EXECUTE ON FUNCTION public.list_grade_evaluations(text, text) FROM anon;
 
 SELECT 'list_grade_evaluations ready' AS result;

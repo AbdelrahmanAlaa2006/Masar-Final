@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { runInChunks } from '@backend/fetchAllRows'
 import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks } from '@backend/homeworksApi'
 import { saveGradesBatch, listUniqueEvaluations, listGradesForEvaluation, deleteEvaluation, rebuildAndSendGradeNotifications, sendUpdatedGradeNotification } from '@backend/gradesApi'
@@ -489,7 +490,8 @@ export default function GradesPanel({ onBack, flash }) {
       setSaving(true)
       try {
         if (toDelete.length > 0) {
-          await supabase.from('grades').delete().in('id', toDelete)
+          // Chunked: a whole stage's grade ids would not fit in one request URL.
+          await runInChunks(toDelete, (part) => supabase.from('grades').delete().in('id', part))
         }
 
         if (toUpdate.length > 0) {

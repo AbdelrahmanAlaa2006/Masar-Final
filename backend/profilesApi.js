@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { selectInChunks } from './fetchAllRows'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { listSubscriptionFees } from './paymentsApi'
 import { listStudentBooklets, markBookletsPaid } from './bookletsApi'
@@ -77,21 +78,19 @@ export async function listStudentsPaged({ page = 0, pageSize = 50, statusTab = '
   const from = page * pageSize
   const to = from + pageSize - 1
 
-  let studentIds = null
-  if (groupId && groupId !== 'all') {
-    const { data: sgData } = await supabase
-      .from('student_groups')
-      .select('student_id')
-      .eq('group_id', groupId)
-    studentIds = (sgData || []).map(r => r.student_id)
-  }
+  const inGroup = groupId && groupId !== 'all' ? groupId : null
 
   let query = supabase
     .from('profiles')
-    .select(STUDENT_LIST_COLUMNS, { count: 'exact' })
+    // Group filter in the database (inner join on student_groups) instead of
+    // sending every member's id in the URL, which fails past ~390 members.
+    // Aliased as in_group so each student's full student_groups list is kept.
+    .select(inGroup ? `${STUDENT_LIST_COLUMNS}, in_group:student_groups!inner(group_id)` : STUDENT_LIST_COLUMNS, { count: 'exact' })
     .eq('role', 'student')
 
-  query = applyStudentFilters(query, { statusTab, grade, branchId, studentIds, search })
+  if (inGroup) query = query.eq('in_group.group_id', inGroup)
+
+  query = applyStudentFilters(query, { statusTab, grade, branchId, studentIds: null, search })
 
   const isAsc = sortOrder === 'asc'
   const sortCol = ['created_at', 'name'].includes(sortBy) ? sortBy : 'created_at'
@@ -113,14 +112,6 @@ export async function getStudentStatusCounts({ grade = 'all', branchId = 'all', 
   const p_branch = branchId && branchId !== 'all' ? branchId : null
   const p_group = groupId && groupId !== 'all' ? groupId : null
 
-  let studentIds = null
-  if (p_group) {
-    const { data: sgData } = await supabase
-      .from('student_groups')
-      .select('student_id')
-      .eq('group_id', p_group)
-    studentIds = (sgData || []).map(r => r.student_id)
-  }
 
   // One-request path via RPC (respects RLS / tenant scope) - only when no branch/group specified
   if (!p_branch && !p_group) {
@@ -140,12 +131,14 @@ export async function getStudentStatusCounts({ grade = 'all', branchId = 'all', 
 
   // Fallback: five cheap head-only COUNT queries (no rows transferred).
   const base = () => {
-    let q = supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student')
+    let q = supabase
+      .from('profiles')
+      .select(p_group ? 'id, in_group:student_groups!inner(group_id)' : 'id', { count: 'exact', head: true })
+      .eq('role', 'student')
     if (p_grade) q = q.eq('grade', p_grade)
     if (p_branch) q = q.eq('branch_id', p_branch)
-    if (studentIds) {
-      q = q.in('id', studentIds.length > 0 ? studentIds : ['00000000-0000-0000-0000-000000000000'])
-    }
+    // Group filter in the database, not a URL id list (fails past ~390 members).
+    if (p_group) q = q.eq('in_group.group_id', p_group)
     return q
   }
   const [pending, active, inactive, suspended, total] = await Promise.all([
@@ -196,13 +189,25 @@ export async function listStudentsByGrade(grade) {
 export async function listStudentsByPhones(phones = []) {
   const list = [...new Set((phones || []).filter(Boolean))]
   if (list.length === 0) return []
-  const { data, error } = await supabase
+  return selectInChunks(list, (part) => supabase
     .from('profiles')
     .select('id, name, phone, password')
     .eq('role', 'student')
-    .in('phone', list)
+    .in('phone', part)
+    .order('id', { ascending: true }))
+}
+
+/* Students per stage, counted in the database (student_counts_by_grade).
+   The report pages used to download every student's grade and count in the
+   browser, which past 1000 students silently undercounted. */
+export async function getStudentCountsByGrade() {
+  const { data, error } = await supabase.rpc('student_counts_by_grade')
   if (error) throw error
-  return data || []
+  const counts = {}
+  for (const row of data || []) {
+    if (row.grade) counts[row.grade] = Number(row.students) || 0
+  }
+  return counts
 }
 
 // Total approved/active student count for dashboards — a head-only COUNT query

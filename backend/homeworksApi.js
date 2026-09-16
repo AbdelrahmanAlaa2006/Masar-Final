@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './fetchAllRows'
 import { getViewerContext } from './viewerContext'
 import { cached, invalidate as invalidateCache, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 
@@ -41,6 +42,7 @@ export async function listHomeworks() {
   const { userId, isStaffAdmin, isStudent, permissions } = await getViewerContext()
   const isAdmin = isStaffAdmin || permissions.includes('homework')
 
+  const build = () => {
   let query = supabase
     .from('homeworks')
     .select(
@@ -52,9 +54,10 @@ export async function listHomeworks() {
     query = query.eq('is_archived', false)
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) throw error
-  let rows = data || []
+  return query.order('created_at', { ascending: false }).order('id', { ascending: true })
+  }
+  // Every page: homework accumulates across school years.
+  let rows = await fetchAllRows(build)
 
   // Package-level gating for student role
   if (userId && isStudent) {

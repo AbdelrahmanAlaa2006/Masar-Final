@@ -219,3 +219,6 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.site_events_summary(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.site_events_summary(int) TO authenticated, service_role;
+-- Supabase grants EXECUTE on new public functions to anon directly, so
+-- REVOKE ... FROM PUBLIC alone does not remove it. Staff-only: block anon.
+REVOKE EXECUTE ON FUNCTION public.site_events_summary(int) FROM anon;

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows, selectInChunks } from './fetchAllRows'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { createNotification } from './notificationsApi'
 import { listStudentBooklets, markBookletsPaid, revertBookletPayment } from './bookletsApi'
@@ -499,23 +500,24 @@ export async function getBulkInitialPaymentsPreview({ studentIds, registerMonthl
     let paidMonthlyStudentIds = new Set()
     if (monthlyMonth) {
       const billingPeriod = 'اشتراك شهر ' + monthlyMonth
-      const { data: existingPayments, error } = await supabase
-        .from('student_ledger')
-        .select('student_id')
-        .in('student_id', studentIds)
-        .eq('type', 'payment')
-        .eq('billing_period', billingPeriod)
-      if (!error && existingPayments) {
+      try {
+        const existingPayments = await selectInChunks(studentIds, (part) => supabase
+          .from('student_ledger')
+          .select('id, student_id')
+          .in('student_id', part)
+          .eq('type', 'payment')
+          .eq('billing_period', billingPeriod)
+          .order('id', { ascending: true }))
         paidMonthlyStudentIds = new Set(existingPayments.map(p => p.student_id))
-      }
+      } catch { /* as before: if the lookup fails, nobody is treated as already paid in the preview */ }
     }
 
     // 2. Fetch student profiles (need grade and discount)
-    const { data: profiles, error: profilesError } = await supabase
+    const profiles = await selectInChunks(studentIds, (part) => supabase
       .from('profiles')
       .select('id, grade, subscription_discount')
-      .in('id', studentIds)
-    if (profilesError) throw profilesError
+      .in('id', part)
+      .order('id', { ascending: true }))
 
     // 3. Fetch subscription fees
     const fees = await listSubscriptionFees()
@@ -533,12 +535,12 @@ export async function getBulkInitialPaymentsPreview({ studentIds, registerMonthl
 
   if (registerBooklet) {
     // 4. Fetch unpaid booklets for these students
-    const { data, error } = await supabase
+    const data = await selectInChunks(studentIds, (part) => supabase
       .from('student_booklets')
-      .select('price')
-      .in('student_id', studentIds)
+      .select('id, price')
+      .in('student_id', part)
       .eq('payment_status', 'unpaid')
-    if (error) throw error
+      .order('id', { ascending: true }))
 
     bookletAmount = (data || []).reduce((sum, item) => sum + Number(item.price || 0), 0)
   }
@@ -563,22 +565,22 @@ export async function registerBulkInitialPayments({
   let paidMonthlyStudentIds = new Set()
   if (registerMonthly && monthlyMonth) {
     const billingPeriod = 'اشتراك شهر ' + monthlyMonth
-    const { data: existingPayments, error } = await supabase
+    const existingPayments = await selectInChunks(studentIds, (part) => supabase
       .from('student_ledger')
-      .select('student_id')
-      .in('student_id', studentIds)
+      .select('id, student_id')
+      .in('student_id', part)
       .eq('type', 'payment')
       .eq('billing_period', billingPeriod)
-    if (error) throw error
-    paidMonthlyStudentIds = new Set((existingPayments || []).map(p => p.student_id))
+      .order('id', { ascending: true }))
+    paidMonthlyStudentIds = new Set(existingPayments.map(p => p.student_id))
   }
 
   // 1. Fetch student profiles (need grade, discount and name)
-  const { data: profiles, error: profilesError } = await supabase
+  const profiles = await selectInChunks(studentIds, (part) => supabase
     .from('profiles')
     .select('id, name, grade, subscription_discount')
-    .in('id', studentIds)
-  if (profilesError) throw profilesError
+    .in('id', part)
+    .order('id', { ascending: true }))
 
   // 2. Fetch subscription fees
   const fees = await listSubscriptionFees()
@@ -660,12 +662,13 @@ export async function removeBulkInitialPayments({
 }) {
   let targetIds = studentIds || []
   if (targetIds.length === 0) {
-    const { data, error } = await supabase
+    // Every page, or a bulk removal would silently skip students past 1000.
+    const data = await fetchAllRows(() => supabase
       .from('profiles')
       .select('id')
       .eq('role', 'student')
-    if (error) throw error
-    targetIds = (data || []).map(r => r.id)
+      .order('id', { ascending: true }))
+    targetIds = data.map(r => r.id)
   }
 
   if (targetIds.length === 0) return true

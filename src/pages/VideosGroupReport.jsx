@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { fetchAllRows } from '@backend/fetchAllRows'
+import { getStudentCountsByGrade } from '@backend/profilesApi'
 import { useNavigate } from 'react-router-dom'
 import './VideosGroupReport.css'
 import { listStudentsByGrade } from '@backend/profilesApi'
@@ -39,15 +41,9 @@ export default function VideosGroupReport() {
     let cancelled = false
     ;(async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('grade')
-          .eq('role', 'student')
-        if (error || cancelled) return
-        const counts = {}
-        (data || []).forEach(r => {
-          if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
-        })
+        // Counted in the database: one row per stage, correct past 1000 students.
+        const counts = await getStudentCountsByGrade()
+        if (cancelled) return
         setGradeStudentCounts(counts)
       } catch (err) {
         console.error('Failed to count students per grade:', err)
@@ -169,19 +165,21 @@ export default function VideosGroupReport() {
       const totalSeconds = parts.reduce((s, p) => s + (durMap.get(p.youtube_id) || 0), 0)
       const totalMinutes = Math.ceil(totalSeconds / 60)
 
-      const ids = gradeStudents.map(s => s.id)
-      // Same cache trick as ExamsGroupReport — flipping back to a
+// Same cache trick as ExamsGroupReport — flipping back to a
       // previously-viewed video doesn't hit the DB again within 5min.
       const cacheKey = `video_progress:${videoId}:${currentGrade || 'all'}`
-      const progressRows = await cached(cacheKey, LIST_TTL, async () => {
-        const { data, error } = await supabase
+      const progressRows = await cached(cacheKey, LIST_TTL, () => fetchAllRows(() => {
+        // Filtered by stage in the database instead of an id list in the URL
+        // (fails past ~390 students). Group narrowing happens below.
+        let q = supabase
           .from('video_progress')
-          .select('student_id, part_id, views_used, last_watched_at')
+          .select(currentGrade
+            ? 'id, student_id, part_id, views_used, last_watched_at, profiles!student_id!inner(grade)'
+            : 'id, student_id, part_id, views_used, last_watched_at')
           .eq('video_id', videoId)
-          .in('student_id', ids)
-        if (error) throw error
-        return data || []
-      })
+        if (currentGrade) q = q.eq('profiles.grade', currentGrade)
+        return q.order('id', { ascending: true })
+      }))
 
       // group progress rows by student
       const byStudent = {}
