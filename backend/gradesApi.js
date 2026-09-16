@@ -326,47 +326,21 @@ export async function getStudentGradesSummary(studentId) {
 }
 
 // Get unique list of past evaluation titles and types for a grade (sorted newest first)
+/* One row per grading session for a stage, newest first.
+   Grouped in the database (list_grade_evaluations): the old version downloaded
+   every grade row of the tenant and filtered in the browser, and PostgREST caps
+   a response at 1000 rows — so once a tenant passed 1000 grades, its oldest
+   sessions silently vanished from «التقييم السابق» (2026_09_17 migration). */
 export async function listUniqueEvaluations(grade) {
-  const { data, error } = await supabase
-    .from('grades')
-    .select(`
-      type,
-      title,
-      created_at,
-      profiles!student_id (
-        grade
-      )
-    `)
-    .order('created_at', { ascending: false })
-
+  if (!grade) return []
+  const { data, error } = await supabase.rpc('list_grade_evaluations', { p_grade: grade })
   if (error) throw error
-
-  const filtered = (data || []).filter(r => r.profiles?.grade === grade)
-
-  const map = new Map()
-  filtered.forEach(r => {
-    const rawTitle = (r.title || '').trim()
-    if (!rawTitle) return
-    const key = `${r.type}:${rawTitle}`
-    if (!map.has(key)) {
-      map.set(key, {
-        type: r.type,
-        title: rawTitle,
-        created_at: r.created_at,
-        count: 1
-      })
-    } else {
-      const existing = map.get(key)
-      existing.count += 1
-      if (new Date(r.created_at) > new Date(existing.created_at)) {
-        existing.created_at = r.created_at
-      }
-    }
-  })
-
-  // Sort strictly by latest created_at descending (newest evaluations at the top)
-  const unique = Array.from(map.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  return unique
+  return (data || []).map(r => ({
+    type: r.type,
+    title: r.title,
+    created_at: r.created_at,
+    count: Number(r.row_count) || 0,
+  }))
 }
 
 // Get grades records for a specific evaluation type and title

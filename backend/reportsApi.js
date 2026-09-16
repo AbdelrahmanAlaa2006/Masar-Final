@@ -51,43 +51,24 @@ export async function listCenterAttemptsForStudent(studentId, type) {
  */
 export async function listCenterUniqueEvaluations(grade, type) {
   if (!grade) return []
-  // Filter by the student's grade IN SQL via an inner join on profiles, instead
-  // of fetching EVERY grade row of this type across all grades and filtering in
-  // JS. `!inner` drops non-matching rows server-side; only this grade's rows
-  // are returned (backed by idx_grades_tenant_type_title).
-  const { data, error } = await supabase
-    .from('grades')
-    .select(`
-      title,
-      max_score,
-      profiles!student_id!inner ( grade )
-    `)
-    .eq('type', type)
-    .eq('profiles.grade', grade)
-
+  // Grouped in the database: one row per session. Returning one row per
+  // student per session would pass PostgREST's 1000-row cap within a school
+  // year and silently drop the oldest sessions from the report.
+  const { data, error } = await supabase.rpc('list_grade_evaluations', { p_grade: grade, p_type: type })
   if (error) throw error
 
-  const filtered = data || []
-  const seen = new Set()
-  const unique = []
-
-  filtered.forEach(item => {
-    const title = (item.title || '').trim()
-    if (title && !seen.has(title)) {
-      seen.add(title)
-      unique.push({
-        id: title, // Use title as ID for evaluations dropdown
-        title: title,
-        grade: grade,
-        exam_type: type,
-        total_points: parseFloat(item.max_score) || 0,
-        duration_minutes: 0,
-        reveal_grades: true
-      })
-    }
-  })
-
-  return unique
+  // The function returns newest first (what the grades panel wants); the
+  // report has always listed sessions oldest → newest, so keep that order.
+  const oldestFirst = (data || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  return oldestFirst.map(item => ({
+    id: item.title, // Use title as ID for evaluations dropdown
+    title: item.title,
+    grade: grade,
+    exam_type: type,
+    total_points: parseFloat(item.max_score) || 0,
+    duration_minutes: 0,
+    reveal_grades: true
+  }))
 }
 
 /**
@@ -154,9 +135,25 @@ export async function getCenterStudentGradesCombined(studentId) {
 /**
  * Fetch manual grades for all students in a grade/group for the collective report.
  */
+/* PostgREST returns at most 1000 rows per request. Page through with a stable
+   order so a large stage never loses its oldest rows. */
+async function fetchAllRows(buildQuery, pageSize = 1000) {
+  const rows = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1)
+    if (error) throw error
+    rows.push(...(data || []))
+    if (!data || data.length < pageSize) break
+  }
+  return rows
+}
+
 export async function listCenterGradesGroupCombined(grade, groupId = 'all') {
   if (!grade) return []
-  const { data, error } = await supabase
+  // Filter by stage in SQL (inner join) instead of downloading the whole
+  // tenant's grades and filtering here — that hit the 1000-row cap and
+  // silently dropped old grades from the combined report.
+  const data = await fetchAllRows(() => supabase
     .from('grades')
     .select(`
       id,
@@ -167,7 +164,7 @@ export async function listCenterGradesGroupCombined(grade, groupId = 'all') {
       max_score,
       notes,
       created_at,
-      profiles!student_id (
+      profiles!student_id!inner (
         id,
         name,
         phone,
@@ -178,11 +175,11 @@ export async function listCenterGradesGroupCombined(grade, groupId = 'all') {
       ),
       creator:created_by ( name )
     `)
+    .eq('profiles.grade', grade)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: true }))
 
-  if (error) throw error
-
-  let filtered = (data || []).filter(r => r.profiles?.grade === grade)
+  let filtered = data.filter(r => r.profiles?.grade === grade)
   if (groupId && groupId !== 'all') {
     filtered = filtered.filter(r => r.profiles?.group === groupId)
   }
