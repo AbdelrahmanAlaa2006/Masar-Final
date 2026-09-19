@@ -368,28 +368,28 @@ export default function FinanceReport() {
         </div>
 
         {/* Stats Grid */}
-        <div className="er-stats-grid" style={{ marginBottom: 24 }}>
-          <div className="er-stat-card er-stat-total" style={{ borderRightColor: '#3b82f6' }}>
-            <div className="er-stat-icon" style={{ color: '#3b82f6' }}><i className="fas fa-file-invoice-dollar"></i></div>
-            <div className="er-stat-info">
-              <h3>إجمالي الرسوم</h3>
-              <p>{stats.charged} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>ج.م</span></p>
+        <div className="cp-stats-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 24 }}>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-file-invoice-dollar"></i>
+            <div>
+              <div className="cp-stat-val">{stats.charged} <span className="cp-stat-unit">ج.م</span></div>
+              <div className="cp-stat-lbl">إجمالي الرسوم</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-passed" style={{ borderRightColor: '#10b981' }}>
-            <div className="er-stat-icon" style={{ color: '#10b981' }}><i className="fas fa-circle-check"></i></div>
-            <div className="er-stat-info">
-              <h3>المدفوعات المقبولة</h3>
-              <p>{stats.paid} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>ج.م</span></p>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-circle-check"></i>
+            <div>
+              <div className="cp-stat-val">{stats.paid} <span className="cp-stat-unit">ج.م</span></div>
+              <div className="cp-stat-lbl">المدفوعات المقبولة</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-failed" style={{ borderRightColor: stats.remaining > 0 ? '#ef4444' : '#10b981' }}>
-            <div className="er-stat-icon" style={{ color: stats.remaining > 0 ? '#ef4444' : '#10b981' }}><i className="fas fa-hand-holding-dollar"></i></div>
-            <div className="er-stat-info">
-              <h3>المتبقي المستحق</h3>
-              <p>{stats.remaining} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>ج.م</span></p>
+          <div className={`cp-stat ${stats.remaining > 0 ? 'cp-stat-bad' : 'cp-stat-good'}`}>
+            <i className="fas fa-hand-holding-dollar"></i>
+            <div>
+              <div className="cp-stat-val">{stats.remaining} <span className="cp-stat-unit">ج.م</span></div>
+              <div className="cp-stat-lbl">المتبقي المستحق</div>
             </div>
           </div>
         </div>

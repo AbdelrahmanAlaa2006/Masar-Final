@@ -6,6 +6,7 @@ import { listStudentsByGrade } from '@backend/profilesApi'
 import { listHomeworks, listSubmissionsForHomework } from '@backend/homeworksApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
+import GradePicker from '../components/GradePicker'
 
 import { useTenant } from '../contexts/TenantContext'
 import { supabase } from '@backend/supabase'
@@ -327,31 +328,13 @@ export default function HomeworkGroupReport() {
         </div>
 
         {/* Grade */}
-        <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="fas fa-school" style={{ color: '#5bc2e7' }}></i> اختر الصف الدراسي
-          </h2>
-          {availableGrades.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--cp-text-muted)' }}>لا يوجد طلاب مسجلون بعد.</p>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {availableGrades.map((grade) => (
-                <button
-                  key={grade}
-                  className={`cp-btn ${currentGrade === grade ? 'cp-btn-success' : 'cp-btn-ghost'}`}
-                  onClick={() => selectGrade(grade)}
-                  style={{ borderRadius: 12, padding: '10px 18px' }}
-                >
-                  <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
-                  {GRADE_LABEL[grade]}
-                  <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
-                    {currentGrade === grade ? students.filter(s => s.grade === grade).length : (gradeStudentCounts[grade] || 0)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <GradePicker
+          grades={availableGrades}
+          counts={gradeStudentCounts}
+          value={currentGrade}
+          activeCount={currentGrade ? students.filter(s => s.grade === currentGrade).length : null}
+          onChange={selectGrade}
+        />
 
         {/* Group */}
         {currentGrade && groupsForGrade.length > 0 && (

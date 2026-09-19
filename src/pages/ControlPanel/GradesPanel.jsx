@@ -10,6 +10,7 @@ import { useTenant } from '../../contexts/TenantContext'
 import { dbToUiGrade } from '@backend/examsApi'
 import { GRADE_LABEL } from './shared'
 import DatePicker from '../../components/DatePicker'
+import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { supabase } from '@backend/supabase'
 
 export default function GradesPanel({ onBack, flash }) {
@@ -30,6 +31,9 @@ export default function GradesPanel({ onBack, flash }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingEvaluation, setDeletingEvaluation] = useState(false)
+  // Sheet awaiting delete confirmation — shown in the app's own dialog
+  // instead of the browser's window.confirm bar.
+  const [confirmDeleteEval, setConfirmDeleteEval] = useState(null)
   const [rebuildingNotifications, setRebuildingNotifications] = useState(false)
 
   // Scores sheet states: studentId -> { score: num, notes: string }
@@ -70,22 +74,26 @@ export default function GradesPanel({ onBack, flash }) {
     }
   }
 
-  // Delete the selected evaluation sheet
-  const handleDeleteEvaluation = async () => {
+  const EVAL_TYPE_LABELS = {
+    'homework': 'واجب منزلي',
+    'exam': 'امتحان / اختبار',
+    'quiz': 'تسميع',
+    'participation': 'مشاركة وتفاعل',
+    'behavior': 'ملاحظة سلوكية'
+  }
+
+  // Ask first — the dialog itself is rendered at the bottom of this panel.
+  const handleDeleteEvaluation = () => {
     if (!selectedEvaluation) return
-
     const [type, title] = selectedEvaluation.split(':')
-    const typeLabels = {
-      'homework': 'واجب منزلي',
-      'exam': 'امتحان / اختبار',
-      'quiz': 'تسميع',
-      'participation': 'مشاركة وتفاعل',
-      'behavior': 'ملاحظة سلوكية'
-    }
-    const typeText = typeLabels[type] || type
+    setConfirmDeleteEval({ type, title, typeText: EVAL_TYPE_LABELS[type] || type })
+  }
 
-    const confirmMsg = `هل أنت متأكد من حذف كشف الدرجات "${title}" (${typeText}) بالكامل؟\nسيؤدي ذلك إلى حذف الكشف وجميع درجات الطلاب المسجلة فيه نهائياً ولا يمكن التراجع عن هذا الإجراء.`
-    if (!window.confirm(confirmMsg)) return
+  // Delete the selected evaluation sheet, once confirmed
+  const confirmDeleteEvaluation = async () => {
+    if (!confirmDeleteEval) return
+    const { type, title } = confirmDeleteEval
+    setConfirmDeleteEval(null)
 
     setDeletingEvaluation(true)
     try {
@@ -105,14 +113,7 @@ export default function GradesPanel({ onBack, flash }) {
     if (!selectedEvaluation) return
 
     const [type, title] = selectedEvaluation.split(':')
-    const typeLabels = {
-      'homework': 'واجب منزلي',
-      'exam': 'امتحان / اختبار',
-      'quiz': 'تسميع',
-      'participation': 'مشاركة وتفاعل',
-      'behavior': 'ملاحظة سلوكية'
-    }
-    const typeText = typeLabels[type] || type
+    const typeText = EVAL_TYPE_LABELS[type] || type
 
     const confirmMsg = `هل أنت متأكد من إعادة بناء وإرسال الإشعارات لكشف الدرجات "${title}" (${typeText}) بالكامل؟\nسيؤدي ذلك إلى حذف الإشعارات المعلقة (قيد الانتظار) فقط وإعادة توليدها وإرسالها بالصياغة والقوالب الحالية دون المساس بالإشعارات المرسسة أو الفاشلة سابقاً.`
     if (!window.confirm(confirmMsg)) return
@@ -1411,6 +1412,18 @@ export default function GradesPanel({ onBack, flash }) {
             </div>
           )}
         </div>
+      )}
+
+      {confirmDeleteEval && (
+        <ConfirmDeleteDialog
+          title="تأكيد حذف كشف الدرجات"
+          itemLabel={`${confirmDeleteEval.title} (${confirmDeleteEval.typeText})`}
+          message="سيتم حذف الكشف وجميع درجات الطلاب المسجلة فيه نهائياً، ولا يمكن التراجع عن هذا الإجراء."
+          confirmText="نعم، احذف الكشف"
+          cancelText="إلغاء"
+          onConfirm={confirmDeleteEvaluation}
+          onCancel={() => setConfirmDeleteEval(null)}
+        />
       )}
 
       {/* Table hover keyframes styling inline */}

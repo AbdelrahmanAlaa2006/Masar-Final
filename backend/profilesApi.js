@@ -210,6 +210,22 @@ export async function getStudentCountsByGrade() {
   return counts
 }
 
+/* Rows for printing login cards. Includes `password`, which the normal student
+   list deliberately leaves out — only an admin (RLS) can read it, and only the
+   cards dialog needs it. Chunked, so a whole stage can be printed at once. */
+export async function listStudentsForCards(ids = []) {
+  const list = [...new Set((ids || []).filter(Boolean))]
+  if (list.length === 0) return []
+  const rows = await selectInChunks(list, (part) => supabase
+    .from('profiles')
+    .select('id, name, phone, parent_phone, password')
+    .eq('role', 'student')
+    .in('id', part)
+    .order('id', { ascending: true }))
+  // Cards come out in the order students are called: by name.
+  return rows.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ar'))
+}
+
 // Total approved/active student count for dashboards — a head-only COUNT query
 // (no rows transferred), instead of loading the whole roster just to read
 // `.length`. RLS/tenant-scoped.

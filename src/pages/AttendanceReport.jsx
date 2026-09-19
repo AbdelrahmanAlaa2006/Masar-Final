@@ -243,36 +243,36 @@ export default function AttendanceReport() {
         </div>
 
         {/* Stats Grid */}
-        <div className="er-stats-grid" style={{ marginBottom: 24 }}>
-          <div className="er-stat-card er-stat-total">
-            <div className="er-stat-icon"><i className="fas fa-percentage"></i></div>
-            <div className="er-stat-info">
-              <h3>نسبة الحضور</h3>
-              <p style={{ color: stats.rate >= 85 ? '#10b981' : stats.rate >= 70 ? '#f59e0b' : '#ef4444' }}>{stats.rate}%</p>
+        <div className="cp-stats-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 24 }}>
+          <div className={`cp-stat ${stats.rate >= 85 ? 'cp-stat-good' : stats.rate >= 70 ? 'cp-stat-warning' : 'cp-stat-bad'}`}>
+            <i className="fas fa-percentage"></i>
+            <div>
+              <div className="cp-stat-val">{stats.rate}%</div>
+              <div className="cp-stat-lbl">نسبة الحضور</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-passed" style={{ borderRightColor: '#10b981' }}>
-            <div className="er-stat-icon" style={{ color: '#10b981' }}><i className="fas fa-check-circle"></i></div>
-            <div className="er-stat-info">
-              <h3>أيام الحضور</h3>
-              <p>{stats.present} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>أيام ({stats.late} متأخر)</span></p>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-check-circle"></i>
+            <div>
+              <div className="cp-stat-val">{stats.present} <span className="cp-stat-unit">أيام ({stats.late} متأخر)</span></div>
+              <div className="cp-stat-lbl">أيام الحضور</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-failed" style={{ borderRightColor: '#ef4444' }}>
-            <div className="er-stat-icon" style={{ color: '#ef4444' }}><i className="fas fa-times-circle"></i></div>
-            <div className="er-stat-info">
-              <h3>أيام الغياب</h3>
-              <p>{stats.absent} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>أيام</span></p>
+          <div className="cp-stat cp-stat-bad">
+            <i className="fas fa-times-circle"></i>
+            <div>
+              <div className="cp-stat-val">{stats.absent} <span className="cp-stat-unit">أيام</span></div>
+              <div className="cp-stat-lbl">أيام الغياب</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-average" style={{ borderRightColor: '#3b82f6' }}>
-            <div className="er-stat-icon" style={{ color: '#3b82f6' }}><i className="fas fa-question-circle"></i></div>
-            <div className="er-stat-info">
-              <h3>الغياب المعذور</h3>
-              <p>{stats.excused} <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)', fontWeight: 'normal' }}>حصص</span></p>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-question-circle"></i>
+            <div>
+              <div className="cp-stat-val">{stats.excused} <span className="cp-stat-unit">حصص</span></div>
+              <div className="cp-stat-lbl">الغياب المعذور</div>
             </div>
           </div>
         </div>

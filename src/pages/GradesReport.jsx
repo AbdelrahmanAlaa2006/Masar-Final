@@ -270,36 +270,36 @@ export default function GradesReport() {
         </div>
 
         {/* Statistics Grid */}
-        <div className="er-stats-grid" style={{ marginBottom: 24 }}>
-          <div className="er-stat-card er-stat-total">
-            <div className="er-stat-icon"><i className="fas fa-clipboard-list"></i></div>
-            <div className="er-stat-info">
-              <h3>إجمالي الأنشطة</h3>
-              <p>{stats.total}</p>
+        <div className="cp-stats-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 24 }}>
+          <div className="cp-stat cp-stat-info">
+            <i className="fas fa-clipboard-list"></i>
+            <div>
+              <div className="cp-stat-val">{stats.total}</div>
+              <div className="cp-stat-lbl">إجمالي الأنشطة</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-average">
-            <div className="er-stat-icon"><i className="fas fa-chart-line"></i></div>
-            <div className="er-stat-info">
-              <h3>متوسط التقييم</h3>
-              <p style={{ color: stats.avg >= 80 ? '#10b981' : stats.avg >= 60 ? '#f59e0b' : '#ef4444' }}>{stats.avg}%</p>
+          <div className={`cp-stat ${stats.avg >= 80 ? 'cp-stat-good' : stats.avg >= 60 ? 'cp-stat-warning' : 'cp-stat-bad'}`}>
+            <i className="fas fa-chart-line"></i>
+            <div>
+              <div className="cp-stat-val">{stats.avg}%</div>
+              <div className="cp-stat-lbl">متوسط التقييم</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-passed">
-            <div className="er-stat-icon"><i className="fas fa-award"></i></div>
-            <div className="er-stat-info">
-              <h3>أعلى تقييم</h3>
-              <p style={{ color: '#10b981' }}>{stats.highest}%</p>
+          <div className="cp-stat cp-stat-good">
+            <i className="fas fa-award"></i>
+            <div>
+              <div className="cp-stat-val">{stats.highest}%</div>
+              <div className="cp-stat-lbl">أعلى تقييم</div>
             </div>
           </div>
 
-          <div className="er-stat-card er-stat-failed">
-            <div className="er-stat-icon"><i className="fas fa-chevron-circle-down"></i></div>
-            <div className="er-stat-info">
-              <h3>أقل تقييم</h3>
-              <p style={{ color: stats.lowest >= 60 ? '#f59e0b' : '#ef4444' }}>{stats.lowest}%</p>
+          <div className={`cp-stat ${stats.lowest >= 60 ? 'cp-stat-warning' : 'cp-stat-bad'}`}>
+            <i className="fas fa-chevron-circle-down"></i>
+            <div>
+              <div className="cp-stat-val">{stats.lowest}%</div>
+              <div className="cp-stat-lbl">أقل تقييم</div>
             </div>
           </div>
         </div>

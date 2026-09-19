@@ -945,8 +945,99 @@ body.dark .cp-page::before {
 .cp-stat-lbl { font-size: 0.75rem; color: var(--cp-text-muted); margin-top: 3px; font-weight: 600; }
 
 .cp-stat-good > i { color: #10b981; background: rgba(16, 185, 129, 0.12); }
+.cp-stat-warning > i { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+
+/* Small unit after a stat value ("ج.م", "أيام") — the number stays dominant. */
+.cp-stat-unit {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cp-text-muted);
+  margin-inline-start: 4px;
+}
 .cp-stat-bad  > i { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 .cp-stat-info > i { color: #3b82f6; background: rgba(59, 130, 246, 0.12); }
+
+/* ── Grade picker (shared by every group report) ────────── */
+.gp-panel {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 20px;
+}
+.gp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cp-text-main);
+  margin: 0 0 14px;
+}
+.gp-title i { color: #5bc2e7; }
+.gp-empty { text-align: center; color: var(--cp-text-muted); margin: 0; }
+
+.gp-section + .gp-section { margin-top: 14px; }
+.gp-stage {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--cp-text-muted);
+  margin-bottom: 8px;
+}
+.gp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.gp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cp-text-main);
+  background: var(--cp-card-bg);
+  border: 1px solid var(--cp-card-border);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.gp-chip:hover { border-color: #5bc2e7; }
+.gp-chip.is-active {
+  background: #5bc2e7;
+  border-color: #5bc2e7;
+  color: #06263a;
+}
+/* A grade with no students yet — still selectable, just quieter. */
+.gp-chip.is-empty { opacity: 0.5; }
+
+.gp-chip-count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: rgba(91, 194, 231, 0.12);
+  color: #5bc2e7;
+}
+.gp-chip.is-active .gp-chip-count {
+  background: rgba(0, 0, 0, 0.16);
+  color: inherit;
+}
+
+.gp-toggle {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #5bc2e7;
+}
+.gp-toggle i { font-size: 0.7rem; margin-inline-end: 2px; }
+
+@media (max-width: 600px) {
+  .gp-chip { font-size: 0.8rem; padding: 6px 11px; }
+}
 
 /* ── Bulk actions bar ──────────────────────────────────── */
 .cp-bulk-bar {
@@ -2368,6 +2459,11 @@ body.dark {
   }
   .cp-stat-lbl {
     font-size: 8pt !important;
+  }
+  .cp-stat-unit {
+    color: #444444 !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
   }
 
   /* Table Card and Container */

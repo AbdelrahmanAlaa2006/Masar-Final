@@ -16,6 +16,7 @@ import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { useTenant } from '../../contexts/TenantContext'
 import { generateTenantPassword } from '../../utils/tenantPassword'
 import RegistrationSwitch from './RegistrationSwitch'
+import LoginCardsDialog from './LoginCardsDialog'
 
 const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
 
@@ -119,6 +120,7 @@ export default function AccountsPanel({ onBack, flash }) {
   }, [tenantSlug])
 
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [showCardsModal, setShowCardsModal] = useState(false)
   const [bulkPrinting, setBulkPrinting] = useState(false)
   const [printGroupId, setPrintGroupId] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -850,6 +852,20 @@ export default function AccountsPanel({ onBack, flash }) {
         </button>
       </div>
 
+      {/* Student login cards: name + login code + password + parent phone */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-color)' }}>
+          <i className="fas fa-id-card" style={{ marginInlineEnd: 6, color: '#10b981' }}></i>
+          كروت دخول الطلاب:
+        </span>
+        <button className="cp-btn cp-btn-success" onClick={() => setShowCardsModal(true)} style={{ height: 40 }}>
+          <i className="fas fa-print"></i> طباعة الكروت
+        </button>
+        <span style={{ fontSize: '0.8rem', color: 'var(--cp-text-muted)' }}>
+          كارت لكل طالب فيه كود الدخول وكلمة المرور ورقم ولي الأمر — للطلاب المحددين أو لمجموعة أو مرحلة كاملة.
+        </span>
+      </div>
+
       {/* Thermal barcode label printing toolbar (XPrinter / thermal rolls) */}
       {isFeatureEnabled('barcode_labels_print') && (
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderRadius: 12, background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.12)' }}>
@@ -1146,6 +1162,16 @@ export default function AccountsPanel({ onBack, flash }) {
           </button>
         </div>
       )}
+
+      <LoginCardsDialog
+        open={showCardsModal}
+        onClose={() => setShowCardsModal(false)}
+        students={students}
+        selectedIds={selectedIds}
+        groups={groups}
+        selectedGrade={selectedGrade}
+        flash={flash}
+      />
 
       {deletingStudent && (
         <ConfirmDeleteDialog

@@ -5,6 +5,7 @@ import { listCenterFinanceGroup } from '@backend/reportsApi'
 import { listBranches } from '@backend/branchesApi'
 import { cached, LIST_TTL } from '../utils/cache'
 import PrintReportHeader from '../components/PrintReportHeader'
+import GradePicker from '../components/GradePicker'
 import './ExamsGroupReport.css'
 
 import { useTenant } from '../contexts/TenantContext'
@@ -217,27 +218,12 @@ export default function FinanceGroupReport() {
         )}
 
         {/* Grade Picker */}
-        <div className="cp-panel" style={{ padding: '1.5rem', marginBottom: 20 }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 16px', color: 'var(--cp-text-main)' }}>
-            <i className="fas fa-graduation-cap" style={{ color: '#5bc2e7', marginLeft: 8 }}></i> الصف الدراسي
-          </h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {availableGrades.map((grade) => (
-              <button
-                key={grade}
-                className={`cp-btn ${currentGrade === grade ? 'cp-btn-success' : 'cp-btn-ghost'}`}
-                onClick={() => selectGrade(grade)}
-                style={{ borderRadius: 12, padding: '10px 18px' }}
-              >
-                <i className="fas fa-graduation-cap" style={{ marginLeft: 6 }}></i>
-                {GRADE_LABEL[grade]}
-                <span className="cp-badge cp-badge-neutral" style={{ marginInlineStart: 8, background: 'rgba(255,255,255,0.15)', color: 'inherit' }}>
-                  {gradeStudentCounts[grade] || 0}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <GradePicker
+          grades={availableGrades}
+          counts={gradeStudentCounts}
+          value={currentGrade}
+          onChange={selectGrade}
+        />
 
         {/* Group / Branch Picker */}
         {currentGrade && (

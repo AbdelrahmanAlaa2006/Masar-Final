@@ -132,6 +132,11 @@ export const authAPI = {
         id: data.user.id,
         name: name.trim(),
         phone: phone.trim(),
+        // Readable copy of the password the student just chose. The real login
+        // still uses the hash in auth.users — this is only so an admin can
+        // print the student's login card later (AccountsPanel → كروت الدخول);
+        // without it nobody can ever read the password back from the hash.
+        password,
         role: 'student',
         tenant_id: clientTenantId,
         grade: grade,
