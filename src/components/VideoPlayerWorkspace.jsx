@@ -1,4 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import LectureCurriculumAccordion from './LectureCurriculumAccordion'
+import VideoInfoCard from './VideoInfoCard'
+import PrerequisiteLockModal from './PrerequisiteLockModal'
+import {
+  getLecturesForVideo,
+  getChapterLecturesWithDetails,
+  getVideoAccess,
+  getExamAccess,
+  getLectureFileAccess,
+  checkContentUnlocked
+} from '@backend/courseLecturesApi'
+import { subscribeToPrerequisiteUnlocked } from '../utils/unlockEvents'
 import './VideoPlayerWorkspace.css'
 
 /**
@@ -6,13 +19,14 @@ import './VideoPlayerWorkspace.css'
  *
  * Professional, focused learning workspace for video lessons.
  * Replaces the fragmented dashboard-card UI with a unified educational experience.
- *
- * Features:
- * - Integrated top context bar (back button, course/level eyebrow, lecture title, metadata chips)
+ * Fully aligned with Reference Image 2:
+ * - Top context bar with video title, grade eyebrow, player quality/engine switcher, theme toggle, and exit button
  * - Dominant 16:9 theater stage for the video player with refined cinematic empty state
  * - Direct under-player info strip with active part details, trials status, and Next/Prev quick controls
- * - Curriculum playlist (sidebar on desktop, compact switcher on mobile) with numbered parts and clear active/locked states
  * - Contextual sub-player learning hub with segmented tabs (Notes, Discussion, PDF, Overview)
+ * - Lower Dual Section:
+ *   - Right Column: Numbered Lectures Accordion (1 المحاضرة الأولى, 2 المحاضرة الثانية...)
+ *   - Left Column: Video Info Sidebar (المشاهدات 0/100, معلومات الكورس / حالة الشراء)
  * - Pure multi-tenant CSS using tenant design tokens (--primary, --dynamic-card, --border-color, etc.)
  */
 export default function VideoPlayerWorkspace({
@@ -24,6 +38,8 @@ export default function VideoPlayerWorkspace({
   levelEyebrow,
   userRole = 'student',
   currentUser,
+  contextLectureId = null,
+  contextLectureTitle = null,
   // Gates & Trials
   partTrialsLeft,
   partViewCap,
@@ -43,12 +59,79 @@ export default function VideoPlayerWorkspace({
   children, // The active player component (Bunny, Drive, or YouTube inside PlayerFacade)
   discussionSlot, // <VideoComments />
   pdfSlot, // <PdfInline />
+  // Phase 6 Step 3 Extended Props
+  packageTitle = null,
+  isPurchased = null,
+  hasAccess = null,
+  initialLectures = null,
+  onSelectVideo = null,
+  onSelectExam = null,
+  onDownloadFile = null,
+  onEngineChange = null,
+  alwaysShowItems = false
 }) {
+  const navigate = useNavigate()
+
+  // Safe theme detection for browser and SSR/testing environments
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem('theme') === 'dark' || document.body?.classList?.contains('dark')
+    }
+    return true
+  })
+
+  const toggleTheme = useCallback(() => {
+    setIsDark((prev) => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        if (next) {
+          document.body?.classList?.add('dark')
+        } else {
+          document.body?.classList?.remove('dark')
+        }
+        if (window.localStorage) {
+          localStorage.setItem('theme', next ? 'dark' : 'light')
+        }
+      }
+      return next
+    })
+  }, [])
+
   const [activeTab, setActiveTab] = useState('notes')
   const [mobilePartsOpen, setMobilePartsOpen] = useState(false)
 
+  // Player quality / engine state ('multi' = Bunny Stream / HLS, 'default' = YouTube / Drive)
+  const [playerEngine, setPlayerEngine] = useState(() => {
+    return selectedPart?.source === 'bunny' || selectedPart?.bunnyVideoId ? 'multi' : 'default'
+  })
+
+  // Curriculum hierarchy resolution states
+  const [containingLectures, setContainingLectures] = useState([])
+  const [activeContextLectureId, setActiveContextLectureId] = useState(contextLectureId || null)
+  const [chapterLectures, setChapterLectures] = useState(initialLectures || [])
+  const [loadingCurriculum, setLoadingCurriculum] = useState(false)
+  const [curriculumError, setCurriculumError] = useState(null)
+  const [activeLockModal, setActiveLockModal] = useState(null)
+  const [downloadingFileId, setDownloadingFileId] = useState(null)
+
   const parts = video?.parts || []
   const isSinglePart = parts.length <= 1
+
+  // Keep activeContextLectureId synced with prop when prop changes
+  useEffect(() => {
+    if (contextLectureId) {
+      setActiveContextLectureId(contextLectureId)
+    }
+  }, [contextLectureId])
+
+  // Resolve player engine from selectedPart
+  useEffect(() => {
+    if (selectedPart?.source === 'bunny' || selectedPart?.bunnyVideoId) {
+      setPlayerEngine('multi')
+    } else if (selectedPart?.source === 'youtube' || selectedPart?.source === 'drive') {
+      setPlayerEngine('default')
+    }
+  }, [selectedPart?.id, selectedPart?.source, selectedPart?.bunnyVideoId])
 
   // Auto-select first part if none selected on load
   useEffect(() => {
@@ -68,6 +151,246 @@ export default function VideoPlayerWorkspace({
       clearTimeout(t2)
     }
   }, [video?.id])
+
+  // Resolve containing lectures and chapter details for current video
+  useEffect(() => {
+    let isMounted = true
+    if (!video?.id) return
+
+    async function loadCurriculumHierarchy() {
+      setLoadingCurriculum(true)
+      setCurriculumError(null)
+
+      try {
+        // 1. Fetch containing lectures for active video (Preserves M:N, never LIMIT 1)
+        const lectures = await getLecturesForVideo(video.id)
+        if (!isMounted) return
+        setContainingLectures(lectures || [])
+
+        // 2. Resolve active containing lecture context
+        let currentLec = null
+        if (contextLectureId) {
+          currentLec = (lectures || []).find((l) => l.id === contextLectureId) || null
+          setActiveContextLectureId(contextLectureId)
+        } else {
+          // If a Video is opened without lecture context, preserve legacy standalone behavior
+          // NEVER choose an arbitrary lecture, NEVER infer from first association
+          setActiveContextLectureId(null)
+        }
+
+        // 3. Resolve chapter lectures if chapterId is present
+        const chapId = currentLec?.chapter_id || currentLec?.chapter?.id || null
+        if (chapId) {
+          const rawChapterLectures = await getChapterLecturesWithDetails(chapId)
+          if (!isMounted) return
+
+          // 4. For students, evaluate prerequisite locks for display & modal gating
+          if (userRole === 'student') {
+            const enriched = await Promise.all(
+              rawChapterLectures.map(async (lec) => {
+                try {
+                  const lockRes = await checkContentUnlocked({
+                    targetType: 'lecture',
+                    targetId: lec.id
+                  }).catch(() => ({ unlocked: true }))
+
+                  const lectureLock = lockRes || { unlocked: true }
+                  let vids = lec.videos || []
+                  let exs = lec.exams || []
+
+                  if (lectureLock.unlocked === false) {
+                    vids = vids.map((v) => ({
+                      ...v,
+                      lockStatus: {
+                        unlocked: false,
+                        reason: 'lecture_locked',
+                        parent_lecture_id: lec.id,
+                        required_exam_id: lectureLock.required_exam_id,
+                        required_exam_title: lectureLock.required_exam_title,
+                        required_score: lectureLock.required_score,
+                        student_score: lectureLock.student_score
+                      }
+                    }))
+                    exs = exs.map((e) => ({
+                      ...e,
+                      lockStatus: {
+                        unlocked: false,
+                        reason: 'lecture_locked',
+                        parent_lecture_id: lec.id,
+                        required_exam_id: lectureLock.required_exam_id,
+                        required_exam_title: lectureLock.required_exam_title,
+                        required_score: lectureLock.required_score,
+                        student_score: lectureLock.student_score
+                      }
+                    }))
+                  } else {
+                    const [vLocks, eLocks] = await Promise.all([
+                      Promise.all(
+                        vids.map((v) =>
+                          checkContentUnlocked({
+                            targetType: 'video',
+                            targetId: v.id,
+                            contextLectureId: lec.id
+                          }).catch(() => ({ unlocked: true }))
+                        )
+                      ),
+                      Promise.all(
+                        exs.map((e) =>
+                          checkContentUnlocked({
+                            targetType: 'exam',
+                            targetId: e.id,
+                            contextLectureId: lec.id
+                          }).catch(() => ({ unlocked: true }))
+                        )
+                      )
+                    ])
+
+                    vids = vids.map((v, i) => ({ ...v, lockStatus: vLocks[i] }))
+                    exs = exs.map((e, i) => ({ ...e, lockStatus: eLocks[i] }))
+                  }
+
+                  return {
+                    ...lec,
+                    lockStatus: lectureLock,
+                    videos: vids,
+                    exams: exs
+                  }
+                } catch {
+                  return lec
+                }
+              })
+            )
+            if (isMounted) setChapterLectures(enriched)
+          } else {
+            // Admin / Assistant: all unlocked
+            if (isMounted) setChapterLectures(rawChapterLectures)
+          }
+        } else {
+          if (isMounted) setChapterLectures(initialLectures || [])
+        }
+      } catch (err) {
+        console.error('Failed to load curriculum hierarchy in workspace:', err)
+        if (isMounted) setCurriculumError(err.message || 'فشل تحميل بيانات المنهج')
+      } finally {
+        if (isMounted) setLoadingCurriculum(false)
+      }
+    }
+
+    loadCurriculumHierarchy()
+
+    return () => {
+      isMounted = false
+    }
+  }, [video?.id, contextLectureId, userRole])
+
+  // ── Phase 7 Step 3: Reactive Unlock Listener in Workspace ─────────────
+  useEffect(() => {
+    let isSubscribed = true
+
+    const unsubscribe = subscribeToPrerequisiteUnlocked(async (detail) => {
+      if (!isSubscribed) return
+
+      const { unlockTargetType, unlockTargetId, contextLectureId } = detail || {}
+      if (!unlockTargetType || !unlockTargetId) return
+
+      try {
+        let isAuthorized = false
+        let updatedLockStatus = null
+
+        // 1. Authoritative check via checkContentUnlocked
+        const reval = await checkContentUnlocked({
+          targetType: unlockTargetType,
+          targetId: unlockTargetId,
+          contextLectureId: contextLectureId || activeContextLectureId || null
+        })
+
+        if (reval?.unlocked === true) {
+          isAuthorized = true
+          updatedLockStatus = reval
+        }
+
+        // 2. If the affected target is the currently active video in workspace, also verify getVideoAccess
+        if (unlockTargetType === 'video' && video?.id && String(video.id) === String(unlockTargetId)) {
+          if (!contextLectureId || String(contextLectureId) === String(activeContextLectureId)) {
+            try {
+              const accessRes = await getVideoAccess({
+                videoId: unlockTargetId,
+                contextLectureId: activeContextLectureId || contextLectureId || null
+              })
+              if (accessRes?.authorized) {
+                isAuthorized = true
+                if (!updatedLockStatus) {
+                  updatedLockStatus = { unlocked: true }
+                }
+              } else {
+                isAuthorized = false
+              }
+            } catch (vErr) {
+              console.warn('Workspace getVideoAccess revalidation failed:', vErr)
+              isAuthorized = false
+            }
+          }
+        }
+
+        if (!isSubscribed) return
+
+        // 3. Update workspace UI immediately if authoritatively verified
+        if (isAuthorized && updatedLockStatus) {
+          // Close modal if open for this item
+          setActiveLockModal((curModal) => {
+            if (curModal && String(curModal.target?.id) === String(unlockTargetId)) {
+              return null
+            }
+            return curModal
+          })
+
+          // Update chapterLectures state immediately for the matching lecture context
+          setChapterLectures((prev) => {
+            return prev.map((lec) => {
+              // Exact lecture context matching: do NOT affect other lectures for shared content
+              if (contextLectureId && String(lec.id) !== String(contextLectureId)) {
+                return lec
+              }
+
+              if (unlockTargetType === 'lecture' && String(lec.id) === String(unlockTargetId)) {
+                return { ...lec, lockStatus: updatedLockStatus }
+              }
+
+              if (unlockTargetType === 'video') {
+                const vids = (lec.videos || []).map((v) => {
+                  if (String(v.id) === String(unlockTargetId)) {
+                    return { ...v, lockStatus: updatedLockStatus }
+                  }
+                  return v
+                })
+                return { ...lec, videos: vids }
+              }
+
+              if (unlockTargetType === 'exam') {
+                const exs = (lec.exams || []).map((e) => {
+                  if (String(e.id) === String(unlockTargetId)) {
+                    return { ...e, lockStatus: updatedLockStatus }
+                  }
+                  return e
+                })
+                return { ...lec, exams: exs }
+              }
+
+              return lec
+            })
+          })
+        }
+        // If not authorized or reval failed: fail-safe, keep locked
+      } catch (err) {
+        console.warn('Workspace unlock revalidation failed, keeping content locked:', err)
+      }
+    })
+
+    return () => {
+      isSubscribed = false
+      unsubscribe()
+    }
+  }, [video?.id, activeContextLectureId])
 
   const currentPartIndex = useMemo(() => {
     if (!selectedPart) return -1
@@ -128,12 +451,243 @@ export default function VideoPlayerWorkspace({
 
   const isNotesAllowed = userRole === 'admin' || userRole === 'assistant'
 
+  // Resolve active lecture entity for eyebrow context
+  const activeLecture = useMemo(() => {
+    return (
+      chapterLectures.find((l) => l.id === activeContextLectureId) ||
+      containingLectures.find((l) => l.id === activeContextLectureId) ||
+      containingLectures[0] ||
+      null
+    )
+  }, [chapterLectures, containingLectures, activeContextLectureId])
+
+  const activeChapterTitle = useMemo(() => {
+    return activeLecture?.chapter_title || activeLecture?.chapter?.title || null
+  }, [activeLecture])
+
+  const activePackageTitle = useMemo(() => {
+    return packageTitle || activeLecture?.package_title || activeLecture?.package?.title || null
+  }, [packageTitle, activeLecture])
+
+  const activeGradeTitle = useMemo(() => {
+    return levelEyebrow || activeLecture?.grade || activeLecture?.package?.grade || null
+  }, [levelEyebrow, activeLecture])
+
+  // Handle switching video from lecture accordion
+  const handleSelectVideo = useCallback(
+    async (targetVideo, targetLecture) => {
+      const targetLecId = targetLecture?.id || activeContextLectureId || null
+
+      // Check if locked
+      if (targetVideo.lockStatus?.unlocked === false) {
+        setActiveLockModal({
+          type: 'video',
+          target: targetVideo,
+          contextLecture: targetLecture,
+          contextLectureId: targetLecId,
+          lockStatus: targetVideo.lockStatus
+        })
+        return
+      }
+
+      // Check authoritative access
+      try {
+        const access = await getVideoAccess({
+          videoId: targetVideo.id,
+          contextLectureId: targetLecId
+        })
+
+        if (!access?.authorized) {
+          return
+        }
+
+        setActiveContextLectureId(targetLecId)
+
+        if (typeof onSelectVideo === 'function') {
+          onSelectVideo(access.video || targetVideo, targetLecture)
+        } else if (typeof onSelectPart === 'function') {
+          const firstPart = access.video?.video_parts?.[0] || targetVideo.video_parts?.[0]
+          if (firstPart) {
+            onSelectPart(firstPart)
+          }
+        }
+      } catch (err) {
+        if (err.status === 423 && err.unlockStatus) {
+          setActiveLockModal({
+            type: 'video',
+            target: targetVideo,
+            contextLecture: targetLecture,
+            contextLectureId: targetLecId,
+            lockStatus: err.unlockStatus
+          })
+        } else {
+          alert(err.message || 'لا يمكنك الوصول إلى هذا الفيديو')
+        }
+      }
+    },
+    [activeContextLectureId, onSelectVideo, onSelectPart]
+  )
+
+  // Handle selecting exam from lecture accordion
+  const handleSelectExam = useCallback(
+    async (targetExam, targetLecture) => {
+      const targetLecId = targetLecture?.id || activeContextLectureId || null
+
+      if (targetExam.lockStatus?.unlocked === false) {
+        setActiveLockModal({
+          type: 'exam',
+          target: targetExam,
+          contextLecture: targetLecture,
+          contextLectureId: targetLecId,
+          lockStatus: targetExam.lockStatus
+        })
+        return
+      }
+
+      if (typeof onSelectExam === 'function') {
+        onSelectExam(targetExam, targetLecture)
+        return
+      }
+
+      try {
+        await getExamAccess({
+          examId: targetExam.id,
+          contextLectureId: targetLecId
+        })
+        navigate(`/exam-taking?id=${targetExam.id}${targetLecId ? `&contextLectureId=${targetLecId}` : ''}`)
+      } catch (err) {
+        if (err.status === 423 && err.unlockStatus) {
+          setActiveLockModal({
+            type: 'exam',
+            target: targetExam,
+            contextLecture: targetLecture,
+            contextLectureId: targetLecId,
+            lockStatus: err.unlockStatus
+          })
+        } else {
+          alert(err.message || 'لا يمكنك بدء هذا الامتحان')
+        }
+      }
+    },
+    [activeContextLectureId, onSelectExam, navigate]
+  )
+
+  // Handle PDF file download from lecture accordion
+  const handleDownloadFile = useCallback(
+    async (targetFile, targetLecture) => {
+      const targetLecId = targetLecture?.id || activeContextLectureId || null
+
+      if (targetLecture?.lockStatus?.unlocked === false) {
+        setActiveLockModal({
+          type: 'file',
+          target: targetFile,
+          contextLecture: targetLecture,
+          contextLectureId: targetLecId,
+          lockStatus: targetLecture.lockStatus
+        })
+        return
+      }
+
+      if (typeof onDownloadFile === 'function') {
+        onDownloadFile(targetFile, targetLecture)
+        return
+      }
+
+      setDownloadingFileId(targetFile.id)
+      try {
+        const res = await getLectureFileAccess({
+          fileId: targetFile.id,
+          contextLectureId: targetLecId
+        })
+
+        if (res?.downloadUrl) {
+          window.open(res.downloadUrl, '_blank', 'noopener,noreferrer')
+        }
+      } catch (err) {
+        if (err.status === 423 && err.unlockStatus) {
+          setActiveLockModal({
+            type: 'file',
+            target: targetFile,
+            contextLecture: targetLecture,
+            contextLectureId: targetLecId,
+            lockStatus: err.unlockStatus
+          })
+        } else {
+          alert(err.message || 'تعذر تحميل الملف المرفق')
+        }
+      } finally {
+        setDownloadingFileId(null)
+      }
+    },
+    [activeContextLectureId, onDownloadFile]
+  )
+
+  // Handle click on locked elements (triggers PrerequisiteLockModal)
+  const handleLockedClick = useCallback((lockData) => {
+    setActiveLockModal(lockData)
+  }, [])
+
+  // Start exam from inside the prerequisite lock modal
+  const handleModalStartExam = useCallback(
+    (examPayloadOrId, modalLecId) => {
+      setActiveLockModal(null)
+      const isPayloadObj = examPayloadOrId && typeof examPayloadOrId === 'object'
+      const examId = isPayloadObj ? (examPayloadOrId.examId || examPayloadOrId.id) : examPayloadOrId
+      if (!examId) return
+
+      const prereqContext = isPayloadObj ? (examPayloadOrId._prereqContext || examPayloadOrId) : null
+      const targetLecId = (prereqContext?.contextLectureId || modalLecId || activeContextLectureId) || null
+
+      let url = `/exam-taking?id=${encodeURIComponent(examId)}`
+      if (targetLecId) {
+        url += `&lecture=${encodeURIComponent(targetLecId)}&contextLectureId=${encodeURIComponent(targetLecId)}`
+      }
+
+      if (prereqContext) {
+        if (prereqContext.unlockTargetType) {
+          url += `&prereqTargetType=${encodeURIComponent(prereqContext.unlockTargetType)}`
+        }
+        if (prereqContext.unlockTargetId) {
+          url += `&prereqTargetId=${encodeURIComponent(prereqContext.unlockTargetId)}`
+        }
+        if (prereqContext.unlockTargetTitle) {
+          url += `&prereqTargetTitle=${encodeURIComponent(prereqContext.unlockTargetTitle)}`
+        }
+        if (prereqContext.requiredScore !== undefined && prereqContext.requiredScore !== null) {
+          url += `&requiredScore=${encodeURIComponent(prereqContext.requiredScore)}`
+        }
+        if (prereqContext.requiredExamTitle) {
+          url += `&requiredExamTitle=${encodeURIComponent(prereqContext.requiredExamTitle)}`
+        }
+        const lecTitle = prereqContext.contextLectureTitle || activeLecture?.title || null
+        if (lecTitle) {
+          url += `&contextLectureTitle=${encodeURIComponent(lecTitle)}`
+        }
+      }
+
+      navigate(url)
+    },
+    [activeContextLectureId, activeLecture, navigate]
+  )
+
+  // Engine switcher handler
+  const handleEngineSelect = useCallback(
+    (engine) => {
+      setPlayerEngine(engine)
+      if (typeof onEngineChange === 'function') {
+        onEngineChange(engine)
+      }
+    },
+    [onEngineChange]
+  )
+
   return (
     <div className="vpw-root" dir="rtl">
-      {/* ── 1. Integrated Workspace Top Context Bar ── */}
+      {/* ── 1. Integrated Workspace Top Context Bar (Reference Image 2) ── */}
       <header className="vpw-topbar">
         <div className="vpw-topbar-inner">
           <div className="vpw-topbar-start">
+            {/* Exit Button */}
             <button
               type="button"
               className="vpw-back-button"
@@ -141,19 +695,96 @@ export default function VideoPlayerWorkspace({
               title={backLabel}
             >
               <i className="fas fa-arrow-right"></i>
-              <span className="vpw-back-text">{backLabel}</span>
+              <span className="vpw-back-text">خروج</span>
+            </button>
+
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              className="vpw-theme-toggle-btn"
+              onClick={toggleTheme}
+              title={isDark ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع المظلم'}
+              aria-label={isDark ? 'الوضع الفاتح' : 'الوضع المظلم'}
+            >
+              <i className={isDark ? 'fas fa-sun' : 'fas fa-moon'}></i>
             </button>
 
             <div className="vpw-topbar-divider" aria-hidden="true"></div>
 
+            {/* Player Quality / Engine Selector */}
+            <div className="vpw-engine-selector" role="group" aria-label="اختر مشغل الفيديو">
+              <span className="vpw-engine-label">
+                <i className="fas fa-video"></i>
+                <span>اختر مشغل الفيديو:</span>
+              </span>
+              <div className="vpw-engine-buttons">
+                <button
+                  type="button"
+                  className={`vpw-engine-btn ${playerEngine === 'multi' ? 'is-active' : ''}`}
+                  onClick={() => handleEngineSelect('multi')}
+                  title="مشغل سريع متعدد الجودات"
+                >
+                  <i className="fas fa-sliders"></i>
+                  <span>متعدد الجودات</span>
+                </button>
+                <button
+                  type="button"
+                  className={`vpw-engine-btn ${playerEngine === 'default' ? 'is-active' : ''}`}
+                  onClick={() => handleEngineSelect('default')}
+                  title="المشغل الافتراضي"
+                >
+                  <i className="fas fa-play"></i>
+                  <span>افتراضي</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="vpw-topbar-divider" aria-hidden="true"></div>
+
+            {/* Context Titles & Hierarchy Badges */}
             <div className="vpw-context-titles">
-              {levelEyebrow && (
-                <span className="vpw-eyebrow-badge">
-                  <i className="fas fa-graduation-cap"></i>
-                  {levelEyebrow}
-                </span>
-              )}
-              <h1 className="vpw-lecture-title">{video?.title || 'المحاضرة'}</h1>
+              <div className="vpw-eyebrows-row">
+                {activeGradeTitle && (
+                  <span className="vpw-eyebrow-badge">
+                    <i className="fas fa-graduation-cap"></i>
+                    <span>{activeGradeTitle}</span>
+                  </span>
+                )}
+                {activeChapterTitle && (
+                  <span className="vpw-eyebrow-badge is-chapter">
+                    <i className="fas fa-book-bookmark"></i>
+                    <span>{activeChapterTitle}</span>
+                  </span>
+                )}
+                {(activeLecture?.title || contextLectureTitle || video?.contextLectureTitle) && (
+                  <span className="vpw-eyebrow-badge is-lecture">
+                    <i className="fas fa-chalkboard-teacher"></i>
+                    <span>{activeLecture?.title || contextLectureTitle || video?.contextLectureTitle}</span>
+                  </span>
+                )}
+                {/* M:N Shared Video Indicator */}
+                {containingLectures.length > 1 && (
+                  <div className="vpw-shared-context-wrapper">
+                    <span className="vpw-shared-badge" title="هذا الفيديو مرتبط بأكثر من محاضرة في المنهج">
+                      <i className="fas fa-code-fork"></i>
+                      <span>مشترك ({containingLectures.length} محاضرات)</span>
+                    </span>
+                    <select
+                      className="vpw-shared-select"
+                      value={activeContextLectureId || ''}
+                      onChange={(e) => setActiveContextLectureId(e.target.value)}
+                      title="تغيير سياق المحاضرة النشطة"
+                    >
+                      {containingLectures.map((cl) => (
+                        <option key={cl.id} value={cl.id}>
+                          {cl.title} {cl.chapter_title ? `(${cl.chapter_title})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <h1 className="vpw-lecture-title">{video?.title || displayTitle || 'المحاضرة'}</h1>
             </div>
           </div>
 
@@ -673,7 +1304,50 @@ export default function VideoPlayerWorkspace({
             )}
           </aside>
         )}
+        {/* ── 4. Lower Dual Section: Lecture Curriculum & Video Info Sidebar (Reference Image 2) ── */}
+        <section className="vpw-bottom-curriculum-grid">
+          {/* Right Column: Numbered Lectures Accordion */}
+          <div className="vpw-curriculum-column">
+            <LectureCurriculumAccordion
+              lectures={chapterLectures}
+              currentLectureId={activeContextLectureId}
+              currentVideoId={video?.id}
+              alwaysShowItems={alwaysShowItems}
+              onSelectVideo={handleSelectVideo}
+              onSelectExam={handleSelectExam}
+              onDownloadFile={handleDownloadFile}
+              onLockedClick={handleLockedClick}
+              downloadingFileId={downloadingFileId}
+            />
+          </div>
+
+          {/* Left Column: Video Info Sidebar */}
+          <div className="vpw-info-column">
+            <VideoInfoCard
+              video={video}
+              selectedPart={selectedPart}
+              viewsUsed={activeTrialsLeft !== null && activeViewCap ? Math.max(0, activeViewCap - activeTrialsLeft) : 0}
+              viewCap={activeViewCap}
+              partTrialsLeft={activeTrialsLeft}
+              packageTitle={activePackageTitle}
+              isPurchased={isPurchased}
+              hasAccess={hasAccess}
+              userRole={userRole}
+            />
+          </div>
+        </section>
       </main>
+
+      {/* ── 5. Prerequisite Lock Modal (Opens on locked content click) ── */}
+      {activeLockModal && (
+        <PrerequisiteLockModal
+          isOpen={true}
+          onClose={() => setActiveLockModal(null)}
+          lockInfo={activeLockModal}
+          onStartExam={handleModalStartExam}
+        />
+      )}
     </div>
   )
 }
+

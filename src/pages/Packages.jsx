@@ -21,6 +21,8 @@ import VideoPlayerWorkspace from '../components/VideoPlayerWorkspace'
 import ScreenGuard from '../components/ScreenGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import useExitGuard from '../hooks/useExitGuard'
+import StudentCurriculumView from '../components/StudentCurriculumView'
+import { listCourseChapters, getVideoAccess } from '@backend/courseLecturesApi'
 import './Videos.css'
 import './Homework.css'
 import './Exams.css'
@@ -39,6 +41,7 @@ export default function Packages() {
   const [activeTab, setActiveTab] = useState('videos') // 'videos', 'homeworks', 'exams'
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [hasCurriculum, setHasCurriculum] = useState(false)
 
   // Package content items
   const [allPackageItems, setAllPackageItems] = useState([]) // rows from package_items
@@ -134,7 +137,16 @@ export default function Packages() {
       return
     }
     try {
-      // Fetch package items
+      // 1. Check if package has new curriculum chapters (Phase 5 hierarchy)
+      const chaps = await listCourseChapters(pkg.id).catch(() => [])
+      if (chaps && chaps.length > 0) {
+        setHasCurriculum(true)
+        setLoading(false)
+        return
+      }
+      setHasCurriculum(false)
+
+      // 2. Fallback: Legacy package items
       const { data: items, error: itemsErr } = await supabase
         .from('package_items')
         .select('*')
@@ -185,6 +197,7 @@ export default function Packages() {
   // Back actions
   const goBackToPackages = () => {
     setSelectedPackage(null)
+    setHasCurriculum(false)
     setVideos([])
     setHomeworks([])
     setExams([])
@@ -203,17 +216,20 @@ export default function Packages() {
 
   // 3. Video player helpers & progress
   function shapeVideo(row) {
-    const parts = (row.video_parts || []).map((p) => ({
+    if (!row) return null
+    if (row.parts && Array.isArray(row.parts) && row.totalParts) return row
+
+    const parts = (row.video_parts || row.parts || []).map((p, idx) => ({
       id: p.id,
       title: p.title,
       source: p.source || 'youtube',
-      youtubeId: p.youtube_id || '',
-      driveId: p.drive_id || '',
-      bunnyVideoId: p.bunny_video_id || '',
-      bunnyLibraryId: p.bunny_library_id || null,
-      durationSeconds: p.duration_seconds || null,
-      part_index: p.part_index,
-      viewLimit: p.view_limit ?? null,
+      youtubeId: p.youtube_id || p.youtubeId || '',
+      driveId: p.drive_id || p.driveId || '',
+      bunnyVideoId: p.bunny_video_id || p.bunnyVideoId || '',
+      bunnyLibraryId: p.bunny_library_id || p.bunnyLibraryId || null,
+      durationSeconds: p.duration_seconds || p.durationSeconds || null,
+      part_index: p.part_index !== undefined ? p.part_index : idx,
+      viewLimit: p.view_limit ?? p.viewLimit ?? null,
     }))
     return {
       id: row.id,
@@ -222,11 +238,13 @@ export default function Packages() {
       grade: row.grade,
       totalParts: parts.length,
       parts,
-      activeHours: row.active_hours,
-      expiryTime: row.expiry_at,
-      createdAt: row.created_at,
+      activeHours: row.active_hours ?? row.activeHours,
+      expiryTime: row.expiry_at ?? row.expiryTime,
+      createdAt: row.created_at ?? row.createdAt,
       pdf_url: row.pdf_url || null,
       pdf_key: row.pdf_key || null,
+      contextLectureId: row.contextLectureId || null,
+      contextLectureTitle: row.contextLectureTitle || null
     }
   }
 
@@ -421,10 +439,34 @@ export default function Packages() {
     return () => document.body.classList.remove('is-watching-video')
   }, [isWatching])
 
-  const openVideoPlayer = (video) => {
+  const openVideoPlayer = async (video) => {
     if (userRole !== 'admin' && userRole !== 'assistant' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
     }
+
+    // Authoritative Educational Unlock & Content Access Gate via getVideoAccess
+    if (video?.contextLectureId && userRole === 'student') {
+      try {
+        const access = await getVideoAccess({
+          videoId: video.id,
+          contextLectureId: video.contextLectureId
+        })
+        if (!access?.authorized) {
+          return showAlertModal('غير مصرح', 'لا تملك صلاحية الوصول لهذا الفيديو.')
+        }
+      } catch (err) {
+        if (err.status === 423 || err.unlockStatus) {
+          const reqTitle = err.unlockStatus?.required_exam_title || 'الامتحان المشروط'
+          const reqScore = err.unlockStatus?.required_score || 70
+          return showAlertModal(
+            '🔒 الفيديو مقفل بمتطلب سابق',
+            `يتطلب فتح هذا الفيديو اجتياز "${reqTitle}" بنسبة ${reqScore}% فأكثر أولاً.`
+          )
+        }
+        return showAlertModal('تعذر فتح الفيديو', err.message || 'غير مصرح بالوصول')
+      }
+    }
+
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     setCurrentVideo(video)
     setView('player')
@@ -485,12 +527,39 @@ export default function Packages() {
   const remainingFor = (exam) =>
     Math.max(0, effectiveMaxAttempts(exam) - (attemptsMap[exam.id] || 0))
 
-  const startExam = (exam) => {
+  const startExam = (exam, contextLectureId = null, prereqData = null) => {
     if (userRole !== 'admin' && userRole !== 'assistant' && remainingFor(exam) <= 0) {
       showAlertModal('انتهت محاولاتك', 'لقد استنفدت جميع محاولاتك المتاحة لهذا الامتحان.')
       return
     }
-    navigate(`/exam-taking?id=${exam.id}`)
+    const effectivePrereq = prereqData || exam?._prereqContext || null
+    const effectiveLectureId = contextLectureId || effectivePrereq?.contextLectureId || null
+    const lectureParam = effectiveLectureId ? `&lecture=${encodeURIComponent(effectiveLectureId)}&contextLectureId=${encodeURIComponent(effectiveLectureId)}` : ''
+
+    let prereqParams = ''
+    if (effectivePrereq) {
+      if (effectivePrereq.unlockTargetType) {
+        prereqParams += `&prereqTargetType=${encodeURIComponent(effectivePrereq.unlockTargetType)}`
+      }
+      if (effectivePrereq.unlockTargetId) {
+        prereqParams += `&prereqTargetId=${encodeURIComponent(effectivePrereq.unlockTargetId)}`
+      }
+      if (effectivePrereq.unlockTargetTitle) {
+        prereqParams += `&prereqTargetTitle=${encodeURIComponent(effectivePrereq.unlockTargetTitle)}`
+      }
+      if (effectivePrereq.requiredScore !== undefined && effectivePrereq.requiredScore !== null) {
+        prereqParams += `&requiredScore=${encodeURIComponent(effectivePrereq.requiredScore)}`
+      }
+      if (effectivePrereq.requiredExamTitle) {
+        prereqParams += `&requiredExamTitle=${encodeURIComponent(effectivePrereq.requiredExamTitle)}`
+      }
+      const lecTitle = effectivePrereq.contextLectureTitle || effectivePrereq.contextLecture?.title || null
+      if (lecTitle) {
+        prereqParams += `&contextLectureTitle=${encodeURIComponent(lecTitle)}`
+      }
+    }
+
+    navigate(`/exam-taking?id=${exam.id}${lectureParam}${prereqParams}`)
   }
 
   const showAlertModal = (title, message) => {
@@ -562,9 +631,27 @@ export default function Packages() {
         </div>
       )}
 
-      {/* 2. Detail tabbed screen */}
+      {/* 2. Detail view: StudentCurriculumView if package has chapters, or legacy tabbed view */}
       {view === 'detail' && selectedPackage && (
-        <div className="packages-container">
+        hasCurriculum ? (
+          <StudentCurriculumView
+            package={selectedPackage}
+            onSelectVideo={(video, lecture) => {
+              const shaped = shapeVideo(video)
+              if (shaped) {
+                shaped.contextLectureId = lecture?.id || null
+                shaped.contextLectureTitle = lecture?.title || null
+                openVideoPlayer(shaped)
+              }
+            }}
+            onSelectExam={(exam, lecture, maybePrereq) => {
+              const prereq = maybePrereq || exam?._prereqContext || null
+              startExam(exam, lecture?.id || null, prereq)
+            }}
+            onBack={goBackToPackages}
+          />
+        ) : (
+          <div className="packages-container">
           <div className="pkg-detail-header">
             <button className="pkg-back-btn" onClick={goBackToPackages}><i className="fas fa-arrow-right"></i> العودة للباقات</button>
             <div className="pkg-detail-meta">
@@ -783,6 +870,7 @@ export default function Packages() {
             )}
           </div>
         </div>
+        )
       )}
 
       {/* 3. Inline video player view */}
@@ -792,10 +880,26 @@ export default function Packages() {
           selectedPart={selectedPart}
           onSelectPart={playVideoPart}
           onBack={goBackToDetail}
-          backLabel="العودة لمحتوى الباقة"
-          levelEyebrow="من محتوى الباقة"
+          backLabel={hasCurriculum ? 'العودة للمنهج' : 'العودة لمحتوى الباقة'}
+          levelEyebrow={currentVideo?.contextLectureTitle ? `محاضرة: ${currentVideo.contextLectureTitle}` : 'من محتوى الباقة'}
+          contextLectureId={currentVideo?.contextLectureId || null}
+          contextLectureTitle={currentVideo?.contextLectureTitle || null}
+          packageTitle={selectedPackage?.title || null}
+          isPurchased={true}
+          hasAccess={true}
           userRole={userRole}
           currentUser={currentUser}
+          onSelectVideo={(newVideo, targetLecture) => {
+            const shaped = shapeVideo(newVideo)
+            if (shaped) {
+              shaped.contextLectureId = targetLecture?.id || null
+              shaped.contextLectureTitle = targetLecture?.title || null
+              openVideoPlayer(shaped)
+            }
+          }}
+          onSelectExam={(exam, targetLecture) => {
+            startExam(exam, targetLecture?.id || null)
+          }}
           partTrialsLeft={partTrialsLeft}
           partViewCap={partViewCap}
           findBlockingGate={findBlockingGate}

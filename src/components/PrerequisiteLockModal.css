@@ -1,0 +1,482 @@
+/* ==========================================================================
+   PrerequisiteLockModal.css — Prerequisite Gate Modal Dialog
+   Student-facing modal displaying locked content reason, required exam,
+   passing threshold, student's best score, and direct exam launch action.
+   ========================================================================== */
+
+/* ── Modal Overlay Backdrop ────────────────────────────────────────────── */
+.plm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  direction: rtl;
+  animation: plm-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes plm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Modal Window ──────────────────────────────────────────────────────── */
+.plm-dialog {
+  background: var(--card-bg, #ffffff);
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(245, 158, 11, 0.15),
+              0 10px 30px rgba(245, 158, 11, 0.08);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  animation: plm-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-family: inherit;
+  color: var(--text-color, #1e293b);
+}
+
+@keyframes plm-scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Modal Header Banner ───────────────────────────────────────────────── */
+.plm-header {
+  padding: 28px 24px 20px 24px;
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+  border-bottom: 1px solid #fef3c7;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+}
+
+.plm-shield-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+  position: relative;
+}
+
+.plm-shield-box .plm-mini-lock {
+  position: absolute;
+  bottom: -4px;
+  left: -4px;
+  background: #d97706;
+  color: #ffffff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+}
+
+.plm-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.plm-header-text h3 {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #92400e;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plm-header-text p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #78350f;
+  line-height: 1.5;
+}
+
+.plm-close-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.plm-close-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  transform: rotate(90deg);
+}
+
+/* ── Modal Body ────────────────────────────────────────────────────────── */
+.plm-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 1. Target Item Callout */
+.plm-target-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plm-target-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.plm-target-icon.type-lecture {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.plm-target-icon.type-video {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.plm-target-icon.type-exam {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+.plm-target-icon.type-file {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.plm-target-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.plm-target-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.plm-target-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2. Prerequisite Requirement Card */
+.plm-prereq-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fffdfa 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
+  position: relative;
+}
+
+.plm-prereq-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.plm-exam-icon-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.plm-prereq-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plm-prereq-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+
+.plm-prereq-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
+
+.plm-exam-details-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.plm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+/* 3. Score Benchmark Comparison */
+.plm-score-benchmarks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: #fafaf9;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 14px;
+}
+
+.plm-benchmark-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plm-benchmark-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plm-benchmark-value {
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.plm-benchmark-value.req-val {
+  color: #d97706;
+}
+
+.plm-benchmark-value.stud-val {
+  color: #2563eb;
+}
+
+.plm-benchmark-value.stud-val.val-unattempted {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding-top: 4px;
+}
+
+/* Score Progress Gauge */
+.plm-gauge-wrap {
+  margin-top: 14px;
+}
+
+.plm-gauge-track {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+}
+
+.plm-gauge-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #3b82f6);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.plm-gauge-marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: #d97706;
+  border-radius: 2px;
+}
+
+.plm-gauge-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* 4. Helpful Guidance Note */
+.plm-guidance-note {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+  background: rgba(241, 245, 249, 0.7);
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.plm-guidance-note i {
+  color: #6366f1;
+  margin-top: 2px;
+}
+
+/* ── Modal Footer ──────────────────────────────────────────────────────── */
+.plm-footer {
+  padding: 16px 24px 24px 24px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.plm-btn {
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  border: none;
+}
+
+.plm-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.plm-btn-cancel:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.plm-btn-primary {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);
+  flex: 1;
+}
+
+.plm-btn-primary:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(217, 119, 6, 0.4);
+}
+
+.plm-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .plm-dialog {
+    border-radius: 20px;
+  }
+
+  .plm-header {
+    padding: 20px 16px 16px 16px;
+  }
+
+  .plm-body {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .plm-footer {
+    padding: 14px 16px 20px 16px;
+    flex-direction: column-reverse;
+  }
+
+  .plm-btn {
+    width: 100%;
+  }
+
+  .plm-score-benchmarks {
+    grid-template-columns: 1fr;
+  }
+}

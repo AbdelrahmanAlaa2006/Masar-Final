@@ -21,10 +21,10 @@ import './Header.css'
 
 const NAV_ITEMS_BASE = [
   { to: '/', label: 'الرئيسية', icon: 'fa-house' },
-  { to: '/videos', label: 'الفيديوهات', icon: 'fa-circle-play' },
+  { to: '/lectures', label: 'المحاضرات', icon: 'fa-graduation-cap' },
+  { to: '/shop', label: 'الباقات', icon: 'fa-bag-shopping' },
   { to: '/exams', label: 'الامتحانات', icon: 'fa-file-pen' },
   { to: '/homework', label: 'الواجبات', icon: 'fa-clipboard-list' },
-  { to: '/shop', label: 'الباقات (الاشتراكات)', icon: 'fa-bag-shopping' },
   { to: '/payments', label: 'تأكيد الدفع', icon: 'fa-wallet' },
   { to: '/report', label: 'التقارير', icon: 'fa-chart-line' },
 ]
@@ -156,6 +156,7 @@ export default function Header() {
 
   const filteredBase = NAV_ITEMS_BASE.filter(item => {
     let key = null
+    if (item.to === '/lectures') key = 'lectures'
     if (item.to === '/videos') key = 'videos'
     if (item.to === '/exams') key = 'exams'
     if (item.to === '/homework') key = 'homework'
@@ -176,6 +177,7 @@ export default function Header() {
       // Items with no permission key (e.g. Home '/') aren't gated — always show.
       if (!key) return true
       if (key === 'reports') return hasPermission('reports')
+      if (key === 'lectures') return hasPermission('videos') || hasPermission('curriculum') || true
       return hasPermission(key)
     }
 

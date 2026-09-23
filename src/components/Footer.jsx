@@ -166,7 +166,7 @@ export default function Footer() {
             <ul className="sf-links">
               <li><Link to="/"><i className="fas fa-house"></i> الرئيسية</Link></li>
               {isFeatureEnabled('homework') && <li><Link to="/homework"><i className="fas fa-clipboard-list"></i> الواجبات</Link></li>}
-              {isFeatureEnabled('videos') && <li><Link to="/videos"><i className="fas fa-circle-play"></i> الفيديوهات</Link></li>}
+              {isFeatureEnabled('lectures') && <li><Link to="/lectures"><i className="fas fa-graduation-cap"></i> المحاضرات</Link></li>}
               {isFeatureEnabled('exams') && <li><Link to="/exams"><i className="fas fa-file-pen"></i> الامتحانات</Link></li>}
               {isFeatureEnabled('payments') && <li><Link to="/payments"><i className="fas fa-wallet"></i> المدفوعات</Link></li>}
               {isFeatureEnabled('reports') && <li><Link to="/report"><i className="fas fa-chart-line"></i> التقارير</Link></li>}

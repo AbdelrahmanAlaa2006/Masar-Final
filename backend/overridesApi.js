@@ -31,7 +31,7 @@ export async function listOverridesForTarget(scope, targetId, itemType) {
   return cached(key, LIST_TTL, async () => {
     const { data, error } = await supabase
       .from(TABLE)
-      .select('item_id, item_type, allowed, attempts, available_hours')
+      .select('item_id, item_type, allowed, attempts, available_hours, available_until')
       .eq('scope', scope)
       .eq('target_id', String(targetId))
       .eq('item_type', itemType)
@@ -52,9 +52,9 @@ function invalidateOverrideCaches() {
   invalidatePrefix('attempts:')
 }
 
-/* Admin: upsert one override row. Pass { allowed, attempts } — either may be
+/* Admin: upsert one override row. Pass { allowed, attempts, availableHours, availableUntil } — either may be
    omitted to keep its previous/default value. */
-export async function upsertOverride({ scope, targetId, itemType, itemId, allowed, attempts, availableHours }) {
+export async function upsertOverride({ scope, targetId, itemType, itemId, allowed, attempts, availableHours, availableUntil }) {
   const payload = {
     scope,
     target_id: String(targetId),
@@ -63,6 +63,7 @@ export async function upsertOverride({ scope, targetId, itemType, itemId, allowe
     ...(allowed        !== undefined ? { allowed }  : {}),
     ...(attempts       !== undefined ? { attempts } : {}),
     ...(availableHours !== undefined ? { available_hours: availableHours } : {}),
+    ...(availableUntil !== undefined ? { available_until: availableUntil } : {}),
   }
   const { data, error } = await supabase
     .from(TABLE)

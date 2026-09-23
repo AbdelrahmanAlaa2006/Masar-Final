@@ -189,6 +189,10 @@ export async function createExam(input) {
     target_group_id: input.target_audience === 'group' ? (input.target_group_id || null) : null,
   }
 
+  if (input.reveal_grades !== undefined) {
+    payload.reveal_grades = !!input.reveal_grades
+  }
+
   // Handle available_hours
   if (input.available_hours !== undefined && input.available_hours !== null) {
     payload.available_hours = parseInt(input.available_hours, 10)

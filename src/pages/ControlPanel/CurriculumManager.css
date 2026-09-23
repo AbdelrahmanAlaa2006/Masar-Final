@@ -1,0 +1,480 @@
+/* ==========================================================================
+   CurriculumManager.css — Teacher/Admin Curriculum & Lecture Management
+   4-Level Hierarchy: Package -> Chapter -> Lecture -> Content (Videos/Exams/Files)
+   ========================================================================== */
+
+.cp-curriculum-wrap {
+  direction: rtl;
+  width: 100%;
+  padding-bottom: 60px;
+}
+
+/* ── Level 1: Package Header Banner ────────────────────────────────────── */
+.cp-curriculum-header {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  margin-bottom: 24px;
+}
+
+.cp-curriculum-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.cp-curriculum-title-box h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-color, #1e293b);
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-curriculum-title-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--cp-text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.cp-curriculum-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light, #f1f5f9);
+}
+
+.cp-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cp-stat-chip.stat-green {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+}
+
+.cp-stat-chip.stat-purple {
+  background: rgba(139, 92, 246, 0.08);
+  color: #7c3aed;
+}
+
+.cp-stat-chip.stat-orange {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+}
+
+.cp-stat-chip.stat-blue {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+}
+
+/* ── Actions Toolbar ───────────────────────────────────────────────────── */
+.cp-curriculum-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ── Level 2: Chapter Card (Accordion) ─────────────────────────────────── */
+.cp-chapter-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1.5px solid var(--border-light, #e2e8f0);
+  border-radius: 18px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cp-chapter-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.cp-chapter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: var(--cp-card-bg, #ffffff);
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.cp-chapter-header:hover {
+  background: rgba(99, 102, 241, 0.02);
+}
+
+.cp-chapter-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.cp-chapter-badge {
+  background: #6366f1;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.cp-chapter-title-wrap h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--text-color, #1e293b);
+}
+
+.cp-chapter-desc {
+  font-size: 0.82rem;
+  color: var(--cp-text-muted, #64748b);
+  margin-top: 2px;
+}
+
+.cp-chapter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-chapter-body {
+  padding: 18px 20px;
+  border-top: 1px solid var(--border-light, #f1f5f9);
+  background: rgba(248, 250, 252, 0.4);
+}
+
+/* ── Level 3: Lecture Card ─────────────────────────────────────────────── */
+.cp-lecture-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.cp-lecture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-light, #e2e8f0);
+}
+
+.cp-lecture-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-lecture-num {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.cp-lecture-title-box h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-color, #1e293b);
+}
+
+.cp-lecture-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Level 4: Attached Content Sections (Videos/Exams/Files) ───────────── */
+.cp-content-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.cp-content-box {
+  background: rgba(248, 250, 252, 0.6);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.cp-content-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cp-content-box-header h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-color, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-content-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-content-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  padding: 8px 12px;
+  gap: 10px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.cp-content-item-row:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.cp-content-item-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cp-content-item-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-color, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-content-item-sub {
+  font-size: 0.75rem;
+  color: var(--cp-text-muted, #64748b);
+}
+
+.cp-content-empty {
+  text-align: center;
+  padding: 16px 8px;
+  font-size: 0.8rem;
+  color: var(--cp-text-muted, #94a3b8);
+  border: 1px dashed var(--border-light, #cbd5e1);
+  border-radius: 8px;
+}
+
+/* ── Prerequisite Unlock Rule Card ─────────────────────────────────────── */
+.cp-unlock-rule-card {
+  background: rgba(245, 158, 11, 0.06);
+  border: 1.5px dashed rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cp-unlock-rule-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #b45309;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ── Unassigned Content Reservoir Drawer ───────────────────────────────── */
+.cp-unassigned-drawer-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 2px solid #8b5cf6;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.1);
+  animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cp-unassigned-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.cp-unassigned-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-unassigned-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cp-unassigned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.cp-unassigned-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+/* ── Modals / Dialogs ──────────────────────────────────────────────────── */
+.cp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  direction: rtl;
+}
+
+.cp-modal-window {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: zoomIn 0.2s ease-out;
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.cp-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.cp-modal-head h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-color, #1e293b);
+}
+
+.cp-form-group {
+  margin-bottom: 16px;
+}
+
+.cp-form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-color, #1e293b);
+}
+
+.cp-form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-light, #cbd5e1);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-color, #1e293b);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.cp-form-input:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.cp-progress-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.cp-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #10b981);
+  transition: width 0.2s ease;
+}

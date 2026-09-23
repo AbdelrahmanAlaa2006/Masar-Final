@@ -1,0 +1,213 @@
+@import "./ControlPanel.css";
+@import "./Report.css";
+@import "./VideosGroupReport.css";
+
+/* ── LecturesGroupReport.css ────────────────────────────────────────── */
+
+.lgr-page {
+  padding-top: 30px;
+  min-height: 100vh;
+}
+
+.lgr-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+.lgr-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lgr-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted, #718096);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.lgr-step.active {
+  color: #7c3aed;
+}
+
+.lgr-step.done {
+  color: #10b981;
+}
+
+.lgr-step-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--hover-bg, #f0f2f8);
+  color: var(--text-muted, #718096);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.lgr-step.active .lgr-step-num {
+  background: rgba(124, 58, 237, 0.12);
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+.lgr-step.done .lgr-step-num {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.lgr-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border-light, #e2e8f0);
+  margin: 0 12px 18px;
+}
+
+/* ── Step Card Box ──────────────────────────────────────────────────── */
+.lgr-step-box {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 18px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.lgr-step-box-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cp-text-main, #0f172a);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lgr-lectures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.lgr-lecture-chip {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--cp-card-border, #cbd5e1);
+  background: var(--cp-card-bg, #ffffff);
+  color: var(--cp-text-main, #1e293b);
+  cursor: pointer;
+  text-align: right;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lgr-lecture-chip:hover {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.03);
+  transform: translateY(-2px);
+}
+
+.lgr-lecture-chip.active {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+/* ── Summary Stats Bar ──────────────────────────────────────────────── */
+.lgr-summary-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.lgr-summary-stat-box {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.lgr-stat-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--cp-text-main, #0f172a);
+}
+
+.lgr-stat-label {
+  font-size: 0.8rem;
+  color: var(--cp-text-muted, #64748b);
+  margin-top: 4px;
+}
+
+/* ── Table Layout ───────────────────────────────────────────────────── */
+.lgr-table-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.lgr-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.92rem;
+}
+
+.lgr-table th {
+  padding: 12px 16px;
+  background: var(--cp-back-bg, #f8fafc);
+  color: var(--cp-text-muted, #64748b);
+  font-weight: 700;
+  border-bottom: 2px solid var(--cp-divider, #e2e8f0);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lgr-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cp-divider, #e2e8f0);
+  color: var(--cp-text-main, #1e293b);
+  vertical-align: middle;
+}
+
+.lgr-table tbody tr:hover {
+  background: var(--cp-hover-bg, #f8fafc);
+}
+
+.lgr-student-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}

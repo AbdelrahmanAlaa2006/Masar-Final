@@ -150,3 +150,31 @@ export async function deleteR2Object({ key, url } = {}) {
   }
   return data
 }
+
+// ── Secure short-lived presigned GET download URL for lecture files ──
+export async function getLectureFileDownloadUrl({ fileId, contextLectureId }) {
+  if (!fileId || !contextLectureId) {
+    throw new Error('fileId و contextLectureId مطلوبان لاستخراج رابط التحميل')
+  }
+  const { data, error } = await supabase.functions.invoke('r2-download-url', {
+    body: { fileId, contextLectureId },
+  })
+  if (error) {
+    let detail = error.message || 'تعذر الحصول على رابط التحميل'
+    try {
+      const resp = error.context?.response || error.context
+      if (resp && typeof resp.text === 'function') {
+        const raw = await resp.text()
+        if (raw) {
+          try {
+            const j = JSON.parse(raw)
+            if (j?.error) detail = j.error
+            else detail = raw
+          } catch { detail = raw }
+        }
+      }
+    } catch {/* ignore */}
+    throw new Error(detail)
+  }
+  return data // { authorized: true, fileId, title, fileKey, fileSize, downloadUrl, expiresIn: 300 }
+}

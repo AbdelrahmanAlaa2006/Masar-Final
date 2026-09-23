@@ -1,0 +1,195 @@
+/* ==========================================================================
+   VideoInfoCard.css
+   Sidebar card for Lecture Workspace ("معلومات الفيديو")
+   Matches Reference Image 2 styling with pure tokenized multi-tenant CSS.
+   ========================================================================== */
+
+.vic-root {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--dynamic-card, rgba(15, 23, 42, 0.65));
+  border: 1px solid var(--border-color, rgba(56, 189, 248, 0.15));
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  font-family: inherit;
+  color: var(--text-primary, #f8fafc);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  direction: rtl;
+}
+
+.vic-root:hover {
+  border-color: rgba(56, 189, 248, 0.28);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Card Header ─────────────────────────────────────────────────── */
+.vic-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vic-header-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.vic-header-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #f8fafc);
+}
+
+/* ── Active Video Title Strip ─────────────────────────────────────── */
+.vic-title-strip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.vic-title-label {
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vic-title-text {
+  color: #e2e8f0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ── Two Sub-Cards Grid ──────────────────────────────────────────── */
+.vic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .vic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vic-tile {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.vic-tile:hover {
+  background: rgba(30, 41, 59, 0.75);
+}
+
+.vic-tile-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.01em;
+}
+
+/* Views Counter Tile */
+.vic-views-tile {
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.vic-views-value {
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #38bdf8;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+}
+
+/* Course & Purchase Tile */
+.vic-course-tile {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.vic-course-desc {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.vic-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.vic-status-prefix {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.vic-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.vic-status-badge.is-purchased {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.vic-status-badge.not-purchased {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.vic-status-badge.is-admin {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}

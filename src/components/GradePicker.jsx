@@ -37,16 +37,20 @@ export default function GradePicker({
   grades = [],
   counts = {},
   value = '',
+  selectedGrade = '',
   onChange,
+  onSelectGrade,
   activeCount = null,
   title = 'اختر الصف الدراسي',
   emptyText = 'لا يوجد طلاب مسجلون بعد.',
   style,
 }) {
   const [showEmpty, setShowEmpty] = useState(false)
+  const actualValue = value || selectedGrade || ''
+  const actualOnChange = onChange || onSelectGrade
 
   const countOf = (grade) =>
-    (value === grade && activeCount != null ? activeCount : counts[grade] || 0)
+    (actualValue === grade && activeCount != null ? activeCount : counts[grade] || 0)
 
   const ordered = useMemo(() => {
     const rank = (g) => {
@@ -57,8 +61,8 @@ export default function GradePicker({
   }, [grades])
 
   // A grade stays visible while it is selected, even with no students.
-  const hidden = ordered.filter((g) => countOf(g) === 0 && g !== value)
-  const visible = showEmpty ? ordered : ordered.filter((g) => countOf(g) > 0 || g === value)
+  const hidden = ordered.filter((g) => countOf(g) === 0 && g !== actualValue)
+  const visible = showEmpty ? ordered : ordered.filter((g) => countOf(g) > 0 || g === actualValue)
 
   const sections = []
   for (const stage of STAGES) {
@@ -85,14 +89,14 @@ export default function GradePicker({
               <div className="gp-chips">
                 {section.items.map((grade) => {
                   const n = countOf(grade)
-                  const active = value === grade
+                  const active = actualValue === grade
                   return (
                     <button
                       key={grade}
                       type="button"
                       aria-pressed={active}
                       className={`gp-chip ${active ? 'is-active' : ''} ${n === 0 ? 'is-empty' : ''}`}
-                      onClick={() => onChange?.(grade)}
+                      onClick={() => actualOnChange?.(grade)}
                     >
                       <span>{GRADE_LABEL[grade] || grade}</span>
                       <span className="gp-chip-count">{n}</span>

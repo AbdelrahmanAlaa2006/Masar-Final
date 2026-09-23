@@ -183,6 +183,10 @@ export default function Report() {
       prep: student.prep || '',
     })
     if (type === 'videos') navigate(`/videos-report?${params.toString()}`)
+    else if (type === 'lectures') {
+      params.set('studentId', student.id || '')
+      navigate(`/lectures-report?${params.toString()}`)
+    }
     else if (type === 'pre-assessment') navigate(`/pre-assessment-report?${params.toString()}`)
     else if (type === 'exams') {
       params.set('type', 'exam')
@@ -219,6 +223,7 @@ export default function Report() {
      and Supabase RLS scopes the data to auth.uid() automatically. */
   const goToMyReport = (type) => {
     if (type === 'videos') navigate('/videos-report')
+    else if (type === 'lectures') navigate('/lectures-report')
     else if (type === 'exams') navigate('/exams-report?type=exam')
     else if (type === 'quizzes') navigate('/exams-report?type=quiz')
     else if (type === 'homework') navigate('/homework-report')
@@ -306,6 +311,21 @@ export default function Report() {
                   <div className="cp-section-body">
                     <h3>تقرير الفيديوهات</h3>
                     <p>مشاهداتك ونسبة تقدمك في الفيديوهات التعليمية</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
+
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-indigo" onClick={() => goToMyReport('lectures')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-layer-group"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير المحاضرات</h3>
+                    <p>استعراض تقدمك وإحصائيات مشاهداتك في كل محاضرة وفيديوهاتها</p>
                   </div>
                   <div className="cp-section-chevron-circle">
                     <i className="fas fa-chevron-left"></i>
@@ -484,6 +504,7 @@ export default function Report() {
   const goToGroupReport = (type) => {
     if (type === 'pre-assessment') navigate('/pre-assessment-report')
     else if (type === 'videos') navigate('/videos-group-report')
+    else if (type === 'lectures') navigate('/lectures-group-report')
     else if (type === 'exams') navigate('/exams-group-report?type=exam')
     else if (type === 'quizzes') navigate('/exams-group-report?type=quiz')
     else if (type === 'homework') navigate('/homework-group-report')
@@ -672,6 +693,21 @@ export default function Report() {
                 </button>
               )}
 
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-indigo" onClick={() => goTo('lectures')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-layer-group"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير المحاضرات</h3>
+                    <p>متابعة تفصيلية لتقدم الطالب في المحاضرات وجميع الفيديوهات التابعة لها</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
+
               {isFeatureEnabled('exams') && isFeatureEnabled('exam_reports') && (
                 <button className="cp-section-card cp-accent-orange" onClick={() => goTo('exams')}>
                   <div className="cp-section-icon">
@@ -762,6 +798,21 @@ export default function Report() {
                   <div className="cp-section-body">
                     <h3>تقرير جماعي للفيديوهات</h3>
                     <p>إحصائيات المشاهدة وتقرير الأداء العام لجميع الطلاب</p>
+                  </div>
+                  <div className="cp-section-chevron-circle">
+                    <i className="fas fa-chevron-left"></i>
+                  </div>
+                </button>
+              )}
+
+              {isFeatureEnabled('videos') && isFeatureEnabled('video_reports') && (
+                <button className="cp-section-card cp-accent-indigo" onClick={() => goToGroupReport('lectures')}>
+                  <div className="cp-section-icon">
+                    <i className="fas fa-layer-group"></i>
+                  </div>
+                  <div className="cp-section-body">
+                    <h3>تقرير جماعي للمحاضرات</h3>
+                    <p>إحصائيات ونسب إنجاز الطلاب في كل محاضرة وفيديوهاتها بالكامل</p>
                   </div>
                   <div className="cp-section-chevron-circle">
                     <i className="fas fa-chevron-left"></i>
@@ -1003,6 +1054,7 @@ export default function Report() {
                 <p style={{ color: 'var(--cp-text-muted)' }}>
                   لعرض {
                     pickerType === 'videos' ? 'تقرير الفيديوهات' :
+                    pickerType === 'lectures' ? 'تقرير المحاضرات' :
                     pickerType === 'pre-assessment' ? 'تقرير التقييمات قبل الفيديو' :
                     pickerType === 'exams' ? 'تقرير الامتحانات' :
                     pickerType === 'quizzes' ? 'تقرير التسميعات' :

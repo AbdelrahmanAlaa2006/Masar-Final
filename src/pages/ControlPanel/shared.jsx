@@ -31,7 +31,8 @@ export const initials = (name = '') =>
 
 export function Breadcrumbs({ section, scope, target, onHome, onSection, onScope }) {
   const sectionLabel =
-    section === 'videos' ? 'الفيديوهات'
+    section === 'curriculum' ? 'إدارة المحاضرات'
+    : section === 'videos' ? 'الفيديوهات'
     : section === 'exams' ? 'الامتحانات'
     : section === 'homeworks' ? 'الواجبات'
     : section === 'accounts' ? 'حسابات الطلاب والتفعيل'

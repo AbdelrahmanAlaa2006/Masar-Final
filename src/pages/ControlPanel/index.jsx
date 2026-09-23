@@ -36,12 +36,14 @@ const BranchesPanel = lazy(() => import('./BranchesPanel'))
 
 const PlaylistsPanel = lazy(() => import('./PlaylistsPanel'))
 const PackagesPanel = lazy(() => import('./PackagesPanel'))
+const CurriculumManager = lazy(() => import('./CurriculumManager'))
 const PurchasesPanel = lazy(() => import('./PurchasesPanel'))
 const StudentAccessPanel = lazy(() => import('./StudentAccessPanel'))
 const CalendarPanel = lazy(() => import('./CalendarPanel'))
 
 const SECTION_META = {
   home: { title: 'الرئيسية', icon: 'fa-house', closable: false },
+  curriculum: { title: 'إدارة المحاضرات', icon: 'fa-graduation-cap', closable: true },
   attendance: { title: 'التحضير والغياب', icon: 'fa-calendar-check', closable: true },
   accounts: { title: 'حسابات الطلاب', icon: 'fa-user-check', closable: true },
   groups: { title: 'إدارة المجموعات', icon: 'fa-user-group', closable: true },
@@ -65,15 +67,17 @@ const SECTION_META = {
   super_admin: { title: 'لوحة المطور', icon: 'fa-user-ninja', closable: true },
 }
 
-export default function ControlPanelIndex() {
+export default function ControlPanelIndex({ initialSection }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, hasPermission } = useAuth()
   const { isFeatureEnabled } = useTenant()
 
-  /* navigation derived from URL search parameters */
-  const section = searchParams.get('section') || 'home'
+  /* navigation derived from URL pathname or search parameters */
+  const isCurriculumRoute = location.pathname.replace(/\/+$/, '').endsWith('/curriculum') || initialSection === 'curriculum'
+  const sectionParam = searchParams.get('section')
+  const section = isCurriculumRoute ? 'curriculum' : (sectionParam || 'home')
   const subtab = searchParams.get('subtab') || 'attempts'
 
   // Security Gate checks for route routing
@@ -82,6 +86,7 @@ export default function ControlPanelIndex() {
     if (user.role === 'super_admin') return true
 
     // Feature toggles check (blocks access if feature is disabled in tenant settings)
+    if (s === 'curriculum' && !isFeatureEnabled('videos') && !isFeatureEnabled('packages_store') && !isFeatureEnabled('lectures')) return false
     if (s === 'attendance' && !isFeatureEnabled('attendance')) return false
     if (s === 'grades' && !isFeatureEnabled('grades')) return false
     if (s === 'exams' && !isFeatureEnabled('exams')) return false
@@ -105,6 +110,7 @@ export default function ControlPanelIndex() {
     if (s === 'home') return true
 
     // Assistant gates
+    if (s === 'curriculum') return hasPermission('videos') || hasPermission('payments')
     if (s === 'playlists') return hasPermission('videos') || hasPermission('exams') || hasPermission('homework')
     if (s === 'calendar') return hasPermission('videos') || hasPermission('exams') || hasPermission('homework')
     if (s === 'packages' || s === 'purchases') return hasPermission('payments')
@@ -132,7 +138,8 @@ export default function ControlPanelIndex() {
   const ACTIVE_TAB_KEY = `cp_active_tab_${user?.id || 'guest'}`
 
   const [openTabs, setOpenTabs] = useState(() => {
-    const initSec = searchParams.get('section')
+    const isCurr = (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').endsWith('/curriculum')) || initialSection === 'curriculum'
+    const initSec = isCurr ? 'curriculum' : searchParams.get('section')
     try {
       const storedStr = sessionStorage.getItem(TAB_STORAGE_KEY)
       if (storedStr) {
@@ -173,7 +180,8 @@ export default function ControlPanelIndex() {
   })
 
   const [activeTabId, setActiveTabId] = useState(() => {
-    const initSec = searchParams.get('section')
+    const isCurr = (typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').endsWith('/curriculum')) || initialSection === 'curriculum'
+    const initSec = isCurr ? 'curriculum' : searchParams.get('section')
     if (initSec && SECTION_META[initSec]) return initSec
     try {
       const storedActive = sessionStorage.getItem(ACTIVE_TAB_KEY)
@@ -212,9 +220,10 @@ export default function ControlPanelIndex() {
     })
   }, [activeTabId, ACTIVE_TAB_KEY])
 
-  // Keep internal openTabs synchronized with searchParams (e.g. sidebar navigation, top navbar, or deep links)
+  // Keep internal openTabs synchronized with searchParams / location (e.g. sidebar navigation, top navbar, or deep links)
   useEffect(() => {
-    const sectionParam = searchParams.get('section') || 'home'
+    const isCurr = location.pathname.replace(/\/+$/, '').endsWith('/curriculum') || initialSection === 'curriculum'
+    const sectionParam = isCurr ? 'curriculum' : (searchParams.get('section') || 'home')
 
     if (!isSectionAllowed(sectionParam)) return
 
@@ -225,7 +234,7 @@ export default function ControlPanelIndex() {
       return [...prev, { id: sectionParam, section: sectionParam, title: meta.title, icon: meta.icon, closable: meta.closable !== false }]
     })
     setActiveTabId(sectionParam)
-  }, [searchParams])
+  }, [location.pathname, searchParams, initialSection])
 
   // Clear tabs ONLY when user or tenant ACTUALLY changes (e.g. login as different user or switch tenant)
   const lastUserRef = useRef({ id: user?.id, tenant_id: user?.tenant_id })
@@ -246,7 +255,21 @@ export default function ControlPanelIndex() {
     const tab = openTabs.find((t) => t.id === tabId)
     if (!tab) return
     setActiveTabId(tabId)
-    setSearchParams({ section: tab.section }, { replace: true })
+    if (tab.section === 'curriculum') {
+      navigate('/control-panel/curriculum')
+    } else if (tab.section === 'home') {
+      if (location.pathname.includes('/curriculum')) {
+        navigate('/control-panel')
+      } else {
+        setSearchParams({ section: 'home' }, { replace: true })
+      }
+    } else {
+      if (location.pathname.includes('/curriculum')) {
+        navigate(`/control-panel?section=${tab.section}`)
+      } else {
+        setSearchParams({ section: tab.section }, { replace: true })
+      }
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
@@ -264,7 +287,13 @@ export default function ControlPanelIndex() {
         const newActive = nextTabs[Math.max(0, closedIndex - 1)] || nextTabs[0]
         if (newActive) {
           setActiveTabId(newActive.id)
-          setSearchParams({ section: newActive.section }, { replace: true })
+          if (newActive.section === 'curriculum') {
+            navigate('/control-panel/curriculum')
+          } else if (newActive.section === 'home') {
+            navigate('/control-panel')
+          } else {
+            navigate(`/control-panel?section=${newActive.section}`)
+          }
         }
       }
       return nextTabs
@@ -417,7 +446,11 @@ export default function ControlPanelIndex() {
   }, [section])
 
   const goHome = () => {
-    setSearchParams({ section: 'home' }, { replace: true })
+    if (location.pathname.includes('/curriculum')) {
+      navigate('/control-panel')
+    } else {
+      setSearchParams({ section: 'home' }, { replace: true })
+    }
     setActiveTabId('home')
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     requestAnimationFrame(() => {
@@ -428,6 +461,25 @@ export default function ControlPanelIndex() {
   const enterSection = (s) => {
     if (!isSectionAllowed(s)) {
       flash('غير مصرح لك بالدخول إلى هذا القسم', 'warning')
+      return
+    }
+    if (s === 'curriculum') {
+      navigate('/control-panel/curriculum')
+      setActiveTabId('curriculum')
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      })
+      return
+    }
+    if (location.pathname.includes('/curriculum')) {
+      const nextQuery = (s === 'videos' || s === 'exams') ? `?section=${s}&subtab=attempts` : `?section=${s}`
+      navigate(`/control-panel${nextQuery}`)
+      setActiveTabId(s)
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      })
       return
     }
     const nextParams = { section: s }
@@ -500,6 +552,15 @@ export default function ControlPanelIndex() {
               title="رصد الدرجات والتقييم"
               desc="رصد الواجبات والامتحانات وسجل التقييم السلوكي والتفاعل"
               onClick={() => enterSection('grades')}
+            />
+          )}
+          {(isFeatureEnabled('videos') || isFeatureEnabled('packages_store') || isFeatureEnabled('lectures')) && (user?.role === 'admin' || user?.role === 'super_admin' || hasPermission('videos') || hasPermission('payments')) && (
+            <SectionCard
+              icon="fa-graduation-cap"
+              accent="indigo"
+              title="إدارة المحاضرات"
+              desc="إدارة المنهج الدراسي، الفصول، والمحاضرات التعليمية وربط الفيديوهات والامتحانات"
+              onClick={() => enterSection('curriculum')}
             />
           )}
           {isFeatureEnabled('videos') && hasPermission('videos') && (
@@ -707,6 +768,7 @@ export default function ControlPanelIndex() {
         {s === 'branches' && <BranchesPanel onBack={goHome} flash={flash} />}
 
         {s === 'playlists' && <PlaylistsPanel onBack={goHome} flash={flash} />}
+        {s === 'curriculum' && <CurriculumManager onBack={goHome} flash={flash} />}
         {s === 'packages' && <PackagesPanel onBack={goHome} flash={flash} />}
         {s === 'purchases' && <PurchasesPanel onBack={goHome} flash={flash} />}
         {s === 'student_access' && <StudentAccessPanel onBack={goHome} flash={flash} />}

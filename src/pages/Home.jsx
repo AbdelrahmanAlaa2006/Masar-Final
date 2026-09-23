@@ -318,7 +318,7 @@ export default function Home() {
                       { key: 'exams', route: '/exams', icon: <ExamsIcon />, label: 'الامتحانات', descAdmin: 'إدارة الامتحانات ومتابعة نتائج الطلاب', descStudent: 'اختبارات التدريب والامتحانات السابقة' },
                       { key: 'homework', route: '/homework', icon: <LecturesIcon />, label: 'الواجبات', descAdmin: 'نشر الواجبات ومتابعة تسليم الطلاب وتصحيحها', descStudent: 'حلّ واجباتك وارفع إجاباتك للمعلم' },
                       { key: 'reports', route: '/report', icon: <ReportsIcon />, label: 'التقارير', descAdmin: 'تقارير أداء الطلاب وتحليلات المجموعات', descStudent: 'عرض تقارير الأداء والتقدم' },
-                      { key: 'videos', route: '/videos', icon: <VideosIcon />, label: 'الفيديوهات', descAdmin: 'رفع الفيديوهات وضبط صلاحيات المشاهدة', descStudent: 'مشاهدة الفيديوهات التعليمية' },
+                      { key: 'lectures', route: '/lectures', icon: <VideosIcon />, label: 'المحاضرات', descAdmin: 'إدارة المحاضرات وضبط صلاحيات المشاهدة', descStudent: 'متابعة المحاضرات والدروس التعليمية' },
                       { key: 'payments', route: '/packages', icon: <PackagesIcon />, label: 'باقاتي الدراسية', descAdmin: 'تفعيل باقات الطلاب ومتابعة اشتراكاتهم', descStudent: 'فيديوهات، واجبات، وامتحانات باقاتك المشتركة' },
                     ].filter((c) => {
                       if (!isFeatureEnabled(c.key)) return false

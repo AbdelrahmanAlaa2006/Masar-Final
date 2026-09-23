@@ -10,6 +10,7 @@ import { uploadQuizImage } from '@backend/r2'
 import { useTenant } from '../../contexts/TenantContext'
 
 import { GRADE_LABEL } from './shared'
+import CurriculumManager from './CurriculumManager'
 
 export default function PackagesPanel({ onBack, flash }) {
   const { isGradeEnabled, tenantId, gradesList } = useTenant()
@@ -40,6 +41,7 @@ export default function PackagesPanel({ onBack, flash }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null) // package object
   const [editPackageObj, setEditPackageObj] = useState(null) // package object
+  const [selectedPackageForCurriculum, setSelectedPackageForCurriculum] = useState(null)
 
   // Form states
   const [title, setTitle] = useState('')
@@ -278,6 +280,18 @@ export default function PackagesPanel({ onBack, flash }) {
       loadCatalog()
     }
   }, [packages])
+
+  if (selectedPackageForCurriculum) {
+    return (
+      <CurriculumManager
+        package={selectedPackageForCurriculum}
+        onBack={() => {
+          setSelectedPackageForCurriculum(null)
+          loadData()
+        }}
+      />
+    )
+  }
 
   return (
     <section className="cp-panel">
@@ -676,6 +690,32 @@ export default function PackagesPanel({ onBack, flash }) {
                         🗑 حذف
                       </button>
                     </div>
+                  </div>
+
+                  <div style={{ padding: '0 18px 14px' }}>
+                    <button
+                      onClick={() => setSelectedPackageForCurriculum(pkg)}
+                      className="cp-btn"
+                      style={{
+                        width: '100%',
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        color: '#ffffff',
+                        borderRadius: 10,
+                        padding: '9px 14px',
+                        fontWeight: 800,
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                        border: 'none'
+                      }}
+                    >
+                      <i className="fas fa-sitemap"></i>
+                      <span>إدارة الفصول والمحاضرات (المنهج)</span>
+                      <i className="fas fa-arrow-left" style={{ marginInlineStart: 'auto', fontSize: '0.75rem' }}></i>
+                    </button>
                   </div>
                 </div>
               ))}

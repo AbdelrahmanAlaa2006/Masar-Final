@@ -1,0 +1,275 @@
+@import "./ControlPanel.css";
+@import "./Report.css";
+@import "./VideosReport.css";
+
+/* ── LecturesReport.css ─────────────────────────────────────────────── */
+
+.lr-page {
+  padding-top: 30px;
+  min-height: calc(100vh - 144px);
+}
+
+.lr-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+/* ── Lecture Selector Card ──────────────────────────────────────────── */
+.lr-selector-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.lr-selector-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cp-text-main, #1e293b);
+}
+
+.lr-selector-title i {
+  color: #7c3aed;
+  font-size: 1.2rem;
+}
+
+.lr-select-input {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #7c3aed;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--cp-input-bg, #ffffff);
+  color: var(--cp-text-main, #1e293b);
+  cursor: pointer;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+/* ── Lecture Summary Hero Card ──────────────────────────────────────── */
+.lr-hero-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.lr-hero-ring-box {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lr-hero-details {
+  flex: 1;
+  min-width: 260px;
+}
+
+.lr-hero-title-wrap {
+  margin-bottom: 14px;
+}
+
+.lr-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
+.lr-hero-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--cp-text-main, #1e293b);
+  margin: 0 0 4px;
+}
+
+.lr-hero-desc {
+  font-size: 0.85rem;
+  color: var(--cp-text-muted, #64748b);
+  margin: 0;
+}
+
+.lr-hero-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.lr-stat-box {
+  background: var(--cp-back-bg, #f8fafc);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.lr-stat-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--cp-text-main, #0f172a);
+}
+
+.lr-stat-lbl {
+  font-size: 0.75rem;
+  color: var(--cp-text-muted, #64748b);
+  margin-top: 2px;
+}
+
+/* ── Videos Breakdown List ─────────────────────────────────────────── */
+.lr-breakdown-section {
+  margin-top: 24px;
+}
+
+.lr-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.lr-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--cp-text-main, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lr-videos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lr-video-item-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 1px solid var(--cp-card-border, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.lr-video-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: #c4b5fd;
+}
+
+.lr-video-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+  flex: 1;
+}
+
+.lr-video-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.lr-video-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--cp-text-main, #0f172a);
+  margin-bottom: 3px;
+}
+
+.lr-video-meta {
+  font-size: 0.78rem;
+  color: var(--cp-text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lr-video-progress-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 180px;
+}
+
+.lr-progress-track {
+  width: 120px;
+  height: 8px;
+  background: var(--cp-divider, #e2e8f0);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.lr-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.lr-video-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Empty State ────────────────────────────────────────────────────── */
+.lr-empty-card {
+  background: var(--cp-card-bg, #ffffff);
+  border: 2px dashed var(--cp-card-border, #cbd5e1);
+  border-radius: 20px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--cp-text-muted, #64748b);
+}
+
+.lr-empty-card i {
+  font-size: 2.8rem;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.lr-empty-card h3 {
+  color: var(--cp-text-main, #1e293b);
+  margin-bottom: 6px;
+}

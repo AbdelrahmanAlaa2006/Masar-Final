@@ -8,13 +8,16 @@ const Home = lazy(() => import('./pages/Home'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Homework = lazy(() => import('./pages/Homework'))
+const Lectures = lazy(() => import('./pages/Lectures'))
 const Exams = lazy(() => import('./pages/Exams'))
 const Videos = lazy(() => import('./pages/Videos'))
 const Report = lazy(() => import('./pages/Report'))
 const VideosReport = lazy(() => import('./pages/VideosReport'))
+const LecturesReport = lazy(() => import('./pages/LecturesReport'))
 const ExamsReport = lazy(() => import('./pages/ExamsReport'))
 const PreAssessmentReport = lazy(() => import('./pages/PreAssessmentReport'))
 const VideosGroupReport = lazy(() => import('./pages/VideosGroupReport'))
+const LecturesGroupReport = lazy(() => import('./pages/LecturesGroupReport'))
 const ExamsGroupReport = lazy(() => import('./pages/ExamsGroupReport'))
 const HomeworkReport = lazy(() => import('./pages/HomeworkReport'))
 const HomeworkGroupReport = lazy(() => import('./pages/HomeworkGroupReport'))
@@ -713,10 +716,8 @@ function AppContent() {
               <Route path="/register" element={isLoggedIn ? <Navigate to="/" replace /> : <Register />} />
               <Route path="/home" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Home /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Profile /></ProtectedRoute>} />
-              {/* Old /lectures URLs redirect to the new /homework page so
-                shared links / browser bookmarks keep working. */}
               <Route path="/homework" element={<FeatureRoute featureKey="homework"><PermissionRoute isLoggedIn={isLoggedIn} permission="homework"><Homework /></PermissionRoute></FeatureRoute>} />
-              <Route path="/lectures" element={<FeatureRoute featureKey="homework"><Navigate to="/homework" replace /></FeatureRoute>} />
+              <Route path="/lectures" element={<FeatureRoute featureKey="lectures"><ProtectedRoute isLoggedIn={isLoggedIn}><Lectures /></ProtectedRoute></FeatureRoute>} />
               <Route path="/exams" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><Exams /></PermissionRoute></FeatureRoute>} />
               <Route path="/exam-taking" element={<FeatureRoute featureKey="exams"><PermissionRoute isLoggedIn={isLoggedIn} permission="exams"><ExamTaking /></PermissionRoute></FeatureRoute>} />
               <Route path="/videos" element={<FeatureRoute featureKey="videos"><PermissionRoute isLoggedIn={isLoggedIn} permission="videos"><Videos /></PermissionRoute></FeatureRoute>} />
@@ -728,6 +729,7 @@ function AppContent() {
 
               {/* Feature-specific Reports: each follows its granular capability toggle */}
               <Route path="/videos-report" element={<FeatureRoute featureKey="video_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><VideosReport /></PermissionRoute></FeatureRoute>} />
+              <Route path="/lectures-report" element={<FeatureRoute featureKey={['video_reports', 'lectures']}><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><LecturesReport /></PermissionRoute></FeatureRoute>} />
               <Route path="/exams-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><ExamsReport /></PermissionRoute></FeatureRoute>} />
               <Route path="/homework-report" element={<FeatureRoute featureKey="homework_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><HomeworkReport /></PermissionRoute></FeatureRoute>} />
               <Route path="/grades-report" element={<FeatureRoute featureKey="grades_reports"><PermissionRoute isLoggedIn={isLoggedIn} permission="reports"><GradesReport /></PermissionRoute></FeatureRoute>} />
@@ -742,12 +744,14 @@ function AppContent() {
               {/* Staff-only group reports: each follows its granular capability toggle */}
               <Route path="/pre-assessment-report" element={<FeatureRoute featureKey="pre_assessments"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><PreAssessmentReport /></AdminRoute></FeatureRoute>} />
               <Route path="/videos-group-report" element={<FeatureRoute featureKey="video_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><VideosGroupReport /></AdminRoute></FeatureRoute>} />
+              <Route path="/lectures-group-report" element={<FeatureRoute featureKey={['video_reports', 'lectures']}><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><LecturesGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/exams-group-report" element={<FeatureRoute featureKey={['exam_reports', 'grades_reports', 'center_reports']}><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><ExamsGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/homework-group-report" element={<FeatureRoute featureKey="homework_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><HomeworkGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/grades-group-report" element={<FeatureRoute featureKey="grades_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><GradesGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/attendance-group-report" element={<FeatureRoute featureKey="attendance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><AttendanceGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/finance-group-report" element={<FeatureRoute featureKey="finance_reports"><AdminRoute isLoggedIn={isLoggedIn} role={role} permission="reports"><FinanceGroupReport /></AdminRoute></FeatureRoute>} />
               <Route path="/control-panel" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel /></AdminRoute>} />
+              <Route path="/control-panel/curriculum" element={<AdminRoute isLoggedIn={isLoggedIn} role={role}><ControlPanel initialSection="curriculum" /></AdminRoute>} />
 
               <Route path="/help" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Help /></ProtectedRoute>} />
               <Route path="/terms" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Terms /></ProtectedRoute>} />

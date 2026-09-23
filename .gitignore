@@ -49,3 +49,6 @@ whatsapp-gateway/node_modules
 # is fully derivable from content.mjs + screenshots-print/ and is ~3.7 MB of
 # embedded base64. Rebuild with: node docs/user-guide/tools/build-html.mjs
 docs/user-guide/student-parent-guide.html
+
+# Scratch scripts and temporary audit outputs
+scratch/

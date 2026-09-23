@@ -593,6 +593,158 @@ body.dark .et-quick-pill {
   flex-shrink: 0;
 }
 
+/* ─────────────────────────────────────────
+   Phase 7 Step 2: Prerequisite Completion Cards
+───────────────────────────────────────── */
+.et-prereq-finished {
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.et-prereq-finished.is-satisfied {
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.01) 100%);
+}
+
+.et-prereq-finished.is-failed {
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.01) 100%);
+}
+
+.et-prereq-badge-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.et-prereq-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.et-prereq-status-badge.badge-satisfied {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.et-prereq-status-badge.badge-failed {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.et-prereq-context-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 0 auto 28px auto;
+  max-width: 520px;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.et-prereq-context-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.et-prereq-context-label {
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.et-prereq-context-val {
+  color: var(--text-color, #1e293b);
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 340px;
+}
+
+.et-prereq-score-box {
+  margin-bottom: 28px;
+}
+
+.et-score-pct {
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-inline-start: 4px;
+}
+
+.et-prereq-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.et-btn-continue {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+.et-btn-continue:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.et-btn-retry {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
+}
+
+.et-btn-retry:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+}
+
+body.dark .et-prereq-context-info {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark .et-prereq-context-val {
+  color: #f1f5f9;
+}
+
+body.dark .et-prereq-status-badge.badge-satisfied {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+body.dark .et-prereq-status-badge.badge-failed {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
 .et-back-btn {
   padding: 12px 28px;
   font-size: 1rem;

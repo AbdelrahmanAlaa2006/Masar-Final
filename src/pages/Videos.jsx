@@ -103,17 +103,20 @@ export default function Videos() {
   // Convert a DB video row (with embedded video_parts) into the shape the
   // rest of the page was built around (parts[], totalParts).
   function shapeVideo(row) {
-    const parts = (row.video_parts || []).map((p) => ({
+    if (!row) return null
+    if (row.parts && Array.isArray(row.parts) && row.totalParts) return row
+
+    const parts = (row.video_parts || row.parts || []).map((p, idx) => ({
       id: p.id,
       title: p.title,
       source: p.source || 'youtube',
-      youtubeId: p.youtube_id || '',
-      driveId: p.drive_id || '',
-      bunnyVideoId: p.bunny_video_id || '',
-      bunnyLibraryId: p.bunny_library_id || null,
-      durationSeconds: p.duration_seconds || null,
-      part_index: p.part_index,
-      viewLimit: p.view_limit ?? null, // null = unlimited
+      youtubeId: p.youtube_id || p.youtubeId || '',
+      driveId: p.drive_id || p.driveId || '',
+      bunnyVideoId: p.bunny_video_id || p.bunnyVideoId || '',
+      bunnyLibraryId: p.bunny_library_id || p.bunnyLibraryId || null,
+      durationSeconds: p.duration_seconds || p.durationSeconds || null,
+      part_index: p.part_index !== undefined ? p.part_index : idx,
+      viewLimit: p.view_limit ?? p.viewLimit ?? null, // null = unlimited
     }))
     return {
       id: row.id,
@@ -122,12 +125,14 @@ export default function Videos() {
       grade: row.grade,
       totalParts: parts.length,
       parts,
-      activeHours: row.active_hours,
-      expiryTime: row.expiry_at,
-      createdAt: row.created_at,
+      activeHours: row.active_hours ?? row.activeHours,
+      expiryTime: row.expiry_at ?? row.expiryTime,
+      createdAt: row.created_at ?? row.createdAt,
       pdf_url: row.pdf_url || null,
       pdf_key: row.pdf_key || null,
       isArchived: !!row.is_archived,
+      contextLectureId: row.contextLectureId || null,
+      contextLectureTitle: row.contextLectureTitle || null,
     }
   }
 
@@ -226,6 +231,28 @@ export default function Videos() {
   }
 
   useEffect(() => { refreshVideos() }, [])
+
+  // Handle direct navigation via URL query params (?id=... or ?videoId=... and ?lecture=... or ?contextLectureId=...)
+  const initialNavDoneRef = useRef(false)
+  useEffect(() => {
+    if (initialNavDoneRef.current || loading || allVideos.length === 0) return
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const targetVideoId = params.get('id') || params.get('videoId')
+    if (targetVideoId) {
+      initialNavDoneRef.current = true
+      const targetLectureId = params.get('lecture') || params.get('contextLectureId') || null
+      const found = allVideos.find(v => String(v.id) === String(targetVideoId))
+      if (found) {
+        const videoToOpen = {
+          ...found,
+          contextLectureId: targetLectureId,
+          contextLectureTitle: null
+        }
+        openVideoPlayer(videoToOpen)
+      }
+    }
+  }, [allVideos, loading])
 
   useEffect(() => {
     if (!currentUser?.id) return
@@ -1064,9 +1091,23 @@ export default function Videos() {
           onSelectPart={playVideoPart}
           onBack={goBackToVideos}
           backLabel="العودة للفيديوهات"
-          levelEyebrow={levelsMeta[currentGrade]?.ar}
+          levelEyebrow={currentVideo?.contextLectureTitle ? `محاضرة: ${currentVideo.contextLectureTitle}` : levelsMeta[currentGrade]?.ar}
+          contextLectureId={currentVideo?.contextLectureId || null}
+          contextLectureTitle={currentVideo?.contextLectureTitle || null}
           userRole={userRole}
           currentUser={currentUser}
+          onSelectVideo={(newVideo, targetLecture) => {
+            const shaped = shapeVideo(newVideo)
+            if (shaped) {
+              shaped.contextLectureId = targetLecture?.id || null
+              shaped.contextLectureTitle = targetLecture?.title || null
+              openVideoPlayer(shaped)
+            }
+          }}
+          onSelectExam={(exam, targetLecture) => {
+            const lectureParam = targetLecture?.id ? `&lecture=${encodeURIComponent(targetLecture.id)}&contextLectureId=${encodeURIComponent(targetLecture.id)}` : ''
+            navigate(`/exam-taking?id=${exam.id}${lectureParam}`)
+          }}
           partTrialsLeft={partTrialsLeft}
           partViewCap={partViewCap}
           findBlockingGate={findBlockingGate}

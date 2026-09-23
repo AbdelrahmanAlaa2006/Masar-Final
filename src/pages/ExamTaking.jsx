@@ -1,8 +1,10 @@
 import { authStore } from '@backend/authStorage'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt, countSubmittedAttempts } from '@backend/examsApi'
+import { supabase } from '@backend/supabase'
+import { getExamAccess } from '@backend/courseLecturesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { listExamSharedBlocks, buildQuestionBlockMap } from '@backend/examSharedBlocksApi'
 import SharedTextCard from '../components/SharedTextCard'
@@ -10,13 +12,37 @@ import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import { detectTextDir, copyQuestionToClipboard } from '../utils/questionUtils'
+import { emitPrerequisiteUnlocked } from '../utils/unlockEvents'
 
 export default function ExamTaking() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const examId = params.get('id')
+  const contextLectureId = params.get('lecture') || params.get('contextLectureId') || null
+
+  // Prerequisite context forwarded from Phase 7 Step 1
+  const prereqTargetType = params.get('prereqTargetType') || null
+  const prereqTargetId = params.get('prereqTargetId') || null
+  const prereqTargetTitle = params.get('prereqTargetTitle') || null
+  const rawRequiredScore = params.get('requiredScore')
+  const requiredScore = (rawRequiredScore !== null && rawRequiredScore !== undefined && rawRequiredScore !== '')
+    ? parseFloat(rawRequiredScore)
+    : null
+  const requiredExamTitle = params.get('requiredExamTitle') || null
+  const contextLectureTitle = params.get('contextLectureTitle') || null
+
+  const isPrereqExam = !!(prereqTargetId || prereqTargetType || requiredScore !== null)
+  const [isLectureAttached, setIsLectureAttached] = useState(false)
 
   const [exam, setExam] = useState(null)
+  const isLectureExam = !!(
+    contextLectureId ||
+    exam?.lecture_id ||
+    exam?.origin === 'lecture' ||
+    exam?.exam_type === 'lecture' ||
+    isLectureAttached
+  )
+  const questions = exam?.questions || []
   // questionIndex -> shared text block. Built ONCE on load from a single
   // query, so paging through questions never hits the database.
   const [sharedBlockMap, setSharedBlockMap] = useState(() => new Map())
@@ -58,6 +84,69 @@ export default function ExamTaking() {
     } catch { return { guardLabel: '', isAdmin: false } }
   }, [])
 
+  // Prerequisite post-submission score calculations & evaluations
+  const targetTypeLabel = useMemo(() => {
+    switch (prereqTargetType) {
+      case 'video': return 'شرح الفيديو'
+      case 'lecture': return 'المحاضرة'
+      case 'exam': return 'الامتحان'
+      case 'file': return 'الملف'
+      default: return 'المحتوى'
+    }
+  }, [prereqTargetType])
+
+  const maxPoints = useMemo(() => {
+    if (exam?.total_points && exam.total_points > 0) return exam.total_points
+    if (questions.length > 0) return questions.length
+    return 1
+  }, [exam?.total_points, questions.length])
+
+  const achievedPct = useMemo(() => {
+    const score = finalScore ?? 0
+    return Math.round(((score / maxPoints) * 100) * 10) / 10
+  }, [finalScore, maxPoints])
+
+  const isPrereqSatisfied = useMemo(() => {
+    if (requiredScore === null) return true
+    return achievedPct >= requiredScore
+  }, [achievedPct, requiredScore])
+
+  const handleContinueToTarget = useCallback(() => {
+    if (prereqTargetType === 'video' && prereqTargetId) {
+      const lectureParam = contextLectureId
+        ? `&lecture=${encodeURIComponent(contextLectureId)}&contextLectureId=${encodeURIComponent(contextLectureId)}`
+        : ''
+      navigate(`/videos?id=${encodeURIComponent(prereqTargetId)}${lectureParam}`)
+    } else if (contextLectureId) {
+      navigate(-1)
+    } else {
+      navigate('/packages')
+    }
+  }, [prereqTargetType, prereqTargetId, contextLectureId, navigate])
+
+  const handleRetryExam = useCallback(async () => {
+    if (storageKey) {
+      try { localStorage.removeItem(storageKey) } catch {}
+    }
+    setAnswers({})
+    setCurrentQuestion(0)
+    setFinalScore(null)
+    setExamFinished(false)
+    setSubmitting(false)
+    setSubmitError(null)
+    submittedRef.current = false
+    try {
+      const att = await startAttempt({ exam_id: examId })
+      if (att?.id) {
+        setAttemptId(att.id)
+      }
+    } catch (err) {
+      console.error('Failed to start retry attempt:', err)
+    }
+    const initialTime = (exam?.duration_minutes || 10) * 60
+    setTimeLeft(initialTime)
+  }, [storageKey, examId, exam])
+
   // ── Load the exam + start an attempt ──────────────────────────
   useEffect(() => {
     // Run-once guard: in React StrictMode (dev), this effect mounts
@@ -75,10 +164,66 @@ export default function ExamTaking() {
         if (!sid) { setLoadError('يجب تسجيل الدخول'); return }
         setUserId(sid)
 
-        const e = await getExam(examId)
+        const role = u?.role || 'student'
+        let e = null
+        let attemptFromAccess = null
+
+        // 1. Authoritative Educational Unlock & Access Gate via getExamAccess
+        if (contextLectureId && role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
+          try {
+            const accessRes = await getExamAccess({
+              examId,
+              contextLectureId
+            })
+            if (!accessRes?.authorized) {
+              setLoadError('غير مصرح لك بالوصول إلى هذا الامتحان.')
+              return
+            }
+            e = accessRes.exam
+            attemptFromAccess = accessRes.attempt
+          } catch (err) {
+            if (err.status === 423 || err.unlockStatus) {
+              const reqTitle = err.unlockStatus?.required_exam_title || 'الامتحان المشروط'
+              const reqScore = err.unlockStatus?.required_score || 70
+              setLoadError(
+                `🔒 هذا الامتحان مقفل بمتطلب سابق: يتطلب أولاً اجتياز "${reqTitle}" بنسبة ${reqScore}% فأكثر.`
+              )
+              return
+            }
+            console.error('getExamAccess error:', err)
+            setLoadError(err.message || 'تعذر الوصول إلى هذا الامتحان')
+            return
+          }
+        }
+
+        // 2. Standalone or Direct Prerequisite Evaluation / Legacy fallback
+        if (!e) {
+          if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
+            try {
+              const accessRes = await getExamAccess({ examId, contextLectureId: null })
+              if (accessRes?.authorized) {
+                e = accessRes.exam
+                attemptFromAccess = accessRes.attempt
+              }
+            } catch (err) {
+              if (err.status === 423 || err.unlockStatus) {
+                const reqTitle = err.unlockStatus?.required_exam_title || 'الامتحان المشروط'
+                const reqScore = err.unlockStatus?.required_score || 70
+                setLoadError(
+                  `🔒 هذا الامتحان مقفل بمتطلب سابق: يتطلب أولاً اجتياز "${reqTitle}" بنسبة ${reqScore}% فأكثر.`
+                )
+                return
+              }
+              // If missing_context (exam belongs to a lecture but opened outside), fall through to getExam for legacy / standalone access
+            }
+          }
+
+          if (!e) {
+            e = await getExam(examId)
+          }
+        }
 
         // Safety Check for Students: verify remaining attempts on refresh or direct URL access
-        const role = u?.role || 'student'
         if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
           // Fetch overrides first to get any bonus attempts or update reset point
           let maxAttempts = e.max_attempts || 1
@@ -122,6 +267,20 @@ export default function ExamTaking() {
           console.error('shared text blocks load failed', blockErr)
         }
 
+        // Check if exam is attached to a course lecture
+        try {
+          const { data: lecEx } = await supabase
+            .from('lecture_exams')
+            .select('lecture_id')
+            .eq('exam_id', e.id)
+            .limit(1)
+          if (lecEx && lecEx.length > 0) {
+            setIsLectureAttached(true)
+          }
+        } catch (leErr) {
+          console.warn('Failed to check lecture association:', leErr)
+        }
+
         // Restore prior in-flight progress (attemptId, answers, current question, remaining time)
         let resumedTime = null
         let restoredAttemptId = null
@@ -159,15 +318,19 @@ export default function ExamTaking() {
         setExam(e)
 
         if (!isAdmin) {
-          try {
-            const att = await startAttempt({ exam_id: e.id })
-            if (att?.id) {
-              setAttemptId(att.id)
-            }
-          } catch (attErr) {
-            console.error('startAttempt failed', attErr)
-            if (!restoredAttemptId) {
-              console.warn('Exam attempt could not be initialized.')
+          if (attemptFromAccess?.id) {
+            setAttemptId(attemptFromAccess.id)
+          } else {
+            try {
+              const att = await startAttempt({ exam_id: e.id })
+              if (att?.id) {
+                setAttemptId(att.id)
+              }
+            } catch (attErr) {
+              console.error('startAttempt failed', attErr)
+              if (!restoredAttemptId) {
+                console.warn('Exam attempt could not be initialized.')
+              }
             }
           }
         }
@@ -178,9 +341,7 @@ export default function ExamTaking() {
       }
     }
     run()
-  }, [examId])
-
-  const questions = exam?.questions || []
+  }, [examId, contextLectureId])
 
   // Block accidental navigation while the exam is in progress. Disabled
   // for admins (so they can preview/leave freely) and once the exam is
@@ -309,7 +470,7 @@ export default function ExamTaking() {
   )
 
   const handleFinishExam = async (auto = false) => {
-    if (submitting) return
+    if (submitting || submittedRef.current) return
     // Manual submit requires answering every question. Auto-submit on
     // timeout still goes through with whatever the student has.
     if (!auto && unansweredIndices.length > 0) {
@@ -356,6 +517,26 @@ export default function ExamTaking() {
       if (storageKey) {
         try { localStorage.removeItem(storageKey) } catch {}
       }
+
+      // Phase 7 Step 3: Emit reactive unlock event ONLY if this was a prerequisite exam
+      // AND prerequisite qualifying score was confirmed by the server!
+      if (isPrereqExam) {
+        const examMax = (exam?.total_points && exam.total_points > 0) ? exam.total_points : (questions.length || 1)
+        const pct = Math.round(((serverScore / examMax) * 100) * 10) / 10
+        const satisfied = (requiredScore === null) ? true : (pct >= requiredScore)
+
+        if (satisfied) {
+          emitPrerequisiteUnlocked({
+            unlockTargetType: prereqTargetType,
+            unlockTargetId: prereqTargetId,
+            contextLectureId: contextLectureId || null,
+            contextLectureTitle: contextLectureTitle || null,
+            requiredExamId: examId,
+            achievedScore: serverScore,
+            requiredScore: requiredScore
+          })
+        }
+      }
     } catch (err) {
       console.error('submitAttempt failed', err)
       setSubmitting(false)
@@ -390,6 +571,8 @@ export default function ExamTaking() {
     if (exitGuard.isPopState()) {
       exitGuard.clearPopState()
       window.history.go(-2) // Go back past sentinel and ExamTaking page to Exams page
+    } else if (contextLectureId) {
+      navigate(-1, { replace: true })
     } else {
       navigate('/exams', { replace: true }) // Replace the sentinel with /exams route
     }
@@ -401,8 +584,8 @@ export default function ExamTaking() {
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
           <h2>خطأ</h2>
           <p>{loadError}</p>
-          <button className="et-btn et-btn-prev" onClick={() => navigate('/exams')}>
-            العودة إلى الامتحانات
+          <button className="et-btn et-btn-prev" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+            {contextLectureId ? 'العودة للمحاضرة' : 'العودة إلى الامتحانات'}
           </button>
         </div>
       </div>
@@ -425,7 +608,9 @@ export default function ExamTaking() {
       <div className="et-wrapper">
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
           <h2>لا توجد أسئلة في هذا الامتحان</h2>
-          <button className="et-btn et-btn-prev" onClick={() => navigate('/exams')}>العودة</button>
+          <button className="et-btn et-btn-prev" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+            {contextLectureId ? 'العودة للمحاضرة' : 'العودة'}
+          </button>
         </div>
       </div>
     )
@@ -459,8 +644,8 @@ export default function ExamTaking() {
 
       {examFinished && (
         <div className="et-back-row">
-          <button className="et-back-btn" onClick={() => navigate('/exams')}>
-            العودة إلى الامتحانات
+          <button className="et-back-btn" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+            {contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة إلى الامتحانات'}
           </button>
         </div>
       )}
@@ -642,8 +827,8 @@ export default function ExamTaking() {
               )}
             </div>
           </>
-        ) : exam.reveal_grades === false ? (
-          /* Admin hasn't released results yet — don't leak the score. */
+        ) : (exam.reveal_grades === false && !isLectureExam && !isPrereqExam) ? (
+          /* Admin hasn't released results yet — don't leak the score for standalone exams. */
           <div className="et-finished">
             <div className="et-finished-icon">🔒</div>
             <h2 className="et-finished-title">تم تسليم الامتحان بنجاح!</h2>
@@ -662,6 +847,108 @@ export default function ExamTaking() {
               </div>
             </div>
           </div>
+        ) : isPrereqExam ? (
+          /* Prerequisite Exam Completion Experience (Phase 7 Step 2) */
+          <div className={`et-finished et-prereq-finished ${isPrereqSatisfied ? 'is-satisfied' : 'is-failed'}`}>
+            <div className="et-prereq-badge-row">
+              <span className={`et-prereq-status-badge ${isPrereqSatisfied ? 'badge-satisfied' : 'badge-failed'}`}>
+                <i className={`fas ${isPrereqSatisfied ? 'fa-circle-check' : 'fa-circle-exclamation'}`}></i>
+                <span>{isPrereqSatisfied ? 'تم استيفاء شرط الفتح بنجاح' : 'لم يتم استيفاء شرط الفتح بعد'}</span>
+              </span>
+            </div>
+
+            <div className="et-finished-icon">
+              {isPrereqSatisfied ? '🎉' : '⚠️'}
+            </div>
+
+            <h2 className="et-finished-title">
+              {isPrereqSatisfied ? 'مبروك! اجتزت المتطلب السابق بنجاح' : 'لم تحقق النسبة المطلوبة لفتح المحتوى'}
+            </h2>
+
+            <p className="et-finished-sub">
+              {isPrereqSatisfied
+                ? `أحسنت! حققت نسبة ${achievedPct}% (المطلوب ${requiredScore}% فأكثر). أصبح بإمكانك الآن متابعة ${targetTypeLabel} "${prereqTargetTitle || 'المحتوى المطلوب'}" دون الحاجة لإعادة هذا الاختبار.`
+                : `لقد حققت نسبة ${achievedPct}% بينما النسبة المشروطة لفتح ${targetTypeLabel} "${prereqTargetTitle || 'المحتوى المطلوب'}" هي ${requiredScore}% فأكثر. يلزم إعادة المحاولة لتحقيق النسبة المطلوبة.`
+              }
+            </p>
+
+            {/* Prerequisite Context Cards */}
+            <div className="et-prereq-context-info">
+              <div className="et-prereq-context-item">
+                <span className="et-prereq-context-label">الامتحان المشروط:</span>
+                <span className="et-prereq-context-val">{requiredExamTitle || exam.title}</span>
+              </div>
+              <div className="et-prereq-context-item">
+                <span className="et-prereq-context-label">المحتوى المستهدف:</span>
+                <span className="et-prereq-context-val">{targetTypeLabel}: {prereqTargetTitle || 'المحتوى المحدد'}</span>
+              </div>
+              {(contextLectureTitle || contextLectureId) && (
+                <div className="et-prereq-context-item">
+                  <span className="et-prereq-context-label">المحاضرة:</span>
+                  <span className="et-prereq-context-val">{contextLectureTitle || 'المحاضرة التابع لها'}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Score Comparison Box */}
+            <div className="et-score-box et-prereq-score-box">
+              <div className="et-score-item">
+                <span className="et-score-val">{finalScore ?? 0} <small className="et-score-pct">({achievedPct}%)</small></span>
+                <span className="et-score-lbl">درجتك المحققة</span>
+              </div>
+              <div className="et-score-divider" />
+              <div className="et-score-item">
+                <span className="et-score-val">{requiredScore}%</span>
+                <span className="et-score-lbl">النسبة المطلوبة</span>
+              </div>
+              <div className="et-score-divider" />
+              <div className="et-score-item">
+                <span className="et-score-val">{maxPoints}</span>
+                <span className="et-score-lbl">الدرجة الكلية</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="et-prereq-actions">
+              {isPrereqSatisfied ? (
+                <>
+                  <button
+                    type="button"
+                    className="et-btn et-btn-finish et-btn-continue"
+                    onClick={handleContinueToTarget}
+                  >
+                    <i className="fas fa-arrow-left" style={{ marginInlineEnd: '8px' }}></i>
+                    <span>الانتقال إلى {targetTypeLabel} المفتوح الآن</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="et-btn et-btn-prev"
+                    onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}
+                  >
+                    <span>{contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="et-btn et-btn-finish et-btn-retry"
+                    onClick={handleRetryExam}
+                  >
+                    <i className="fas fa-rotate-right" style={{ marginInlineEnd: '8px' }}></i>
+                    <span>إعادة محاولة الامتحان الآن</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="et-btn et-btn-prev"
+                    onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}
+                  >
+                    <span>{contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="et-finished">
             <div className="et-finished-icon">🎉</div>
@@ -669,7 +956,7 @@ export default function ExamTaking() {
             <p className="et-finished-sub">شكراً لك على إكمال الاختبار</p>
             <div className="et-score-box">
               <div className="et-score-item">
-                <span className="et-score-val">{finalScore ?? 0}</span>
+                <span className="et-score-val">{finalScore ?? 0} <small className="et-score-pct">({achievedPct}%)</small></span>
                 <span className="et-score-lbl">درجتك</span>
               </div>
               <div className="et-score-divider" />
@@ -682,6 +969,17 @@ export default function ExamTaking() {
                 <span className="et-score-val">{answeredCount}/{questions.length}</span>
                 <span className="et-score-lbl">أجبت</span>
               </div>
+            </div>
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="et-btn et-btn-finish"
+                style={{ width: 'auto', padding: '10px 24px' }}
+                onClick={() => (contextLectureId || isLectureExam ? navigate(-1) : navigate('/exams'))}
+              >
+                <i className="fas fa-arrow-right" style={{ marginInlineEnd: '8px' }}></i>
+                {contextLectureId || isLectureExam ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}
+              </button>
             </div>
           </div>
         )}
