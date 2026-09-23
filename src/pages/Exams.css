@@ -1034,3 +1034,20 @@ body.dark .ec-footer {
     gap: 8px !important;
   }
 }
+
+/* The card stats were a fixed 3-column grid, so on a phone the third column
+   (عدد الأسئلة) was cut off at the screen edge. */
+@media (max-width: 600px) {
+  .ec-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .ec-stat { padding: 10px 8px; }
+  .ec-stat-label { font-size: 0.72rem; }
+  .ec-stat-value { font-size: 0.9rem; }
+}
+
+@media (max-width: 380px) {
+  .ec-stats { grid-template-columns: 1fr; }
+}

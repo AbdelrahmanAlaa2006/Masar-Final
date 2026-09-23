@@ -1,0 +1,108 @@
+/* Styles for <GradePicker>. They live here — not in ControlPanel.css — because
+   the picker is used on pages that never import the control-panel stylesheet
+   (the lectures page), where the chips would otherwise render unstyled.
+
+   Colours come from the control-panel variables when they exist and fall back
+   to sensible values elsewhere. */
+
+/* ── Grade picker (shared by every group report) ────────── */
+.gp-panel {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 20px;
+}
+.gp-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cp-text-main, var(--text-color, #1e293b));
+  margin: 0 0 14px;
+}
+.gp-title i { color: #5bc2e7; }
+.gp-empty { text-align: center; color: var(--cp-text-muted, var(--text-muted, #64748b)); margin: 0; }
+
+.gp-section + .gp-section { margin-top: 14px; }
+.gp-stage {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--cp-text-muted, var(--text-muted, #64748b));
+  margin-bottom: 8px;
+}
+.gp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.gp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cp-text-main, var(--text-color, #1e293b));
+  background: var(--cp-card-bg, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--cp-card-border, rgba(148, 163, 184, 0.35));
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.gp-chip:hover { border-color: #5bc2e7; }
+.gp-chip.is-active {
+  background: #5bc2e7;
+  border-color: #5bc2e7;
+  color: #06263a;
+}
+/* A grade with no students yet — still selectable, just quieter. */
+.gp-chip.is-empty { opacity: 0.5; }
+
+.gp-chip-count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: rgba(91, 194, 231, 0.12);
+  color: #5bc2e7;
+}
+.gp-chip.is-active .gp-chip-count {
+  background: rgba(0, 0, 0, 0.16);
+  color: inherit;
+}
+
+.gp-toggle {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #5bc2e7;
+}
+.gp-toggle i { font-size: 0.7rem; margin-inline-end: 2px; }
+
+@media (max-width: 600px) {
+  .gp-chip { font-size: 0.8rem; padding: 6px 11px; }
+}
+
+/* Bare variant: the picker sits inside another card (the lectures hero), so
+   it brings no panel box of its own. */
+.gp-bare { display: block; }
+.gp-bare-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 10px;
+}
+/* `:not(.is-active)` matters: without it the dark-theme rule is more specific
+   than the active rule and the selected chip loses its fill. */
+.gp-bare .gp-chip:not(.is-active) { color: var(--text-color, #1e293b); background: rgba(0, 0, 0, 0.03); }
+body.dark .gp-bare .gp-chip:not(.is-active) { color: #e2e8f0; background: rgba(255, 255, 255, 0.04); }
+.gp-bare .gp-chip.is-active,
+body.dark .gp-bare .gp-chip.is-active { background: #5bc2e7; border-color: #5bc2e7; color: #06263a; }
+.gp-bare .gp-stage { color: var(--text-muted, #64748b); }

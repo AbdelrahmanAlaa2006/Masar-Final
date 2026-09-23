@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows, selectInChunks } from './fetchAllRows'
 import { cached, invalidatePrefix, LIST_TTL } from '../src/utils/cache'
 import { getViewerContext } from './viewerContext'
 
@@ -90,9 +91,9 @@ export async function listCourseChapters(packageIdOrOptions) {
     query = query.eq('tenant_id', profile.tenant_id)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+  // Every page: PostgREST stops at 1000 rows without saying so, which would
+  // silently hide the oldest rows as a curriculum grows.
+  return fetchAllRows(() => query.order('id', { ascending: true }))
 }
 
 export async function listStandaloneChapters({ grade = null } = {}) {
@@ -189,9 +190,9 @@ export async function listStandaloneLectures({ grade = null } = {}) {
     query = query.eq('is_active', true)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+  // Every page: PostgREST stops at 1000 rows without saying so, which would
+  // silently hide the oldest rows as a curriculum grows.
+  return fetchAllRows(() => query.order('id', { ascending: true }))
 }
 
 export async function getStandaloneLecturesWithDetails({ grade = null } = {}) {
@@ -217,48 +218,53 @@ export async function getStandaloneLecturesWithDetails({ grade = null } = {}) {
     query = query.eq('is_active', true)
   }
 
-  const { data: lectures, error: lecErr } = await query
-  if (lecErr) throw lecErr
-  if (!lectures || lectures.length === 0) return []
+  // Every page, so a long curriculum does not lose its oldest lectures.
+  const lectures = await fetchAllRows(() => query.order('id', { ascending: true }))
+  if (lectures.length === 0) return []
 
   const lectureIds = lectures.map(l => l.id)
 
-  let vidQuery = getSupabase()
-    .from('lecture_videos')
-    .select(`
-      id, lecture_id, video_id, sort_order, created_at,
-      video:video_id (
-        id, title, description, grade, active_hours, is_archived, pdf_url, pdf_key,
-        video_parts ( id, part_index, title, source, youtube_id, drive_id, duration_seconds, view_limit, bunny_video_id, bunny_library_id )
-      )
-    `)
-    .in('lecture_id', lectureIds)
-    .order('sort_order', { ascending: true })
+  // Chunked: every lecture id goes into the request URL, so a long list would
+  // otherwise make the request fail outright.
+  const withTenant = (q) => (profile?.tenant_id ? q.eq('tenant_id', profile.tenant_id) : q)
 
-  let exQuery = getSupabase()
-    .from('lecture_exams')
-    .select(`
-      id, lecture_id, exam_id, sort_order, created_at,
-      exam:exam_id (
-        id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions_count, reveal_grades, is_archived, exam_type, origin
-      )
-    `)
-    .in('lecture_id', lectureIds)
-    .order('sort_order', { ascending: true })
+  const [vidRows, exRows, fileRows] = await Promise.all([
+    selectInChunks(lectureIds, (part) => withTenant(getSupabase()
+      .from('lecture_videos')
+      .select(`
+        id, lecture_id, video_id, sort_order, created_at,
+        video:video_id (
+          id, title, description, grade, active_hours, is_archived, pdf_url, pdf_key,
+          video_parts ( id, part_index, title, source, youtube_id, drive_id, duration_seconds, view_limit, bunny_video_id, bunny_library_id )
+        )
+      `)
+      .in('lecture_id', part))
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
 
-  let fileQuery = getSupabase()
-    .from('lecture_files')
-    .select('id, lecture_id, title, file_key, file_size, sort_order, created_at')
-    .in('lecture_id', lectureIds)
-    .order('sort_order', { ascending: true })
+    selectInChunks(lectureIds, (part) => withTenant(getSupabase()
+      .from('lecture_exams')
+      .select(`
+        id, lecture_id, exam_id, sort_order, created_at,
+        exam:exam_id (
+          id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions_count, reveal_grades, is_archived, exam_type, origin
+        )
+      `)
+      .in('lecture_id', part))
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
 
-  if (profile?.tenant_id) {
-    vidQuery = vidQuery.eq('tenant_id', profile.tenant_id)
-    exQuery = exQuery.eq('tenant_id', profile.tenant_id)
-    fileQuery = fileQuery.eq('tenant_id', profile.tenant_id)
-  }
+    selectInChunks(lectureIds, (part) => withTenant(getSupabase()
+      .from('lecture_files')
+      .select('id, lecture_id, title, file_key, file_size, sort_order, created_at')
+      .in('lecture_id', part))
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
+  ])
 
-  const [vidRes, exRes, fileRes] = await Promise.all([vidQuery, exQuery, fileQuery])
+  const vidRes = { data: vidRows, error: null }
+  const exRes = { data: exRows, error: null }
+  const fileRes = { data: fileRows, error: null }
 
   if (vidRes.error) throw vidRes.error
   if (exRes.error) throw exRes.error
@@ -469,14 +475,15 @@ export async function getChapterLecturesWithDetails(chapterId) {
     query = query.eq('is_active', true)
   }
 
-  const { data: lectures, error: lecErr } = await query
-  if (lecErr) throw lecErr
-  if (!lectures || lectures.length === 0) return []
+  // Every page, so a long curriculum does not lose its oldest lectures.
+  const lectures = await fetchAllRows(() => query.order('id', { ascending: true }))
+  if (lectures.length === 0) return []
 
   const lectureIds = lectures.map(l => l.id)
 
-  const [vidRes, exRes, fileRes] = await Promise.all([
-    getSupabase()
+  // Chunked for the same reason as the standalone loader above.
+  const [vidRows, exRows, fileRows] = await Promise.all([
+    selectInChunks(lectureIds, (part) => getSupabase()
       .from('lecture_videos')
       .select(`
         id, lecture_id, video_id, sort_order, created_at,
@@ -485,11 +492,12 @@ export async function getChapterLecturesWithDetails(chapterId) {
           video_parts ( id, part_index, title, source, youtube_id, drive_id, duration_seconds, view_limit, bunny_video_id, bunny_library_id )
         )
       `)
-      .in('lecture_id', lectureIds)
+      .in('lecture_id', part)
       .eq('tenant_id', profile.tenant_id)
-      .order('sort_order', { ascending: true }),
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
 
-    getSupabase()
+    selectInChunks(lectureIds, (part) => getSupabase()
       .from('lecture_exams')
       .select(`
         id, lecture_id, exam_id, sort_order, created_at,
@@ -497,21 +505,23 @@ export async function getChapterLecturesWithDetails(chapterId) {
           id, number, title, grade, duration_minutes, max_attempts, available_hours, total_points, questions_count, reveal_grades, is_archived, exam_type, origin
         )
       `)
-      .in('lecture_id', lectureIds)
-      .eq('tenant_id', profile.tenant_id)
-      .order('sort_order', { ascending: true }),
-
-    getSupabase()
-      .from('lecture_files')
-      .select('id, lecture_id, title, file_key, file_size, sort_order, created_at')
-      .in('lecture_id', lectureIds)
+      .in('lecture_id', part)
       .eq('tenant_id', profile.tenant_id)
       .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
+
+    selectInChunks(lectureIds, (part) => getSupabase()
+      .from('lecture_files')
+      .select('id, lecture_id, title, file_key, file_size, sort_order, created_at')
+      .in('lecture_id', part)
+      .eq('tenant_id', profile.tenant_id)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })),
   ])
 
-  if (vidRes.error) throw vidRes.error
-  if (exRes.error) throw exRes.error
-  if (fileRes.error) throw fileRes.error
+  const vidRes = { data: vidRows, error: null }
+  const exRes = { data: exRows, error: null }
+  const fileRes = { data: fileRows, error: null }
 
   const videosByLec = {}
   const examsByLec = {}
@@ -812,19 +822,20 @@ export async function getUnassignedVideos(packageId = null) {
     .eq('tenant_id', profile.tenant_id)
     .eq('is_archived', false)
 
-  // Filter videos that are not yet associated with any lecture
-  const { data: allVideos, error: vErr } = await query.order('created_at', { ascending: false })
-  if (vErr) throw vErr
+  // Filter videos that are not yet associated with any lecture. Both reads take
+  // every page: a tenant's video library and its curriculum both grow past 1000.
+  const allVideos = await fetchAllRows(() => query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true }))
 
-  const { data: assignedRows, error: aErr } = await getSupabase()
+  const assignedRows = await fetchAllRows(() => getSupabase()
     .from('lecture_videos')
     .select('video_id')
     .eq('tenant_id', profile.tenant_id)
+    .order('video_id', { ascending: true }))
 
-  if (aErr) throw aErr
-
-  const assignedSet = new Set((assignedRows || []).map(r => r.video_id))
-  return (allVideos || []).filter(v => !assignedSet.has(v.id))
+  const assignedSet = new Set(assignedRows.map(r => r.video_id))
+  return allVideos.filter(v => !assignedSet.has(v.id))
 }
 
 export async function getUnassignedExams(packageId = null) {
@@ -836,18 +847,18 @@ export async function getUnassignedExams(packageId = null) {
     .eq('tenant_id', profile.tenant_id)
     .eq('is_archived', false)
 
-  const { data: allExams, error: eErr } = await query.order('created_at', { ascending: false })
-  if (eErr) throw eErr
+  const allExams = await fetchAllRows(() => query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true }))
 
-  const { data: assignedRows, error: aErr } = await getSupabase()
+  const assignedRows = await fetchAllRows(() => getSupabase()
     .from('lecture_exams')
     .select('exam_id')
     .eq('tenant_id', profile.tenant_id)
+    .order('exam_id', { ascending: true }))
 
-  if (aErr) throw aErr
-
-  const assignedSet = new Set((assignedRows || []).map(r => r.exam_id))
-  return (allExams || []).filter(e => !assignedSet.has(e.id))
+  const assignedSet = new Set(assignedRows.map(r => r.exam_id))
+  return allExams.filter(e => !assignedSet.has(e.id))
 }
 
 // =====================================================================
@@ -1298,7 +1309,7 @@ export async function listLecturesForReporting({ grade = null } = {}) {
     query = query.eq('grade', grade)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+  // Every page: PostgREST stops at 1000 rows without saying so, which would
+  // silently hide the oldest rows as a curriculum grows.
+  return fetchAllRows(() => query.order('id', { ascending: true }))
 }

@@ -4,6 +4,7 @@ import { useTenant } from '../contexts/TenantContext'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import DateTimePicker from '../components/DateTimePicker'
 import { listExams, deleteExam, updateExam, dbToUiGrade, uiToDbGrade, countSubmittedAttemptsBatch, setExamArchived } from '@backend/examsApi'
 import SharedTextBlocksEditor, {
   blocksToEditorModel,
@@ -962,6 +963,17 @@ export default function Exams() {
 /* ── Inline edit modal for an existing exam (basic metadata only).
    Editing the questions array is intentionally NOT supported here —
    delete + recreate the exam if you need to change question content. */
+/* The stored schedule is an ISO instant; DateTimePicker speaks the local
+   "YYYY-MM-DDTHH:mm:ss" form the add page uses. An exam with no schedule stays
+   empty, so saving it does not invent one. */
+function isoToLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 function EditExamModal({ exam, onCancel, onSave }) {
   const { isGradeEnabled, gradesList } = useTenant()
   const [title, setTitle] = useState(exam.title || '')
@@ -976,6 +988,8 @@ function EditExamModal({ exam, onCancel, onSave }) {
     initialUnit === 'days' ? (exam.availability_days || 3) : (exam.available_hours || 72)
   )
   const [reveal, setReveal] = useState(!!exam.reveal_grades)
+  // Publish schedule, prefilled from the exam so an untouched exam keeps it.
+  const [opensAt, setOpensAt] = useState(() => isoToLocalInput(exam.opens_at))
   const [busy, setBusy] = useState(false)
 
   // Initialize questions with a local id field for list rendering keys.
@@ -1187,10 +1201,12 @@ function EditExamModal({ exam, onCancel, onSave }) {
     const val = parseInt(availabilityVal, 10) || 1
     const effectiveHours = availabilityUnit === 'hours' ? val : val * 24
     const effectiveDays = availabilityUnit === 'days' ? val : null
-    let expiresAt = null
-    if (exam.opens_at) {
-      expiresAt = new Date(new Date(exam.opens_at).getTime() + effectiveHours * 3600000).toISOString()
-    }
+    // The window is measured from the (possibly just edited) opening time.
+    // No opening time -> no expiry, exactly as before.
+    const opensAtIso = opensAt ? new Date(opensAt).toISOString() : null
+    const expiresAt = opensAtIso
+      ? new Date(new Date(opensAtIso).getTime() + effectiveHours * 3600000).toISOString()
+      : null
 
     return {
       // Recomputed from the FINAL question order, so deletions and additions
@@ -1203,6 +1219,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
       max_attempts: parseInt(maxAtt, 10),
       available_hours: effectiveHours,
       availability_days: effectiveDays,
+      opens_at: opensAtIso,
       expires_at: expiresAt,
       total_points: totalPoints,
       reveal_grades: reveal,
@@ -1323,6 +1340,22 @@ function EditExamModal({ exam, onCancel, onSave }) {
           background: #0f172a;
           border-color: rgba(167, 139, 250, 0.22);
           color: #e2e8f0;
+        }
+        .edit-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .edit-unit-select { width: 120px; flex: 0 0 120px; }
+        /* Phones: the four-column row and the fixed-width unit select were the
+           two things pushing this dialog off the screen. */
+        @media (max-width: 900px) {
+          .edit-grid-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+          .edit-exam-modal-content { padding: 16px 14px; width: 100%; border-radius: 14px; }
+          .edit-grid, .edit-grid-4 { grid-template-columns: 1fr; gap: 12px; }
+          .edit-modal-header { padding-bottom: 10px; margin-bottom: 14px; }
+          .edit-modal-header h3 { font-size: 1.1rem; line-height: 1.5; }
+          .edit-close-btn { font-size: 1.6rem; }
+          .edit-unit-select { width: 104px; flex: 0 0 104px; }
+          .edit-input, .edit-select, .edit-textarea { padding: 10px 12px; font-size: 0.9rem; }
         }
         .edit-input:focus, .edit-select:focus, .edit-textarea:focus {
           outline: none;
@@ -1488,7 +1521,20 @@ function EditExamModal({ exam, onCancel, onSave }) {
             </div>
           </div>
 
-          <div className="edit-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div className="edit-field" style={{ marginBottom: 16 }}>
+            <label>📅 وقت وتاريخ فتح الامتحان (جدولة النشر)</label>
+            <DateTimePicker
+              id="edit-opens-at"
+              value={opensAt}
+              onChange={(val) => setOpensAt(val)}
+              placeholder="اختر موعد بدء الامتحان"
+            />
+            <small style={{ color: 'var(--text-secondary, #a0aec0)', fontSize: '0.82rem' }}>
+              سيبها فاضية لو عايز الامتحان متاح من دلوقتي. مدة التوفر بتتحسب من الموعد ده.
+            </small>
+          </div>
+
+          <div className="edit-grid edit-grid-4">
             <div className="edit-field">
               <label>المدة (بالدقائق)</label>
               <input type="number" min="1" className="edit-input" value={duration} onChange={(e) => setDur(parseInt(e.target.value, 10) || 1)} required />
@@ -1521,8 +1567,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
                       if (availabilityVal === 12) setAvailabilityVal(3)
                     }
                   }}
-                  className="edit-select"
-                  style={{ width: '120px', flex: '0 0 120px' }}
+                  className="edit-select edit-unit-select"
                 >
                   <option value="hours">ساعات ⏱️</option>
                   <option value="days">أيام 📅</option>

@@ -24,6 +24,7 @@ import {
 import { listVideos, createVideo } from '@backend/videosApi'
 import { listExams, createExam } from '@backend/examsApi'
 import { listPackages, listMyPurchases } from '@backend/packagesApi'
+import GradePicker from '../components/GradePicker'
 import { uploadLecturePdf } from '@backend/r2'
 import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 import {
@@ -2468,30 +2469,18 @@ export default function Lectures() {
               </div>
             ) : (
               <div className="lectures-grade-bar">
-                <span className="lectures-grade-label">
-                  <i className="fas fa-filter"></i> اختر الصف الدراسي:
-                </span>
-                <div className="lectures-grade-tabs">
-                  {canManage && (
-                    <button
-                      type="button"
-                      className={`lectures-grade-pill ${selectedGrade === 'all' ? 'active' : ''}`}
-                      onClick={() => handleGradeChange('all')}
-                    >
-                      جميع الصفوف
-                    </button>
-                  )}
-                  {gradeOptions.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className={`lectures-grade-pill ${selectedGrade === g.id ? 'active' : ''}`}
-                      onClick={() => handleGradeChange(g.id)}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
+                {/* Same compact picker the reports use: grades grouped by stage
+                    instead of fifteen large pills wrapping over three rows. */}
+                <GradePicker
+                  bare
+                  showCounts={false}
+                  title="اختر الصف الدراسي"
+                  grades={gradeOptions.map((g) => g.id)}
+                  labels={Object.fromEntries(gradeOptions.map((g) => [g.id, g.name]))}
+                  allLabel={canManage ? 'جميع الصفوف' : ''}
+                  value={selectedGrade}
+                  onChange={handleGradeChange}
+                />
               </div>
             )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { selectInChunks } from '@backend/fetchAllRows'
 import {
   listCourseChapters,
   listCourseLectures,
@@ -182,19 +183,20 @@ export default function StudentCurriculumView({
         const fetchJobs = []
 
         if (allVideoIds.length > 0) {
+          // Chunked: every id travels in the request URL, and a large
+          // curriculum would push a single request past the gateway limit.
           fetchJobs.push(
-            supabase
+            selectInChunks(Array.from(new Set(allVideoIds)), (part) => supabase
               .from('video_progress')
               .select('video_id, part_id, seconds_watched, views_used')
               .eq('student_id', user.id)
-              .in('video_id', Array.from(new Set(allVideoIds)))
-              .then(({ data, error: vpErr }) => {
-                if (!vpErr && data) {
-                  data.forEach((row) => {
-                    if (!vProgMap[row.video_id]) vProgMap[row.video_id] = []
-                    vProgMap[row.video_id].push(row)
-                  })
-                }
+              .in('video_id', part)
+              .order('video_id', { ascending: true }))
+              .then((data) => {
+                data.forEach((row) => {
+                  if (!vProgMap[row.video_id]) vProgMap[row.video_id] = []
+                  vProgMap[row.video_id].push(row)
+                })
               })
               .catch((err) => console.warn('Could not fetch video progress:', err))
           )
@@ -202,20 +204,19 @@ export default function StudentCurriculumView({
 
         if (allExamIds.length > 0) {
           fetchJobs.push(
-            supabase
+            selectInChunks(Array.from(new Set(allExamIds)), (part) => supabase
               .from('exam_attempts')
               .select('exam_id, score, max_score, submitted_at')
               .eq('student_id', user.id)
-              .in('exam_id', Array.from(new Set(allExamIds)))
+              .in('exam_id', part)
               .not('submitted_at', 'is', null)
               .is('video_assessment_id', null)
-              .then(({ data, error: attErr }) => {
-                if (!attErr && data) {
-                  data.forEach((row) => {
-                    if (!exAttMap[row.exam_id]) exAttMap[row.exam_id] = []
-                    exAttMap[row.exam_id].push(row)
-                  })
-                }
+              .order('exam_id', { ascending: true }))
+              .then((data) => {
+                data.forEach((row) => {
+                  if (!exAttMap[row.exam_id]) exAttMap[row.exam_id] = []
+                  exAttMap[row.exam_id].push(row)
+                })
               })
               .catch((err) => console.warn('Could not fetch exam attempts:', err))
           )

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { GRADE_LABEL, GRADE_ORDER } from '../pages/ControlPanel/shared'
+import './GradePicker.css'
 
 /* The stage picker shared by every group report (exams, grades, homework,
    attendance, finance, videos).
@@ -23,6 +24,12 @@ import { GRADE_LABEL, GRADE_ORDER } from '../pages/ControlPanel/shared'
      onChange     — (gradeId) => void
      activeCount  — optional exact count for the selected grade, when the page
                     has the loaded students and knows better than `counts`
+     showCounts   — false on content pages (lectures), where a grade is a filter
+                    and there is no student count to show. Empty grades are then
+                    never folded away, because "empty" cannot be known.
+     labels       — optional { [gradeId]: name } when the tenant renames grades
+     allLabel     — when set, adds a leading chip with the value 'all'
+     bare         — render without the panel box/title, to sit inside another card
      title / emptyText / style — optional overrides
 */
 
@@ -41,6 +48,10 @@ export default function GradePicker({
   onChange,
   onSelectGrade,
   activeCount = null,
+  showCounts = true,
+  labels = null,
+  allLabel = '',
+  bare = false,
   title = 'اختر الصف الدراسي',
   emptyText = 'لا يوجد طلاب مسجلون بعد.',
   style,
@@ -61,8 +72,11 @@ export default function GradePicker({
   }, [grades])
 
   // A grade stays visible while it is selected, even with no students.
-  const hidden = ordered.filter((g) => countOf(g) === 0 && g !== actualValue)
-  const visible = showEmpty ? ordered : ordered.filter((g) => countOf(g) > 0 || g === actualValue)
+  // Without counts there is nothing to fold away, so everything shows.
+  const hidden = showCounts ? ordered.filter((g) => countOf(g) === 0 && g !== actualValue) : []
+  const visible = showCounts && !showEmpty
+    ? ordered.filter((g) => countOf(g) > 0 || g === actualValue)
+    : ordered
 
   const sections = []
   for (const stage of STAGES) {
@@ -73,16 +87,25 @@ export default function GradePicker({
   const other = visible.filter((g) => !STAGES.some((s) => s.match(g)))
   if (other.length) sections.push({ id: 'other', label: 'صفوف أخرى', items: other })
 
-  return (
-    <div className="cp-panel gp-panel" style={style}>
-      <h2 className="gp-title">
-        <i className="fas fa-school"></i> {title}
-      </h2>
-
+  const body = (
+    <>
       {ordered.length === 0 ? (
         <p className="gp-empty">{emptyText}</p>
       ) : (
         <>
+          {allLabel && (
+            <div className="gp-chips" style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                aria-pressed={actualValue === 'all'}
+                className={`gp-chip ${actualValue === 'all' ? 'is-active' : ''}`}
+                onClick={() => actualOnChange?.('all')}
+              >
+                <span>{allLabel}</span>
+              </button>
+            </div>
+          )}
+
           {sections.map((section) => (
             <div className="gp-section" key={section.id}>
               {sections.length > 1 && <div className="gp-stage">{section.label}</div>}
@@ -95,11 +118,11 @@ export default function GradePicker({
                       key={grade}
                       type="button"
                       aria-pressed={active}
-                      className={`gp-chip ${active ? 'is-active' : ''} ${n === 0 ? 'is-empty' : ''}`}
+                      className={`gp-chip ${active ? 'is-active' : ''} ${showCounts && n === 0 ? 'is-empty' : ''}`}
                       onClick={() => actualOnChange?.(grade)}
                     >
-                      <span>{GRADE_LABEL[grade] || grade}</span>
-                      <span className="gp-chip-count">{n}</span>
+                      <span>{(labels && labels[grade]) || GRADE_LABEL[grade] || grade}</span>
+                      {showCounts && <span className="gp-chip-count">{n}</span>}
                     </button>
                   )
                 })}
@@ -115,6 +138,24 @@ export default function GradePicker({
           )}
         </>
       )}
+    </>
+  )
+
+  if (bare) {
+    return (
+      <div className="gp-bare" style={style}>
+        {title && <div className="gp-bare-title"><i className="fas fa-filter"></i> {title}</div>}
+        {body}
+      </div>
+    )
+  }
+
+  return (
+    <div className="cp-panel gp-panel" style={style}>
+      <h2 className="gp-title">
+        <i className="fas fa-school"></i> {title}
+      </h2>
+      {body}
     </div>
   )
 }
