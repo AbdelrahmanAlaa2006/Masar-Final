@@ -61,6 +61,13 @@ serve(async (req) => {
   }
   const userId = userRes.user.id
 
+  // Student Device Limit: a student session not authorized on this device
+  // gets nothing (true for staff and for tenants without the limit).
+  const { data: deviceOk, error: deviceErr } = await supabaseAsUser.rpc('student_session_authorized')
+  if (deviceErr || deviceOk !== true) {
+    return json({ error: 'forbidden: device not authorized' }, { status: 403 })
+  }
+
   // 2. Parse Input (fileId and contextLectureId are strictly required)
   let body: { fileId?: string; contextLectureId?: string } = {}
   try { body = await req.json() } catch { /* tolerate empty */ }
@@ -75,7 +82,7 @@ serve(async (req) => {
   // 3. Resolve User Profile & Tenant
   const { data: profile, error: profErr } = await supabaseAdmin
     .from('profiles')
-    .select('id, tenant_id, role')
+    .select('id, tenant_id, role, grade')
     .eq('id', userId)
     .single()
 
@@ -105,7 +112,7 @@ serve(async (req) => {
   // 5. Authoritatively Resolve Containing Lecture & Package
   const { data: lecture, error: lecErr } = await supabaseAdmin
     .from('course_lectures')
-    .select('id, tenant_id, package_id')
+    .select('id, tenant_id, package_id, grade')
     .eq('id', contextLectureId)
     .single()
 
@@ -115,6 +122,13 @@ serve(async (req) => {
 
   if (lecture.tenant_id !== profile.tenant_id) {
     return json({ error: 'forbidden: cross-tenant access rejected' }, { status: 403 })
+  }
+
+  // 5b. Grade: a student only gets files of lectures for their own grade (or
+  //     lectures with no grade) — the same rule as the course_lectures RLS
+  //     policy / can_view_course_lecture().
+  if (profile.role === 'student' && lecture.grade && lecture.grade !== profile.grade) {
+    return json({ error: 'forbidden: lecture is for a different grade' }, { status: 403 })
   }
 
   // 6. Check Package Subscription Access (Students Only, ONLY IF lecture is inside a package)

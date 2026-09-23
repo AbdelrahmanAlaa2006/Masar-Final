@@ -200,9 +200,13 @@ export default function YouTubePlayer({
                 try { e.target.setPlaybackQuality(pref) } catch {}
               }
             }
-            if (e.data === YTs.PAUSED)    setPlaying(false)
+            // Anything but PLAYING/BUFFERING means "not playing" — including
+            // UNSTARTED/CUED, which is where a browser-blocked autoplay ends up.
+            // (Setting playing=true on BUFFERING left the flag stuck on when
+            // autoplay was blocked: the play button hid and the next clicks
+            // "paused" a video that never ran.)
+            if (e.data === YTs.PAUSED || e.data === YTs.CUED || e.data === -1) setPlaying(false)
             if (e.data === YTs.BUFFERING) {
-              setPlaying(true)
               if (!userSelectedQualityRef.current) {
                 const pref = (typeof window !== 'undefined' ? localStorage.getItem('masaar_student_quality') : null) || 'large'
                 try { e.target.setPlaybackQuality(pref) } catch {}
@@ -386,7 +390,13 @@ export default function YouTubePlayer({
   // ---------- Control handlers ----------
   const togglePlay = useCallback(() => {
     const p = playerRef.current; if (!p) return
-    if (playing) p.pauseVideo(); else p.playVideo()
+    let state = null
+    try { state = p.getPlayerState?.() } catch {}
+    const YTs = window.YT?.PlayerState
+    const isRunning = YTs && state != null
+      ? (state === YTs.PLAYING || state === YTs.BUFFERING)
+      : playing
+    if (isRunning) p.pauseVideo(); else p.playVideo()
   }, [playing])
 
   const seek = useCallback((sec) => {
@@ -548,6 +558,49 @@ export default function YouTubePlayer({
         }}
       />
 
+      {/* Player styles — always mounted. They used to live inside the seek-flash
+          badge below, so they only existed during a double-tap animation: the
+          iframe crop/pointer rules and button hover styles were missing. */}
+      <style>{`
+        @keyframes ytp-seek-flash {
+          0%   { opacity: 0; transform: scale(0.92); }
+          20%  { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1); }
+        }
+        .ytp-custom-btn {
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .ytp-custom-btn:hover {
+          background: rgba(255, 255, 255, 0.18) !important;
+          color: #ffffff !important;
+          transform: scale(1.06);
+        }
+        .ytp-custom-btn:active {
+          transform: scale(0.92) !important;
+        }
+        .ytp-main-play-btn:hover {
+          background: var(--primary-hover, var(--primary, #6d28d9)) !important;
+          transform: scale(1.1) !important;
+          box-shadow: 0 4px 16px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
+        }
+        .ytp-center-play-button:hover {
+          transform: translate(-50%, -50%) scale(1.1) !important;
+          background: var(--primary, #7c3aed) !important;
+          border-color: #ffffff !important;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 32px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
+        }
+        .ytp-center-play-button:active {
+          transform: translate(-50%, -50%) scale(0.95) !important;
+        }
+        .ytp-crop-wrapper iframe,
+        .ytp-crop-wrapper > div {
+          width: 100% !important;
+          height: 100% !important;
+          border: none !important;
+          pointer-events: none !important;
+        }
+      `}</style>
+
       {/* Double-tap seek flash overlay — half-circle badge on the
           tapped side that fades out in ~600ms. Keyed so repeated
           taps restart the animation. */}
@@ -578,45 +631,6 @@ export default function YouTubePlayer({
                style={{ fontSize: 28 }}></i>
             <span>{SEEK_STEP} ثوانٍ</span>
           </div>
-          <style>{`
-            @keyframes ytp-seek-flash {
-              0%   { opacity: 0; transform: scale(0.92); }
-              20%  { opacity: 1; transform: scale(1); }
-              100% { opacity: 0; transform: scale(1); }
-            }
-            .ytp-custom-btn {
-              transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-            }
-            .ytp-custom-btn:hover {
-              background: rgba(255, 255, 255, 0.18) !important;
-              color: #ffffff !important;
-              transform: scale(1.06);
-            }
-            .ytp-custom-btn:active {
-              transform: scale(0.92) !important;
-            }
-            .ytp-main-play-btn:hover {
-              background: var(--primary-hover, var(--primary, #6d28d9)) !important;
-              transform: scale(1.1) !important;
-              box-shadow: 0 4px 16px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
-            }
-            .ytp-center-play-button:hover {
-              transform: translate(-50%, -50%) scale(1.1) !important;
-              background: var(--primary, #7c3aed) !important;
-              border-color: #ffffff !important;
-              box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 32px var(--primary-glow, rgba(124, 58, 237, 0.6)) !important;
-            }
-            .ytp-center-play-button:active {
-              transform: translate(-50%, -50%) scale(0.95) !important;
-            }
-            .ytp-crop-wrapper iframe,
-            .ytp-crop-wrapper > div {
-              width: 100% !important;
-              height: 100% !important;
-              border: none !important;
-              pointer-events: none !important;
-            }
-          `}</style>
         </div>
       )}
 

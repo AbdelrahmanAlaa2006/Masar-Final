@@ -50,6 +50,11 @@ serve(async (req) => {
   if (userErr || !userRes?.user) return json({ error: 'invalid session' }, { status: 401 })
   const userId = userRes.user.id
 
+  // Student Device Limit: a student session not authorized on this device
+  // gets nothing (true for staff and for tenants without the limit).
+  const { data: deviceOk, error: deviceErr } = await asUser.rpc('student_session_authorized')
+  if (deviceErr || deviceOk !== true) return json({ error: 'device not authorized' }, { status: 403 })
+
   // ── input ───────────────────────────────────────────────────────────────
   let body: { partId?: string } = {}
   try { body = await req.json() } catch {}

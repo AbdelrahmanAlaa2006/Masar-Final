@@ -6,6 +6,7 @@
 
 export const CAPABILITY_CATEGORIES = [
   { id: 'access_control', nameAr: 'دخول الطلاب والمنصة أونلاين', nameEn: 'Student Platform Access', icon: 'fa-user-lock' },
+  { id: 'account_security', nameAr: 'أمان حسابات الطلاب', nameEn: 'Student Account Security', icon: 'fa-shield-halved' },
   { id: 'center_attendance', nameAr: 'إدارة حضور وغياب السنتر', nameEn: 'Center Attendance', icon: 'fa-calendar-check' },
   { id: 'center_grades', nameAr: 'رصد درجات وتقييمات السنتر', nameEn: 'Center Grades & Evaluations', icon: 'fa-star' },
   { id: 'finance', nameAr: 'المالية، المدفوعات والباقات', nameEn: 'Finance, Payments & Packages', icon: 'fa-wallet' },
@@ -27,6 +28,21 @@ export const GRANULAR_CAPABILITIES = [
     icon: 'fa-arrow-right-to-bracket',
     descriptionAr: 'عند التعطيل (مثل باقة السنتر فقط): يحتفظ السنتر ببيانات وسجلات الطالب كاملة، ولكن يُمنع الطالب من تسجيل الدخول للواجهة أونلاين.',
     defaultEnabled: true,
+  },
+
+  // ─── أمان الحسابات ───
+  // Opt-in restriction: OFF unless the Super Admin turns it on for a tenant.
+  // Enforced by the database (current_tenant_id / authorize_student_device),
+  // not by this flag — see backend/migrations/2026_09_23_student_device_limit.sql.
+  {
+    key: 'student_device_limit',
+    parentKey: null,
+    nameAr: 'تحديد عدد أجهزة الطالب (Student Device Limit)',
+    nameEn: 'Student Device Limit',
+    category: 'account_security',
+    icon: 'fa-mobile-screen-button',
+    descriptionAr: 'Restrict student accounts to a configurable number of registered devices. — كل طالب يدخل من جهاز واحد افتراضياً، ويمكن للإدارة السماح بأجهزة إضافية لطالب معيّن أو إلغاء تسجيل جهاز من «حسابات الطلاب». لا يؤثر على المدرس أو المساعدين أو الإدارة.',
+    defaultEnabled: false,
   },
 
   // ─── 2. الحضور والغياب (سنتر) ───

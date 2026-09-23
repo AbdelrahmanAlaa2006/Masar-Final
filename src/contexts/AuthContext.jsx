@@ -4,6 +4,7 @@ import { invalidateViewerContext } from '@backend/viewerContext'
 import { authStore, setPersistent, clearAuth } from '@backend/authStorage'
 import { useTenant } from './TenantContext'
 import { supabase } from '@backend/supabase'
+import { authorizeDevice, consumeDeviceChecked, DEVICE_DENIED_FLAG } from '@backend/deviceApi'
 
 const AuthContext = createContext(null)
 
@@ -14,7 +15,10 @@ export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [permissions, setPermissions] = useState([])
   const [loading, setLoading] = useState(true)
-  const { tenantId } = useTenant()
+  const { tenantId, isFeatureEnabled } = useTenant()
+  // Student Device Limit: id of the student whose session was authorized on
+  // this device during this app load (see the effect below).
+  const [deviceCheckedFor, setDeviceCheckedFor] = useState(null)
 
   const syncAuth = useCallback(() => {
     try {
@@ -141,6 +145,40 @@ export function AuthProvider({ children }) {
     }
   }, [user, tenantId, logout])
 
+  // Student Device Limit — once per app start, at the session boundary (not
+  // per page or render): the server recognises this device, lazily registers
+  // it (sessions that predate the feature being turned on), or refuses it
+  // (revoked, or the allowance is full). Staff and tenants without the
+  // feature never make this call. The app waits for the answer so a freshly
+  // registered session does not render its first pages empty.
+  const needsDeviceCheck = isLoggedIn && user?.role === 'student' && !!user?.id &&
+    deviceCheckedFor !== user.id && isFeatureEnabled('student_device_limit')
+
+  useEffect(() => {
+    if (!needsDeviceCheck) return
+    const studentId = user.id
+    if (consumeDeviceChecked(studentId)) { setDeviceCheckedFor(studentId); return }
+    let cancelled = false
+    authorizeDevice(studentId)
+      .then(status => {
+        if (cancelled) return
+        if (status === 'denied') {
+          try { sessionStorage.setItem(DEVICE_DENIED_FLAG, '1') } catch { }
+          logout()
+          window.location.href = '/login'
+          return
+        }
+        setDeviceCheckedFor(studentId)
+      })
+      .catch(err => {
+        // Offline / transient: let the app load. The database still refuses
+        // data to a session that was never authorized.
+        console.error('Device authorization failed:', err)
+        if (!cancelled) setDeviceCheckedFor(studentId)
+      })
+    return () => { cancelled = true }
+  }, [needsDeviceCheck, user?.id, logout])
+
   useEffect(() => {
     // 1. Initial sync from the stored login (see authStorage)
     syncAuth()
@@ -187,7 +225,7 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     isLoggedIn,
-    loading,
+    loading: loading || needsDeviceCheck,
     role: user?.role || null,
     isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
     isSuperAdmin: user?.role === 'super_admin',
@@ -198,7 +236,7 @@ export function AuthProvider({ children }) {
     logout,
     syncAuth,
     refreshProfile,
-  }), [user, isLoggedIn, loading, permissions, hasPermission, login, logout, syncAuth, refreshProfile])
+  }), [user, isLoggedIn, loading, needsDeviceCheck, permissions, hasPermission, login, logout, syncAuth, refreshProfile])
 
   return (
     <AuthContext.Provider value={value}>

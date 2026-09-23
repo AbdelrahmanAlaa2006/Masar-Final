@@ -2,6 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import { installInstantThemeSwitch } from './utils/themeSwitch'
+
+// Light/dark switch in one paint instead of hundreds of staggered transitions.
+installInstantThemeSwitch()
 
 // Prevent accidental mouse-wheel value changes on ALL <input type="number"> elements site-wide
 if (typeof window !== 'undefined') {

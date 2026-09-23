@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { authStore, clearAuth } from './authStorage'
+import { authorizeDevice, markDeviceChecked, DeviceLimitError } from './deviceApi'
 
 // Convert phone number to a fake email for Supabase auth, scoped per tenant
 const phoneToEmail = (phone, tenantId) => {
@@ -70,6 +71,22 @@ export const authAPI = {
       // every other device it is logged in on.
       await supabase.auth.signOut({ scope: 'local' })
       throw new Error('المستخدم غير مسجل في هذه المنصة')
+    }
+
+    // Student Device Limit: the server registers/recognises this device or
+    // refuses it (and then has already ended the session). Staff never limited.
+    // A failed call does not block login: the database still refuses data to
+    // an unauthorized session, and AuthContext retries on app start.
+    if (profile.role === 'student') {
+      const status = await authorizeDevice(profile.id).catch(err => {
+        console.error('Device authorization failed:', err)
+        return null
+      })
+      if (status === 'denied') {
+        await supabase.auth.signOut({ scope: 'local' })
+        throw new DeviceLimitError()
+      }
+      if (status) markDeviceChecked(profile.id)
     }
 
     return { token: authData.session.access_token, user: profile }
@@ -171,6 +188,20 @@ export const authAPI = {
       .single()
 
     if (profileError) throw new Error('فشل تحميل بيانات المستخدم')
+
+    // Register the sign-up device right away (Student Device Limit). A brand
+    // new account has no devices, so this can only be refused if the tenant
+    // limit changes mid-flow; the account itself is created either way.
+    if (data.session) {
+      try {
+        if (await authorizeDevice(data.user.id) === 'denied') {
+          await supabase.auth.signOut({ scope: 'local' })
+          return { token: null, user: profile }
+        }
+      } catch (err) {
+        console.error('Device authorization after sign-up failed:', err)
+      }
+    }
 
     return { token: data.session?.access_token, user: profile }
   },

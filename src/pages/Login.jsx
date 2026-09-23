@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI, tokenAPI } from '@backend/authApi'
+import { DEVICE_LIMIT_MESSAGE, DEVICE_DENIED_FLAG } from '@backend/deviceApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { listPackages } from '@backend/packagesApi'
@@ -122,6 +123,18 @@ export default function Login() {
 
   // NEW: auth modal
   const [showAuthModal, setShowAuthModal] = useState(false)
+
+  // Signed out at app start because this device is not authorized (Student
+  // Device Limit): open the login box with the explanation, once.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(DEVICE_DENIED_FLAG)) {
+        sessionStorage.removeItem(DEVICE_DENIED_FLAG)
+        setError(DEVICE_LIMIT_MESSAGE)
+        setShowAuthModal(true)
+      }
+    } catch { }
+  }, [])
   const [activePackages, setActivePackages] = useState([])
 
   // Parent Reports Lookup States
@@ -568,7 +581,12 @@ export default function Login() {
         setTimeout(() => { login(response.token, response.user, { persist }); window.location.href = '/' }, 1500)
       }
     } catch (err) {
-      console.error('Login error:', err); recordFailure()
+      console.error('Login error:', err)
+      // A device refusal is not a wrong password — no lockout, and the
+      // message is shown as is (it is Arabic-only on purpose: it tells the
+      // student to contact the center).
+      if (err?.code === 'DEVICE_LIMIT') { setError(err.message); setLoading(false); return }
+      recordFailure()
       const cd = getCooldownRemaining()
       if (cd > 0) setError(lang === 'ar' ? `محاولات كثيرة. حاول مجدداً بعد ${Math.ceil(cd / 1000)} ثانية` : `Too many attempts. Try again in ${Math.ceil(cd / 1000)}s`)
       else setError(err.message || (lang === 'ar' ? 'فشل تسجيل الدخول' : 'Login failed'))

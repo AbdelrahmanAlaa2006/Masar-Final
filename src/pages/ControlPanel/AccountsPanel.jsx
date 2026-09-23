@@ -17,6 +17,7 @@ import { useTenant } from '../../contexts/TenantContext'
 import { generateTenantPassword } from '../../utils/tenantPassword'
 import RegistrationSwitch from './RegistrationSwitch'
 import LoginCardsDialog from './LoginCardsDialog'
+import StudentDevicesDialog from './StudentDevicesDialog'
 
 const fmtMoney = (n) => `${Number(n || 0).toLocaleString('ar-EG')} ج.م`
 
@@ -137,6 +138,8 @@ export default function AccountsPanel({ onBack, flash }) {
   const [selectedQrStudent, setSelectedQrStudent] = useState(null)
   
   const [showEditModal, setShowEditModal] = useState(false)
+  // Student Device Limit: whose registered devices are open (null = closed)
+  const [devicesStudent, setDevicesStudent] = useState(null)
   const [editStudent, setEditStudent] = useState(null)
   const [editStudentError, setEditStudentError] = useState('')
   const [deletingStudent, setDeletingStudent] = useState(null)
@@ -1121,6 +1124,16 @@ export default function AccountsPanel({ onBack, flash }) {
                         >
                           <i className="fas fa-qrcode" /> كارت
                         </button>
+                        {isFeatureEnabled('student_device_limit') && (
+                          <button
+                            className="cp-btn cp-btn-sm"
+                            onClick={() => setDevicesStudent(student)}
+                            style={{ background: 'rgba(129, 140, 248, 0.1)', color: '#818cf8' }}
+                            title="الأجهزة المسجلة وعدد الأجهزة المسموحة"
+                          >
+                            <i className="fas fa-mobile-screen-button" /> الأجهزة
+                          </button>
+                        )}
                         <button
                           className="cp-btn cp-btn-danger cp-btn-sm"
                           onClick={() => setDeletingStudent(student)}
@@ -1172,6 +1185,14 @@ export default function AccountsPanel({ onBack, flash }) {
         selectedGrade={selectedGrade}
         flash={flash}
       />
+
+      {devicesStudent && (
+        <StudentDevicesDialog
+          student={devicesStudent}
+          onClose={() => setDevicesStudent(null)}
+          flash={flash}
+        />
+      )}
 
       {deletingStudent && (
         <ConfirmDeleteDialog

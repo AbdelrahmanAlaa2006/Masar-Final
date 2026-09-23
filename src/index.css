@@ -55,6 +55,14 @@
   box-sizing: border-box;
 }
 
+/* Set for one frame while light/dark flips (src/utils/themeSwitch.js) so the
+   whole page switches in a single paint instead of animating every element. */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
 body {
   margin: 0;
   display: block;

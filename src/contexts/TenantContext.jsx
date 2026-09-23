@@ -706,8 +706,9 @@ export function TenantProvider({ children }) {
       return features[def.parentKey] !== false
     }
 
-    // Default to true for safe backward compatibility
-    return true
+    // Unset: the capability's own default — true for everything except
+    // opt-in restrictions such as student_device_limit.
+    return def?.defaultEnabled !== false
   }, [tenant])
 
   const isGradeEnabled = useCallback((gradeKey) => {

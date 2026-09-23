@@ -1446,7 +1446,7 @@ body.dark .studio-prereq-header label {
   flex-wrap: wrap;
   gap: 16px;
   padding: 24px 28px;
-  background: var(--dynamic-card, #ffffff);
+  background: var(--card-bg, #ffffff);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 18px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
@@ -1669,7 +1669,7 @@ body.dark .lecture-workspace-desc {
 /* ── Bottom Video Playlist ("و تبقى القايمه دى موجوده فالاخر تحت") ───── */
 .lecture-bottom-playlist-section {
   padding: 24px;
-  background: var(--dynamic-card, #ffffff);
+  background: var(--card-bg, #ffffff);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 18px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -1801,7 +1801,7 @@ body.dark .lecture-playlist-card-details h4 {
 /* ── Attached Exams & Files Grid ─────────────────────────────────────── */
 .lecture-workspace-attached-section {
   padding: 24px;
-  background: var(--dynamic-card, #ffffff);
+  background: var(--card-bg, #ffffff);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 18px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -2562,7 +2562,7 @@ body.dark .lesson-nav-btn-text strong {
   gap: 10px;
   padding: 12px 20px;
   border-radius: 12px;
-  background: var(--dynamic-card, #ffffff);
+  background: var(--card-bg, #ffffff);
   border: 1.5px solid var(--border-color, rgba(226, 232, 240, 0.9));
   color: var(--text-color, #1e293b);
   font-size: 0.96rem;
@@ -2669,7 +2669,16 @@ body.dark .lectures-pkg-tab:hover {
   cursor: pointer;
   box-shadow: 0 0 35px rgba(99, 102, 241, 0.65), 0 8px 24px rgba(0, 0, 0, 0.5);
   transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-  padding-inline-start: 4px; /* center visual play icon */
+  /* All four sides: the global `button { padding: 0.6em 1.2em }` (index.css)
+     at this font size is ~40px, and overriding only the inline-start side
+     left 40px on the left in RTL — the icon sat ~18px off-centre. */
+  padding: 0;
+}
+
+/* Optical centring of the play triangle — physical (not inline) so it points
+   the same way in RTL and LTR. */
+.lecture-start-play-btn i {
+  transform: translateX(3px);
 }
 
 .lecture-player-start-cover:hover .lecture-start-play-btn {
@@ -3342,3 +3351,50 @@ body.dark .override-target-id {
 
 
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE — player start cover + info strip under the player.
+   These were hard-coded dark and showed dark on a light page. The video
+   area itself stays black once playing (normal for a player).
+   ══════════════════════════════════════════════════════════════════════ */
+body:not(.dark) .lecture-workspace-stage {
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+}
+
+body:not(.dark) .lecture-player-start-cover {
+  background: radial-gradient(circle at center, #eef2ff 0%, #e0e7ff 55%, #c7d2fe 100%);
+}
+
+body:not(.dark) .lecture-player-start-cover:hover {
+  background: radial-gradient(circle at center, #e0e7ff 0%, #c7d2fe 60%, #a5b4fc 100%);
+}
+
+body:not(.dark) .lecture-start-text-group h3 {
+  color: #1e1b4b;
+  text-shadow: none;
+}
+
+body:not(.dark) .lecture-start-sub {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+body:not(.dark) .lecture-player-info-strip {
+  background: var(--card-bg, #ffffff);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+body:not(.dark) .lecture-player-active-info h3 {
+  color: var(--text-color, #0f172a);
+}
+
+body:not(.dark) .lecture-parts-switcher span {
+  color: #64748b;
+}
+
+body:not(.dark) .lecture-part-chip:not(.active) {
+  color: #475569;
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.1);
+}
