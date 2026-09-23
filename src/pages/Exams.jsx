@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useFocusItem } from '../hooks/useFocusItem'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './Exams.css'
 import PrepIllustration from '../components/PrepIllustration'
@@ -103,13 +102,12 @@ export default function Exams() {
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  // /exams?exam=<id> (from the home page) scrolls to and highlights that exam.
-  useFocusItem('exam', !loading)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
 
+  const [accessReady, setAccessReady] = useState(false)
   useEffect(() => {
     if (!userId) return
-    if (userRole === 'admin' || userRole === 'assistant') return
+    if (userRole === 'admin' || userRole === 'assistant') { setAccessReady(true); return }
     let cancelled = false
     ;(async () => {
       try {
@@ -120,6 +118,8 @@ export default function Exams() {
         }
       } catch (err) {
         console.error('Failed to load content access:', err)
+      } finally {
+        if (!cancelled) setAccessReady(true)
       }
     })()
     return () => { cancelled = true }
@@ -345,6 +345,25 @@ export default function Exams() {
 
     navigate(`/exam-taking?id=${exam.id}`)
   }
+
+  // Deep link from the home page: /exams?exam=<id> starts that exam directly,
+  // with the same checks as clicking its card. The param is removed first so
+  // coming back from the exam doesn't start it again.
+  const location = useLocation()
+  useEffect(() => {
+    const examId = new URLSearchParams(location.search).get('exam')
+    if (!examId || loading || !accessReady) return
+    navigate({ search: '' }, { replace: true })
+    const exam = rows.find((r) => r.id === examId)
+    if (!exam) {
+      setAlertModal('الامتحان غير متاح', 'لم يعد هذا الامتحان متاحاً.')
+      return
+    }
+    // Show the exam's own list behind any alert startExam may raise.
+    setCurrentLevel(dbToUiGrade(exam.grade) || exam.grade)
+    setCurrentType(exam.exam_type || 'exam')
+    startExam(exam)
+  }, [location.search, loading, accessReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [blockAlert, setBlockAlert] = useState(null)
   const setAlertModal = (title, message) => setBlockAlert({ title, message })

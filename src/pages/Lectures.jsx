@@ -19,7 +19,9 @@ import {
   removeLectureFile,
   checkContentUnlocked,
   getLectureFileAccess,
-  createUnlockRule
+  createUnlockRule,
+  getLectureDetails,
+  getLecturesForVideo
 } from '@backend/courseLecturesApi'
 import { listVideos, createVideo } from '@backend/videosApi'
 import { listExams, createExam } from '@backend/examsApi'
@@ -173,6 +175,71 @@ function extractDriveId(input) {
     if (idParam) return idParam
   } catch { /* not a URL */ }
   return ''
+}
+
+// Student prerequisite locks for one lecture and the videos/exams inside it.
+// A locked lecture locks its children without extra requests.
+async function withLockStatus(lec) {
+  try {
+    const lockRes = await checkContentUnlocked({ targetType: 'lecture', targetId: lec.id }).catch(() => ({ unlocked: true }))
+    const lectureLockStatus = lockRes || { unlocked: true }
+
+    let videosWithLock = lec.videos || []
+    let examsWithLock = lec.exams || []
+
+    if (lectureLockStatus.unlocked === false) {
+      // If the lecture itself is locked, immediately lock children in-memory without individual DB calls!
+      videosWithLock = videosWithLock.map((v) => ({
+        ...v,
+        lockStatus: {
+          unlocked: false,
+          reason: 'lecture_locked',
+          parent_lecture_id: lec.id,
+          required_exam_id: lectureLockStatus.required_exam_id,
+          required_exam_title: lectureLockStatus.required_exam_title,
+          required_score: lectureLockStatus.required_score,
+          student_score: lectureLockStatus.student_score
+        }
+      }))
+      examsWithLock = examsWithLock.map((e) => ({
+        ...e,
+        lockStatus: {
+          unlocked: false,
+          reason: 'lecture_locked',
+          parent_lecture_id: lec.id,
+          required_exam_id: lectureLockStatus.required_exam_id,
+          required_exam_title: lectureLockStatus.required_exam_title,
+          required_score: lectureLockStatus.required_score,
+          student_score: lectureLockStatus.student_score
+        }
+      }))
+    } else {
+      // Only if lecture is unlocked, check child items
+      const [videoLocks, examLocks] = await Promise.all([
+        Promise.all(
+          videosWithLock.map((v) =>
+            checkContentUnlocked({ targetType: 'video', targetId: v.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
+          )
+        ),
+        Promise.all(
+          examsWithLock.map((e) =>
+            checkContentUnlocked({ targetType: 'exam', targetId: e.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
+          )
+        )
+      ])
+      videosWithLock = videosWithLock.map((v, idx) => ({ ...v, lockStatus: videoLocks[idx] || { unlocked: true } }))
+      examsWithLock = examsWithLock.map((e, idx) => ({ ...e, lockStatus: examLocks[idx] || { unlocked: true } }))
+    }
+
+    return {
+      ...lec,
+      lockStatus: lectureLockStatus,
+      videos: videosWithLock,
+      exams: examsWithLock
+    }
+  } catch {
+    return lec
+  }
 }
 
 export default function Lectures() {
@@ -381,70 +448,7 @@ export default function Lectures() {
       let processedLessons = lessonsWithDetails
 
       if (userRole === 'student') {
-        processedStandalone = await Promise.all(
-          processedStandalone.map(async (lec) => {
-            try {
-              const lockRes = await checkContentUnlocked({ targetType: 'lecture', targetId: lec.id }).catch(() => ({ unlocked: true }))
-              const lectureLockStatus = lockRes || { unlocked: true }
-
-              let videosWithLock = lec.videos || []
-              let examsWithLock = lec.exams || []
-
-              if (lectureLockStatus.unlocked === false) {
-                // If the lecture itself is locked, immediately lock children in-memory without individual DB calls!
-                videosWithLock = videosWithLock.map((v) => ({
-                  ...v,
-                  lockStatus: {
-                    unlocked: false,
-                    reason: 'lecture_locked',
-                    parent_lecture_id: lec.id,
-                    required_exam_id: lectureLockStatus.required_exam_id,
-                    required_exam_title: lectureLockStatus.required_exam_title,
-                    required_score: lectureLockStatus.required_score,
-                    student_score: lectureLockStatus.student_score
-                  }
-                }))
-                examsWithLock = examsWithLock.map((e) => ({
-                  ...e,
-                  lockStatus: {
-                    unlocked: false,
-                    reason: 'lecture_locked',
-                    parent_lecture_id: lec.id,
-                    required_exam_id: lectureLockStatus.required_exam_id,
-                    required_exam_title: lectureLockStatus.required_exam_title,
-                    required_score: lectureLockStatus.required_score,
-                    student_score: lectureLockStatus.student_score
-                  }
-                }))
-              } else {
-                // Only if lecture is unlocked, check child items
-                const [videoLocks, examLocks] = await Promise.all([
-                  Promise.all(
-                    videosWithLock.map((v) =>
-                      checkContentUnlocked({ targetType: 'video', targetId: v.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
-                    )
-                  ),
-                  Promise.all(
-                    examsWithLock.map((e) =>
-                      checkContentUnlocked({ targetType: 'exam', targetId: e.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
-                    )
-                  )
-                ])
-                videosWithLock = videosWithLock.map((v, idx) => ({ ...v, lockStatus: videoLocks[idx] || { unlocked: true } }))
-                examsWithLock = examsWithLock.map((e, idx) => ({ ...e, lockStatus: examLocks[idx] || { unlocked: true } }))
-              }
-
-              return {
-                ...lec,
-                lockStatus: lectureLockStatus,
-                videos: videosWithLock,
-                exams: examsWithLock
-              }
-            } catch {
-              return lec
-            }
-          })
-        )
+        processedStandalone = await Promise.all(processedStandalone.map(withLockStatus))
       }
 
       // Apply Student Effective Overrides (custom extensions / restrictions)
@@ -485,11 +489,14 @@ export default function Lectures() {
       setStandaloneLessons(processedLessons)
       setPackages(pkgList)
 
-      // Sync activeLectureView if open
+      // Sync activeLectureView if open (it may have been opened by a deep link
+      // before the curriculum finished loading).
       setActiveLectureView((prev) => {
         if (!prev) return null
+        const lesson = processedLessons.find((les) => les.lectures?.some((l) => l.id === prev.id))
         const found = processedStandalone.find((l) => l.id === prev.id)
-        return found || prev
+          || lesson?.lectures.find((l) => l.id === prev.id)
+        return found ? { ...found, contextLesson: prev.contextLesson || lesson || null } : prev
       })
 
       // Expand first standalone lecture by default if closed
@@ -555,27 +562,46 @@ export default function Lectures() {
 
   // Deep link from the home page: /lectures?video=<id> opens the lecture that
   // contains that video with the video selected. Locked content shows the
-  // lock modal instead, like a normal click would.
+  // lock modal instead, like a normal click would. Only that one lecture is
+  // fetched, so the video opens without waiting for the whole curriculum.
   const deepLinkedVideo = useRef(null)
+  const openLectureViewRef = useRef(handleOpenLectureView)
+  openLectureViewRef.current = handleOpenLectureView
   useEffect(() => {
     const videoId = new URLSearchParams(location.search).get('video')
-    if (loading || !videoId || deepLinkedVideo.current === videoId) return
+    if (!videoId || deepLinkedVideo.current === videoId) return
     deepLinkedVideo.current = videoId
-    const allLectures = [
-      ...standaloneLectures,
-      ...standaloneLessons.flatMap((les) => les.lectures || []),
-    ]
-    const lecture = allLectures.find((l) => (l.videos || []).some((v) => v.id === videoId))
-    if (!lecture) return
-    const video = lecture.videos.find((v) => v.id === videoId)
-    const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
-      : video.lockStatus?.unlocked === false ? video.lockStatus : null
-    if (lock) {
-      setActiveLockModal(lock)
-      return
+    let cancelled = false
+    let finished = false
+    ;(async () => {
+      try {
+        const lectures = await getLecturesForVideo(videoId)
+        const target = lectures.find((l) => !l.grade || l.grade === selectedGrade) || lectures[0]
+        if (!target || cancelled) return
+        let lecture = await getLectureDetails(target.id)
+        if (userRole === 'student') lecture = await withLockStatus(lecture)
+        if (cancelled) return
+        const video = lecture.videos.find((v) => v.id === videoId)
+        if (!video) return
+        const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
+          : video.lockStatus?.unlocked === false ? video.lockStatus : null
+        if (lock) {
+          setActiveLockModal(lock)
+          return
+        }
+        openLectureViewRef.current(lecture, video)
+      } catch (err) {
+        console.warn('Failed to open deep-linked video:', err)
+      } finally {
+        finished = true
+      }
+    })()
+    return () => {
+      cancelled = true
+      // Interrupted before it opened anything: let the next run retry.
+      if (!finished) deepLinkedVideo.current = null
     }
-    handleOpenLectureView(lecture, video)
-  }, [loading, location.search, standaloneLectures, standaloneLessons, handleOpenLectureView])
+  }, [location.search, selectedGrade, userRole])
 
   const handleSelectExam = useCallback((exam, lecture) => {
     if (!exam?.id) return
