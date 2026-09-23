@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTenant } from '../contexts/TenantContext'
@@ -552,6 +552,30 @@ export default function Lectures() {
     setIsVideoStarted(false)
     handleOpenLectureView(lecture, video)
   }, [handleOpenLectureView])
+
+  // Deep link from the home page: /lectures?video=<id> opens the lecture that
+  // contains that video with the video selected. Locked content shows the
+  // lock modal instead, like a normal click would.
+  const deepLinkedVideo = useRef(null)
+  useEffect(() => {
+    const videoId = new URLSearchParams(location.search).get('video')
+    if (loading || !videoId || deepLinkedVideo.current === videoId) return
+    deepLinkedVideo.current = videoId
+    const allLectures = [
+      ...standaloneLectures,
+      ...standaloneLessons.flatMap((les) => les.lectures || []),
+    ]
+    const lecture = allLectures.find((l) => (l.videos || []).some((v) => v.id === videoId))
+    if (!lecture) return
+    const video = lecture.videos.find((v) => v.id === videoId)
+    const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
+      : video.lockStatus?.unlocked === false ? video.lockStatus : null
+    if (lock) {
+      setActiveLockModal(lock)
+      return
+    }
+    handleOpenLectureView(lecture, video)
+  }, [loading, location.search, standaloneLectures, standaloneLessons, handleOpenLectureView])
 
   const handleSelectExam = useCallback((exam, lecture) => {
     if (!exam?.id) return

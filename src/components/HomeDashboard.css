@@ -228,6 +228,29 @@ body.dark .hdash-continue:hover {
   transform: translateX(-4px);
 }
 
+.hdash-ellipsis {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hdash-hw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hdash-continue-hint.hdash-urgent {
+  color: #dc2626;
+  font-weight: 700;
+  opacity: 1;
+}
+
+body.dark .hdash-continue-hint.hdash-urgent {
+  color: #f87171;
+}
+
 /* Progress rows styling */
 .hdash-progress-row {
   margin-bottom: 16px;

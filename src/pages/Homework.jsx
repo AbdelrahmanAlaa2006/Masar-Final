@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useFocusItem } from '../hooks/useFocusItem'
 import { createPortal } from 'react-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './Homework.css'
@@ -147,6 +148,8 @@ export default function Homework() {
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  // /homework?homework=<id> (from the home page) scrolls to and highlights it.
+  useFocusItem('homework', !loading)
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -901,7 +904,7 @@ function HomeworkCard({ hw, isAdmin, isInactive, submission, onOpen, onSubmit, o
   }
 
   return (
-    <article className="hw-card">
+    <article className="hw-card" id={`focus-${hw.id}`}>
       <div className="hw-card-cover">
         <img src={hw.cover} alt={hw.title} loading="lazy" />
         <div className="hw-card-cover-grad"></div>

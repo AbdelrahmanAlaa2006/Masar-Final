@@ -562,3 +562,11 @@ body:not(.dark) .toast-notification {
   text-align: right !important;
 }
 
+
+/* Deep-link highlight (hooks/useFocusItem.js) */
+.focus-flash {
+  outline: 3px solid var(--primary, #7c3aed);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 10px var(--primary-glow, rgba(124, 58, 237, 0.25));
+  transition: outline-color 0.4s ease, box-shadow 0.4s ease;
+}

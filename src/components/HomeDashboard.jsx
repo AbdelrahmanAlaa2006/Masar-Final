@@ -178,6 +178,10 @@ function StudentDashboard() {
   
   const [upcomingEvent, setUpcomingEvent] = useState(null)
   const [activeExam, setActiveExam] = useState(null)
+  // The video the student last stopped in the middle of, and homework
+  // still waiting to be handed in (soonest deadline first).
+  const [resumeVideo, setResumeVideo] = useState(null)
+  const [pendingHomework, setPendingHomework] = useState([])
   
   // Live content for THIS student's grade
   const { stats, loading, error, refresh } = useContentStats({ role: 'student', grade: userGrade })
@@ -219,7 +223,7 @@ function StudentDashboard() {
     ;(async () => {
       try {
         // 1. Fetch live student progress statistics in parallel
-        const [subs, prog, attempts] = await Promise.all([
+        const [subs, prog, attempts, videoList, homeworkList, examList] = await Promise.all([
           cached(`student-hws-${userId}`, LIST_TTL, () =>
             supabase
               .from('homework_submissions')
@@ -227,10 +231,10 @@ function StudentDashboard() {
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
-          cached(`student-vids-${userId}`, LIST_TTL, () =>
+          cached(`student-vids-v2-${userId}`, LIST_TTL, () =>
             supabase
               .from('video_progress')
-              .select('video_id')
+              .select('video_id, seconds_watched, last_watched_at')
               .eq('student_id', userId)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
@@ -244,9 +248,16 @@ function StudentDashboard() {
               .is('video_assessment_id', null)
               .then((r) => { if (r.error) throw r.error; return r.data || [] })
           ),
+          // Same cache keys as the stats hook above, so these are not extra
+          // requests. listExams applies package + group targeting for students.
+          isFeatureEnabled('videos') ? cached('videos', LIST_TTL, listVideos).catch(() => []) : [],
+          isFeatureEnabled('homework') ? cached('homeworks', LIST_TTL, listHomeworks).catch(() => []) : [],
+          isFeatureEnabled('exams') ? cached('exams-lean', LIST_TTL, () => listExams({ lean: true })).catch(() => []) : [],
         ])
 
         if (cancelled) return
+
+        const mine = (x) => !x.is_archived && (!userGrade || x.grade === userGrade || x.grade === 'packages')
 
         const completedHws = new Set((subs || []).map(s => s.homework_id))
         const completedVids = new Set((prog || []).map(p => p.video_id))
@@ -257,6 +268,32 @@ function StudentDashboard() {
           videos: completedVids,
           exams: completedExs,
         })
+
+        // Last video watched but not finished (under 90%).
+        const watched = new Map()
+        for (const p of prog || []) {
+          const w = watched.get(p.video_id) || { seconds: 0, last: null }
+          w.seconds += p.seconds_watched || 0
+          if (p.last_watched_at && (!w.last || p.last_watched_at > w.last)) w.last = p.last_watched_at
+          watched.set(p.video_id, w)
+        }
+        let resume = null
+        for (const v of (videoList || []).filter(mine)) {
+          const w = watched.get(v.id)
+          if (!w?.last) continue
+          const total = (v.duration_minutes || 0) * 60
+          const pct = total ? Math.min(100, Math.round((w.seconds / total) * 100)) : 0
+          if (total && pct >= 90) continue
+          if (!resume || w.last > resume.at) resume = { id: v.id, title: v.title, pct, at: w.last }
+        }
+        setResumeVideo(resume)
+
+        const now = Date.now()
+        setPendingHomework(
+          (homeworkList || [])
+            .filter((h) => mine(h) && !completedHws.has(h.id) && h.due_at && new Date(h.due_at).getTime() > now)
+            .sort((a, b) => new Date(a.due_at) - new Date(b.due_at))
+        )
 
         // 2. Query scheduled_events (Calendar upcoming events)
         const nowIso = new Date().toISOString()
@@ -284,22 +321,20 @@ function StudentDashboard() {
         }
 
         // 3. Query Active Exam (Always check for currently open uncompleted exams)
-        const dbExams = await cached(`upcoming-exam-${userGrade}`, LIST_TTL, () =>
-          supabase
-            .from('exams')
-            .select('id, title, created_at, available_hours, opens_at, expires_at')
-            .eq('grade', userGrade)
-            // Pre-video gate assessments are not exams the student can go
-            // and sit — never surface one as "your next exam".
-            .eq('origin', 'library')
-            .order('created_at', { ascending: false })
-            .then((r) => { if (r.error) throw r.error; return r.data || [] })
-        )
+        // listExams (library exams only, newest first) already hides exams
+        // targeted at other groups or in packages the student hasn't bought.
+        const dbExams = (examList || []).filter(mine)
 
-        if (cancelled) return
-
-        if (dbExams && dbExams.length > 0) {
-          const nextExam = dbExams.find(e => !completedExs.has(e.id))
+        if (dbExams.length > 0) {
+          // The first exam that is open right now and not yet submitted.
+          const openNow = (e) => {
+            const opens = new Date(e.opens_at || e.created_at).getTime()
+            const closes = e.expires_at
+              ? new Date(e.expires_at).getTime()
+              : opens + (e.available_hours || 72) * 60 * 60 * 1000
+            return Date.now() >= opens && closes > Date.now()
+          }
+          const nextExam = dbExams.find(e => !completedExs.has(e.id) && openNow(e))
           if (nextExam) {
             const opensTime = nextExam.opens_at ? new Date(nextExam.opens_at).getTime() : new Date(nextExam.created_at).getTime()
             let availableUntil = 0
@@ -334,7 +369,7 @@ function StudentDashboard() {
     })()
 
     return () => { cancelled = true }
-  }, [userId, userGrade])
+  }, [userId, userGrade, isFeatureEnabled])
 
   const lastItem = recentNav[0]
   const eventCountdown = useCountdown(upcomingEvent?.at)
@@ -391,7 +426,26 @@ function StudentDashboard() {
         title="أكمل من حيث توقفت"
         accent="violet"
       >
-        {lastItem ? (
+        {resumeVideo ? (
+          <button
+            className="hdash-continue"
+            onClick={() => navigate(isFeatureEnabled('lectures') ? `/lectures?video=${resumeVideo.id}` : '/videos')}
+          >
+            <div className="hdash-continue-main" style={{ flex: 1, minWidth: 0 }}>
+              <span className="hdash-continue-label hdash-ellipsis">{resumeVideo.title}</span>
+              <span className="hdash-continue-hint">
+                {resumeVideo.pct ? `شاهدت ${arNum(resumeVideo.pct)}٪ من الفيديو` : 'بدأت مشاهدة الفيديو'}
+                {' — '}آخر مشاهدة {relTime(resumeVideo.at)}
+              </span>
+              {resumeVideo.pct > 0 && (
+                <div className="hdash-progress-bar" style={{ width: '100%', marginTop: 6 }}>
+                  <div className="hdash-progress-fill" style={{ width: `${resumeVideo.pct}%`, background: 'var(--primary)' }} />
+                </div>
+              )}
+            </div>
+            <i className="fas fa-play"></i>
+          </button>
+        ) : lastItem ? (
           <button
             className="hdash-continue"
             onClick={() => navigate(lastItem.route)}
@@ -406,6 +460,32 @@ function StudentDashboard() {
           <EmptyHint icon="fa-seedling" text="ابدأ التعلم ليظهر آخر نشاط هنا" />
         )}
       </WidgetCard>
+
+      {pendingHomework.length > 0 && (
+        <WidgetCard icon="fa-clipboard-list" title="واجبات مطلوب تسليمها" accent="amber">
+          <div className="hdash-hw-list">
+            {pendingHomework.slice(0, 3).map((h) => {
+              const urgent = new Date(h.due_at).getTime() - Date.now() < 24 * 60 * 60 * 1000
+              return (
+                <button key={h.id} className="hdash-continue" onClick={() => navigate(`/homework?homework=${h.id}`)}>
+                  <div className="hdash-continue-main" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="hdash-continue-label hdash-ellipsis">{h.title}</span>
+                    <span className={`hdash-continue-hint ${urgent ? 'hdash-urgent' : ''}`}>
+                      آخر موعد {formatDue(h.due_at)} ({timeLeft(h.due_at)})
+                    </span>
+                  </div>
+                  <i className="fas fa-arrow-left"></i>
+                </button>
+              )
+            })}
+            {pendingHomework.length > 3 && (
+              <Link to="/homework" className="hdash-countdown-cta">
+                و{arNum(pendingHomework.length - 3)} واجبات أخرى <i className="fas fa-arrow-left"></i>
+              </Link>
+            )}
+          </div>
+        </WidgetCard>
+      )}
 
       <WidgetCard
         icon="fa-chart-simple"
@@ -484,7 +564,7 @@ function StudentDashboard() {
               <CountCell value={examCountdown.minutes} label="دقيقة" />
               <CountCell value={examCountdown.seconds} label="ثانية" />
             </div>
-            <Link to="/exams" className="hdash-countdown-cta" style={{ color: '#10b981' }}>
+            <Link to={`/exams?exam=${activeExam.id}`} className="hdash-countdown-cta" style={{ color: '#10b981' }}>
               ابدأ الامتحان الآن <i className="fas fa-arrow-left"></i>
             </Link>
           </div>
@@ -701,6 +781,28 @@ function relTime(iso) {
   } catch {
     return ''
   }
+}
+
+const arNum = (n) => Number(n || 0).toLocaleString('ar-EG')
+
+// "الخميس ٩:٠٠ م" within a week, otherwise "١٢ أكتوبر".
+function formatDue(iso) {
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' })
+  if (d.toDateString() === new Date().toDateString()) return `اليوم ${time}`
+  if (d.getTime() - Date.now() < 7 * 86400000) {
+    return `${d.toLocaleDateString('ar-EG', { weekday: 'long' })} ${time}`
+  }
+  return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })
+}
+
+function timeLeft(iso) {
+  const diff = new Date(iso).getTime() - Date.now()
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  if (days > 0) return `باقي ${arNum(days)} يوم`
+  if (hours > 0) return `باقي ${arNum(hours)} ساعة`
+  return `باقي ${arNum(Math.max(1, Math.floor(diff / 60000)))} دقيقة`
 }
 
 function useCountdown(targetIso) {

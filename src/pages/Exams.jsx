@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useFocusItem } from '../hooks/useFocusItem'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '../contexts/TenantContext'
 import './Exams.css'
@@ -102,6 +103,8 @@ export default function Exams() {
   const [expandedPlaylists, setExpandedPlaylists] = useState({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  // /exams?exam=<id> (from the home page) scrolls to and highlights that exam.
+  useFocusItem('exam', !loading)
   const [attemptsMap, setAttemptsMap] = useState({}) // examId -> submitted count
 
   useEffect(() => {
@@ -491,7 +494,7 @@ export default function Exams() {
     const groupName = exam.groups?.name
 
     return (
-      <div key={exam.id} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>
+      <div key={exam.id} id={`focus-${exam.id}`} className="ec-card" style={{ animationDelay: `${(index + 1) * 0.1}s` }} onClick={() => startExam(exam)}>
         <div className={`ec-status-bar ${isAvailable ? 'ec-available' : 'ec-unavailable'}`}>
           <span className="ec-status-dot" />
           <span>{statusText}</span>
