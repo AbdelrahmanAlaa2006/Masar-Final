@@ -448,7 +448,14 @@ export default function Lectures() {
       let processedLessons = lessonsWithDetails
 
       if (userRole === 'student') {
-        processedStandalone = await Promise.all(processedStandalone.map(withLockStatus))
+        // Standalone lectures and lectures inside chapters, all in parallel.
+        ;[processedStandalone, processedLessons] = await Promise.all([
+          Promise.all(processedStandalone.map(withLockStatus)),
+          Promise.all(processedLessons.map(async (les) => ({
+            ...les,
+            lectures: await Promise.all((les.lectures || []).map(withLockStatus)),
+          }))),
+        ])
       }
 
       // Apply Student Effective Overrides (custom extensions / restrictions)
@@ -540,6 +547,14 @@ export default function Lectures() {
   // ── Dedicated Lecture Workspace & Content Navigation ─────────────────
   const handleOpenLectureView = useCallback((lecture, targetVideo = null, contextLesson = null) => {
     if (!lecture) return
+    // Every way into a lecture (card button, video button, deep link) passes
+    // here, so prerequisite locks are enforced in one place.
+    const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
+      : targetVideo?.lockStatus?.unlocked === false ? targetVideo.lockStatus : null
+    if (lock) {
+      setActiveLockModal(lock)
+      return
+    }
     let resolvedLesson = contextLesson
     if (!resolvedLesson) {
       resolvedLesson = standaloneLessons.find(
@@ -547,7 +562,7 @@ export default function Lectures() {
       ) || null
     }
     setActiveLectureView({ ...lecture, contextLesson: resolvedLesson })
-    const firstVid = targetVideo || lecture.videos?.[0] || null
+    const firstVid = targetVideo || lecture.videos?.find((v) => v.lockStatus?.unlocked !== false) || null
     setActiveVideoItem(firstVid)
     setActiveVideoPartIndex(0)
     setIsVideoStarted(false) // Video does NOT autoplay until student clicks the center start button
@@ -583,12 +598,6 @@ export default function Lectures() {
         if (cancelled) return
         const video = lecture.videos.find((v) => v.id === videoId)
         if (!video) return
-        const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
-          : video.lockStatus?.unlocked === false ? video.lockStatus : null
-        if (lock) {
-          setActiveLockModal(lock)
-          return
-        }
         openLectureViewRef.current(lecture, video)
       } catch (err) {
         console.warn('Failed to open deep-linked video:', err)
