@@ -25,7 +25,7 @@ import {
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listPackages } from '@backend/packagesApi'
-import { uploadLecturePdf } from '@backend/r2'
+import { uploadLectureFile } from '@backend/r2'
 import { notify } from '../../utils/notify'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
 import { useTenant } from '../../contexts/TenantContext'
@@ -523,7 +523,7 @@ export default function CurriculumManager({ package: propPkg, onBack }) {
     setUploadProgress(1)
     try {
       // 1. Upload directly to Cloudflare R2 bucket
-      const res = await uploadLecturePdf(uploadFileObj, {
+      const res = await uploadLectureFile(uploadFileObj, {
         onProgress: (pct) => setUploadProgress(pct)
       })
 

@@ -39,6 +39,8 @@ import PreAssessmentEditor, {
   validateGates,
 } from '../components/PreAssessmentEditor'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
+import { checkContentUnlockedAnyContext } from '@backend/courseLecturesApi'
+import PrerequisiteLockModal from '../components/PrerequisiteLockModal'
 import { dbToUiGrade, uiToDbGrade } from '@backend/examsApi'
 
 const PREP_META = {
@@ -208,6 +210,8 @@ export default function Videos() {
   const [alertData, setAlertData] = useState({ title: '', message: '' })
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [showLockModal, setShowLockModal] = useState(false)
+  // Prerequisite lock of a video that sits in a locked lecture.
+  const [prereqLock, setPrereqLock] = useState(null)
   const [allowedContentIds, setAllowedContentIds] = useState(new Set())
 
   // ── Load videos from Supabase ────────────────────────────────
@@ -577,7 +581,7 @@ export default function Videos() {
       return
     }
   }
-  const openVideoPlayer = (video) => {
+  const openVideoPlayer = async (video) => {
     const isAllowedByPackage = allowedContentIds.has(video.id)
     if (userRole !== 'admin' && userRole !== 'assistant' && currentUser?.is_active === false && !isAllowedByPackage) {
       setShowLockModal(true)
@@ -585,6 +589,20 @@ export default function Videos() {
     }
     if (userRole !== 'admin' && userRole !== 'assistant' && !isVideoAllowed(video)) {
       return showAlertModal('خطأ', 'غير متاح')
+    }
+    // Same prerequisite locks as the lectures page (the server enforces them
+    // too, for Bunny videos).
+    if (userRole === 'student') {
+      try {
+        const lock = await checkContentUnlockedAnyContext({ targetType: 'video', targetId: video.id })
+        if (lock?.unlocked === false) {
+          setPrereqLock(lock)
+          return
+        }
+      } catch (err) {
+        console.error('Unlock check failed:', err)
+        return showAlertModal('خطأ', 'تعذر التحقق من إتاحة الفيديو، حاول مرة أخرى.')
+      }
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     setCurrentVideo(video)
@@ -1192,6 +1210,17 @@ export default function Videos() {
             <button className="btn btn-primary" onClick={closeAlertModal}>حسناً</button>
           </div>
         </div>
+      )}
+
+      {prereqLock && (
+        <PrerequisiteLockModal
+          isOpen
+          onClose={() => setPrereqLock(null)}
+          requiredExamId={prereqLock.required_exam_id}
+          requiredExamTitle={prereqLock.required_exam_title}
+          requiredScore={prereqLock.required_score}
+          studentScore={prereqLock.student_score}
+        />
       )}
 
       {/* Locked Modal for Inactive Students */}

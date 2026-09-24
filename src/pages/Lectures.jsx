@@ -27,7 +27,7 @@ import { listVideos, createVideo } from '@backend/videosApi'
 import { listExams, createExam } from '@backend/examsApi'
 import { listPackages, listMyPurchases } from '@backend/packagesApi'
 import GradePicker from '../components/GradePicker'
-import { uploadLecturePdf } from '@backend/r2'
+import { uploadLectureFile } from '@backend/r2'
 import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 import {
   listOverridesForTarget,
@@ -1384,7 +1384,7 @@ export default function Lectures() {
     for (let i = 0; i < (files || []).length; i++) {
       const sf = files[i]
       if (sf.file) {
-        const { key } = await uploadLecturePdf(sf.file)
+        const { key } = await uploadLectureFile(sf.file)
         await addLectureFile({
           lectureId,
           title: sf.title.trim() || sf.file.name,
@@ -1733,7 +1733,7 @@ export default function Lectures() {
 
     setIsSubmitting(true)
     try {
-      const res = await uploadLecturePdf(uploadFileObj, {
+      const res = await uploadLectureFile(uploadFileObj, {
         onProgress: (pct) => setUploadProgress(pct)
       })
       const nextOrder = (modalTarget.files || []).length * 10 + 10

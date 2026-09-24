@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import './ExamTaking.css'
 import { getExam, startAttempt, submitAttempt, countSubmittedAttempts } from '@backend/examsApi'
 import { supabase } from '@backend/supabase'
-import { getExamAccess } from '@backend/courseLecturesApi'
+import { getExamAccess, checkContentUnlockedAnyContext } from '@backend/courseLecturesApi'
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { listExamSharedBlocks, buildQuestionBlockMap } from '@backend/examSharedBlocksApi'
 import SharedTextCard from '../components/SharedTextCard'
@@ -214,7 +214,17 @@ export default function ExamTaking() {
                 )
                 return
               }
-              // If missing_context (exam belongs to a lecture but opened outside), fall through to getExam for legacy / standalone access
+              // Exam belongs to a lecture but was opened without one in the
+              // URL: it may open only if it is unlocked in one of its lectures.
+              if (String(err.message || '').startsWith('missing_context')) {
+                const lock = await checkContentUnlockedAnyContext({ targetType: 'exam', targetId: examId })
+                if (lock?.unlocked === false) {
+                  setLoadError(
+                    `🔒 هذا الامتحان مقفل بمتطلب سابق: يتطلب أولاً اجتياز "${lock.required_exam_title || 'الامتحان المشروط'}" بنسبة ${lock.required_score || 70}% فأكثر.`
+                  )
+                  return
+                }
+              }
             }
           }
 
@@ -328,6 +338,12 @@ export default function ExamTaking() {
               }
             } catch (attErr) {
               console.error('startAttempt failed', attErr)
+              // The database refuses attempts on locked exams.
+              if (String(attErr?.message || '').includes('content_locked')) {
+                setExam(null)
+                setLoadError('🔒 هذا الامتحان مقفل بمتطلب سابق ولا يمكن بدؤه الآن.')
+                return
+              }
               if (!restoredAttemptId) {
                 console.warn('Exam attempt could not be initialized.')
               }

@@ -80,6 +80,11 @@ export async function uploadFile(file, { kind, onProgress } = {}) {
 export async function uploadLecturePdf(file, opts = {}) {
   return uploadFile(file, { ...opts, kind: 'lecture' })
 }
+// Course-lecture files (lecture_files): private bucket, no public URL. Students
+// download them only through r2-download-url, which checks access and locks.
+export async function uploadLectureFile(file, opts = {}) {
+  return uploadFile(file, { ...opts, kind: 'lecture-file' })
+}
 export async function uploadAvatarImage(file, opts = {}) {
   if (file && !file.type?.startsWith('image/')) {
     throw new Error('الملف ليس صورة صالحة')

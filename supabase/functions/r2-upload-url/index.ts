@@ -5,7 +5,8 @@
 //
 // Now serves THREE kinds of uploads (request body: { kind, filename, contentType }):
 //
-//   kind='lecture'    → PDFs only.       Admin-only.        prefix: lectures/
+//   kind='lecture'      → PDFs only.     Admin-only.        prefix: lectures/  (video PDFs, public)
+//   kind='lecture-file' → PDFs only.     Admin-only.        prefix: lecture-files/ in R2_PRIVATE_BUCKET
 //   kind='avatar'     → image/* only.    Any authed user.   prefix: avatars/{userId}/
 //   kind='quiz-image' → image/* only.    Admin-only.        prefix: quiz-images/{userId}/
 //
@@ -17,6 +18,7 @@
 //   R2_SECRET_ACCESS_KEY
 //   R2_BUCKET                 (single bucket — kinds are folders inside it)
 //   R2_PUBLIC_BASE            (e.g. https://pub-xxxx.r2.dev)
+//   R2_PRIVATE_BUCKET         (no public access; course-lecture files)
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -44,7 +46,7 @@ function sanitizeExt(name: string, fallback: string): string {
   return ext.replace(/[^a-z0-9.]/g, '') || fallback
 }
 
-type Kind = 'lecture' | 'avatar' | 'quiz-image' | 'homework' | 'homework-submission'
+type Kind = 'lecture' | 'lecture-file' | 'avatar' | 'quiz-image' | 'homework' | 'homework-submission'
 
 interface KindRule {
   adminOnly: boolean
@@ -52,6 +54,9 @@ interface KindRule {
   defaultExt: string
   allowed: (ct: string) => boolean
   invalidMsg: string
+  // Stored in R2_PRIVATE_BUCKET, which has no public URL: the file can only be
+  // fetched through a short-lived link from r2-download-url.
+  privateBucket?: boolean
 }
 
 const RULES: Record<Kind, KindRule> = {
@@ -61,6 +66,16 @@ const RULES: Record<Kind, KindRule> = {
     defaultExt: '.pdf',
     allowed: (ct) => ct === 'application/pdf',
     invalidMsg: 'only application/pdf is allowed',
+  },
+  // Course-lecture files (lecture_files). Private so prerequisite locks,
+  // package purchases and availability can't be skipped with a public link.
+  'lecture-file': {
+    adminOnly: true,
+    prefix: () => 'lecture-files',
+    defaultExt: '.pdf',
+    allowed: (ct) => ct === 'application/pdf',
+    invalidMsg: 'only application/pdf is allowed',
+    privateBucket: true,
   },
   avatar: {
     adminOnly: false,           // any logged-in user can upload their own avatar
@@ -125,7 +140,7 @@ serve(async (req) => {
 
   const kind: Kind = (body.kind && RULES[body.kind]) ? body.kind : 'lecture'
   const rule = RULES[kind]
-  const contentType = body.contentType || (kind === 'lecture' ? 'application/pdf' : 'image/png')
+  const contentType = body.contentType || (rule.defaultExt === '.pdf' ? 'application/pdf' : 'image/png')
 
   // Per-kind permission check.
   if (rule.adminOnly) {
@@ -149,7 +164,7 @@ serve(async (req) => {
   const accountId   = Deno.env.get('R2_ACCOUNT_ID')!
   const accessKey   = Deno.env.get('R2_ACCESS_KEY_ID')!
   const secret      = Deno.env.get('R2_SECRET_ACCESS_KEY')!
-  const bucket      = Deno.env.get('R2_BUCKET')!
+  const bucket      = rule.privateBucket ? Deno.env.get('R2_PRIVATE_BUCKET')! : Deno.env.get('R2_BUCKET')!
   const publicBase  = (Deno.env.get('R2_PUBLIC_BASE') || '').replace(/\/+$/, '')
 
   if (!accountId || !accessKey || !secret || !bucket || !publicBase) {
@@ -171,7 +186,7 @@ serve(async (req) => {
   return json({
     uploadUrl,
     key,
-    publicUrl: `${publicBase}/${key}`,
+    publicUrl: rule.privateBucket ? null : `${publicBase}/${key}`,
     contentType,
     kind,
     expiresIn: 600,

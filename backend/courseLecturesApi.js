@@ -971,6 +971,19 @@ export async function checkContentUnlocked({ targetType, targetId, contextLectur
   return data
 }
 
+// The student's lock status for an exam or video wherever it appears: unlocked
+// if it is unlocked in at least one of its lectures (or, outside lectures, by
+// its own rule). Staff always get { unlocked: true }. Same check the database
+// runs when an exam attempt starts and bunny-signed-url runs before playback.
+export async function checkContentUnlockedAnyContext({ targetType, targetId }) {
+  const { data, error } = await getSupabase().rpc('content_unlocked_any_context', {
+    p_target_type: targetType,
+    p_target_id: targetId
+  })
+  if (error) throw error
+  return data
+}
+
 export async function getVideoAccess({ videoId, contextLectureId = null }) {
   // 1. Authenticate Request & derive trusted server-side user
   const { user, profile } = await requireAuthUser()
@@ -1228,9 +1241,9 @@ export async function getLectureFileAccess({ fileId, contextLectureId }) {
         .eq('student_id', user.id)
         .eq('package_id', lecture.package_id)
         .eq('payment_status', 'approved')
-        .maybeSingle()
+        .limit(1)
 
-      if (!sub) {
+      if (!sub?.length) {
         const err = new Error('forbidden: no active subscription for this course package')
         err.status = 403
         throw err
@@ -1238,12 +1251,11 @@ export async function getLectureFileAccess({ fileId, contextLectureId }) {
     }
   }
 
-  // 5. Evaluate containing lecture unlock state (Files inherit parent lecture unlock)
-  const lectureUnlock = await checkContentUnlocked({
-    targetType: 'lecture',
-    targetId: contextLectureId,
-    contextLectureId: null
-  })
+  // 5. Evaluate containing lecture unlock state (Files inherit parent lecture unlock).
+  //    Students only: staff have no exam attempts and would always read as locked.
+  const lectureUnlock = profile.role === 'student'
+    ? await checkContentUnlocked({ targetType: 'lecture', targetId: contextLectureId, contextLectureId: null })
+    : { unlocked: true }
 
   if (!lectureUnlock || lectureUnlock.unlocked !== true) {
     const err = new Error('locked: parent lecture is locked by prerequisite exam')

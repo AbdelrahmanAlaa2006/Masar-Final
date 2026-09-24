@@ -66,7 +66,7 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: part, error: partErr } = await admin
     .from('video_parts')
-    .select('bunny_video_id, bunny_library_id, video_id, videos!inner(grade)')
+    .select('bunny_video_id, bunny_library_id, video_id, videos!inner(grade, tenant_id)')
     .eq('id', partId)
     .single()
   if (partErr || !part) return json({ error: 'part not found' }, { status: 404 })
@@ -75,16 +75,32 @@ serve(async (req) => {
   // ── authorize: admin OR (student grade matches video grade) ────────────
   const { data: profile } = await admin
     .from('profiles')
-    .select('role, grade')
+    .select('role, grade, tenant_id')
     .eq('id', userId)
     .single()
 
   const partGrade = (part as any).videos?.grade
-  const allowed =
+  const sameTenant = !!profile?.tenant_id && profile.tenant_id === (part as any).videos?.tenant_id
+  const allowed = sameTenant && (
     profile?.role === 'admin' ||
     (profile?.grade && profile.grade === partGrade)
+  )
 
   if (!allowed) return json({ error: 'forbidden' }, { status: 403 })
+
+  // Prerequisite locks: a video inside lectures plays only when it is unlocked
+  // in at least one of them (content_unlocked_any_context, run as the student
+  // so it sees their tenant and attempts). Staff are always unlocked.
+  if (profile?.role === 'student') {
+    const { data: unlock, error: unlockErr } = await asUser.rpc('content_unlocked_any_context', {
+      p_target_type: 'video',
+      p_target_id: part.video_id,
+    })
+    if (unlockErr) return json({ error: 'unlock check failed' }, { status: 500 })
+    if (unlock?.unlocked !== true) {
+      return json({ error: 'locked', unlockStatus: unlock }, { status: 423 })
+    }
+  }
 
   // NOTE: we do NOT re-check access_overrides here — RLS on video_parts
   // (which the frontend hits when listing) is the access surface. The

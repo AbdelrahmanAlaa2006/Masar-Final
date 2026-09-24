@@ -18,6 +18,9 @@
 //   R2_ACCESS_KEY_ID
 //   R2_SECRET_ACCESS_KEY
 //   R2_BUCKET
+//   R2_PRIVATE_BUCKET   (course-lecture files uploaded as kind 'lecture-file'
+//                        live here, under lecture-files/; older files are still
+//                        in R2_BUCKET under lectures/)
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -82,7 +85,7 @@ serve(async (req) => {
   // 3. Resolve User Profile & Tenant
   const { data: profile, error: profErr } = await supabaseAdmin
     .from('profiles')
-    .select('id, tenant_id, role, grade')
+    .select('id, tenant_id, role, grade, "group"')
     .eq('id', userId)
     .single()
 
@@ -112,7 +115,7 @@ serve(async (req) => {
   // 5. Authoritatively Resolve Containing Lecture & Package
   const { data: lecture, error: lecErr } = await supabaseAdmin
     .from('course_lectures')
-    .select('id, tenant_id, package_id, grade')
+    .select('id, tenant_id, package_id, grade, is_active, created_at, available_hours, available_until')
     .eq('id', contextLectureId)
     .single()
 
@@ -131,6 +134,39 @@ serve(async (req) => {
     return json({ error: 'forbidden: lecture is for a different grade' }, { status: 403 })
   }
 
+  // 5c. Archived lectures and lectures outside their availability window are
+  //     closed to students, including per-student/group/grade overrides
+  //     (most specific wins, the same precedence as reduceEffective()).
+  if (profile.role === 'student') {
+    if (lecture.is_active === false) {
+      return json({ error: 'forbidden: lecture is archived' }, { status: 403 })
+    }
+    const scopes = [`and(scope.eq.student,target_id.eq.${userId})`, `and(scope.eq.prep,target_id.eq.${profile.grade})`]
+    // Group names are free text, so quote the value for the filter syntax.
+    if (profile.group) scopes.push(`and(scope.eq.group,target_id.eq."${`${profile.grade}:${profile.group}`.replace(/"/g, '\\"')}")`)
+    const { data: ovRows } = await supabaseAdmin
+      .from('access_overrides')
+      .select('scope, allowed, available_hours, available_until')
+      .eq('item_type', 'lecture')
+      .eq('item_id', lecture.id)
+      .or(scopes.join(','))
+    const rank: Record<string, number> = { prep: 1, group: 2, student: 3 }
+    const ov = (ovRows || []).sort((a, b) => (rank[b.scope] || 0) - (rank[a.scope] || 0))[0]
+    if (ov && ov.allowed === false) {
+      return json({ error: 'forbidden: lecture is closed for this student' }, { status: 403 })
+    }
+    const until = ov?.available_until || lecture.available_until
+    const hours = ov?.available_hours || lecture.available_hours
+    const endsAt = until
+      ? new Date(until).getTime()
+      : hours && lecture.created_at
+        ? new Date(lecture.created_at).getTime() + hours * 3600 * 1000
+        : null
+    if (endsAt !== null && endsAt <= Date.now()) {
+      return json({ error: 'forbidden: lecture availability has ended' }, { status: 403 })
+    }
+  }
+
   // 6. Check Package Subscription Access (Students Only, ONLY IF lecture is inside a package)
   if (profile.role === 'student' && lecture.package_id) {
     const { data: hasPkgAccess } = await supabaseAdmin.rpc('has_content_access', {
@@ -146,34 +182,41 @@ serve(async (req) => {
         .eq('student_id', userId)
         .eq('package_id', lecture.package_id)
         .eq('payment_status', 'approved')
-        .maybeSingle()
+        .limit(1)
 
-      if (!sub) {
+      if (!sub?.length) {
         return json({ error: 'forbidden: no active subscription for this course package' }, { status: 403 })
       }
     }
   }
 
   // 7. Evaluate Containing Lecture Unlock State (Files inherit parent lecture unlock)
-  const { data: unlockRes, error: unlockErr } = await supabaseAdmin.rpc('check_content_unlocked', {
-    p_student_id: userId,
-    p_target_type: 'lecture',
-    p_target_id: contextLectureId,
-    p_context_lecture_id: null,
-  })
+  //    Called AS THE STUDENT: check_content_unlocked resolves the tenant from
+  //    auth.uid(), so with the service-role client it found no rules and
+  //    always answered "unlocked". Staff are never locked out.
+  if (profile.role === 'student') {
+    const { data: unlockRes, error: unlockErr } = await supabaseAsUser.rpc('check_content_unlocked', {
+      p_student_id: userId,
+      p_target_type: 'lecture',
+      p_target_id: contextLectureId,
+      p_context_lecture_id: null,
+    })
 
-  if (unlockErr || !unlockRes || unlockRes.unlocked !== true) {
-    return json({
-      error: 'locked: parent lecture is locked by prerequisite exam',
-      unlockStatus: unlockRes || null,
-    }, { status: 423 })
+    if (unlockErr || !unlockRes || unlockRes.unlocked !== true) {
+      return json({
+        error: 'locked: parent lecture is locked by prerequisite exam',
+        unlockStatus: unlockRes || null,
+      }, { status: 423 })
+    }
   }
 
   // 8. Generate Short-Lived Pre-Signed GET URL (300 Seconds / 5 Minutes TTL)
   const accountId = Deno.env.get('R2_ACCOUNT_ID')!
   const accessKey = Deno.env.get('R2_ACCESS_KEY_ID')!
   const secret = Deno.env.get('R2_SECRET_ACCESS_KEY')!
-  const bucket = Deno.env.get('R2_BUCKET')!
+  const bucket = file.file_key.startsWith('lecture-files/')
+    ? Deno.env.get('R2_PRIVATE_BUCKET')!
+    : Deno.env.get('R2_BUCKET')!
 
   if (!accountId || !accessKey || !secret || !bucket) {
     return json({ error: 'server is not configured for R2' }, { status: 500 })
