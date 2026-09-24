@@ -25,6 +25,8 @@ import {
   copyAllQuestionsToClipboard,
   parseNaturalFormat as parseQuestionsNatural,
 } from '../utils/questionUtils'
+import WordBankEditor, { WordBankCard } from '../components/WordBankEditor'
+import { groupQuestions, replaceGroup, isListHead, keepWordBank } from '../utils/wordBank'
 
 const PREP_META = {
   first: { ar: 'الصف الأول الإعدادي', en: 'First Prep', accent: 'green', desc: 'بداية المرحلة الإعدادية والتأسيس' },
@@ -1024,7 +1026,8 @@ function EditExamModal({ exam, onCancel, onSave }) {
         options: Array.isArray(q.options) ? [...q.options] : ['', ''],
         answers: Array.isArray(q.answers) ? [...q.answers] : [0],
         points: typeof q.points === 'number' ? q.points : 1,
-        isMultiple: !!q.isMultiple || (Array.isArray(q.answers) && q.answers.length > 1)
+        isMultiple: !!q.isMultiple || (Array.isArray(q.answers) && q.answers.length > 1),
+        ...keepWordBank(q),
       }))
     }
     return []
@@ -1076,6 +1079,18 @@ function EditExamModal({ exam, onCancel, onSave }) {
   const removeQuestion = (id) => {
     setQuestions(prev => prev.filter(q => q.id !== id))
   }
+
+  // Word bank («اختر الكلمة المناسبة»): add (group null) or edit a group.
+  const [wbEditing, setWbEditing] = useState(null)
+  const saveWordBank = (rows) => {
+    const group = rows[0].wordBank.group
+    setQuestions((prev) => {
+      let next = prev.length === 0 ? 0 : Math.max(...prev.map(q => q.id)) + 1
+      return replaceGroup(prev, group, rows, (list) => list.map((q) => ({ ...q, id: next++ })))
+    })
+    setWbEditing(null)
+  }
+  const deleteWordBank = (group) => setQuestions((prev) => prev.filter((q) => q?.wordBank?.group !== group))
 
   const updateQuestion = (id, field, value) => {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q))
@@ -1218,6 +1233,7 @@ function EditExamModal({ exam, onCancel, onSave }) {
       answers: q.answers,
       points: parseInt(q.points, 10) || 1,
       isMultiple: !!q.isMultiple,
+      ...keepWordBank(q),
     }))
 
     const val = parseInt(availabilityVal, 10) || 1
@@ -1653,6 +1669,16 @@ function EditExamModal({ exam, onCancel, onSave }) {
           {/* Questions List */}
           <div className="edit-questions-list">
             {questions.map((q, idx) => {
+              if (!isListHead(questions, idx)) return null
+              if (q.wordBank) {
+                const g = q.wordBank.group
+                const rows = groupQuestions(questions, g)
+                return wbEditing?.group === g ? (
+                  <WordBankEditor key={g} initialQuestions={rows} onSave={saveWordBank} onCancel={() => setWbEditing(null)} />
+                ) : (
+                  <WordBankCard key={g} questions={rows} number={`${idx + 1}–${idx + rows.length}`} onEdit={() => setWbEditing({ group: g })} onDelete={() => deleteWordBank(g)} />
+                )
+              }
               const qDir = detectTextDir(q.question)
               return (
                 <div className="edit-q-block" key={q.id} dir={qDir}>
@@ -1771,6 +1797,14 @@ function EditExamModal({ exam, onCancel, onSave }) {
             <i className="fas fa-plus"></i>
             <span>إضافة سؤال جديد يدوياً</span>
           </button>
+          {wbEditing && wbEditing.group === null ? (
+            <WordBankEditor onSave={saveWordBank} onCancel={() => setWbEditing(null)} />
+          ) : !wbEditing && (
+            <button type="button" className="exam-add-q-btn" onClick={() => setWbEditing({ group: null })} style={{ marginTop: 0 }}>
+              <i className="fas fa-spell-check"></i>
+              <span>إضافة سؤال «اختر الكلمة المناسبة»</span>
+            </button>
+          )}
 
           {/* Shared reading passages. Saved together with the questions above,
               so edits to either stay in step. */}

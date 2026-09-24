@@ -41,6 +41,8 @@ import { listStudentsPaged } from '@backend/profilesApi'
 import { listGroups } from '@backend/groupsApi'
 import { supabase } from '@backend/supabase'
 import { fetchAllRows } from '@backend/fetchAllRows'
+import WordBankEditor, { WordBankCard } from '../components/WordBankEditor'
+import { groupQuestions, replaceGroup, isListHead } from '../utils/wordBank'
 import { notify } from '../utils/notify'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import PrerequisiteLockModal from '../components/PrerequisiteLockModal'
@@ -1060,6 +1062,32 @@ export default function Lectures() {
     ])
   }
 
+  // Word bank («اختر الكلمة المناسبة») inside a staged exam. `wbEditing` on the
+  // exam card: { group: null } = adding, { group: id } = editing that group.
+  const handleSaveWordBank = (examId, rows) => {
+    const group = rows[0].wordBank.group
+    const stamp = Date.now()
+    setStagedExams((prev) => prev.map((e) => {
+      if (e.id !== examId) return e
+      const qs = replaceGroup(e.questions || [], group, rows, (list) => list.map((q, i) => ({ ...q, id: `wb_${stamp}_${i}` })))
+      return {
+        ...e,
+        questions: qs,
+        totalPoints: qs.reduce((acc, q) => acc + (parseInt(q.points, 10) || 1), 0),
+        wbEditing: null,
+        showQuestionsEditor: true,
+      }
+    }))
+  }
+
+  const handleDeleteWordBank = (examId, group) => {
+    setStagedExams((prev) => prev.map((e) => {
+      if (e.id !== examId) return e
+      const qs = (e.questions || []).filter((q) => q?.wordBank?.group !== group)
+      return { ...e, questions: qs, totalPoints: qs.reduce((acc, q) => acc + (parseInt(q.points, 10) || 1), 0) }
+    }))
+  }
+
   const handleUpdateStagedExam = (id, field, value) => {
     setStagedExams((prev) => prev.map((e) => {
       if (e.id !== id) return e
@@ -1239,7 +1267,8 @@ export default function Lectures() {
       options: p.options || ['', ''],
       answers: Array.isArray(p.answers) && p.answers.length > 0 ? p.answers : [0],
       points: parseInt(p.points, 10) || 1,
-      isMultiple: !!p.isMultiple
+      isMultiple: !!p.isMultiple,
+      ...(p.wordBank ? { wordBank: p.wordBank } : {}),
     }))
 
     setStagedExams((prev) =>
@@ -3696,6 +3725,13 @@ export default function Lectures() {
                                             </button>
                                             <button
                                               type="button"
+                                              className="studio-q-action-btn add"
+                                              onClick={() => handleUpdateStagedExam(se.id, 'wbEditing', { group: null })}
+                                            >
+                                              <i className="fas fa-spell-check"></i> اختر الكلمة المناسبة
+                                            </button>
+                                            <button
+                                              type="button"
                                               className="studio-q-action-btn toggle"
                                               onClick={() => handleToggleExamQuestions(se.id)}
                                             >
@@ -3713,6 +3749,7 @@ export default function Lectures() {
                                               <p>• اكتب كل سؤال في فقرة مستقلة (السطر الأول السؤال، والأسطر التالية الاختيارات).</p>
                                               <p>• ضع علامة <strong style={{ color: '#10b981' }}>*</strong> قبل الإجابة الصحيحة.</p>
                                               <p>• افصل بين كل سؤال وسؤال بسطر فارغ. يمكنك وضع <code>!2</code> لتحديد الدرجات.</p>
+                                              <p>• لسؤال «اختر الكلمة المناسبة»: ابدأ بسطر <code>WORDBANK:</code> ثم الفقرة والكلمات الصحيحة بين [ ]، ثم سطر <code>EXTRA: كلمة، كلمة</code> لكلمات التمويه.</p>
                                             </div>
                                             <textarea
                                               className="studio-bulk-textarea"
@@ -3743,6 +3780,13 @@ export default function Lectures() {
                                           </div>
                                         )}
 
+                                        {se.wbEditing && se.wbEditing.group === null && (
+                                          <WordBankEditor
+                                            onSave={(rows) => handleSaveWordBank(se.id, rows)}
+                                            onCancel={() => handleUpdateStagedExam(se.id, 'wbEditing', null)}
+                                          />
+                                        )}
+
                                         {/* Questions List */}
                                         {se.showQuestionsEditor !== false && (
                                           <div className="studio-questions-list">
@@ -3752,7 +3796,24 @@ export default function Lectures() {
                                                 <p>لم تتم إضافة أي أسئلة بعد. اضغط «➕ إضافة سؤال» أو «📋 استيراد سريع» للصقها دفعة واحدة.</p>
                                               </div>
                                             ) : (
-                                              se.questions.map((q, qIdx) => (
+                                              se.questions.map((q, qIdx) => !isListHead(se.questions, qIdx) ? null : q.wordBank ? (
+                                                se.wbEditing?.group === q.wordBank.group ? (
+                                                  <WordBankEditor
+                                                    key={q.wordBank.group}
+                                                    initialQuestions={groupQuestions(se.questions, q.wordBank.group)}
+                                                    onSave={(rows) => handleSaveWordBank(se.id, rows)}
+                                                    onCancel={() => handleUpdateStagedExam(se.id, 'wbEditing', null)}
+                                                  />
+                                                ) : (
+                                                  <WordBankCard
+                                                    key={q.wordBank.group}
+                                                    questions={groupQuestions(se.questions, q.wordBank.group)}
+                                                    number={`${qIdx + 1}–${qIdx + groupQuestions(se.questions, q.wordBank.group).length}`}
+                                                    onEdit={() => handleUpdateStagedExam(se.id, 'wbEditing', { group: q.wordBank.group })}
+                                                    onDelete={() => handleDeleteWordBank(se.id, q.wordBank.group)}
+                                                  />
+                                                )
+                                              ) : (
                                                 <div key={q.id || qIdx} className="studio-question-card">
                                                   <div className="studio-question-topbar">
                                                     <span className="studio-question-num">السؤال {qIdx + 1}</span>

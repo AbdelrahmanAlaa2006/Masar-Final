@@ -1,0 +1,162 @@
+/* Word bank editor + list card. Neutral surfaces with the tenant's
+   --primary, so it sits inside ExamAdd, the lecture editor and the
+   edit-exam modal without clashing. */
+
+.wbe-card,
+.wbe-summary {
+  border: 2px solid var(--primary, #6366f1);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px 0;
+  background: var(--card-bg, rgba(255, 255, 255, 0.03));
+}
+
+.wbe-head h4 { margin: 0 0 4px; font-size: 1.05rem; color: var(--primary, #6366f1); }
+.wbe-head h4 i { margin-inline-end: 6px; }
+.wbe-sub { font-size: 0.85rem; opacity: 0.8; }
+
+.wbe-text {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(128, 128, 128, 0.35);
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.8;
+  resize: vertical;
+}
+.wbe-text:focus { outline: none; border-color: var(--primary, #6366f1); }
+
+.wbe-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; }
+.wbe-note { font-size: 0.85rem; opacity: 0.85; }
+
+.wbe-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--primary, #6366f1);
+  background: transparent;
+  color: var(--primary, #6366f1);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wbe-btn:hover { background: var(--primary-soft, rgba(99, 102, 241, 0.1)); }
+.wbe-btn-sm { padding: 5px 10px; font-size: 0.85rem; }
+.wbe-btn-danger { border-color: #ef4444; color: #ef4444; }
+.wbe-btn-danger:hover { background: rgba(239, 68, 68, 0.08); }
+
+.wbe-field label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+.wbe-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wbe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
+  border: 1.5px dashed rgba(128, 128, 128, 0.5);
+  font-size: 0.9rem;
+}
+.wbe-chip button {
+  border: none;
+  background: rgba(128, 128, 128, 0.18);
+  color: inherit;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+}
+.wbe-chip-input {
+  min-width: 140px;
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(128, 128, 128, 0.35);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.wbe-settings { display: flex; flex-wrap: wrap; gap: 18px; margin: 14px 0 6px; }
+.wbe-setting { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
+.wbe-setting select {
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(128, 128, 128, 0.35);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.wbe-setting select option { color: #111; }
+.wbe-setting em { font-style: normal; opacity: 0.8; }
+
+.wbe-error {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.wbe-preview {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(128, 128, 128, 0.35);
+}
+.wbe-preview-title { font-size: 0.85rem; font-weight: 700; opacity: 0.75; margin-bottom: 6px; }
+
+.wbe-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.wbe-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.wbe-cancel {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(128, 128, 128, 0.4);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wbe-summary { border-width: 1.5px; }
+.wbe-summary-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.wbe-summary-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--primary, #6366f1);
+  background: var(--primary-soft, rgba(99, 102, 241, 0.12));
+}
+.wbe-summary-badge i { margin-inline-end: 4px; }
+.wbe-summary-num { font-weight: 800; font-size: 0.9rem; }
+.wbe-summary-meta { font-size: 0.85rem; opacity: 0.75; }
+.wbe-summary-text { margin: 0 0 6px; line-height: 1.8; font-size: 0.95rem; white-space: pre-wrap; }
+.wbe-summary-extra { margin: 0 0 8px; font-size: 0.85rem; opacity: 0.8; }
+.wbe-summary-actions { display: flex; gap: 8px; }
+
+@media (max-width: 560px) {
+  .wbe-card, .wbe-summary { padding: 12px; }
+  .wbe-settings { flex-direction: column; gap: 10px; }
+}

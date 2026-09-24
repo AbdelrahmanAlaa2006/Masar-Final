@@ -8,6 +8,8 @@ import { getExamAccess, checkContentUnlockedAnyContext } from '@backend/courseLe
 import { listEffectiveOverrides, reduceEffective } from '@backend/overridesApi'
 import { listExamSharedBlocks, buildQuestionBlockMap } from '@backend/examSharedBlocksApi'
 import SharedTextCard from '../components/SharedTextCard'
+import WordBankQuestion from '../components/WordBankQuestion'
+import { wordBankGroupIndices } from '../utils/wordBank'
 import ScreenGuard from '../components/ScreenGuard'
 import useExitGuard from '../hooks/useExitGuard'
 import ConfirmExitDialog from '../components/ConfirmExitDialog'
@@ -510,6 +512,12 @@ export default function ExamTaking() {
   const isSelected = (qIdx, optIdx) =>
     (answers[qIdx] && answers[qIdx].has(optIdx)) || false
 
+  // Word-bank blanks: set one answer, or clear it with null.
+  const setSingleAnswer = (qIdx, optIdx) => {
+    if (examFinished) return
+    setAnswers(prev => ({ ...prev, [qIdx]: optIdx === null ? new Set() : new Set([optIdx]) }))
+  }
+
   // NOTE: scoring is computed SERVER-SIDE by submit_exam_attempt(). The
   // client only sends raw responses. We never trust a score that came
   // from this browser.
@@ -675,7 +683,19 @@ export default function ExamTaking() {
   const letters = isLtr
     ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     : ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح']
-  const progress = ((currentQuestion + 1) / questions.length) * 100
+  // A word bank's blanks are separate questions shown together on one
+  // screen; next/previous move over the whole group.
+  const wbGroup = wordBankGroupIndices(questions, currentQuestion)
+  const screenStart = wbGroup ? wbGroup[0] : currentQuestion
+  const screenEnd = wbGroup ? wbGroup[wbGroup.length - 1] : currentQuestion
+  const goPrev = () => {
+    const prev = screenStart - 1
+    if (prev < 0) return
+    const g = wordBankGroupIndices(questions, prev)
+    setCurrentQuestion(g ? g[0] : prev)
+  }
+  const goNext = () => setCurrentQuestion(Math.min(questions.length - 1, screenEnd + 1))
+  const progress = ((screenEnd + 1) / questions.length) * 100
 
   const handleCopyQuestion = async () => {
     if (!currentQ) return
@@ -723,7 +743,7 @@ export default function ExamTaking() {
             <div className="et-sidepanel-grid">
               {questions.map((_, idx) => {
                 const answered = answers[idx] && answers[idx].size > 0
-                const active = idx === currentQuestion
+                const active = idx >= screenStart && idx <= screenEnd
                 return (
                   <button
                     key={idx}
@@ -758,7 +778,9 @@ export default function ExamTaking() {
             <div className="et-topbar">
               <div className="et-topbar-right">
                 <span className="et-topbar-title">
-                  السؤال {currentQuestion + 1} من {questions.length}
+                  {wbGroup
+                    ? `الأسئلة ${screenStart + 1}–${screenEnd + 1} من ${questions.length}`
+                    : `السؤال ${currentQuestion + 1} من ${questions.length}`}
                 </span>
                 <span className="et-topbar-stat">
                   <span>✅</span>
@@ -790,7 +812,7 @@ export default function ExamTaking() {
             <div className="et-quick-strip" ref={quickNavRef} aria-label="شريط الأسئلة السريع">
               {questions.map((_, idx) => {
                 const answered = answers[idx] && answers[idx].size > 0
-                const active = idx === currentQuestion
+                const active = idx >= screenStart && idx <= screenEnd
                 return (
                   <button
                     key={idx}
@@ -808,8 +830,16 @@ export default function ExamTaking() {
 
             {/* Shared reading passage, re-shown above every linked question so
                 the student never has to navigate back to re-read it. */}
-            <SharedTextCard block={sharedBlockMap.get(currentQuestion)} />
+            <SharedTextCard block={sharedBlockMap.get(screenStart)} />
 
+            {wbGroup ? (
+              <WordBankQuestion
+                questions={questions}
+                indices={wbGroup}
+                answers={answers}
+                onSet={setSingleAnswer}
+              />
+            ) : (<>
             <div className="et-question-area" dir={qDir}>
               <div className="et-question-meta">
                 <span className="et-q-badge et-q-num">س {currentQuestion + 1}</span>
@@ -852,16 +882,17 @@ export default function ExamTaking() {
                 )
               })}
             </div>
+            </>)}
 
             <div className="et-footer">
               <button
                 className="et-btn et-btn-prev"
-                onClick={() => setCurrentQuestion(q => q - 1)}
-                disabled={currentQuestion === 0}
+                onClick={goPrev}
+                disabled={screenStart === 0}
               >
                 ← السابق
               </button>
-              {currentQuestion === questions.length - 1 ? (
+              {screenEnd === questions.length - 1 ? (
                 <button
                   className="et-btn et-btn-finish"
                   onClick={() => handleFinishExam(false)}
@@ -873,7 +904,7 @@ export default function ExamTaking() {
               ) : (
                 <button
                   className="et-btn et-btn-next"
-                  onClick={() => setCurrentQuestion(q => q + 1)}
+                  onClick={goNext}
                 >
                   التالي →
                 </button>

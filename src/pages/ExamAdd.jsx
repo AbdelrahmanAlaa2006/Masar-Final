@@ -20,6 +20,8 @@ import {
   copyAllQuestionsToClipboard,
   parseNaturalFormat as parseQuestionsNatural,
 } from '../utils/questionUtils'
+import WordBankEditor, { WordBankCard } from '../components/WordBankEditor'
+import { groupQuestions, replaceGroup, isListHead, keepWordBank } from '../utils/wordBank'
 
 function getStoredDraft(slug) {
   try {
@@ -75,6 +77,8 @@ export default function ExamAdd() {
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [numQuestions, setNumQuestions] = useState(() => initialDraft?.numQuestions || (initialDraft?.questions?.length ? String(initialDraft.questions.length) : ''))
   const [questions, setQuestions] = useState(() => (Array.isArray(initialDraft?.questions) ? initialDraft.questions : []))
+  // Word bank being added (group: null) or edited (group id); null = closed.
+  const [wbEditing, setWbEditing] = useState(null)
   // Shared reading passages. Held here and written straight after the exam
   // row is created, because a block references the exam by id.
   const [sharedBlocks, setSharedBlocks] = useState(() => (Array.isArray(initialDraft?.sharedBlocks) ? initialDraft.sharedBlocks : []))
@@ -163,6 +167,29 @@ export default function ExamAdd() {
   const removeQuestion = (id) => {
     setQuestions(prev => {
       const next = prev.filter(q => q.id !== id)
+      setNumQuestions(String(next.length))
+      return next
+    })
+  }
+
+  // ── Word bank («اختر الكلمة المناسبة») ─────────────────────────
+  const withQuestionIds = (rows) => {
+    let next = questions.length === 0 ? 0 : Math.max(...questions.map(q => q.id)) + 1
+    return rows.map((q) => ({ ...q, id: next++ }))
+  }
+  const saveWordBank = (rows) => {
+    const group = rows[0].wordBank.group
+    setQuestions((prev) => {
+      const next = replaceGroup(prev, group, rows, withQuestionIds)
+      setNumQuestions(String(next.length))
+      return next
+    })
+    setWbEditing(null)
+    setShowCopySection(true)
+  }
+  const deleteWordBank = (group) => {
+    setQuestions((prev) => {
+      const next = prev.filter((q) => q?.wordBank?.group !== group)
       setNumQuestions(String(next.length))
       return next
     })
@@ -309,6 +336,7 @@ export default function ExamAdd() {
       answers: q.answers,
       points: q.points,
       isMultiple: q.isMultiple,
+      ...keepWordBank(q),
     }))
     const blockError = validateEditorBlocks(sharedBlocks)
     if (blockError) {
@@ -695,6 +723,13 @@ export default function ExamAdd() {
             >
               ➕ سؤال جديد
             </button>
+            <button
+              className="btn"
+              onClick={() => setWbEditing({ group: null })}
+              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+            >
+              🔤 اختر الكلمة المناسبة
+            </button>
           </div>
         </div>
 
@@ -720,6 +755,7 @@ export default function ExamAdd() {
                 <div>اكتب كل سؤال في فقرة منفصلة، السطر الأول هو السؤال، والأسطر التالية هي الاختيارات.</div>
                 <div>ضع <strong style={{ color: '#16a34a' }}>*</strong> في بداية الإجابة الصحيحة (يمكن وضعها قبل أكثر من اختيار في حالة الإجابة المتعددة).</div>
                 <div>افصل بين الأسئلة بسطر فارغ. اختياري: ضع <code>!2</code> في آخر سطر لتحديد النقاط.</div>
+                <div>لسؤال «اختر الكلمة المناسبة»: ابدأ بسطر <code>WORDBANK:</code> ثم الفقرة والكلمات الصحيحة بين [ ]، ثم <code>EXTRA: كلمة، كلمة</code> لكلمات التمويه.</div>
                 <div
                   style={{
                     marginTop: 8,
@@ -774,6 +810,22 @@ export default function ExamAdd() {
 
         <div className="questions-container">
           {questions.map((q, i) => {
+            if (!isListHead(questions, i)) return null
+            if (q.wordBank) {
+              const g = q.wordBank.group
+              const rows = groupQuestions(questions, g)
+              return wbEditing?.group === g ? (
+                <WordBankEditor key={g} initialQuestions={rows} onSave={saveWordBank} onCancel={() => setWbEditing(null)} />
+              ) : (
+                <WordBankCard
+                  key={g}
+                  questions={rows}
+                  number={`${i + 1}–${i + rows.length}`}
+                  onEdit={() => setWbEditing({ group: g })}
+                  onDelete={() => deleteWordBank(g)}
+                />
+              )
+            }
             const qDir = detectTextDir(q.question)
             return (
               <div key={q.id} className="question-block" dir={qDir}>
@@ -893,6 +945,10 @@ export default function ExamAdd() {
           })}
         </div>
 
+        {wbEditing && wbEditing.group === null && (
+          <WordBankEditor onSave={saveWordBank} onCancel={() => setWbEditing(null)} />
+        )}
+
         {questions.length > 0 && (
           <>
             <button
@@ -903,6 +959,16 @@ export default function ExamAdd() {
               <i className="fas fa-plus"></i>
               <span>إضافة سؤال آخر</span>
             </button>
+            {!wbEditing && (
+              <button
+                type="button"
+                onClick={() => setWbEditing({ group: null })}
+                className="exam-add-q-btn"
+              >
+                <i className="fas fa-spell-check"></i>
+                <span>إضافة سؤال «اختر الكلمة المناسبة»</span>
+              </button>
+            )}
 
             {/* Shared reading passages — written right after the exam row is
                 created, keyed to the questions above. */}

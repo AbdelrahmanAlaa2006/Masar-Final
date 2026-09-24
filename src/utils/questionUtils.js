@@ -1,3 +1,4 @@
+import { buildWordBank } from './wordBank'
 /**
  * Question utilities for bidirectional text rendering, direction detection,
  * formatting, parsing, and clipboard copying.
@@ -157,13 +158,41 @@ export async function copyAllQuestionsToClipboard(questions) {
  *   • Optional trailing `!N` line or `[N]` specifies points.
  *   • Preserves option letters/text in original logical order.
  */
+// A block that starts with one of these labels is a word bank:
+//   WORDBANK:
+//   Every morning, I [check] the weather. We read a/an [e-book].
+//   EXTRA: camera, laptop
+//   !1            (optional points per blank)
+const WORDBANK_LABEL = /^(word\s*bank|wordbank|بنك الكلمات|اختر الكلمة المناسبة)\s*[:：]?\s*/i
+const EXTRA_LABEL = /^(extras?|كلمات إضافية|كلمات اضافية|تمويه)\s*[:：]\s*/i
+
+function parseWordBankBlock(block) {
+  const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
+  lines[0] = lines[0].replace(WORDBANK_LABEL, '')
+  let points = 1
+  const extras = []
+  const text = []
+  for (const line of lines) {
+    if (!line) continue
+    if (/^!\s*\d+\s*$/.test(line)) { points = Math.max(1, parseInt(line.match(/\d+/)[0], 10)); continue }
+    if (EXTRA_LABEL.test(line)) { extras.push(...line.replace(EXTRA_LABEL, '').split(/[,،]/)); continue }
+    text.push(line)
+  }
+  return buildWordBank(text.join(' '), extras, { points }).questions
+}
+
 export function parseNaturalFormat(text) {
   const blocks = String(text || '')
     .split(/\n\s*\n+/)
     .map((b) => b.trim())
     .filter((b) => b.length > 0)
 
-  return blocks.map((block, i) => {
+  // Word-bank blocks expand into one question per blank. Ids are numbered at
+  // the end so every question gets a plain 0, 1, 2… id (editors do Math.max).
+  const parsed = blocks.flatMap((block) => {
+    if (WORDBANK_LABEL.test(block.split('\n')[0].trim())) {
+      return parseWordBankBlock(block)
+    }
     const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
     let points = 1
 
@@ -207,7 +236,6 @@ export function parseNaturalFormat(text) {
     }
 
     return {
-      id: i,
       question: questionLine,
       options: options.length >= 2 ? options : (options.length ? [...options, ''] : ['', '']),
       answers: correctAnswers.length > 0 ? correctAnswers : [0],
@@ -215,4 +243,5 @@ export function parseNaturalFormat(text) {
       isMultiple: correctAnswers.length > 1,
     }
   })
+  return parsed.map((q, idx) => ({ ...q, id: idx }))
 }
