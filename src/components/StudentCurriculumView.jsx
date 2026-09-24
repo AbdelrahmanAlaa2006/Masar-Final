@@ -5,7 +5,8 @@ import {
   listCourseLectures,
   getLectureDetails,
   checkContentUnlocked,
-  getLectureFileAccess
+  getLectureFileAccess,
+  withLectureLocks
 } from '@backend/courseLecturesApi'
 import { supabase } from '@backend/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -70,82 +71,13 @@ export default function StudentCurriculumView({
           const detailedLectures = await Promise.all(
             rawLectures.map(async (lec) => {
               try {
-                // Parallelize lecture details and unlock evaluation
-                const [details, lockRes] = await Promise.all([
-                  getLectureDetails(lec.id),
-                  checkContentUnlocked({ targetType: 'lecture', targetId: lec.id }).catch((err) => {
-                    console.warn(`checkContentUnlocked failed for lecture ${lec.id}:`, err)
-                    return { unlocked: true }
-                  })
-                ])
-
-                const lectureLockStatus = lockRes || { unlocked: true }
-                let videosWithLock = details.videos || []
-                let examsWithLock = details.exams || []
-
-                // Inherit or evaluate item-level locks
-                if (lectureLockStatus.unlocked === false) {
-                  // Parent lecture is locked: children inherit lock status
-                  videosWithLock = videosWithLock.map((v) => ({
-                    ...v,
-                    lockStatus: {
-                      unlocked: false,
-                      reason: 'lecture_locked',
-                      parent_lecture_id: lec.id,
-                      required_exam_id: lectureLockStatus.required_exam_id,
-                      required_exam_title: lectureLockStatus.required_exam_title,
-                      required_score: lectureLockStatus.required_score,
-                      student_score: lectureLockStatus.student_score
-                    }
-                  }))
-
-                  examsWithLock = examsWithLock.map((e) => ({
-                    ...e,
-                    lockStatus: {
-                      unlocked: false,
-                      reason: 'lecture_locked',
-                      parent_lecture_id: lec.id,
-                      required_exam_id: lectureLockStatus.required_exam_id,
-                      required_exam_title: lectureLockStatus.required_exam_title,
-                      required_score: lectureLockStatus.required_score,
-                      student_score: lectureLockStatus.student_score
-                    }
-                  }))
-                } else {
-                  // Lecture is unlocked: evaluate individual item prerequisite rules
-                  const [videoLocks, examLocks] = await Promise.all([
-                    Promise.all(
-                      videosWithLock.map((v) =>
-                        checkContentUnlocked({ targetType: 'video', targetId: v.id, contextLectureId: lec.id })
-                          .catch(() => ({ unlocked: true }))
-                      )
-                    ),
-                    Promise.all(
-                      examsWithLock.map((e) =>
-                        checkContentUnlocked({ targetType: 'exam', targetId: e.id, contextLectureId: lec.id })
-                          .catch(() => ({ unlocked: true }))
-                      )
-                    )
-                  ])
-
-                  videosWithLock = videosWithLock.map((v, idx) => ({
-                    ...v,
-                    lockStatus: videoLocks[idx] || { unlocked: true }
-                  }))
-
-                  examsWithLock = examsWithLock.map((e, idx) => ({
-                    ...e,
-                    lockStatus: examLocks[idx] || { unlocked: true }
-                  }))
+                const details = await getLectureDetails(lec.id)
+                // Students get their prerequisite locks; staff see everything open.
+                if (user?.role !== 'student') {
+                  return { ...details, lockStatus: { unlocked: true }, files: details.files || [] }
                 }
-
-                return {
-                  ...details,
-                  lockStatus: lectureLockStatus,
-                  videos: videosWithLock,
-                  exams: examsWithLock,
-                  files: details.files || []
-                }
+                const locked = await withLectureLocks(details)
+                return { ...locked, files: details.files || [] }
               } catch (err) {
                 console.error(`Error loading details for lecture ${lec.id}:`, err)
                 return {
@@ -244,7 +176,7 @@ export default function StudentCurriculumView({
     } finally {
       setLoading(false)
     }
-  }, [pkg?.id, user?.id])
+  }, [pkg?.id, user?.id, user?.role])
 
   useEffect(() => {
     loadCurriculum()

@@ -1216,10 +1216,8 @@ export default function Videos() {
         <PrerequisiteLockModal
           isOpen
           onClose={() => setPrereqLock(null)}
-          requiredExamId={prereqLock.required_exam_id}
-          requiredExamTitle={prereqLock.required_exam_title}
-          requiredScore={prereqLock.required_score}
-          studentScore={prereqLock.student_score}
+          targetType="video"
+          lockStatus={prereqLock}
         />
       )}
 

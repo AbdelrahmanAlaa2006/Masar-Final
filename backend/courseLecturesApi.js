@@ -971,6 +971,53 @@ export async function checkContentUnlocked({ targetType, targetId, contextLectur
   return data
 }
 
+// Lock status used when the check itself failed. Content stays closed (the
+// safe choice); PrerequisiteLockModal shows a "reload and retry" message for it.
+export const LOCK_CHECK_FAILED = Object.freeze({ unlocked: false, reason: 'check_failed' })
+
+// A lecture (with its videos and exams) annotated with the student's
+// prerequisite locks: lockStatus on the lecture and on every video/exam.
+// A locked lecture locks its children without extra requests. Call it for
+// students only — staff have no exam attempts and would read as locked.
+export async function withLectureLocks(lec) {
+  const check = (args) => checkContentUnlocked(args).catch((err) => {
+    console.warn('Lock check failed:', err)
+    return LOCK_CHECK_FAILED
+  })
+  const lectureLock = (await check({ targetType: 'lecture', targetId: lec.id })) || LOCK_CHECK_FAILED
+  const videos = lec.videos || []
+  const exams = lec.exams || []
+
+  if (lectureLock.unlocked === false) {
+    const childLock = lectureLock.reason === 'check_failed' ? LOCK_CHECK_FAILED : {
+      unlocked: false,
+      reason: 'lecture_locked',
+      parent_lecture_id: lec.id,
+      required_exam_id: lectureLock.required_exam_id,
+      required_exam_title: lectureLock.required_exam_title,
+      required_score: lectureLock.required_score,
+      student_score: lectureLock.student_score
+    }
+    return {
+      ...lec,
+      lockStatus: lectureLock,
+      videos: videos.map((v) => ({ ...v, lockStatus: childLock })),
+      exams: exams.map((e) => ({ ...e, lockStatus: childLock }))
+    }
+  }
+
+  const [videoLocks, examLocks] = await Promise.all([
+    Promise.all(videos.map((v) => check({ targetType: 'video', targetId: v.id, contextLectureId: lec.id }))),
+    Promise.all(exams.map((e) => check({ targetType: 'exam', targetId: e.id, contextLectureId: lec.id })))
+  ])
+  return {
+    ...lec,
+    lockStatus: lectureLock,
+    videos: videos.map((v, i) => ({ ...v, lockStatus: videoLocks[i] || LOCK_CHECK_FAILED })),
+    exams: exams.map((e, i) => ({ ...e, lockStatus: examLocks[i] || LOCK_CHECK_FAILED }))
+  }
+}
+
 // The student's lock status for an exam or video wherever it appears: unlocked
 // if it is unlocked in at least one of its lectures (or, outside lectures, by
 // its own rule). Staff always get { unlocked: true }. Same check the database

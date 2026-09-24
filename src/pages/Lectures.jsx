@@ -17,11 +17,11 @@ import {
   removeExamFromLecture,
   addLectureFile,
   removeLectureFile,
-  checkContentUnlocked,
   getLectureFileAccess,
   createUnlockRule,
   getLectureDetails,
-  getLecturesForVideo
+  getLecturesForVideo,
+  withLectureLocks
 } from '@backend/courseLecturesApi'
 import { listVideos, createVideo } from '@backend/videosApi'
 import { listExams, createExam } from '@backend/examsApi'
@@ -32,6 +32,7 @@ import { saveExamSharedBlocks } from '@backend/examSharedBlocksApi'
 import {
   listOverridesForTarget,
   listEffectiveOverrides,
+  reduceEffective,
   upsertOverride,
   deleteOverride,
   groupTargetId
@@ -175,71 +176,6 @@ function extractDriveId(input) {
     if (idParam) return idParam
   } catch { /* not a URL */ }
   return ''
-}
-
-// Student prerequisite locks for one lecture and the videos/exams inside it.
-// A locked lecture locks its children without extra requests.
-async function withLockStatus(lec) {
-  try {
-    const lockRes = await checkContentUnlocked({ targetType: 'lecture', targetId: lec.id }).catch(() => ({ unlocked: true }))
-    const lectureLockStatus = lockRes || { unlocked: true }
-
-    let videosWithLock = lec.videos || []
-    let examsWithLock = lec.exams || []
-
-    if (lectureLockStatus.unlocked === false) {
-      // If the lecture itself is locked, immediately lock children in-memory without individual DB calls!
-      videosWithLock = videosWithLock.map((v) => ({
-        ...v,
-        lockStatus: {
-          unlocked: false,
-          reason: 'lecture_locked',
-          parent_lecture_id: lec.id,
-          required_exam_id: lectureLockStatus.required_exam_id,
-          required_exam_title: lectureLockStatus.required_exam_title,
-          required_score: lectureLockStatus.required_score,
-          student_score: lectureLockStatus.student_score
-        }
-      }))
-      examsWithLock = examsWithLock.map((e) => ({
-        ...e,
-        lockStatus: {
-          unlocked: false,
-          reason: 'lecture_locked',
-          parent_lecture_id: lec.id,
-          required_exam_id: lectureLockStatus.required_exam_id,
-          required_exam_title: lectureLockStatus.required_exam_title,
-          required_score: lectureLockStatus.required_score,
-          student_score: lectureLockStatus.student_score
-        }
-      }))
-    } else {
-      // Only if lecture is unlocked, check child items
-      const [videoLocks, examLocks] = await Promise.all([
-        Promise.all(
-          videosWithLock.map((v) =>
-            checkContentUnlocked({ targetType: 'video', targetId: v.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
-          )
-        ),
-        Promise.all(
-          examsWithLock.map((e) =>
-            checkContentUnlocked({ targetType: 'exam', targetId: e.id, contextLectureId: lec.id }).catch(() => ({ unlocked: true }))
-          )
-        )
-      ])
-      videosWithLock = videosWithLock.map((v, idx) => ({ ...v, lockStatus: videoLocks[idx] || { unlocked: true } }))
-      examsWithLock = examsWithLock.map((e, idx) => ({ ...e, lockStatus: examLocks[idx] || { unlocked: true } }))
-    }
-
-    return {
-      ...lec,
-      lockStatus: lectureLockStatus,
-      videos: videosWithLock,
-      exams: examsWithLock
-    }
-  } catch {
-    return lec
-  }
 }
 
 export default function Lectures() {
@@ -450,10 +386,10 @@ export default function Lectures() {
       if (userRole === 'student') {
         // Standalone lectures and lectures inside chapters, all in parallel.
         ;[processedStandalone, processedLessons] = await Promise.all([
-          Promise.all(processedStandalone.map(withLockStatus)),
+          Promise.all(processedStandalone.map(withLectureLocks)),
           Promise.all(processedLessons.map(async (les) => ({
             ...les,
-            lectures: await Promise.all((les.lectures || []).map(withLockStatus)),
+            lectures: await Promise.all((les.lectures || []).map(withLectureLocks)),
           }))),
         ])
       }
@@ -468,17 +404,17 @@ export default function Lectures() {
             itemType: 'lecture'
           })
           if (effOverrides && effOverrides.length > 0) {
-            const ovMap = new Map()
-            for (const o of effOverrides) ovMap.set(o.item_id, o)
+            // Most specific wins: student > group > grade.
+            const ovMap = reduceEffective(effOverrides)
 
             const applyOv = (l) => {
               const ov = ovMap.get(l.id)
               if (!ov) return l
               return {
                 ...l,
-                allowed: ov.allowed !== false,
-                available_until: ov.available_until || l.available_until,
-                available_hours: ov.available_hours || l.available_hours
+                allowed: ov.allowed,
+                available_until: ov.availableUntil || l.available_until,
+                available_hours: ov.availableHours || l.available_hours
               }
             }
             processedStandalone = processedStandalone.map(applyOv)
@@ -594,7 +530,7 @@ export default function Lectures() {
         const target = lectures.find((l) => !l.grade || l.grade === selectedGrade) || lectures[0]
         if (!target || cancelled) return
         let lecture = await getLectureDetails(target.id)
-        if (userRole === 'student') lecture = await withLockStatus(lecture)
+        if (userRole === 'student') lecture = await withLectureLocks(lecture)
         if (cancelled) return
         const video = lecture.videos.find((v) => v.id === videoId)
         if (!video) return
@@ -4562,10 +4498,7 @@ export default function Lectures() {
         <PrerequisiteLockModal
           isOpen={!!activeLockModal}
           onClose={() => setActiveLockModal(null)}
-          requiredExamId={activeLockModal.required_exam_id}
-          requiredExamTitle={activeLockModal.required_exam_title}
-          requiredScore={activeLockModal.required_score}
-          studentScore={activeLockModal.student_score}
+          lockStatus={activeLockModal}
         />
       )}
     </div>

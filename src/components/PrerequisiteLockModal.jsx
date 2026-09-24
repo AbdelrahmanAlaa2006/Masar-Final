@@ -232,6 +232,30 @@ export default function PrerequisiteLockModal({
 
   if (!isOpen) return null
 
+  // The lock check itself failed (network/server error): we don't know the
+  // prerequisite, so ask for a reload instead of naming a made-up exam.
+  if (lockStatus.reason === 'check_failed') {
+    return createPortal(
+      <div className="plm-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="plm-modal-title">
+        <div className="plm-dialog" onClick={(e) => e.stopPropagation()}>
+          <header className="plm-header">
+            <div className="plm-shield-box">
+              <i className="fas fa-triangle-exclamation"></i>
+            </div>
+            <div className="plm-header-text">
+              <h3 id="plm-modal-title"><span>تعذر التحقق من إتاحة المحتوى</span></h3>
+              <p>تأكد من اتصالك بالإنترنت ثم أعد تحميل الصفحة وحاول مرة أخرى.</p>
+            </div>
+            <button type="button" className="plm-close-btn" onClick={onClose} title="إغلاق النافذة" aria-label="إغلاق النافذة">
+              <i className="fas fa-xmark"></i>
+            </button>
+          </header>
+        </div>
+      </div>,
+      document.body
+    )
+  }
+
   const modalContent = (
     <div
       className="plm-overlay"

@@ -96,7 +96,7 @@ export async function deleteOverride({ scope, targetId, itemType, itemId }) {
    filter is added to the OR clause. */
 export async function listEffectiveOverrides({ studentId, grade, group, itemType }) {
   if (!studentId || studentId === 'undefined') return []
-  const key = `overrides:eff:${studentId}:${grade}:${group || ''}:${itemType}`
+  const key = `overrides:eff2:${studentId}:${grade}:${group || ''}:${itemType}`
   return cached(key, LIST_TTL, async () => {
     // Compose the OR clause dynamically so we don't ask the server for
     // group rows we know can't match (e.g. the student isn't in a group).
@@ -105,11 +105,12 @@ export async function listEffectiveOverrides({ studentId, grade, group, itemType
       `and(scope.eq.prep,target_id.eq.${grade})`,
     ]
     if (group) {
-      clauses.push(`and(scope.eq.group,target_id.eq.${groupTargetId(grade, group)})`)
+      // Group names are free text (spaces, commas…), so quote the value.
+      clauses.push(`and(scope.eq.group,target_id.eq."${groupTargetId(grade, group).replace(/"/g, '\\"')}")`)
     }
     const { data, error } = await supabase
       .from(TABLE)
-      .select('scope, target_id, item_type, item_id, allowed, attempts, available_hours, updated_at')
+      .select('scope, target_id, item_type, item_id, allowed, attempts, available_hours, available_until, updated_at')
       .eq('item_type', itemType)
       .or(clauses.join(','))
     if (error) throw error
@@ -138,6 +139,7 @@ export function reduceEffective(rows) {
       attempts: r.attempts ?? null,
       // Per-audience availability override — null means "use the item default".
       availableHours: r.available_hours ?? null,
+      availableUntil: r.available_until ?? null,
       // updated_at doubles as a "reset point" — attempts submitted before
       // this moment no longer count against the newly-granted allowance.
       updatedAt: r.updated_at || null,

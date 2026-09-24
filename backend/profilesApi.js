@@ -172,6 +172,7 @@ export async function listStudentsByGrade(grade) {
       .eq('role', 'student')
       .eq('grade', grade)
       .order('name', { ascending: true })
+      .order('id') // names repeat; a unique tiebreaker keeps pages from overlapping
       .range(from, from + CHUNK_SIZE - 1)
     if (error) throw error
     if (!data || data.length === 0) break

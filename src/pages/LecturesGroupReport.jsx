@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listStudentsByGrade, getStudentCountsByGrade } from '@backend/profilesApi'
 import { supabase } from '@backend/supabase'
+import { selectInChunks } from '@backend/fetchAllRows'
 import { getLectureDetails, listLecturesForReporting } from '@backend/courseLecturesApi'
 import { getYoutubeDurations } from '../services/youtubeMeta'
 import { cached, LIST_TTL } from '../utils/cache'
@@ -184,14 +185,16 @@ export default function LecturesGroupReport() {
         const videoIds = rawVideos.map(v => v.id)
         const studentIds = studentsForGrade.map(s => s.id)
 
-        // 3. Batch fetch progress for all students across all lecture videos
-        const { data: progressRows, error: pErr } = await supabase
+        // 3. Progress for all students across all lecture videos. Chunked by
+        //    student and paged: one request returned at most 1000 rows (so
+        //    some students showed 0%) and a big grade overflowed the URL.
+        const progressRows = await selectInChunks(studentIds, (part) => supabase
           .from('video_progress')
           .select('id, student_id, video_id, part_id, views_used, seconds_watched, last_watched_at')
           .in('video_id', videoIds)
-          .in('student_id', studentIds)
+          .in('student_id', part)
+          .order('id'))
 
-        if (pErr) throw pErr
         if (cancelled) return
 
         // Group progress rows by student_id -> video_id

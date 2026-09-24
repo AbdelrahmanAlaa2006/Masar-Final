@@ -9,7 +9,8 @@ import {
   getVideoAccess,
   getExamAccess,
   getLectureFileAccess,
-  checkContentUnlocked
+  checkContentUnlocked,
+  withLectureLocks
 } from '@backend/courseLecturesApi'
 import { subscribeToPrerequisiteUnlocked } from '../utils/unlockEvents'
 import './VideoPlayerWorkspace.css'
@@ -189,72 +190,7 @@ export default function VideoPlayerWorkspace({
             const enriched = await Promise.all(
               rawChapterLectures.map(async (lec) => {
                 try {
-                  const lockRes = await checkContentUnlocked({
-                    targetType: 'lecture',
-                    targetId: lec.id
-                  }).catch(() => ({ unlocked: true }))
-
-                  const lectureLock = lockRes || { unlocked: true }
-                  let vids = lec.videos || []
-                  let exs = lec.exams || []
-
-                  if (lectureLock.unlocked === false) {
-                    vids = vids.map((v) => ({
-                      ...v,
-                      lockStatus: {
-                        unlocked: false,
-                        reason: 'lecture_locked',
-                        parent_lecture_id: lec.id,
-                        required_exam_id: lectureLock.required_exam_id,
-                        required_exam_title: lectureLock.required_exam_title,
-                        required_score: lectureLock.required_score,
-                        student_score: lectureLock.student_score
-                      }
-                    }))
-                    exs = exs.map((e) => ({
-                      ...e,
-                      lockStatus: {
-                        unlocked: false,
-                        reason: 'lecture_locked',
-                        parent_lecture_id: lec.id,
-                        required_exam_id: lectureLock.required_exam_id,
-                        required_exam_title: lectureLock.required_exam_title,
-                        required_score: lectureLock.required_score,
-                        student_score: lectureLock.student_score
-                      }
-                    }))
-                  } else {
-                    const [vLocks, eLocks] = await Promise.all([
-                      Promise.all(
-                        vids.map((v) =>
-                          checkContentUnlocked({
-                            targetType: 'video',
-                            targetId: v.id,
-                            contextLectureId: lec.id
-                          }).catch(() => ({ unlocked: true }))
-                        )
-                      ),
-                      Promise.all(
-                        exs.map((e) =>
-                          checkContentUnlocked({
-                            targetType: 'exam',
-                            targetId: e.id,
-                            contextLectureId: lec.id
-                          }).catch(() => ({ unlocked: true }))
-                        )
-                      )
-                    ])
-
-                    vids = vids.map((v, i) => ({ ...v, lockStatus: vLocks[i] }))
-                    exs = exs.map((e, i) => ({ ...e, lockStatus: eLocks[i] }))
-                  }
-
-                  return {
-                    ...lec,
-                    lockStatus: lectureLock,
-                    videos: vids,
-                    exams: exs
-                  }
+                  return await withLectureLocks(lec)
                 } catch {
                   return lec
                 }
