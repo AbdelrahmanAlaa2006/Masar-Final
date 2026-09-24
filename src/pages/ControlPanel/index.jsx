@@ -43,7 +43,7 @@ const CalendarPanel = lazy(() => import('./CalendarPanel'))
 
 const SECTION_META = {
   home: { title: 'الرئيسية', icon: 'fa-house', closable: false },
-  curriculum: { title: 'إدارة المحاضرات', icon: 'fa-graduation-cap', closable: true },
+  curriculum: { title: 'محتوى الباقات', icon: 'fa-graduation-cap', closable: true },
   attendance: { title: 'التحضير والغياب', icon: 'fa-calendar-check', closable: true },
   accounts: { title: 'حسابات الطلاب', icon: 'fa-user-check', closable: true },
   groups: { title: 'إدارة المجموعات', icon: 'fa-user-group', closable: true },
@@ -558,8 +558,8 @@ export default function ControlPanelIndex({ initialSection }) {
             <SectionCard
               icon="fa-graduation-cap"
               accent="indigo"
-              title="إدارة المحاضرات"
-              desc="إدارة المنهج الدراسي، الفصول، والمحاضرات التعليمية وربط الفيديوهات والامتحانات"
+              title="محتوى الباقات"
+              desc="فصول ومحاضرات الباقات المدفوعة. محاضرات الصفوف العادية تُدار من صفحة «المحاضرات»."
               onClick={() => enterSection('curriculum')}
             />
           )}

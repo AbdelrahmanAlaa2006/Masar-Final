@@ -30,6 +30,7 @@ import './GradePicker.css'
      labels       — optional { [gradeId]: name } when the tenant renames grades
      allLabel     — when set, adds a leading chip with the value 'all'
      bare         — render without the panel box/title, to sit inside another card
+     emptyWord    — what an empty grade lacks, for the fold link (default 'طلاب')
      title / emptyText / style — optional overrides
 */
 
@@ -54,6 +55,7 @@ export default function GradePicker({
   bare = false,
   title = 'اختر الصف الدراسي',
   emptyText = 'لا يوجد طلاب مسجلون بعد.',
+  emptyWord = 'طلاب',
   style,
 }) {
   const [showEmpty, setShowEmpty] = useState(false)
@@ -133,7 +135,7 @@ export default function GradePicker({
           {hidden.length > 0 && (
             <button type="button" className="gp-toggle" onClick={() => setShowEmpty((v) => !v)}>
               <i className={`fas fa-chevron-${showEmpty ? 'up' : 'down'}`}></i>
-              {showEmpty ? ' إخفاء الصفوف بدون طلاب' : ` إظهار الصفوف بدون طلاب (${hidden.length})`}
+              {showEmpty ? ` إخفاء الصفوف بدون ${emptyWord}` : ` إظهار الصفوف بدون ${emptyWord} (${hidden.length})`}
             </button>
           )}
         </>

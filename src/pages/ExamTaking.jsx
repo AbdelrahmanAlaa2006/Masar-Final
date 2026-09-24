@@ -14,11 +14,30 @@ import ConfirmExitDialog from '../components/ConfirmExitDialog'
 import { detectTextDir, copyQuestionToClipboard } from '../utils/questionUtils'
 import { emitPrerequisiteUnlocked } from '../utils/unlockEvents'
 
+// Arabic text for the refusals start_or_get_exam_attempt() raises, or null
+// when the error is something else.
+function serverRefusalMessage(err) {
+  const msg = String(err?.message || '')
+  if (msg.includes('no_attempts_left')) return 'لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.'
+  if (msg.includes('exam_blocked') || msg.includes('forbidden: not authorized')) return 'تم تقييد هذا الامتحان من قِبَل الإدارة.'
+  if (msg.includes('content_locked')) return '🔒 هذا الامتحان مقفل بمتطلب سابق ولا يمكن بدؤه الآن.'
+  if (msg.includes('exam has no questions')) return 'هذا الامتحان لا يحتوي على أسئلة بعد.'
+  return null
+}
+
 export default function ExamTaking() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const examId = params.get('id')
   const contextLectureId = params.get('lecture') || params.get('contextLectureId') || null
+  // Leave the exam for its lecture (or the exams list) by URL, not history:
+  // navigate(-1) landed on the exit guard's extra history entry, so the
+  // button needed two clicks, and left the site when the exam was opened
+  // from a link.
+  const leaveExam = () => {
+    if (contextLectureId) navigate(`/lectures?lecture=${encodeURIComponent(contextLectureId)}`, { replace: true })
+    else navigate('/exams', { replace: true })
+  }
 
   // Prerequisite context forwarded from Phase 7 Step 1
   const prereqTargetType = params.get('prereqTargetType') || null
@@ -113,12 +132,11 @@ export default function ExamTaking() {
 
   const handleContinueToTarget = useCallback(() => {
     if (prereqTargetType === 'video' && prereqTargetId) {
-      const lectureParam = contextLectureId
-        ? `&lecture=${encodeURIComponent(contextLectureId)}&contextLectureId=${encodeURIComponent(contextLectureId)}`
-        : ''
-      navigate(`/videos?id=${encodeURIComponent(prereqTargetId)}${lectureParam}`)
+      // The unlocked video inside its lecture (course-lecture system), not
+      // the old /videos page.
+      navigate(`/lectures?video=${encodeURIComponent(prereqTargetId)}`, { replace: true })
     } else if (contextLectureId) {
-      navigate(-1)
+      leaveExam()
     } else {
       navigate('/packages')
     }
@@ -142,6 +160,14 @@ export default function ExamTaking() {
       }
     } catch (err) {
       console.error('Failed to start retry attempt:', err)
+      // No attempts left / blocked / locked: say so now, not after the
+      // student has answered everything.
+      const refusal = serverRefusalMessage(err)
+      if (refusal) {
+        setExam(null)
+        setLoadError(refusal)
+        return
+      }
     }
     const initialTime = (exam?.duration_minutes || 10) * 60
     setTimeLeft(initialTime)
@@ -168,6 +194,42 @@ export default function ExamTaking() {
         let e = null
         let attemptFromAccess = null
 
+        // Attempts-left check for students. Runs BEFORE getExamAccess(), which
+        // creates the attempt row, so a student with no attempts left doesn't
+        // leave an empty attempt behind.
+        if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
+          const { data: meta } = await supabase
+            .from('exams')
+            .select('max_attempts')
+            .eq('id', examId)
+            .maybeSingle()
+          let maxAttempts = meta?.max_attempts || 1
+          let sinceIso = null
+          try {
+            const overrides = await listEffectiveOverrides({
+              studentId: sid,
+              grade: u.grade,
+              group: u.group || null,
+              itemType: 'exam',
+            })
+            const o = reduceEffective(overrides).get(examId)
+            if (o && o.allowed === false) {
+              setLoadError('تم تقييد هذا الامتحان من قِبَل الإدارة.')
+              return
+            }
+            if (o && typeof o.attempts === 'number') maxAttempts += o.attempts
+            // reduceEffective() exposes the reset point as `updatedAt`.
+            if (o?.updatedAt) sinceIso = o.updatedAt
+          } catch (oErr) {
+            console.error('Failed to load overrides', oErr)
+          }
+          const submittedCount = await countSubmittedAttempts(examId, sid, sinceIso)
+          if (submittedCount >= maxAttempts) {
+            setLoadError('لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.')
+            return
+          }
+        }
+
         // 1. Authoritative Educational Unlock & Access Gate via getExamAccess
         if (contextLectureId && role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
           try {
@@ -191,7 +253,7 @@ export default function ExamTaking() {
               return
             }
             console.error('getExamAccess error:', err)
-            setLoadError(err.message || 'تعذر الوصول إلى هذا الامتحان')
+            setLoadError(serverRefusalMessage(err) || err.message || 'تعذر الوصول إلى هذا الامتحان')
             return
           }
         }
@@ -233,40 +295,11 @@ export default function ExamTaking() {
           }
         }
 
-        // Safety Check for Students: verify remaining attempts on refresh or direct URL access
-        if (role !== 'admin' && role !== 'assistant' && role !== 'super_admin') {
-          // Fetch overrides first to get any bonus attempts or update reset point
-          let maxAttempts = e.max_attempts || 1
-          let sinceIso = null
-          try {
-            const overrides = await listEffectiveOverrides({
-              studentId: sid,
-              grade: u.grade,
-              group: u.group || null,
-              itemType: 'exam',
-            })
-            const overridesMap = reduceEffective(overrides)
-            const o = overridesMap.get(examId)
-            
-            // Check if blocked by admin
-            if (o && o.allowed === false) {
-              setLoadError('تم تقييد هذا الامتحان من قِبَل الإدارة.')
-              return
-            }
-            
-            const extra = o && typeof o.attempts === 'number' ? o.attempts : 0
-            maxAttempts = maxAttempts + extra
-            if (o?.updated_at) sinceIso = o.updated_at
-          } catch (oErr) {
-            console.error('Failed to load overrides', oErr)
-          }
-
-          // Fast lightweight exact head count (0 payload rows transferred)
-          const submittedCount = await countSubmittedAttempts(examId, sid, sinceIso)
-          if (submittedCount >= maxAttempts) {
-            setLoadError('لقد استنفذت جميع المحاولات المسموح بها لهذا الامتحان.')
-            return
-          }
+        // getExamAccess() only authorizes and returns the exam's metadata,
+        // without `questions`. Load the full exam (getExam also enforces
+        // package and group targeting for students).
+        if (!Array.isArray(e?.questions)) {
+          e = await getExam(examId)
         }
 
         // Shared reading passages: ONE query for the whole exam, folded into an index -> block Map.
@@ -338,10 +371,11 @@ export default function ExamTaking() {
               }
             } catch (attErr) {
               console.error('startAttempt failed', attErr)
-              // The database refuses attempts on locked exams.
-              if (String(attErr?.message || '').includes('content_locked')) {
+              // The database refuses locked, blocked or used-up exams.
+              const refusal = serverRefusalMessage(attErr)
+              if (refusal) {
                 setExam(null)
-                setLoadError('🔒 هذا الامتحان مقفل بمتطلب سابق ولا يمكن بدؤه الآن.')
+                setLoadError(refusal)
                 return
               }
               if (!restoredAttemptId) {
@@ -537,7 +571,10 @@ export default function ExamTaking() {
       // Phase 7 Step 3: Emit reactive unlock event ONLY if this was a prerequisite exam
       // AND prerequisite qualifying score was confirmed by the server!
       if (isPrereqExam) {
-        const examMax = (exam?.total_points && exam.total_points > 0) ? exam.total_points : (questions.length || 1)
+        // Use the server's max (sum of question points), the same number the
+        // unlock rule is checked against.
+        const examMax = res?.max_score > 0 ? res.max_score
+          : (exam?.total_points > 0 ? exam.total_points : (questions.length || 1))
         const pct = Math.round(((serverScore / examMax) * 100) * 10) / 10
         const satisfied = (requiredScore === null) ? true : (pct >= requiredScore)
 
@@ -600,7 +637,7 @@ export default function ExamTaking() {
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
           <h2>خطأ</h2>
           <p>{loadError}</p>
-          <button className="et-btn et-btn-prev" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+          <button className="et-btn et-btn-prev" onClick={leaveExam}>
             {contextLectureId ? 'العودة للمحاضرة' : 'العودة إلى الامتحانات'}
           </button>
         </div>
@@ -624,7 +661,7 @@ export default function ExamTaking() {
       <div className="et-wrapper">
         <div className="et-card" style={{ textAlign: 'center', padding: '40px' }}>
           <h2>لا توجد أسئلة في هذا الامتحان</h2>
-          <button className="et-btn et-btn-prev" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+          <button className="et-btn et-btn-prev" onClick={leaveExam}>
             {contextLectureId ? 'العودة للمحاضرة' : 'العودة'}
           </button>
         </div>
@@ -660,7 +697,7 @@ export default function ExamTaking() {
 
       {examFinished && (
         <div className="et-back-row">
-          <button className="et-back-btn" onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}>
+          <button className="et-back-btn" onClick={leaveExam}>
             {contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة إلى الامتحانات'}
           </button>
         </div>
@@ -939,7 +976,7 @@ export default function ExamTaking() {
                   <button
                     type="button"
                     className="et-btn et-btn-prev"
-                    onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}
+                    onClick={leaveExam}
                   >
                     <span>{contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}</span>
                   </button>
@@ -957,7 +994,7 @@ export default function ExamTaking() {
                   <button
                     type="button"
                     className="et-btn et-btn-prev"
-                    onClick={() => (contextLectureId ? navigate(-1) : navigate('/exams'))}
+                    onClick={leaveExam}
                   >
                     <span>{contextLectureId ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}</span>
                   </button>
@@ -991,7 +1028,7 @@ export default function ExamTaking() {
                 type="button"
                 className="et-btn et-btn-finish"
                 style={{ width: 'auto', padding: '10px 24px' }}
-                onClick={() => (contextLectureId || isLectureExam ? navigate(-1) : navigate('/exams'))}
+                onClick={() => (!contextLectureId && isLectureExam ? navigate('/lectures', { replace: true }) : leaveExam())}
               >
                 <i className="fas fa-arrow-right" style={{ marginInlineEnd: '8px' }}></i>
                 {contextLectureId || isLectureExam ? 'العودة للمحاضرة والمنهج' : 'العودة للامتحانات'}

@@ -953,6 +953,9 @@ export default function StudentCurriculumView({
                                                     {exam.title}
                                                   </h5>
                                                   <div className="scv-item-chips">
+                                                    <span className="scv-chip">
+                                                      {exam.exam_type === 'quiz' ? 'تسميع' : 'امتحان'}
+                                                    </span>
                                                     {exam.questions_count !== undefined && (
                                                       <span className="scv-chip">
                                                         <i className="fas fa-list-check"></i>

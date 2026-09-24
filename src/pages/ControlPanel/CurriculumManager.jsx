@@ -699,7 +699,7 @@ export default function CurriculumManager({ package: propPkg, onBack }) {
         <div className="cp-empty">
           <i className="fas fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
           <h3>لا توجد باقات دراسية مفعلة</h3>
-          <p>لتنظيم الفصول والمحاضرات، يرجى إنشاء باقة أولاً من قسم الباقات في لوحة التحكم.</p>
+          <p>هذا القسم لمحتوى الباقات المدفوعة فقط. أنشئ باقة أولاً من قسم «الباقات»، أو أضف محاضرات الصفوف العادية من صفحة «المحاضرات».</p>
           {onBack && (
             <button onClick={onBack} className="cp-btn cp-btn-secondary" style={{ marginTop: 12 }}>
               <i className="fas fa-arrow-right"></i> رجوع للوحة التحكم

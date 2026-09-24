@@ -40,6 +40,7 @@ import {
 import { listStudentsPaged } from '@backend/profilesApi'
 import { listGroups } from '@backend/groupsApi'
 import { supabase } from '@backend/supabase'
+import { fetchAllRows } from '@backend/fetchAllRows'
 import { notify } from '../utils/notify'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import PrerequisiteLockModal from '../components/PrerequisiteLockModal'
@@ -146,6 +147,32 @@ export function getLectureAvailabilityInfo(lec) {
   }
 }
 
+// First reason a new staged exam can't be saved, or null. An exam without
+// questions can never be passed (submit_exam_attempt refuses it), so as a
+// prerequisite it would lock its target forever.
+function stagedExamProblem(exams, where = '') {
+  for (const se of exams || []) {
+    if (!se.isNew) continue
+    const title = se.title?.trim()
+    if (!title) return `${where}يرجى كتابة عنوان للامتحان`
+    const qs = se.questions || []
+    if (qs.length === 0) return `${where}الامتحان «${title}» ليس به أسئلة. أضف سؤالاً واحداً على الأقل.`
+    for (let i = 0; i < qs.length; i++) {
+      const q = qs[i]
+      if (!q.question?.trim() && !q.image) return `${where}الامتحان «${title}»: السؤال ${i + 1} بدون نص`
+      if ((q.options || []).filter((o) => String(o ?? '').trim()).length < 2) {
+        return `${where}الامتحان «${title}»: السؤال ${i + 1} يحتاج اختيارين على الأقل`
+      }
+      if (!Array.isArray(q.answers) || q.answers.length === 0) {
+        return `${where}الامتحان «${title}»: حدد الإجابة الصحيحة للسؤال ${i + 1}`
+      }
+    }
+  }
+  return null
+}
+
+const STAFF_GRADE_KEY = 'masar-lectures-staff-grade'
+
 function extractYouTubeId(input) {
   if (!input) return ''
   const s = String(input).trim()
@@ -203,9 +230,18 @@ export default function Lectures() {
     const searchParams = new URLSearchParams(location.search)
     const qGrade = searchParams.get('grade')
     if (qGrade) return qGrade
-    if (currentUser?.grade) return currentUser.grade
-    return gradeOptions[0]?.id || 'first-prep'
+    // Staff: the grade they last worked on, else every grade. Never silently
+    // the first grade in the list, which usually has no lectures.
+    try {
+      const saved = localStorage.getItem(STAFF_GRADE_KEY)
+      if (saved) return saved
+    } catch {}
+    return 'all'
   })
+
+  // Lectures per grade, so the staff grade picker can show counts and fold
+  // grades that have no lectures behind one link.
+  const [lectureCountsByGrade, setLectureCountsByGrade] = useState({})
 
   // Ensure student stays locked strictly to their own grade
   useEffect(() => {
@@ -463,8 +499,27 @@ export default function Lectures() {
     loadCurriculum()
   }, [loadCurriculum])
 
+  // Staff only: count lectures per grade (one light query, refreshed after
+  // the curriculum reloads, e.g. after creating or deleting a lecture).
+  useEffect(() => {
+    if (!canManage) return
+    let cancelled = false
+    fetchAllRows(() => supabase.from('course_lectures').select('id, grade').order('id'))
+      .then((rows) => {
+        if (cancelled) return
+        const counts = {}
+        for (const r of rows) if (r.grade) counts[r.grade] = (counts[r.grade] || 0) + 1
+        setLectureCountsByGrade(counts)
+      })
+      .catch((err) => console.warn('Could not count lectures per grade:', err))
+    return () => { cancelled = true }
+  }, [canManage, standaloneLectures, standaloneLessons])
+
   // Handle Grade Change
   const handleGradeChange = (gradeId) => {
+    if (canManage) {
+      try { localStorage.setItem(STAFF_GRADE_KEY, gradeId) } catch {}
+    }
     setSelectedGrade(gradeId)
     const searchParams = new URLSearchParams(location.search)
     searchParams.set('grade', gradeId)
@@ -519,21 +574,30 @@ export default function Lectures() {
   const openLectureViewRef = useRef(handleOpenLectureView)
   openLectureViewRef.current = handleOpenLectureView
   useEffect(() => {
-    const videoId = new URLSearchParams(location.search).get('video')
-    if (!videoId || deepLinkedVideo.current === videoId) return
-    deepLinkedVideo.current = videoId
+    // ?video=<id> opens the lecture holding that video; ?lecture=<id> opens
+    // that lecture (used when coming back from one of its exams).
+    const params = new URLSearchParams(location.search)
+    const videoId = params.get('video')
+    const lectureId = params.get('lecture')
+    const linkKey = videoId ? `v:${videoId}` : lectureId ? `l:${lectureId}` : null
+    if (!linkKey || deepLinkedVideo.current === linkKey) return
+    deepLinkedVideo.current = linkKey
     let cancelled = false
     let finished = false
     ;(async () => {
       try {
-        const lectures = await getLecturesForVideo(videoId)
-        const target = lectures.find((l) => !l.grade || l.grade === selectedGrade) || lectures[0]
-        if (!target || cancelled) return
-        let lecture = await getLectureDetails(target.id)
+        let targetId = lectureId
+        if (videoId) {
+          const lectures = await getLecturesForVideo(videoId)
+          const target = lectures.find((l) => !l.grade || l.grade === selectedGrade) || lectures[0]
+          targetId = target?.id
+        }
+        if (!targetId || cancelled) return
+        let lecture = await getLectureDetails(targetId)
         if (userRole === 'student') lecture = await withLectureLocks(lecture)
         if (cancelled) return
-        const video = lecture.videos.find((v) => v.id === videoId)
-        if (!video) return
+        const video = videoId ? lecture.videos.find((v) => v.id === videoId) : null
+        if (videoId && !video) return
         openLectureViewRef.current(lecture, video)
       } catch (err) {
         console.warn('Failed to open deep-linked video:', err)
@@ -587,7 +651,9 @@ export default function Lectures() {
       { id: 'sub_2', title: 'المحاضرة 2: التدريبات والامتحان', desc: '', stagedVideos: [], stagedExams: [], stagedFiles: [] }
     ])
     setActiveLessonLecIdx(0)
-    setFormGrade(selectedGrade === 'all' ? (gradeOptions[0]?.id || 'first-prep') : selectedGrade)
+    // Viewing all grades: make the teacher pick one instead of defaulting to
+    // the first grade in the list.
+    setFormGrade(selectedGrade === 'all' ? '' : selectedGrade)
     setFormChapterId(targetChapter?.id || '')
     setFormPackageId('')
     setFormDesc('')
@@ -951,11 +1017,13 @@ export default function Lectures() {
       {
         id,
         isNew: true,
-        title: `امتحان المحاضرة ${prev.length + 1}`,
+        // Named after the lecture so exams of different lectures don't all
+        // end up called "امتحان المحاضرة 1".
+        title: `امتحان ${formTitle.trim() || 'المحاضرة'}${prev.length > 0 ? ` (${prev.length + 1})` : ''}`,
         examType: 'exam',
         durationMinutes: 30,
         maxAttempts: 1,
-        totalPoints: 10,
+        totalPoints: 0,
         isPrerequisite: false,
         targetVideoId: stagedVideos[0]?.id || '',
         requiredScore: 70,
@@ -993,7 +1061,17 @@ export default function Lectures() {
   }
 
   const handleUpdateStagedExam = (id, field, value) => {
-    setStagedExams((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)))
+    setStagedExams((prev) => prev.map((e) => {
+      if (e.id !== id) return e
+      const next = { ...e, [field]: value }
+      // Keep the default title's word in step with the type, so a quiz isn't
+      // saved as "امتحان ...". Titles the teacher typed themselves are left alone.
+      if (field === 'examType' && e.isNew) {
+        const [from, to] = value === 'quiz' ? ['امتحان ', 'تسميع '] : ['تسميع ', 'امتحان ']
+        if (e.title?.startsWith(from)) next.title = to + e.title.slice(from.length)
+      }
+      return next
+    }))
   }
 
   const handleUpdateExamSharedBlocks = (examId, blocks) => {
@@ -1063,7 +1141,7 @@ export default function Lectures() {
         return {
           ...e,
           questions: updatedQuestions,
-          totalPoints: newTotalPoints || 10
+          totalPoints: newTotalPoints
         }
       })
     )
@@ -1272,7 +1350,7 @@ export default function Lectures() {
           grade,
           duration_minutes: parseInt(se.durationMinutes, 10) || 30,
           max_attempts: parseInt(se.maxAttempts, 10) || 1,
-          total_points: calculatedTotal || parseInt(se.totalPoints, 10) || 10,
+          total_points: calculatedTotal, // sum of question points; no made-up default
           exam_type: se.examType || 'exam',
           reveal_grades: true,
           questions: se.questions || []
@@ -1381,6 +1459,8 @@ export default function Lectures() {
             }
           }
         }
+        const examProblem = stagedExamProblem(sub.stagedExams, `المحاضرة (${sub.title}): `)
+        if (examProblem) return notify(examProblem, 'warning')
       }
 
       setIsSubmitting(true)
@@ -1462,6 +1542,8 @@ export default function Lectures() {
         }
       }
     }
+    const examProblem = stagedExamProblem(stagedExams)
+    if (examProblem) return notify(examProblem, 'warning')
 
     setIsSubmitting(true)
     try {
@@ -1908,7 +1990,12 @@ export default function Lectures() {
                         <div>
                           <div className="lecture-content-name">{ex.title}</div>
                           <div className="lecture-content-subtext">
-                            {ex.questions_count ? `${ex.questions_count} أسئلة` : ''} {ex.duration_minutes ? `• ${ex.duration_minutes} دقيقة` : ''}
+                            {ex.exam_type === 'quiz' ? 'تسميع' : 'امتحان'}
+                            {' • '}
+                            {ex.questions_count > 0
+                              ? `${ex.questions_count} سؤال`
+                              : <span style={{ color: '#ef4444', fontWeight: 700 }}>بدون أسئلة</span>}
+                            {ex.duration_minutes ? ` • ${ex.duration_minutes} دقيقة` : ''}
                           </div>
                         </div>
                       </div>
@@ -2269,7 +2356,7 @@ export default function Lectures() {
                     <i className="fas fa-clipboard-check"></i>
                   </div>
                   <div className="lectures-section-info">
-                    <h2>الامتحانات والواجبات الملحقة ({activeLectureView.exams.length})</h2>
+                    <h2>الامتحانات والتسميعات ({activeLectureView.exams.length})</h2>
                     <p>قيم استيعابك للمحاضرة وتجاوز الاختبارات المطلوبة</p>
                   </div>
                 </div>
@@ -2468,7 +2555,9 @@ export default function Lectures() {
                     instead of fifteen large pills wrapping over three rows. */}
                 <GradePicker
                   bare
-                  showCounts={false}
+                  showCounts={canManage}
+                  counts={lectureCountsByGrade}
+                  emptyWord="محاضرات"
                   title="اختر الصف الدراسي"
                   grades={gradeOptions.map((g) => g.id)}
                   labels={Object.fromEntries(gradeOptions.map((g) => [g.id, g.name]))}
@@ -2823,6 +2912,7 @@ export default function Lectures() {
                           onChange={(e) => setFormGrade(e.target.value)}
                           required
                         >
+                          <option value="" disabled>-- اختر الصف --</option>
                           {gradeOptions.map((g) => (
                             <option key={g.id} value={g.id}>
                               {g.name}
@@ -3005,6 +3095,7 @@ export default function Lectures() {
                           onChange={(e) => setFormGrade(e.target.value)}
                           required
                         >
+                          <option value="" disabled>-- اختر الصف --</option>
                           {gradeOptions.map((g) => (
                             <option key={g.id} value={g.id}>
                               {g.name}
@@ -3349,9 +3440,9 @@ export default function Lectures() {
                         <div className="studio-section-title">
                           <span className="studio-section-num">3</span>
                           <div>
-                            <h4>الامتحانات والواجبات الملحقة ({stagedExams.length}) (اختياري)</h4>
+                            <h4>الامتحانات والتسميعات ({stagedExams.length}) (اختياري)</h4>
                             <p className="studio-section-sub">
-                              أضف اختباراً أو واجباً، ويمكنك اشتراطه لفتح فيديو معين بدرجة محددة
+                              أضف امتحاناً أو تسميعاً للمحاضرة. ويمكنك جعل النجاح فيه شرطاً لفتح فيديو معيّن.
                             </p>
                           </div>
                         </div>
@@ -3473,18 +3564,18 @@ export default function Lectures() {
                                         onChange={(e) => handleUpdateStagedExam(se.id, 'examType', e.target.value)}
                                       >
                                         <option value="exam">امتحان شامل</option>
-                                        <option value="quiz">كويز سريع</option>
-                                        <option value="homework">واجب منزلي</option>
+                                        <option value="quiz">تسميع 📖</option>
                                       </select>
                                     </div>
                                     <div className="lectures-form-group">
                                       <label>الدرجة الكلية</label>
+                                      {/* Always the sum of the questions' points (that is what gets saved). */}
                                       <input
                                         type="number"
                                         className="lectures-form-input"
-                                        value={se.totalPoints}
-                                        onChange={(e) => handleUpdateStagedExam(se.id, 'totalPoints', e.target.value)}
-                                        min="1"
+                                        value={se.totalPoints || 0}
+                                        readOnly
+                                        title="تُحسب تلقائياً من درجات الأسئلة"
                                       />
                                     </div>
                                   </div>
@@ -3585,7 +3676,7 @@ export default function Lectures() {
                                               <i className="fas fa-clipboard-question"></i> أسئلة الامتحان ({se.questions?.length || 0})
                                             </h5>
                                             <span className="studio-exam-q-points">
-                                              إجمالي الدرجات: {se.totalPoints || 10}
+                                              إجمالي الدرجات: {se.totalPoints || 0}
                                             </span>
                                           </div>
                                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
