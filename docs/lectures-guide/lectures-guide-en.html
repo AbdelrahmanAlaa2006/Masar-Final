@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masaar Lectures Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f5f7f6;
+    --surface: #ffffff;
+    --ink: #17211f;
+    --muted: #5a6a66;
+    --rule: #d9e1de;
+    --accent: #0e7a6a;
+    --accent-soft: #e2f1ed;
+    --lock: #a3530b;
+    --lock-soft: #fbeedd;
+    --done: #2f7a3a;
+    --code-bg: #eef2f1;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #111715;
+      --surface: #182120;
+      --ink: #e4ebe9;
+      --muted: #9aaba6;
+      --rule: #2a3633;
+      --accent: #3fb8a3;
+      --accent-soft: #173a34;
+      --lock: #e7a45c;
+      --lock-soft: #3a2a17;
+      --done: #7cc98a;
+      --code-bg: #1f2a28;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111715;
+    --surface: #182120;
+    --ink: #e4ebe9;
+    --muted: #9aaba6;
+    --rule: #2a3633;
+    --accent: #3fb8a3;
+    --accent-soft: #173a34;
+    --lock: #e7a45c;
+    --lock-soft: #3a2a17;
+    --done: #7cc98a;
+    --code-bg: #1f2a28;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 var(--body);
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+  }
+  .page { max-width: 760px; margin: 0 auto; display: grid; gap: 56px; }
+
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+  h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 1.6rem; font-weight: 700; }
+  h3 { font-size: 1.1rem; font-weight: 600; }
+  p { margin: 0; max-width: 65ch; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ar { font-family: var(--arabic); direction: rtl; unicode-bidi: isolate; font-weight: 600; }
+  code, .path { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; }
+
+  .eyebrow {
+    font: 500 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+  }
+  header.intro { display: grid; gap: 16px; }
+  header.intro .lede { font-size: 1.1rem; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 0.85rem var(--mono); color: var(--muted); }
+
+  nav.toc { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: 16px; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; columns: 2 240px; column-gap: 32px; }
+  nav.toc li { break-inside: avoid; padding-block: 3px; }
+  nav.toc a { text-decoration: none; color: var(--ink); }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc .n { font-family: var(--mono); color: var(--muted); font-size: 0.85em; margin-inline-end: 8px; }
+
+  section { display: grid; gap: 18px; scroll-margin-top: 16px; }
+  section > .head { display: grid; gap: 6px; }
+  ul.plain { margin: 0; padding-inline-start: 1.2em; display: grid; gap: 6px; max-width: 65ch; }
+
+  /* Who-sees-what rows */
+  dl.roles { margin: 0; display: grid; grid-template-columns: 8.5rem 1fr; border-top: 1px solid var(--rule); }
+  dl.roles dt, dl.roles dd { margin: 0; padding-block: 12px; border-bottom: 1px solid var(--rule); }
+  dl.roles dt { font: 500 0.78rem/1.6 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding-top: 14px; }
+  dl.roles dd ul { margin: 0; padding-inline-start: 1.1em; display: grid; gap: 4px; }
+  @media (max-width: 520px) {
+    dl.roles { grid-template-columns: 1fr; }
+    dl.roles dt { border-bottom: 0; padding-bottom: 0; }
+  }
+
+  /* Hierarchy diagram */
+  .tree { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; display: grid; gap: 18px; }
+  .tree .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .tree .col { display: grid; gap: 8px; align-content: start; }
+  .tree .col h3 { font-size: 0.95rem; }
+  .node { border: 1px solid var(--rule); border-radius: 6px; padding: 7px 10px; font-size: 0.92rem; background: var(--bg); }
+  .node.pkg { border-color: var(--accent); background: var(--accent-soft); }
+  .node.lec { border-inline-start: 3px solid var(--accent); }
+  .node.item { font-size: 0.85rem; color: var(--muted); }
+  .indent { margin-inline-start: 18px; display: grid; gap: 8px; }
+  .tree .note { font-size: 0.88rem; color: var(--muted); }
+
+  /* Lock example */
+  .lockcard { background: var(--lock-soft); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; }
+  .lockcard .tag { font: 600 0.75rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--lock); }
+  .steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 1.8rem 1fr; gap: 10px; align-items: baseline; }
+  .steps li::before { content: counter(s); font: 600 0.85rem var(--mono); color: var(--lock); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.92rem; }
+  th, td { text-align: start; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td .status { font: 500 0.78rem var(--mono); white-space: nowrap; }
+  .fixed { color: var(--done); }
+  .open { color: var(--lock); }
+
+  .callout { border-inline-start: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--muted); max-width: 65ch; }
+  footer { border-top: 1px solid var(--rule); padding-top: 20px; font-size: 0.88rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="intro">
+    <span class="eyebrow">Masaar · feature guide</span>
+    <h1>The course lectures system</h1>
+    <p class="lede">What commit <code>57dd383</code> added to the platform, how teachers and students use each part, and what was fixed afterwards.</p>
+    <div class="meta">
+      <span>Commit 57dd383 · 23 Sep 2026</span>
+      <span>44 files · ~20,000 lines</span>
+      <span>Updated after fixes up to c40f502</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#overview"><span class="n">1</span>The big change</a></li>
+      <li><a href="#structure"><span class="n">2</span>How content is organized</a></li>
+      <li><a href="#lectures-page"><span class="n">3</span>The lectures page</a></li>
+      <li><a href="#curriculum"><span class="n">4</span>Curriculum manager</a></li>
+      <li><a href="#locks"><span class="n">5</span>Prerequisite locks</a></li>
+      <li><a href="#availability"><span class="n">6</span>Availability and archive</a></li>
+      <li><a href="#files"><span class="n">7</span>Lecture PDF files</a></li>
+      <li><a href="#reports"><span class="n">8</span>Lecture reports</a></li>
+      <li><a href="#migration"><span class="n">9</span>What happened to old content</a></li>
+      <li><a href="#fixes"><span class="n">10</span>Fixes since the commit</a></li>
+      <li><a href="#open"><span class="n">11</span>Still open</a></li>
+    </ol>
+  </nav>
+
+  <section id="overview">
+    <div class="head">
+      <span class="eyebrow">1</span>
+      <h2>The big change</h2>
+    </div>
+    <p>Before this commit, students watched videos one by one from the Videos page. Now content is grouped into <strong>lectures</strong>: one lecture holds its videos, its exams and its PDF files together, the way a teacher actually teaches a class.</p>
+    <p>In the site header, <span class="ar">الفيديوهات</span> was replaced by <span class="ar">المحاضرات</span>, which opens <code>/lectures</code>. The old Videos page still exists and still works.</p>
+    <p>The commit also added prerequisite locks, lecture availability windows, lecture reports, and a curriculum manager for package courses. Each has its own section below.</p>
+  </section>
+
+  <section id="structure">
+    <div class="head">
+      <span class="eyebrow">2</span>
+      <h2>How content is organized</h2>
+    </div>
+    <p>A lecture can live in three places. The teacher chooses which one when creating it.</p>
+    <div class="tree" role="img" aria-label="Diagram of standalone lectures, chapters with lectures, and packages with chapters">
+      <div class="cols">
+        <div class="col">
+          <h3>Standalone lecture</h3>
+          <div class="node lec">Lecture</div>
+          <div class="indent">
+            <div class="node item">Videos</div>
+            <div class="node item">Exams</div>
+            <div class="node item">PDF files</div>
+          </div>
+        </div>
+        <div class="col">
+          <h3>Chapter (lesson / unit)</h3>
+          <div class="node">Chapter</div>
+          <div class="indent">
+            <div class="node lec">Lecture 1</div>
+            <div class="node lec">Lecture 2</div>
+          </div>
+        </div>
+        <div class="col">
+          <h3>Package course</h3>
+          <div class="node pkg">Package (paid)</div>
+          <div class="indent">
+            <div class="node">Chapter</div>
+            <div class="indent">
+              <div class="node lec">Lecture</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">A lecture is set for one grade, or left open to all grades. The same video or exam can be added to more than one lecture; it is linked, not copied.</p>
+    </div>
+    <ul class="plain">
+      <li><strong>Standalone lectures and chapters</strong> are free content for the grade. Every student of that grade sees them.</li>
+      <li><strong>Package lectures</strong> are visible only to students with an approved purchase of that package.</li>
+    </ul>
+  </section>
+
+  <section id="lectures-page">
+    <div class="head">
+      <span class="eyebrow">3</span>
+      <h2>The lectures page</h2>
+    </div>
+    <p>Address: <code>/lectures</code>. One page, with different tools for teachers and students.</p>
+    <dl class="roles">
+      <dt>Student</dt>
+      <dd>
+        <ul>
+          <li>Sees three sections for their grade: standalone lectures, <span class="ar">الدروس والوحدات الدراسية</span> (chapters), and their purchased packages.</li>
+          <li><span class="ar">دخول المحاضرة</span> opens the lecture workspace: the video player, the list of the lecture's videos, its exams and its PDF files.</li>
+          <li>Opening an exam from a lecture shows <span class="ar">العودة للمحاضرة</span> to come back to it.</li>
+          <li>Locked items show a lock icon. Clicking one explains which exam to pass first.</li>
+        </ul>
+      </dd>
+      <dt>Teacher</dt>
+      <dd>
+        <ul>
+          <li>Picks the grade at the top, then creates a lecture or a chapter.</li>
+          <li>The create form adds videos, exams and PDF files in one step, and can mark an exam as the key to one of the lecture's videos.</li>
+          <li>Each lecture card has tools to attach an existing video or exam, upload a PDF, set availability, archive, edit and delete.</li>
+          <li>A toggle shows archived lectures.</li>
+        </ul>
+      </dd>
+      <dt>Who</dt>
+      <dd>Teachers (admins) and assistants with the videos permission manage lectures. The page is switched on per platform with the <code>lectures</code> feature in the Super Admin panel.</dd>
+    </dl>
+  </section>
+
+  <section id="curriculum">
+    <div class="head">
+      <span class="eyebrow">4</span>
+      <h2>Curriculum manager</h2>
+    </div>
+    <p>Address: control panel → <span class="ar">إدارة المحاضرات</span> (<code>/control-panel/curriculum</code>). It is the place to build <strong>package</strong> courses. The packages panel links to it with <span class="ar">إدارة الفصول والمحاضرات (المنهج)</span>.</p>
+    <ul class="plain">
+      <li>Choose a package, then add chapters (<span class="ar">إضافة فصل دراسي جديد</span>) and lectures inside them.</li>
+      <li>Link videos and exams to a lecture, and upload its PDF notes (<span class="ar">رفع مذكرة / ملف PDF للمحاضرة</span>).</li>
+      <li>Set a lecture's lock: <span class="ar">تحديد شرط الفتح التلقائي للمحاضرة</span>.</li>
+      <li><span class="ar">مستودع المحتوى غير المرتبط بمحاضرات</span> lists every video and exam that is not in any lecture yet, so nothing gets forgotten.</li>
+    </ul>
+    <p>Only people with the videos or payments permission can open it.</p>
+  </section>
+
+  <section id="locks">
+    <div class="head">
+      <span class="eyebrow">5</span>
+      <h2>Prerequisite locks</h2>
+    </div>
+    <p>A teacher can make content open only after the student passes an exam. A whole lecture, one video or one exam can be locked this way.</p>
+    <div class="lockcard">
+      <span class="tag">Example</span>
+      <ol class="steps">
+        <li>The teacher sets: Lecture 2 opens after scoring 80% on the Chapter 1 exam.</li>
+        <li>A student with a best score of 55% sees Lecture 2 locked, with the exam's name, the 80% target and their own score.</li>
+        <li>The student retakes the exam and scores 85%. The result screen shows the pass, and Lecture 2 opens straight away, without reloading the page.</li>
+      </ol>
+    </div>
+    <ul class="plain">
+      <li><strong>Setting the score:</strong> <span class="ar">النسبة المئوية المطلوبة للاجتياز (%)</span>, default 70%. The teacher can change it at any time.</li>
+      <li><strong>Which attempt counts:</strong> the student's best submitted attempt. Pre-video quizzes don't count.</li>
+      <li><strong>Loops are blocked:</strong> the database refuses a rule that would make two items wait on each other forever.</li>
+      <li><strong>Who is locked:</strong> students only. Teachers and assistants always see everything open.</li>
+    </ul>
+    <p class="callout">When the commit landed, these locks were enforced only on the page. Since the fixes of 24 Sep, the database and the file and video servers check them too, so a link can't get around them. See section 10.</p>
+  </section>
+
+  <section id="availability">
+    <div class="head">
+      <span class="eyebrow">6</span>
+      <h2>Availability and archive</h2>
+    </div>
+    <ul class="plain">
+      <li><strong>Availability window:</strong> a lecture can stay open for a number of hours after it is published, or until a set date. The card shows the time left, for example <span class="ar">متبقي 3 أيام</span>, then <span class="ar">انتهت الإتاحة</span>.</li>
+      <li><strong>Extensions:</strong> the teacher can extend or close a lecture for one student, one group or the whole grade. The most specific setting wins: student, then group, then grade.</li>
+      <li><strong>Archive:</strong> <span class="ar">أرشفة المحاضرة</span> hides a lecture from students without deleting anything. <span class="ar">إلغاء أرشفة المحاضرة</span> brings it back.</li>
+    </ul>
+  </section>
+
+  <section id="files">
+    <div class="head">
+      <span class="eyebrow">7</span>
+      <h2>Lecture PDF files</h2>
+    </div>
+    <p>Each lecture can carry PDF notes. When a student taps a file, the server checks that they are signed in, on an allowed device, in the right grade, have bought the package if there is one, and that the lecture is unlocked, open and not archived. Only then does it give a download link, which works for 5 minutes.</p>
+    <p>Files are stored in Cloudflare R2. A private storage bucket for them is ready in the code and turns on once it is created (see section 11).</p>
+  </section>
+
+  <section id="reports">
+    <div class="head">
+      <span class="eyebrow">8</span>
+      <h2>Lecture reports</h2>
+    </div>
+    <p>Both are opened from the Reports page and need the reports permission.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Report</th><th>Address</th><th>Shows</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ar">تقرير المحاضرات</span></td>
+            <td><code>/lectures-report</code></td>
+            <td>One student: progress in each lecture and each of its videos.</td>
+          </tr>
+          <tr>
+            <td><span class="ar">تقرير جماعي للمحاضرات</span></td>
+            <td><code>/lectures-group-report</code></td>
+            <td>A whole grade for one lecture: completion percentage, finished, partial and unwatched videos per student.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="migration">
+    <div class="head">
+      <span class="eyebrow">9</span>
+      <h2>What happened to old content</h2>
+    </div>
+    <ul class="plain">
+      <li>Nothing was deleted. Every existing video, exam, attempt and watch-progress record stayed as it was.</li>
+      <li>Playlists that belonged to a package became chapters of that package.</li>
+      <li>13 specific older videos were each placed in their own standalone lecture.</li>
+      <li>Videos and exams that are in no lecture stay usable as before and appear in the curriculum manager's unassigned list.</li>
+      <li>No lock rules were created automatically. Every lock is set by a teacher.</li>
+    </ul>
+  </section>
+
+  <section id="fixes">
+    <div class="head">
+      <span class="eyebrow">10</span>
+      <h2>Fixes since the commit</h2>
+    </div>
+    <p>Problems found after the commit, all fixed and live on <code>main</code>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Problem</th><th>Fix</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Locked lecture files could still be downloaded.</td><td>The download server checks the lock with the student's own login.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Files of archived or expired lectures could be downloaded.</td><td>The download server checks archive, availability and extensions.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>A locked exam opened from its direct link.</td><td>The database refuses to start an attempt on a locked exam.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Locked videos played from the Videos page.</td><td>The page checks the lock, and the Bunny video server refuses locked videos.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Lectures inside chapters ignored locks, and card buttons skipped them.</td><td>Every way of opening a lecture checks the lock first.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>A failed lock check showed content as open.</td><td>It stays closed and asks the student to reload.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>The lock message always said "required exam, 70%".</td><td>It shows the real exam name, target and the student's score.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Teachers saw package lectures as locked.</td><td>Locks apply to students only.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Date extensions never reached students, and the wrong extension could win.</td><td>Extensions load fully, and the most specific one wins.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>The group report showed 0% for some students in big grades.</td><td>Progress loads in batches, with no 1,000-row cut-off.</td><td><span class="status fixed">Fixed</span></td></tr>
+          <tr><td>Students with two approved purchases of a package couldn't download its files.</td><td>Any approved purchase is enough.</td><td><span class="status fixed">Fixed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="open">
+    <div class="head">
+      <span class="eyebrow">11</span>
+      <h2>Still open</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Why it matters</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Private R2 bucket for lecture PDFs</td>
+            <td>Today PDF files sit in a public bucket, so a shared file link opens for anyone. Create the bucket in Cloudflare and set <code>R2_PRIVATE_BUCKET</code>; new uploads then become private.</td>
+            <td><span class="status open">Optional</span></td>
+          </tr>
+          <tr>
+            <td>Files uploaded before the private bucket</td>
+            <td>They stay public until they are moved to the private bucket.</td>
+            <td><span class="status open">Open</span></td>
+          </tr>
+          <tr>
+            <td>YouTube and Drive videos</td>
+            <td>Their video IDs are visible to students, so locks on them are enforced only on the page. Bunny videos are enforced on the server.</td>
+            <td><span class="status open">Limit</span></td>
+          </tr>
+          <tr>
+            <td><code>PHASE6_RESUME_GUIDE.md</code></td>
+            <td>A handover note from the build. It describes an unfinished step and is out of date.</td>
+            <td><span class="status open">Outdated</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Written from the code on <code>main</code> at commit c40f502, 24 Sep 2026.
+  </footer>
+</div>
+</body>
+</html>

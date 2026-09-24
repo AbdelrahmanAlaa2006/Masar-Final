@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل محاضرات مسار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f5f7f6;
+    --surface: #ffffff;
+    --ink: #17211f;
+    --muted: #5a6a66;
+    --rule: #d9e1de;
+    --accent: #0e7a6a;
+    --accent-soft: #e2f1ed;
+    --lock: #a3530b;
+    --lock-soft: #fbeedd;
+    --done: #2f7a3a;
+    --code-bg: #eef2f1;
+    --display: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    --arabic: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #111715;
+      --surface: #182120;
+      --ink: #e4ebe9;
+      --muted: #9aaba6;
+      --rule: #2a3633;
+      --accent: #3fb8a3;
+      --accent-soft: #173a34;
+      --lock: #e7a45c;
+      --lock-soft: #3a2a17;
+      --done: #7cc98a;
+      --code-bg: #1f2a28;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111715;
+    --surface: #182120;
+    --ink: #e4ebe9;
+    --muted: #9aaba6;
+    --rule: #2a3633;
+    --accent: #3fb8a3;
+    --accent-soft: #173a34;
+    --lock: #e7a45c;
+    --lock-soft: #3a2a17;
+    --done: #7cc98a;
+    --code-bg: #1f2a28;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.8 var(--body);
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+  }
+  .page { max-width: 760px; margin: 0 auto; display: grid; gap: 56px; }
+
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+  h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 1.6rem; font-weight: 700; }
+  h3 { font-size: 1.1rem; font-weight: 600; }
+  p { margin: 0; max-width: 65ch; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ar { font-weight: 600; }
+  code, .path, .ltr { direction: ltr; unicode-bidi: isolate; }
+  code, .path { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 6px; border-radius: 4px; }
+
+  .eyebrow {
+    font: 600 0.85rem/1 var(--body); color: var(--accent);
+  }
+  header.intro { display: grid; gap: 16px; }
+  header.intro .lede { font-size: 1.1rem; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 0.9rem var(--body); color: var(--muted); }
+
+  nav.toc { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: 16px; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; columns: 2 240px; column-gap: 32px; }
+  nav.toc li { break-inside: avoid; padding-block: 3px; }
+  nav.toc a { text-decoration: none; color: var(--ink); }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc .n { font-family: var(--body); color: var(--muted); font-size: 0.85em; margin-inline-end: 8px; }
+
+  section { display: grid; gap: 18px; scroll-margin-top: 16px; }
+  section > .head { display: grid; gap: 6px; }
+  ul.plain { margin: 0; padding-inline-start: 1.2em; display: grid; gap: 6px; max-width: 65ch; }
+
+  /* Who-sees-what rows */
+  dl.roles { margin: 0; display: grid; grid-template-columns: 7rem 1fr; border-top: 1px solid var(--rule); }
+  dl.roles dt, dl.roles dd { margin: 0; padding-block: 12px; border-bottom: 1px solid var(--rule); }
+  dl.roles dt { font: 600 0.9rem/1.6 var(--body); color: var(--muted); padding-top: 12px; }
+  dl.roles dd ul { margin: 0; padding-inline-start: 1.1em; display: grid; gap: 4px; }
+  @media (max-width: 520px) {
+    dl.roles { grid-template-columns: 1fr; }
+    dl.roles dt { border-bottom: 0; padding-bottom: 0; }
+  }
+
+  /* Hierarchy diagram */
+  .tree { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; display: grid; gap: 18px; }
+  .tree .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .tree .col { display: grid; gap: 8px; align-content: start; }
+  .tree .col h3 { font-size: 0.95rem; }
+  .node { border: 1px solid var(--rule); border-radius: 6px; padding: 7px 10px; font-size: 0.92rem; background: var(--bg); }
+  .node.pkg { border-color: var(--accent); background: var(--accent-soft); }
+  .node.lec { border-inline-start: 3px solid var(--accent); }
+  .node.item { font-size: 0.85rem; color: var(--muted); }
+  .indent { margin-inline-start: 18px; display: grid; gap: 8px; }
+  .tree .note { font-size: 0.88rem; color: var(--muted); }
+
+  /* Lock example */
+  .lockcard { background: var(--lock-soft); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; }
+  .lockcard .tag { font: 600 0.85rem/1 var(--body); color: var(--lock); }
+  .steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 1.8rem 1fr; gap: 10px; align-items: baseline; }
+  .steps li::before { content: counter(s); font: 600 0.85rem var(--mono); color: var(--lock); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.92rem; }
+  th, td { text-align: start; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 0.85rem var(--body); color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td .status { font: 600 0.85rem var(--body); white-space: nowrap; }
+  .fixed { color: var(--done); }
+  .open { color: var(--lock); }
+
+  .callout { border-inline-start: 3px solid var(--accent); padding-block: 4px; padding-inline-start: 16px; color: var(--muted); max-width: 65ch; }
+  footer { border-top: 1px solid var(--rule); padding-top: 20px; font-size: 0.88rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page" dir="rtl" lang="ar">
+
+  <header class="intro">
+    <span class="eyebrow">مسار · دليل الميزات</span>
+    <h1>نظام المحاضرات</h1>
+    <p class="lede">ما الذي أضافه التعديل <code>57dd383</code> إلى المنصة، وكيف يستخدم المدرس والطالب كل جزء منه، وما الذي تم إصلاحه بعده.</p>
+    <div class="meta">
+      <span>التعديل <span class="ltr">57dd383</span> · ٢٣ سبتمبر ٢٠٢٦</span>
+      <span>٤٤ ملفاً · حوالي ٢٠٬٠٠٠ سطر</span>
+      <span>محدَّث بعد الإصلاحات حتى <span class="ltr">c40f502</span></span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="المحتويات">
+    <ol>
+      <li><a href="#overview"><span class="n">١</span>التغيير الأساسي</a></li>
+      <li><a href="#structure"><span class="n">٢</span>تنظيم المحتوى</a></li>
+      <li><a href="#lectures-page"><span class="n">٣</span>صفحة المحاضرات</a></li>
+      <li><a href="#curriculum"><span class="n">٤</span>إدارة المحاضرات في لوحة التحكم</a></li>
+      <li><a href="#locks"><span class="n">٥</span>الفتح المشروط بامتحان</a></li>
+      <li><a href="#availability"><span class="n">٦</span>مدة الإتاحة والأرشفة</a></li>
+      <li><a href="#files"><span class="n">٧</span>ملفات PDF للمحاضرات</a></li>
+      <li><a href="#reports"><span class="n">٨</span>تقارير المحاضرات</a></li>
+      <li><a href="#migration"><span class="n">٩</span>ماذا حدث للمحتوى القديم</a></li>
+      <li><a href="#fixes"><span class="n">١٠</span>الإصلاحات بعد التعديل</a></li>
+      <li><a href="#open"><span class="n">١١</span>ما زال مفتوحاً</a></li>
+    </ol>
+  </nav>
+
+  <section id="overview">
+    <div class="head">
+      <span class="eyebrow">١</span>
+      <h2>التغيير الأساسي</h2>
+    </div>
+    <p>قبل هذا التعديل كان الطالب يشاهد الفيديوهات واحداً تلو الآخر من صفحة الفيديوهات. الآن أصبح المحتوى مجمَّعاً في <strong>محاضرات</strong>: كل محاضرة تضم فيديوهاتها وامتحاناتها وملفات الـ PDF الخاصة بها معاً، كما يشرح المدرس الحصة فعلاً.</p>
+    <p>في شريط الموقع العلوي حلّت <span class="ar">المحاضرات</span> محل <span class="ar">الفيديوهات</span>، وتفتح الصفحة <code>/lectures</code>. صفحة الفيديوهات القديمة ما زالت موجودة وتعمل.</p>
+    <p>أضاف التعديل أيضاً الفتح المشروط بامتحان، ومدة إتاحة المحاضرات، وتقارير المحاضرات، وأداة لبناء مناهج الباقات. لكل منها قسم خاص بالأسفل.</p>
+  </section>
+
+  <section id="structure">
+    <div class="head">
+      <span class="eyebrow">٢</span>
+      <h2>تنظيم المحتوى</h2>
+    </div>
+    <p>يمكن أن توجد المحاضرة في أحد ثلاثة أماكن، ويختار المدرس المكان عند إنشائها.</p>
+    <div class="tree" role="img" aria-label="رسم يوضح المحاضرات المستقلة، والدروس التي تضم محاضرات، والباقات التي تضم دروساً">
+      <div class="cols">
+        <div class="col">
+          <h3>محاضرة مستقلة</h3>
+          <div class="node lec">محاضرة</div>
+          <div class="indent">
+            <div class="node item">فيديوهات</div>
+            <div class="node item">امتحانات</div>
+            <div class="node item">ملفات PDF</div>
+          </div>
+        </div>
+        <div class="col">
+          <h3>درس / وحدة</h3>
+          <div class="node">درس</div>
+          <div class="indent">
+            <div class="node lec">محاضرة ١</div>
+            <div class="node lec">محاضرة ٢</div>
+          </div>
+        </div>
+        <div class="col">
+          <h3>منهج باقة</h3>
+          <div class="node pkg">باقة (مدفوعة)</div>
+          <div class="indent">
+            <div class="node">فصل</div>
+            <div class="indent">
+              <div class="node lec">محاضرة</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note">المحاضرة تُحدَّد لصف دراسي واحد، أو تُترك متاحة لكل الصفوف. يمكن إضافة نفس الفيديو أو الامتحان إلى أكثر من محاضرة؛ فهو يُربط ولا يُنسخ.</p>
+    </div>
+    <ul class="plain">
+      <li><strong>المحاضرات المستقلة والدروس</strong> محتوى مجاني للصف الدراسي، يراه كل طلاب هذا الصف.</li>
+      <li><strong>محاضرات الباقات</strong> تظهر فقط للطالب الذي لديه شراء معتمد لهذه الباقة.</li>
+    </ul>
+  </section>
+
+  <section id="lectures-page">
+    <div class="head">
+      <span class="eyebrow">٣</span>
+      <h2>صفحة المحاضرات</h2>
+    </div>
+    <p>العنوان: <code>/lectures</code>. صفحة واحدة بأدوات مختلفة للمدرس والطالب.</p>
+    <dl class="roles">
+      <dt>الطالب</dt>
+      <dd>
+        <ul>
+          <li>يرى ثلاثة أقسام لصفه: المحاضرات المستقلة، و<span class="ar">الدروس والوحدات الدراسية</span>، والباقات التي اشتراها.</li>
+          <li>زر <span class="ar">دخول المحاضرة</span> يفتح مساحة المحاضرة: مشغل الفيديو، وقائمة فيديوهات المحاضرة، وامتحاناتها، وملفاتها.</li>
+          <li>عند فتح امتحان من داخل محاضرة يظهر زر <span class="ar">العودة للمحاضرة</span> للرجوع إليها.</li>
+          <li>العناصر المقفولة تظهر بعلامة قفل، والضغط عليها يوضح الامتحان المطلوب اجتيازه أولاً.</li>
+        </ul>
+      </dd>
+      <dt>المدرس</dt>
+      <dd>
+        <ul>
+          <li>يختار الصف الدراسي من الأعلى، ثم ينشئ محاضرة أو درساً.</li>
+          <li>نموذج الإنشاء يضيف الفيديوهات والامتحانات وملفات PDF في خطوة واحدة، ويمكنه جعل امتحان شرطاً لفتح أحد فيديوهات المحاضرة.</li>
+          <li>كل كارت محاضرة فيه أدوات: ربط فيديو أو امتحان موجود، رفع ملف PDF، ضبط الإتاحة، الأرشفة، التعديل، والحذف.</li>
+          <li>زر لعرض المحاضرات المؤرشفة.</li>
+        </ul>
+      </dd>
+      <dt>الصلاحية</dt>
+      <dd>يدير المحاضرات المدرس (الأدمن) والمساعدون الذين لديهم صلاحية الفيديوهات. تُفعَّل الصفحة لكل منصة من خاصية <code>lectures</code> في لوحة السوبر أدمن.</dd>
+    </dl>
+  </section>
+
+  <section id="curriculum">
+    <div class="head">
+      <span class="eyebrow">٤</span>
+      <h2>إدارة المحاضرات في لوحة التحكم</h2>
+    </div>
+    <p>المكان: لوحة التحكم ← <span class="ar">إدارة المحاضرات</span> (<code>/control-panel/curriculum</code>). هنا يُبنى منهج <strong>الباقات</strong>. قسم الباقات في لوحة التحكم فيه رابط إليها باسم <span class="ar">إدارة الفصول والمحاضرات (المنهج)</span>.</p>
+    <ul class="plain">
+      <li>اختر باقة، ثم أضف فصولاً (<span class="ar">إضافة فصل دراسي جديد</span>) ومحاضرات بداخلها.</li>
+      <li>اربط الفيديوهات والامتحانات بالمحاضرة، وارفع مذكراتها (<span class="ar">رفع مذكرة / ملف PDF للمحاضرة</span>).</li>
+      <li>اضبط قفل المحاضرة من <span class="ar">تحديد شرط الفتح التلقائي للمحاضرة</span>.</li>
+      <li><span class="ar">مستودع المحتوى غير المرتبط بمحاضرات</span> يعرض كل فيديو وامتحان لم يُضف لأي محاضرة بعد، حتى لا يُنسى شيء.</li>
+    </ul>
+    <p>يفتحها فقط من لديه صلاحية الفيديوهات أو المدفوعات.</p>
+  </section>
+
+  <section id="locks">
+    <div class="head">
+      <span class="eyebrow">٥</span>
+      <h2>الفتح المشروط بامتحان</h2>
+    </div>
+    <p>يستطيع المدرس أن يجعل محتوى يُفتح فقط بعد أن يجتاز الطالب امتحاناً معيناً. يمكن قفل محاضرة كاملة، أو فيديو واحد، أو امتحان واحد بهذه الطريقة.</p>
+    <div class="lockcard">
+      <span class="tag">مثال</span>
+      <ol class="steps">
+        <li>يضبط المدرس: المحاضرة ٢ تُفتح بعد الحصول على ٨٠٪ في امتحان الفصل الأول.</li>
+        <li>طالب أفضل درجة له ٥٥٪ يرى المحاضرة ٢ مقفولة، مع اسم الامتحان، والنسبة المطلوبة ٨٠٪، ودرجته هو.</li>
+        <li>يعيد الطالب الامتحان ويحصل على ٨٥٪. تظهر له النتيجة بالنجاح، وتُفتح المحاضرة ٢ فوراً دون إعادة تحميل الصفحة.</li>
+      </ol>
+    </div>
+    <ul class="plain">
+      <li><strong>ضبط النسبة:</strong> <span class="ar">النسبة المئوية المطلوبة للاجتياز (%)</span>، والافتراضي ٧٠٪. يمكن للمدرس تغييرها في أي وقت.</li>
+      <li><strong>أي محاولة تُحتسب:</strong> أفضل محاولة مُسلَّمة للطالب. اختبارات ما قبل الفيديو لا تُحتسب.</li>
+      <li><strong>منع الحلقات:</strong> قاعدة البيانات ترفض أي شرط يجعل عنصرين ينتظر كل منهما الآخر للأبد.</li>
+      <li><strong>على من يُطبَّق القفل:</strong> على الطلاب فقط. المدرس والمساعدون يرون كل شيء مفتوحاً دائماً.</li>
+    </ul>
+    <p class="callout">عند نزول التعديل كانت هذه الأقفال تُطبَّق في الصفحة فقط. منذ إصلاحات ٢٤ سبتمبر أصبحت قاعدة البيانات وخوادم الملفات والفيديو تتحقق منها أيضاً، فلا يمكن تجاوزها برابط. راجع القسم ١٠.</p>
+  </section>
+
+  <section id="availability">
+    <div class="head">
+      <span class="eyebrow">٦</span>
+      <h2>مدة الإتاحة والأرشفة</h2>
+    </div>
+    <ul class="plain">
+      <li><strong>مدة الإتاحة:</strong> يمكن أن تظل المحاضرة مفتوحة عدداً من الساعات بعد نشرها، أو حتى تاريخ محدد. الكارت يعرض الوقت المتبقي مثل <span class="ar">متبقي 3 أيام</span>، ثم <span class="ar">انتهت الإتاحة</span>.</li>
+      <li><strong>التمديد:</strong> يستطيع المدرس تمديد المحاضرة أو إغلاقها لطالب واحد، أو مجموعة، أو الصف كله. الإعداد الأكثر تحديداً هو الذي يُطبَّق: الطالب، ثم المجموعة، ثم الصف.</li>
+      <li><strong>الأرشفة:</strong> <span class="ar">أرشفة المحاضرة</span> تخفيها عن الطلاب دون حذف أي شيء، و<span class="ar">إلغاء أرشفة المحاضرة</span> تعيدها.</li>
+    </ul>
+  </section>
+
+  <section id="files">
+    <div class="head">
+      <span class="eyebrow">٧</span>
+      <h2>ملفات PDF للمحاضرات</h2>
+    </div>
+    <p>كل محاضرة يمكن أن تحمل مذكرات PDF. عندما يضغط الطالب على ملف، يتحقق الخادم أنه مسجَّل الدخول، ومن جهاز مسموح، وفي الصف الصحيح، واشترى الباقة إن وُجدت، وأن المحاضرة غير مقفولة ومتاحة وغير مؤرشفة. بعدها فقط يعطيه رابط تحميل صالحاً لمدة ٥ دقائق.</p>
+    <p>الملفات محفوظة على Cloudflare R2. مكان تخزين خاص (Private bucket) للملفات جاهز في الكود ويعمل بمجرد إنشائه (راجع القسم ١١).</p>
+  </section>
+
+  <section id="reports">
+    <div class="head">
+      <span class="eyebrow">٨</span>
+      <h2>تقارير المحاضرات</h2>
+    </div>
+    <p>التقريران يُفتحان من صفحة التقارير، ويحتاجان صلاحية التقارير.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>التقرير</th><th>العنوان</th><th>يعرض</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ar">تقرير المحاضرات</span></td>
+            <td><code>/lectures-report</code></td>
+            <td>طالب واحد: تقدمه في كل محاضرة وفي كل فيديو بداخلها.</td>
+          </tr>
+          <tr>
+            <td><span class="ar">تقرير جماعي للمحاضرات</span></td>
+            <td><code>/lectures-group-report</code></td>
+            <td>صف كامل لمحاضرة واحدة: نسبة الإنجاز، والفيديوهات المكتملة والجزئية وغير المشاهدة لكل طالب.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="migration">
+    <div class="head">
+      <span class="eyebrow">٩</span>
+      <h2>ماذا حدث للمحتوى القديم</h2>
+    </div>
+    <ul class="plain">
+      <li>لم يُحذف شيء. كل فيديو وامتحان ومحاولة وسجل مشاهدة بقي كما هو.</li>
+      <li>قوائم التشغيل التابعة لباقة أصبحت فصولاً في منهج هذه الباقة.</li>
+      <li>١٣ فيديو قديماً محدداً وُضع كل منها في محاضرة مستقلة خاصة به.</li>
+      <li>الفيديوهات والامتحانات غير الموجودة في أي محاضرة ما زالت تعمل كما كانت، وتظهر في قائمة المحتوى غير المرتبط في لوحة التحكم.</li>
+      <li>لم تُنشأ أي أقفال تلقائياً. كل قفل يضبطه المدرس بنفسه.</li>
+    </ul>
+  </section>
+
+  <section id="fixes">
+    <div class="head">
+      <span class="eyebrow">١٠</span>
+      <h2>الإصلاحات بعد التعديل</h2>
+    </div>
+    <p>مشكلات اكتُشفت بعد التعديل، وكلها أُصلحت وتعمل الآن على <code>main</code>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>المشكلة</th><th>الإصلاح</th><th>الحالة</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ملفات المحاضرات المقفولة كان يمكن تحميلها.</td><td>خادم التحميل يتحقق من القفل بحساب الطالب نفسه.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>ملفات المحاضرات المؤرشفة أو المنتهية كان يمكن تحميلها.</td><td>خادم التحميل يتحقق من الأرشفة والإتاحة والتمديدات.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>امتحان مقفول كان يُفتح من رابطه المباشر.</td><td>قاعدة البيانات ترفض بدء محاولة على امتحان مقفول.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>فيديوهات مقفولة كانت تعمل من صفحة الفيديوهات.</td><td>الصفحة تتحقق من القفل، وخادم فيديوهات Bunny يرفض الفيديو المقفول.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>محاضرات الدروس كانت تتجاهل الأقفال، وأزرار الكارت كانت تتخطاها.</td><td>كل طريقة لفتح محاضرة تتحقق من القفل أولاً.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>فشل التحقق من القفل كان يُظهر المحتوى مفتوحاً.</td><td>يبقى مغلقاً ويطلب من الطالب إعادة تحميل الصفحة.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>رسالة القفل كانت تقول دائماً «الامتحان المشروط ٧٠٪».</td><td>تعرض اسم الامتحان الحقيقي والنسبة المطلوبة ودرجة الطالب.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>المدرس كان يرى محاضرات الباقات مقفولة.</td><td>الأقفال تُطبَّق على الطلاب فقط.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>التمديد بتاريخ لم يكن يصل للطلاب، وكان تمديد خاطئ قد يُطبَّق.</td><td>التمديدات تُحمَّل كاملة، والأكثر تحديداً هو الذي يُطبَّق.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>التقرير الجماعي كان يُظهر ٠٪ لبعض الطلاب في الصفوف الكبيرة.</td><td>التقدم يُحمَّل على دفعات، دون حد الألف صف.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+          <tr><td>الطالب الذي لديه شراءان معتمدان لنفس الباقة لم يكن يستطيع تحميل ملفاتها.</td><td>أي شراء معتمد يكفي.</td><td><span class="status fixed">تم الإصلاح</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="open">
+    <div class="head">
+      <span class="eyebrow">١١</span>
+      <h2>ما زال مفتوحاً</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>البند</th><th>أهميته</th><th>الحالة</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>مكان تخزين خاص على R2 لملفات المحاضرات</td>
+            <td>ملفات PDF حالياً في مكان تخزين عام، فأي رابط ملف يُنشر يفتح لأي أحد. أنشئ الـ bucket في Cloudflare واضبط <code>R2_PRIVATE_BUCKET</code>، وستصبح الملفات الجديدة خاصة.</td>
+            <td><span class="status open">اختياري</span></td>
+          </tr>
+          <tr>
+            <td>الملفات المرفوعة قبل التخزين الخاص</td>
+            <td>تظل عامة حتى تُنقل إلى مكان التخزين الخاص.</td>
+            <td><span class="status open">مفتوح</span></td>
+          </tr>
+          <tr>
+            <td>فيديوهات YouTube و Drive</td>
+            <td>معرّفات هذه الفيديوهات ظاهرة للطلاب، فأقفالها تُطبَّق في الصفحة فقط. فيديوهات Bunny محمية من الخادم.</td>
+            <td><span class="status open">حد تقني</span></td>
+          </tr>
+          <tr>
+            <td><code>PHASE6_RESUME_GUIDE.md</code></td>
+            <td>ملاحظة تسليم من أثناء البناء، تصف خطوة لم تكتمل وأصبحت قديمة.</td>
+            <td><span class="status open">قديم</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    كُتب من الكود على <code>main</code> عند التعديل <span class="ltr">c40f502</span>، ٢٤ سبتمبر ٢٠٢٦.
+  </footer>
+</div>
+</body>
+</html>
