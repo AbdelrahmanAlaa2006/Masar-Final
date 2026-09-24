@@ -1,0 +1,121 @@
+-- ============================================================================
+-- 2026_09_24_exam_requires_questions.sql
+--
+-- An exam with no questions was saved from the lecture editor (2026-09-23):
+-- the editor didn't validate exams and the save code defaulted questions to
+-- [] and total_points to 10. Nothing in the database stopped it, the start
+-- function then created attempts on it, and submit_exam_attempt refused to
+-- grade it — so as a prerequisite it locked its video forever.
+--
+-- 1. BEFORE INSERT / UPDATE OF questions on exams: refuse an empty question
+--    list (every exam type is multiple-choice, including تسميع and the
+--    pre-video quizzes). Also stamps created_by with the caller on insert,
+--    since the app never sent it and we couldn't tell who made that exam.
+-- 2. start_or_get_exam_attempt refuses exams without questions instead of
+--    creating attempts nobody can submit.
+--
+-- Safe to re-run. Rollback: rollback/2026_09_24_exam_requires_questions.rollback.sql
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.guard_exam_questions()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF jsonb_typeof(COALESCE(NEW.questions, '[]'::jsonb)) <> 'array'
+     OR jsonb_array_length(COALESCE(NEW.questions, '[]'::jsonb)) = 0 THEN
+    RAISE EXCEPTION 'لا يمكن حفظ امتحان بدون أسئلة. أضف سؤالاً واحداً على الأقل.'
+      USING ERRCODE = 'P0001', HINT = 'exam_has_no_questions';
+  END IF;
+  IF TG_OP = 'INSERT' AND NEW.created_by IS NULL THEN
+    NEW.created_by := auth.uid();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trig_guard_exam_questions_insert ON public.exams;
+CREATE TRIGGER trig_guard_exam_questions_insert
+  BEFORE INSERT ON public.exams
+  FOR EACH ROW EXECUTE FUNCTION public.guard_exam_questions();
+
+-- Only when `questions` is written, so archiving/renaming an old row never trips it.
+DROP TRIGGER IF EXISTS trig_guard_exam_questions_update ON public.exams;
+CREATE TRIGGER trig_guard_exam_questions_update
+  BEFORE UPDATE OF questions ON public.exams
+  FOR EACH ROW EXECUTE FUNCTION public.guard_exam_questions();
+
+-- Same as the live definition, plus the "no questions" check after step 1.
+CREATE OR REPLACE FUNCTION public.start_or_get_exam_attempt(p_exam_id uuid)
+ RETURNS exam_attempts
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_uid     uuid := auth.uid();
+  v_exam    public.exams;
+  v_attempt public.exam_attempts;
+begin
+  if v_uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  -- 1. Authoritative Exam & Tenant Access Verification
+  select * into v_exam
+    from public.exams
+   where id = p_exam_id
+     and tenant_id = public.current_tenant_id()
+     and is_archived = false;
+
+  if not found then
+    raise exception 'exam not found or access denied';
+  end if;
+
+  -- An exam without questions can never be submitted (submit_exam_attempt
+  -- refuses it), so don't open attempts on it.
+  if jsonb_typeof(coalesce(v_exam.questions, '[]'::jsonb)) <> 'array'
+     or jsonb_array_length(coalesce(v_exam.questions, '[]'::jsonb)) = 0 then
+    raise exception 'exam has no questions';
+  end if;
+
+  -- Verify student has legitimate content access (grade / package gating)
+  if not (public.is_current_user_admin() or public.has_content_access(v_uid, 'exam', p_exam_id)) then
+    raise exception 'forbidden: not authorized to take this exam';
+  end if;
+
+  -- 2. Practical low-collision 64-bit deterministic transaction-level advisory lock
+  -- Scoped strictly to this student + exam combination. Released automatically (< 2ms).
+  perform pg_advisory_xact_lock(hashtextextended(v_uid::text || ':' || p_exam_id::text, 0));
+
+  -- 3. Return existing in-flight open attempt if one is already in progress
+  select * into v_attempt
+    from public.exam_attempts
+   where exam_id = p_exam_id
+     and student_id = v_uid
+     and submitted_at is null
+     and video_assessment_id is null
+   order by started_at desc
+   limit 1;
+
+  if v_attempt.id is not null then
+    return v_attempt;
+  end if;
+
+  -- 4. Atomically create new attempt row with authoritative server points and timestamp
+  insert into public.exam_attempts (exam_id, student_id, max_score, started_at)
+  values (
+    p_exam_id,
+    v_uid,
+    coalesce(
+      v_exam.total_points,
+      (select coalesce(sum(coalesce((q->>'points')::int, 1)), 0) from jsonb_array_elements(coalesce(v_exam.questions, '[]'::jsonb)) q)
+    ),
+    now()
+  )
+  returning * into v_attempt;
+
+  return v_attempt;
+end;
+$function$;
