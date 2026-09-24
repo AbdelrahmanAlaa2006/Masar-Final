@@ -18,9 +18,9 @@
 //   R2_ACCESS_KEY_ID
 //   R2_SECRET_ACCESS_KEY
 //   R2_BUCKET
-//   R2_PRIVATE_BUCKET   (course-lecture files uploaded as kind 'lecture-file'
-//                        live here, under lecture-files/; older files are still
-//                        in R2_BUCKET under lectures/)
+//   R2_PRIVATE_BUCKET   (optional; course-lecture files uploaded while it is
+//                        set live there under lecture-files/, everything else
+//                        is in R2_BUCKET under lectures/)
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'

@@ -18,7 +18,8 @@
 //   R2_SECRET_ACCESS_KEY
 //   R2_BUCKET                 (single bucket — kinds are folders inside it)
 //   R2_PUBLIC_BASE            (e.g. https://pub-xxxx.r2.dev)
-//   R2_PRIVATE_BUCKET         (no public access; course-lecture files)
+//   R2_PRIVATE_BUCKET         (optional; no public access; course-lecture files.
+//                              Unset → they go to R2_BUCKET under lectures/)
 // ----------------------------------------------------------------------------
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
@@ -156,15 +157,21 @@ serve(async (req) => {
     return json({ error: rule.invalidMsg }, { status: 400 })
   }
 
+  // R2_PRIVATE_BUCKET is optional: until it is set, private kinds go to the
+  // regular bucket under the old lectures/ prefix, exactly as before.
+  const privateBucket = rule.privateBucket ? (Deno.env.get('R2_PRIVATE_BUCKET') || '') : ''
+  const usePrivate = !!privateBucket
+  const prefix = rule.privateBucket && !usePrivate ? 'lectures' : rule.prefix(userId)
+
   const ext = sanitizeExt(body.filename || '', rule.defaultExt)
   // UUID-keyed object so URLs are unguessable and collisions are impossible.
-  const key = `${rule.prefix(userId)}/${crypto.randomUUID()}${ext.startsWith('.') ? ext : '.' + ext}`
+  const key = `${prefix}/${crypto.randomUUID()}${ext.startsWith('.') ? ext : '.' + ext}`
 
   // --- R2 presign -----------------------------------------------------------
   const accountId   = Deno.env.get('R2_ACCOUNT_ID')!
   const accessKey   = Deno.env.get('R2_ACCESS_KEY_ID')!
   const secret      = Deno.env.get('R2_SECRET_ACCESS_KEY')!
-  const bucket      = rule.privateBucket ? Deno.env.get('R2_PRIVATE_BUCKET')! : Deno.env.get('R2_BUCKET')!
+  const bucket      = usePrivate ? privateBucket : Deno.env.get('R2_BUCKET')!
   const publicBase  = (Deno.env.get('R2_PUBLIC_BASE') || '').replace(/\/+$/, '')
 
   if (!accountId || !accessKey || !secret || !bucket || !publicBase) {
@@ -186,7 +193,7 @@ serve(async (req) => {
   return json({
     uploadUrl,
     key,
-    publicUrl: rule.privateBucket ? null : `${publicBase}/${key}`,
+    publicUrl: usePrivate ? null : `${publicBase}/${key}`,
     contentType,
     kind,
     expiresIn: 600,
