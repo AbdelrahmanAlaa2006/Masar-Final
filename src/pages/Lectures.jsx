@@ -217,6 +217,24 @@ export default function Lectures() {
     return userRole === 'admin' || userRole === 'super_admin' || hasPermission('videos')
   }, [userRole, hasPermission])
 
+  // Students: the lock on a lecture item (the lecture's own lock first, then
+  // the item's), or null when it is open. Staff always see items open.
+  const contentLock = (lecture, item) => {
+    if (canManage) return null
+    if (lecture?.lockStatus?.unlocked === false) return lecture.lockStatus
+    if (item?.lockStatus?.unlocked === false) return item.lockStatus
+    return null
+  }
+
+  // One line under a locked item saying what opens it.
+  const lockHint = (lock) => {
+    if (lock?.reason === 'check_failed') return '🔒 تعذر التحقق من المتطلبات، أعد تحميل الصفحة'
+    if (lock?.required_exam_title) {
+      return `🔒 يُفتح بعد اجتياز «${lock.required_exam_title}» بنسبة ${Math.round(lock.required_score || 70)}%`
+    }
+    return '🔒 يُفتح بعد إكمال المتطلب السابق'
+  }
+
   // ── Grade Options & Selection ─────────────────────────────────────────
   const gradeOptions = useMemo(() => {
     if (gradesList && gradesList.length > 0) {
@@ -1957,15 +1975,19 @@ export default function Lectures() {
                   <i className="fas fa-play-circle" style={{ color: '#3b82f6' }}></i> الفيديوهات والشروحات ({videos.length})
                 </span>
                 <div className="lecture-items-list">
-                  {videos.map((vid) => (
-                    <div key={vid.id || vid.junction_id} className="lecture-content-row">
+                  {videos.map((vid) => {
+                    const lock = contentLock(lec, vid)
+                    return (
+                    <div key={vid.id || vid.junction_id} className={`lecture-content-row ${lock ? 'is-locked' : ''}`}>
                       <div className="lecture-content-info">
                         <div className="lecture-content-type-icon video">
-                          <i className="fas fa-play"></i>
+                          <i className={`fas ${lock ? 'fa-lock' : 'fa-play'}`}></i>
                         </div>
                         <div>
                           <div className="lecture-content-name">{vid.title}</div>
-                          {vid.video_parts?.length > 1 && (
+                          {lock ? (
+                            <div className="lecture-content-subtext lecture-lock-hint">{lockHint(lock)}</div>
+                          ) : vid.video_parts?.length > 1 && (
                             <div className="lecture-content-subtext">{vid.video_parts.length} أجزاء</div>
                           )}
                         </div>
@@ -1974,10 +1996,10 @@ export default function Lectures() {
                       <div className="lecture-content-actions">
                         <button
                           type="button"
-                          className="lecture-play-btn"
+                          className={`lecture-play-btn ${lock ? 'is-locked' : ''}`}
                           onClick={() => handleSelectVideo(vid, lec)}
                         >
-                          <i className="fas fa-play"></i> مشاهدة
+                          <i className={`fas ${lock ? 'fa-lock' : 'fa-play'}`}></i> {lock ? 'مقفل' : 'مشاهدة'}
                         </button>
                         {canManage && (
                           <button
@@ -1998,7 +2020,8 @@ export default function Lectures() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -2010,11 +2033,13 @@ export default function Lectures() {
                   <i className="fas fa-clipboard-check" style={{ color: '#8b5cf6' }}></i> الاختبارات والتقييمات ({exams.length})
                 </span>
                 <div className="lecture-items-list">
-                  {exams.map((ex) => (
-                    <div key={ex.id || ex.junction_id} className="lecture-content-row">
+                  {exams.map((ex) => {
+                    const lock = contentLock(lec, ex)
+                    return (
+                    <div key={ex.id || ex.junction_id} className={`lecture-content-row ${lock ? 'is-locked' : ''}`}>
                       <div className="lecture-content-info">
                         <div className="lecture-content-type-icon exam">
-                          <i className="fas fa-file-lines"></i>
+                          <i className={`fas ${lock ? 'fa-lock' : 'fa-file-lines'}`}></i>
                         </div>
                         <div>
                           <div className="lecture-content-name">{ex.title}</div>
@@ -2026,17 +2051,18 @@ export default function Lectures() {
                               : <span style={{ color: '#ef4444', fontWeight: 700 }}>بدون أسئلة</span>}
                             {ex.duration_minutes ? ` • ${ex.duration_minutes} دقيقة` : ''}
                           </div>
+                          {lock && <div className="lecture-content-subtext lecture-lock-hint">{lockHint(lock)}</div>}
                         </div>
                       </div>
 
                       <div className="lecture-content-actions">
                         <button
                           type="button"
-                          className="lecture-play-btn"
-                          style={{ background: '#7c3aed' }}
-                          onClick={() => handleSelectExam(ex, lec)}
+                          className={`lecture-play-btn ${lock ? 'is-locked' : ''}`}
+                          style={lock ? undefined : { background: '#7c3aed' }}
+                          onClick={() => (lock ? setActiveLockModal(lock) : handleSelectExam(ex, lec))}
                         >
-                          <i className="fas fa-pen-to-square"></i> دخول الاختبار
+                          <i className={`fas ${lock ? 'fa-lock' : 'fa-pen-to-square'}`}></i> {lock ? 'مقفل' : 'دخول الاختبار'}
                         </button>
                         {canManage && (
                           <button
@@ -2057,7 +2083,8 @@ export default function Lectures() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}

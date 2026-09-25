@@ -598,6 +598,24 @@ body.dark .lecture-content-name {
   transform: translateY(-1px);
 }
 
+/* Locked lecture item (student): grey button, lock icon and a hint line.
+   Still clickable: it opens the explanation window. */
+.lecture-play-btn.is-locked,
+.lecture-play-btn.is-locked:hover {
+  background: rgba(148, 163, 184, 0.22);
+  color: #94a3b8;
+  transform: none;
+}
+
+.lecture-content-row.is-locked .lecture-content-type-icon {
+  opacity: 0.6;
+}
+
+.lecture-lock-hint {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
 .lecture-detach-btn {
   width: 32px;
   height: 32px;
