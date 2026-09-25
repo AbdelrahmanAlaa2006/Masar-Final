@@ -96,21 +96,6 @@ const BRAND_OVERRIDES = [
       logo_url: '/images/logo elbeliqdar cropped.png',
     },
   },
-  {
-    key: 'elsharawy',
-    match: (t) =>
-      t.slug === 'elsharawy' ||
-      t.slug === 'elshaarawy' ||
-      (t.slug || '').includes('elsharawy') ||
-      (t.slug || '').includes('elshaarawy'),
-    apply: {
-      name: 'منصة الشعراوي',
-      slug: 'elsharawy',
-      primary_color: '#a86e28',
-      secondary_color: '#175e54',
-      logo_url: '/images/Elshaarawy Logo.png',
-    },
-  },
 ]
 
 /* Mutates+returns the resolved tenant row with the first matching brand
@@ -144,9 +129,6 @@ export function remapAvailableTenants(allTenants) {
     if (t.slug === 'sherif-math' || t.slug === 'math' || t.slug === 'belqadar' || t.slug === 'belqadar-math' || t.slug === 'mahmoud-belqadar') {
       return { slug: 'belqadar-math', name: 'سنتر البلقدار' }
     }
-    if (t.slug === 'elsharawy' || t.slug === 'elshaarawy') {
-      return { slug: 'elsharawy', name: 'منصة الشعراوي' }
-    }
     return t
   })
 }
@@ -157,7 +139,6 @@ export function getTenantFolder(tenant) {
   const slug = tenant?.slug || ''
   const subject = tenant?.config?.subject || ''
   if (slug === 'mohamed-yasser' || slug.includes('yasser')) return 'mohamed-yasser'
-  if (slug === 'elsharawy' || slug === 'elshaarawy' || slug.includes('elsharawy') || slug.includes('elshaarawy')) return 'elsharawy'
   if (subject === 'chemistry' || slug === 'mona-chem') return 'chemistry'
   if (subject === 'physics' || slug === 'sherif-physics') return 'physics'
   if (subject === 'math' || subject === 'mathematics' || slug?.includes('math') || slug?.includes('belqadar')) return 'math'

@@ -39,10 +39,6 @@ function resolveProductsFromTenants(dbTenants) {
     if (p.id === 'eldad-arabic') {
       presetMap.set('eldad', p)
     }
-    if (p.id === 'elsharawy-primary') {
-      presetMap.set('elsharawy', p)
-      presetMap.set('elshaarawy', p)
-    }
   })
 
   return dbTenants

@@ -228,9 +228,6 @@ export default function SuperAdminPanel({ onBack, flash }) {
     if (slug.includes('belqadar') || slug.includes('mahmoud') || name.includes('البلقدار')) {
       return '/images/logo elbeliqdar cropped.png'
     }
-    if (slug.includes('elsharawy') || slug.includes('elshaarawy') || name.includes('الشعراوي')) {
-      return '/images/Elshaarawy Logo.png'
-    }
 
     return null
   }
