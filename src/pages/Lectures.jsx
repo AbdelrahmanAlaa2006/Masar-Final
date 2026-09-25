@@ -326,6 +326,17 @@ export default function Lectures() {
   // Action busy states
   const [downloadingFileId, setDownloadingFileId] = useState(null)
   const [activeLockModal, setActiveLockModal] = useState(null)
+  // Opens the lock window with what the student tried to open, so it can
+  // name it. A locked parent lecture wins over the item itself.
+  const openLock = (lockStatus, type, target, lecture) => {
+    const lectureLocked = lecture?.lockStatus?.unlocked === false && type !== 'lecture'
+    setActiveLockModal({
+      lockStatus: lectureLocked ? lecture.lockStatus : lockStatus,
+      type: lectureLocked ? 'lecture' : type,
+      target: lectureLocked ? lecture : target,
+      contextLecture: lecture || null
+    })
+  }
 
   // ── Management Modals State (Admin / Teacher) ──────────────────────────
   const [modalType, setModalType] = useState(null)
@@ -563,7 +574,8 @@ export default function Lectures() {
     const lock = lecture.lockStatus?.unlocked === false ? lecture.lockStatus
       : targetVideo?.lockStatus?.unlocked === false ? targetVideo.lockStatus : null
     if (lock) {
-      setActiveLockModal(lock)
+      if (targetVideo) openLock(lock, 'video', targetVideo, lecture)
+      else openLock(lock, 'lecture', lecture, lecture)
       return
     }
     let resolvedLesson = contextLesson
@@ -651,7 +663,7 @@ export default function Lectures() {
       }
     } catch (err) {
       if (err.status === 423 && err.unlockStatus) {
-        setActiveLockModal(err.unlockStatus)
+        openLock(err.unlockStatus, 'file', file, lecture)
       } else {
         notify(err.message || 'تعذر تحميل الملف', 'danger')
       }
@@ -2060,7 +2072,7 @@ export default function Lectures() {
                           type="button"
                           className={`lecture-play-btn ${lock ? 'is-locked' : ''}`}
                           style={lock ? undefined : { background: '#7c3aed' }}
-                          onClick={() => (lock ? setActiveLockModal(lock) : handleSelectExam(ex, lec))}
+                          onClick={() => (lock ? openLock(lock, 'exam', ex, lec) : handleSelectExam(ex, lec))}
                         >
                           <i className={`fas ${lock ? 'fa-lock' : 'fa-pen-to-square'}`}></i> {lock ? 'مقفل' : 'دخول الاختبار'}
                         </button>
@@ -2363,7 +2375,7 @@ export default function Lectures() {
                         className={`lecture-playlist-card ${isPlaying ? 'active' : ''} ${isVidLocked ? 'locked' : ''}`}
                         onClick={() => {
                           if (isVidLocked) {
-                            setActiveLockModal(vid.lockStatus)
+                            openLock(vid.lockStatus, 'video', vid, activeLectureView)
                             return
                           }
                           setActiveVideoItem(vid)
@@ -2437,7 +2449,7 @@ export default function Lectures() {
                             <button
                               type="button"
                               className="lecture-locked-btn"
-                              onClick={() => setActiveLockModal(ex.lockStatus)}
+                              onClick={() => openLock(ex.lockStatus, 'exam', ex, activeLectureView)}
                             >
                               <i className="fas fa-lock"></i> مقفل
                             </button>
@@ -4677,7 +4689,31 @@ export default function Lectures() {
         <PrerequisiteLockModal
           isOpen={!!activeLockModal}
           onClose={() => setActiveLockModal(null)}
-          lockStatus={activeLockModal}
+          lockInfo={activeLockModal}
+          onStartExam={async (payload) => {
+            const ctx = payload._prereqContext || {}
+            const q = new URLSearchParams({ id: payload.examId })
+            // The exam page must be opened from a lecture that contains the
+            // required exam (or none, for a standalone exam), not from the
+            // locked item's lecture.
+            const { data: homes } = await supabase
+              .from('lecture_exams')
+              .select('lecture_id')
+              .eq('exam_id', payload.examId)
+            const home = homes?.find((h) => h.lecture_id === ctx.contextLectureId) || homes?.[0]
+            if (home) {
+              q.set('lecture', home.lecture_id)
+              q.set('contextLectureId', home.lecture_id)
+            }
+            if (ctx.contextLectureId) q.set('returnLecture', ctx.contextLectureId)
+            if (ctx.unlockTargetType) q.set('prereqTargetType', ctx.unlockTargetType)
+            if (ctx.unlockTargetId) q.set('prereqTargetId', ctx.unlockTargetId)
+            if (ctx.unlockTargetTitle) q.set('prereqTargetTitle', ctx.unlockTargetTitle)
+            if (ctx.requiredScore != null) q.set('requiredScore', ctx.requiredScore)
+            if (ctx.requiredExamTitle) q.set('requiredExamTitle', ctx.requiredExamTitle)
+            if (ctx.contextLectureTitle) q.set('contextLectureTitle', ctx.contextLectureTitle)
+            navigate(`/exam-taking?${q.toString()}`)
+          }}
         />
       )}
     </div>

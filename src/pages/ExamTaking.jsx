@@ -45,6 +45,7 @@ export default function ExamTaking() {
   const prereqTargetType = params.get('prereqTargetType') || null
   const prereqTargetId = params.get('prereqTargetId') || null
   const prereqTargetTitle = params.get('prereqTargetTitle') || null
+  const returnLectureId = params.get('returnLecture') || null
   const rawRequiredScore = params.get('requiredScore')
   const requiredScore = (rawRequiredScore !== null && rawRequiredScore !== undefined && rawRequiredScore !== '')
     ? parseFloat(rawRequiredScore)
@@ -137,12 +138,16 @@ export default function ExamTaking() {
       // The unlocked video inside its lecture (course-lecture system), not
       // the old /videos page.
       navigate(`/lectures?video=${encodeURIComponent(prereqTargetId)}`, { replace: true })
+    } else if (returnLectureId) {
+      // The lecture holding the item that was unlocked (the required exam
+      // may live in a different lecture).
+      navigate(`/lectures?lecture=${encodeURIComponent(returnLectureId)}`, { replace: true })
     } else if (contextLectureId) {
       leaveExam()
     } else {
       navigate('/packages')
     }
-  }, [prereqTargetType, prereqTargetId, contextLectureId, navigate])
+  }, [prereqTargetType, prereqTargetId, returnLectureId, contextLectureId, navigate])
 
   const handleRetryExam = useCallback(async () => {
     if (storageKey) {
