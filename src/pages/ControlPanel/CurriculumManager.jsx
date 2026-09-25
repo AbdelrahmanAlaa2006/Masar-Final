@@ -25,6 +25,7 @@ import {
 import { listVideos } from '@backend/videosApi'
 import { listExams } from '@backend/examsApi'
 import { listPackages } from '@backend/packagesApi'
+import { useNavigate } from 'react-router-dom'
 import { uploadLectureFile } from '@backend/r2'
 import { notify } from '../../utils/notify'
 import ConfirmDeleteDialog from '../../components/ConfirmDeleteDialog'
@@ -34,6 +35,7 @@ import './CurriculumManager.css'
 
 export default function CurriculumManager({ package: propPkg, onBack }) {
   const { tenantId } = useTenant()
+  const navigate = useNavigate()
   const [packages, setPackages] = useState([])
   const [loadingPackages, setLoadingPackages] = useState(!propPkg)
   const [selectedPkg, setSelectedPkg] = useState(propPkg || null)
@@ -700,11 +702,16 @@ export default function CurriculumManager({ package: propPkg, onBack }) {
           <i className="fas fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: 12 }}></i>
           <h3>لا توجد باقات دراسية مفعلة</h3>
           <p>هذا القسم لمحتوى الباقات المدفوعة فقط. أنشئ باقة أولاً من قسم «الباقات»، أو أضف محاضرات الصفوف العادية من صفحة «المحاضرات».</p>
-          {onBack && (
-            <button onClick={onBack} className="cp-btn cp-btn-secondary" style={{ marginTop: 12 }}>
-              <i className="fas fa-arrow-right"></i> رجوع للوحة التحكم
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
+            <button onClick={() => navigate('/lectures')} className="cp-btn cp-btn-primary">
+              <i className="fas fa-chalkboard-teacher"></i> فتح صفحة المحاضرات
             </button>
-          )}
+            {onBack && (
+              <button onClick={onBack} className="cp-btn cp-btn-secondary">
+                <i className="fas fa-arrow-right"></i> رجوع للوحة التحكم
+              </button>
+            )}
+          </div>
         </div>
       </section>
     )

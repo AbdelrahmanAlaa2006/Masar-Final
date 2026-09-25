@@ -554,6 +554,15 @@ export default function ControlPanelIndex({ initialSection }) {
               onClick={() => enterSection('grades')}
             />
           )}
+          {isFeatureEnabled('lectures') && hasPermission('videos') && (
+            <SectionCard
+              icon="fa-chalkboard-teacher"
+              accent="violet"
+              title="إدارة المحاضرات"
+              desc="إنشاء محاضرات الصفوف وربط الفيديوهات والامتحانات والملفات وشروط الفتح بها"
+              onClick={() => navigate('/lectures')}
+            />
+          )}
           {(isFeatureEnabled('videos') || isFeatureEnabled('packages_store') || isFeatureEnabled('lectures')) && (user?.role === 'admin' || user?.role === 'super_admin' || hasPermission('videos') || hasPermission('payments')) && (
             <SectionCard
               icon="fa-graduation-cap"
