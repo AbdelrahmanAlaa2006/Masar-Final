@@ -103,6 +103,10 @@ export function AuthProvider({ children }) {
     // Drop any stale (logged-out) viewer context so content gating resolves
     // for the new user immediately.
     invalidateViewerContext()
+    // Also drop cached lists: anything read before sign-in (the login page
+    // loads the package list) came back empty under RLS and would otherwise
+    // be served to the signed-in user for up to 30 minutes.
+    invalidateAll()
     setUser(userData)
     setIsLoggedIn(true)
     // Run refresh in background to populate permissions, parent_phone, qr_token
