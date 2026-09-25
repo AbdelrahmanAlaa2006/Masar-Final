@@ -103,9 +103,6 @@ export function TenantProvider({ children }) {
         if (candidate === 'math' || candidate === 'belqadar' || candidate === 'belqadar-math' || candidate === 'mahmoud-belqadar' || candidate === 'mrmahmoudelbeliqdar.com' || candidate.includes('mrmahmoudelbeliqdar')) {
           querySlug = 'sherif-math'
         }
-        if (candidate === 'mrmohamedyasser.com' || candidate.includes('mohamedyasser') || candidate.includes('mrmohamedyasser')) {
-          querySlug = 'mohamed-yasser'
-        }
 
         const cacheTtl = isLocalhost ? 0 : 10 * 60 * 1000
 
@@ -123,262 +120,7 @@ export function TenantProvider({ children }) {
           }
 
 
-          if (resolvedData && (resolvedData.slug === 'mohamed-yasser' || candidate === 'mohamed-yasser' || candidate.includes('yasser'))) {
-            resolvedData.name = 'مستر محمد ياسر'
-            resolvedData.logo_url = '/images/Logo Mr Mohamed Yasser.png'
-            resolvedData.primary_color = '#ee7d30'
-            resolvedData.secondary_color = '#1c3257'
-            
-            const existingConfig = resolvedData.config || {}
-            const existingTeacher = (existingConfig.teacher && existingConfig.teacher.name !== 'Admin') ? existingConfig.teacher : {}
-            const existingBranding = existingConfig.branding || {}
-            
-            resolvedData.config = {
-              subject: 'english',
-              ...existingConfig,
-              theme: {
-                bg_light: '#f8fafc',
-                card_light: '#ffffff',
-                text_light: '#0f1c30',
-                bg_dark: '#0b121f',
-                card_dark: '#121e33',
-                text_dark: '#f1f5f9',
-                border_accent: 'rgba(238, 125, 48, 0.28)',
-                ...(existingConfig.theme || {})
-              },
-              teacher: {
-                kicker: 'مستر محمد ياسر',
-                name: 'محمد ياسر',
-                role: 'معلم أول اللغة الإنجليزية للمرحلة الثانوية',
-                bio: 'معلم متميز للغة الإنجليزية بخبرة 9 سنوات في تدريس وتأسيس طلاب المرحلة الثانوية، متخصص في تبسيط القواعد وشرح مهارات الترجمة والفهم والتدريب المكثف على مواصفات الامتحانات الحديثة بأسلوب تفاعلي.',
-                quote: '«The more you learn , the more you earn .»',
-                target_stage: 'المرحلة الثانوية',
-                target_stage_label: 'المرحلة التي يدرّسها',
-                image_base: '/images/Image Mr Mohamed Yasser.png',
-                image_hover: '/images/Image Mr Mohamed Yasser.png',
-                experience: '9 سنوات خبرة',
-                students_count: '+3,500',
-                satisfaction: '99%',
-                learning_system: 'حضوري بالسنتر وأونلاين تفاعلي',
-                ...existingTeacher
-              },
-              branding: {
-                brand_short: 'مستر محمد ياسر',
-                tagline: 'The more you learn , the more you earn .',
-                hero_title_a: 'The More You Learn',
-                hero_title_b: 'The More You Earn',
-                hero_sub: 'المنصة التعليمية المتكاملة لتدريس وتأسيس مادة اللغة الإنجليزية للمرحلة الثانوية — Best of the Best. شرح مبسط وتدريب مكثف يضمن لك التفوق والدرجة النهائية.',
-                description: 'منصة مستر محمد ياسر لتعليم اللغة الإنجليزية للمرحلة الثانوية — محاضرات، امتحانات، واجبات، ومتابعة مستمرة.',
-                ...existingBranding
-              },
-              location: {
-                branches: [
-                  {
-                    name: 'المقر الرئيسي',
-                    address: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                    phone: '01036836301'
-                  }
-                ],
-                description: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                address: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                country: 'جمهورية مصر العربية',
-                phone: '01036836301',
-                whatsapp_link: 'https://wa.me/201036836301',
-                directions_link: 'https://maps.app.goo.gl/B5A3xiQDpSaqZppG6',
-                hours_days: 'يومياً',
-                hours_time: '٨:٠٠ ص - ٦:٠٠ م',
-                ...(existingConfig.location || {})
-              },
-              contact: {
-                phone: '01036836301',
-                whatsapp: 'https://wa.me/201036836301',
-                ...(existingConfig.contact || {})
-              },
-              socials: {
-                facebook: 'https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr',
-                youtube: 'https://youtube.com/@englishwithmohamedyasser?si=-riciQe2OrXqFAHE',
-                tiktok: 'https://www.tiktok.com/@k.mohamedyaser?_r=1&_t=ZS-99ECH7FA6Oi',
-                whatsapp: 'https://wa.me/201036836301',
-                ...(existingConfig.socials || {})
-              },
-              stages: existingConfig.stages || [
-                {
-                  id: 'secondary',
-                  name: 'المرحلة الثانوية',
-                  enabled: true,
-                  grades: [
-                    { id: 'first-sec', name: 'الصف الأول الثانوي', enabled: true },
-                    { id: 'second-sec', name: 'الصف الثاني الثانوي', enabled: true },
-                    { id: 'third-sec', name: 'الصف الثالث الثانوي', enabled: true }
-                  ]
-                }
-              ],
-              features: {
-                attendance: true,
-                grades: true,
-                exams: true,
-                homework: true,
-                videos: true,
-                notifications: true,
-                payments: true,
-                chat: true,
-                groups: true,
-                branches: true,
-                qr_attendance: true,
-                parent_portal: true,
-                student_notes: true,
-                assistant_accounts: true,
-                reports: true,
-                ...(existingConfig.features || {})
-              },
-              login_sections: {
-                teacher: true,
-                about: true,
-                packages: true,
-                features: true,
-                steps: true,
-                location: true,
-                ...(existingConfig.login_sections || {})
-              },
-              announcements: existingConfig.announcements || [
-                {
-                  icon: '🎯',
-                  text: 'شرح مبسط وتأسيس شامل لكافة مهارات وقواعد اللغة الإنجليزية للمرحلة الثانوية'
-                },
-                {
-                  icon: '🏆',
-                  text: 'تدريبات وامتحانات مستمرة على أحدث مواصفات الثانوية العامة لضمان الدرجة النهائية'
-                },
-                {
-                  icon: '📱',
-                  text: 'متابعة إلكترونية دقيقة للدرجات والحضور مع ولي الأمر عبر إشعارات الواتساب'
-                }
-              ]
-            }
-          }
 
-          if (!resolvedData && (candidate === 'mohamed-yasser' || candidate.includes('yasser'))) {
-            resolvedData = {
-              id: 'mohamed-yasser-english',
-              slug: 'mohamed-yasser',
-              name: 'مستر محمد ياسر — لغة إنجليزية',
-              primary_color: '#ee7d30',
-              secondary_color: '#1c3257',
-              logo_url: '/images/Logo Mr Mohamed Yasser.png',
-              config: {
-                subject: 'english',
-                theme: {
-                  bg_light: '#f8fafc',
-                  card_light: '#ffffff',
-                  text_light: '#0f1c30',
-                  bg_dark: '#0b121f',
-                  card_dark: '#121e33',
-                  text_dark: '#f1f5f9',
-                  border_accent: 'rgba(238, 125, 48, 0.28)'
-                },
-                teacher: {
-                  kicker: 'مستر محمد ياسر',
-                  name: 'محمد ياسر',
-                  role: 'معلم أول اللغة الإنجليزية للمرحلة الثانوية',
-                  bio: 'معلم متميز للغة الإنجليزية بخبرة 9 سنوات في تدريس وتأسيس طلاب المرحلة الثانوية، متخصص في تبسيط القواعد وشرح مهارات الترجمة والفهم والتدريب المكثف على مواصفات الامتحانات الحديثة بأسلوب تفاعلي.',
-                  quote: '«The more you learn , the more you earn .»',
-                  target_stage: 'المرحلة الثانوية',
-                  target_stage_label: 'المرحلة التي يدرّسها',
-                  image_base: '/images/Image Mr Mohamed Yasser.png',
-                  image_hover: '/images/Image Mr Mohamed Yasser.png',
-                  experience: '9 سنوات خبرة',
-                  students_count: '+3,500',
-                  satisfaction: '99%',
-                  learning_system: 'حضوري بالسنتر وأونلاين تفاعلي'
-                },
-                branding: {
-                  brand_short: 'مستر محمد ياسر',
-                  hero_title_a: 'The More You Learn',
-                  hero_title_b: 'The More You Earn',
-                  hero_sub: 'المنصة التعليمية المتكاملة لتدريس وتأسيس مادة اللغة الإنجليزية للمرحلة الثانوية — Best of the Best. شرح مبسط وتدريب مكثف يضمن لك التفوق والدرجة النهائية.',
-                  description: 'منصة مستر محمد ياسر لتعليم اللغة الإنجليزية للمرحلة الثانوية — محاضرات، امتحانات، واجبات، ومتابعة مستمرة.'
-                },
-                features: {
-                  attendance: true,
-                  grades: true,
-                  exams: true,
-                  homework: true,
-                  videos: true,
-                  notifications: true,
-                  payments: true,
-                  chat: true,
-                  groups: true,
-                  branches: true,
-                  qr_attendance: true,
-                  parent_portal: true,
-                  student_notes: true,
-                  assistant_accounts: true,
-                  reports: true
-                },
-                stages: [
-                  {
-                    id: 'secondary',
-                    name: 'المرحلة الثانوية',
-                    enabled: true,
-                    grades: [
-                      { id: 'first-sec', name: 'الصف الأول الثانوي', enabled: true },
-                      { id: 'second-sec', name: 'الصف الثاني الثانوي', enabled: true },
-                      { id: 'third-sec', name: 'الصف الثالث الثانوي', enabled: true }
-                    ]
-                  }
-                ],
-                login_sections: {
-                  teacher: true,
-                  about: true,
-                  packages: true,
-                  features: true,
-                  steps: true,
-                  location: true
-                },
-                socials: {
-                  facebook: 'https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr',
-                  youtube: 'https://youtube.com/@englishwithmohamedyasser?si=-riciQe2OrXqFAHE',
-                  tiktok: 'https://www.tiktok.com/@k.mohamedyaser?_r=1&_t=ZS-99ECH7FA6Oi',
-                  whatsapp: 'https://wa.me/201036836301'
-                },
-                contact: {
-                  phone: '01036836301',
-                  whatsapp: 'https://wa.me/201036836301'
-                },
-                location: {
-                  branches: [
-                    {
-                      name: 'المقر الرئيسي',
-                      address: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                      phone: '01036836301'
-                    }
-                  ],
-                  description: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                  address: 'شارع الرقم القومي بعد الكوبري العلوي أمام محل كريم مكي',
-                  country: 'جمهورية مصر العربية',
-                  phone: '01036836301',
-                  whatsapp_link: 'https://wa.me/201036836301',
-                  directions_link: 'https://maps.app.goo.gl/B5A3xiQDpSaqZppG6',
-                  hours_days: 'يومياً',
-                  hours_time: '٨:٠٠ ص - ٦:٠٠ م'
-                },
-                announcements: [
-                  {
-                    icon: '🎯',
-                    text: 'شرح مبسط وتأسيس شامل لكافة مهارات وقواعد اللغة الإنجليزية للمرحلة الثانوية'
-                  },
-                  {
-                    icon: '🏆',
-                    text: 'تدريبات وامتحانات مستمرة على أحدث مواصفات الثانوية العامة لضمان الدرجة النهائية'
-                  },
-                  {
-                    icon: '📱',
-                    text: 'متابعة إلكترونية دقيقة للدرجات والحضور مع ولي الأمر عبر إشعارات الواتساب'
-                  }
-                ]
-              }
-            }
-          }
 
           if (!resolvedData) {
             const { data, error } = await supabase
@@ -451,21 +193,15 @@ export function TenantProvider({ children }) {
           const dbConfig = tenantData?.config || {}
           const merged = { ...themeConfigObj }
           
-          if (tenantData?.slug === 'mohamed-yasser') {
-            merged.teacher = { ...themeConfigObj.teacher }
-            merged.branding = { ...themeConfigObj.branding }
-            merged.location = { ...themeConfigObj.location }
-          } else {
-            for (const key of ['branding', 'socials', 'contact']) {
-              if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
-                merged[key] = { ...(themeConfigObj[key] || {}), ...dbConfig[key] }
-              }
+          for (const key of ['branding', 'socials', 'contact']) {
+            if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
+              merged[key] = { ...(themeConfigObj[key] || {}), ...dbConfig[key] }
             }
-            for (const key of ['teacher', 'location']) {
-              if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
-                if (key === 'teacher' && dbConfig.teacher?.name === 'Admin') continue
-                merged[key] = { ...(themeConfigObj[key] || {}), ...dbConfig[key] }
-              }
+          }
+          for (const key of ['teacher', 'location']) {
+            if (dbConfig[key] && typeof dbConfig[key] === 'object' && Object.keys(dbConfig[key]).length > 0) {
+              if (key === 'teacher' && dbConfig.teacher?.name === 'Admin') continue
+              merged[key] = { ...(themeConfigObj[key] || {}), ...dbConfig[key] }
             }
           }
           // A dynamic tenant on the shared default folder must never present

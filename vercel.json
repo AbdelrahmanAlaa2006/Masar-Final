@@ -23,11 +23,6 @@
     },
     {
       "source": "/sitemap.xml",
-      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
-      "destination": "/sitemap-mohamed-yasser.xml"
-    },
-    {
-      "source": "/sitemap.xml",
       "has": [{ "type": "host", "value": "(www\\.)?mrwaleedfawzy\\.com" }],
       "destination": "/sitemap-waled-english.xml"
     },
@@ -54,11 +49,6 @@
     },
     {
       "source": "/robots.txt",
-      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
-      "destination": "/robots-mohamed-yasser.txt"
-    },
-    {
-      "source": "/robots.txt",
       "has": [{ "type": "host", "value": "(www\\.)?mrwaleedfawzy\\.com" }],
       "destination": "/robots-waled-english.txt"
     },
@@ -82,11 +72,6 @@
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "(www\\.)?mrmahmoudelbeliqdar\\.com" }],
       "destination": "/belqadar-math.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "(www\\.)?mrmohamedyasser\\.com" }],
-      "destination": "/mohamed-yasser.html"
     },
     {
       "source": "/(.*)",

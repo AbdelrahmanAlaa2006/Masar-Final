@@ -242,46 +242,6 @@ export const DOMAINS = {
   },
 
 
-  'mohamed-yasser': {
-    hosts: ['mrmohamedyasser.com', 'www.mrmohamedyasser.com', 'mohamed-yasser.masaar.app'],
-    lang: 'ar',
-    title: 'مستر محمد ياسر — لغة إنجليزية | The more you learn , the more you earn',
-    description:
-      'منصة أستاذ محمد ياسر التعليمية (Best of the Best) — تدريس وتأسيس مادة اللغة الإنجليزية للمرحلة الثانوية بأسلوب تفاعلي، امتحانات دورية، ومتابعة أولياء الأمور.',
-    keywords:
-      'محمد ياسر, مستر محمد ياسر, أستاذ محمد ياسر, Mohamed Yasser, Mr Mohamed Yasser, English with Mohamed Yasser, إنجليزي ثانوي, ثانوية عامة, لغة إنجليزية, جرامر, ترجمة, منصة تعليمية, Best of the Best',
-    author: 'مستر محمد ياسر — Mr Mohamed Yasser',
-    canonical: 'https://mrmohamedyasser.com/',
-    ogImage: 'https://mrmohamedyasser.com/images/Logo%20Mr%20Mohamed%20Yasser.png',
-    themeColor: '#ee7d30',
-    favicon: '/images/Logo Mr Mohamed Yasser.png',
-    faviconType: 'image/png',
-    siteName: 'مستر محمد ياسر — Best of the Best',
-    jsonLd: {
-      person: {
-        name: 'Mohamed Yasser',
-        alternateName: ['محمد ياسر', 'مستر محمد ياسر', 'أستاذ محمد ياسر', 'Mr Mohamed Yasser', 'Mohamed Yaser'],
-        jobTitle: 'Senior English Language Teacher — Secondary Stage',
-        image: 'https://mrmohamedyasser.com/images/Image%20Mr%20Mohamed%20Yasser.png',
-        knowsAbout: ['English Language', 'Grammar', 'English Literature', 'Translation', 'Secondary Stage', 'اللغة الإنجليزية', 'الثانوية العامة'],
-        sameAs: [
-          'https://www.facebook.com/share/1EgDqxqLfw/?mibextid=wwXIfr',
-          'https://youtube.com/@englishwithmohamedyasser?si=-riciQe2OrXqFAHE',
-          'https://www.tiktok.com/@k.mohamedyaser?_r=1&_t=ZS-99ECH7FA6Oi',
-        ],
-      },
-      org: {
-        name: 'منصة مستر محمد ياسر للغة الإنجليزية',
-        alternateName: ['Mr Mohamed Yasser Platform', 'Best of the Best English'],
-        logo: 'https://mrmohamedyasser.com/images/Logo%20Mr%20Mohamed%20Yasser.png',
-        description:
-          'منصة تعليمية متخصصة في تدريس وتأسيس مادة اللغة الإنجليزية لطلاب المرحلة الثانوية مع امتحانات إلكترونية ومتابعة أولياء الأمور.',
-        telephone: '+201036836301',
-        addressLocality: 'Alexandria',
-        addressRegion: 'Egypt',
-      },
-    },
-  },
 
   'waled-english': {
     hosts: ['mrwaleedfawzy.com', 'www.mrwaleedfawzy.com', 'waled-english.masaar.app'],

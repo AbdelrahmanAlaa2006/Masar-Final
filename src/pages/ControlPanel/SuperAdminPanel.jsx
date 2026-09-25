@@ -216,9 +216,6 @@ export default function SuperAdminPanel({ onBack, flash }) {
     if (slug.includes('mohamed-abdella') || slug.includes('power') || slug.includes('cyber') || slug.includes('prog') || name.includes('باور') || name.includes('عبدالله') || name.includes('عبد الله')) {
       return '/images/Power Logo.png'
     }
-    if (slug.includes('yasser') || name.includes('ياسر')) {
-      return '/images/Logo Mr Mohamed Yasser.png'
-    }
     if (slug.includes('english') || slug.includes('waled') || slug.includes('sherif-english') || name.includes('miracle') || name.includes('انجليزي') || name.includes('إنجليزي')) {
       return '/images/Logo The Miracle.png'
     }
