@@ -326,6 +326,8 @@ export default function Lectures() {
   // Action busy states
   const [downloadingFileId, setDownloadingFileId] = useState(null)
   const [activeLockModal, setActiveLockModal] = useState(null)
+  // True while a ?lecture= / ?video= link is being fetched and opened.
+  const [openingLink, setOpeningLink] = useState(false)
   // Opens the lock window with what the student tried to open, so it can
   // name it. A locked parent lecture wins over the item itself.
   const openLock = (lockStatus, type, target, lecture) => {
@@ -399,6 +401,8 @@ export default function Lectures() {
   const [selectedItemId, setSelectedItemId] = useState('')
   const [allVideosCatalog, setAllVideosCatalog] = useState([])
   const [allExamsCatalog, setAllExamsCatalog] = useState([])
+  // 'loading' | 'error' | null while the attach windows fetch their lists
+  const [catalogLoading, setCatalogLoading] = useState(null)
   const [catalogSearch, setCatalogSearch] = useState('')
   const [uploadFileObj, setUploadFileObj] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -616,6 +620,7 @@ export default function Lectures() {
     deepLinkedVideo.current = linkKey
     let cancelled = false
     let finished = false
+    setOpeningLink(true)
     ;(async () => {
       try {
         let targetId = lectureId
@@ -624,23 +629,35 @@ export default function Lectures() {
           const target = lectures.find((l) => !l.grade || l.grade === selectedGrade) || lectures[0]
           targetId = target?.id
         }
-        if (!targetId || cancelled) return
+        if (cancelled) return
+        if (!targetId) {
+          notify('هذا المحتوى غير متاح لصفك الدراسي أو تم حذفه', 'warning')
+          return
+        }
         let lecture = await getLectureDetails(targetId)
         if (userRole === 'student') lecture = await withLectureLocks(lecture)
         if (cancelled) return
         const video = videoId ? lecture.videos.find((v) => v.id === videoId) : null
-        if (videoId && !video) return
+        if (videoId && !video) {
+          notify('هذا الفيديو لم يعد موجودًا في المحاضرة', 'warning')
+          return
+        }
         openLectureViewRef.current(lecture, video)
       } catch (err) {
         console.warn('Failed to open deep-linked video:', err)
+        if (!cancelled) notify('تعذر فتح المحاضرة، حاول مرة أخرى', 'danger')
       } finally {
         finished = true
+        if (!cancelled) setOpeningLink(false)
       }
     })()
     return () => {
       cancelled = true
       // Interrupted before it opened anything: let the next run retry.
-      if (!finished) deepLinkedVideo.current = null
+      if (!finished) {
+        deepLinkedVideo.current = null
+        setOpeningLink(false)
+      }
     }
   }, [location.search, selectedGrade, userRole])
 
@@ -1724,11 +1741,14 @@ export default function Lectures() {
     setSelectedItemId('')
     setCatalogSearch('')
     setModalType('attach_video')
+    setCatalogLoading('loading')
     try {
       const vids = await listVideos()
       setAllVideosCatalog(vids || [])
+      setCatalogLoading(null)
     } catch (err) {
       console.error('Failed to load videos catalog:', err)
+      setCatalogLoading('error')
     }
   }
 
@@ -1760,11 +1780,14 @@ export default function Lectures() {
     setSelectedItemId('')
     setCatalogSearch('')
     setModalType('attach_exam')
+    setCatalogLoading('loading')
     try {
       const exs = await listExams({ lean: true })
       setAllExamsCatalog(exs || [])
+      setCatalogLoading(null)
     } catch (err) {
       console.error('Failed to load exams catalog:', err)
+      setCatalogLoading('error')
     }
   }
 
@@ -4124,7 +4147,12 @@ export default function Lectures() {
                     onChange={(e) => setSelectedItemId(e.target.value)}
                     required
                   >
-                    <option value="">-- اختر الفيديو --</option>
+                    <option value="">
+                      {catalogLoading === 'loading' ? 'جاري تحميل الفيديوهات...'
+                        : catalogLoading === 'error' ? 'تعذر تحميل الفيديوهات، أغلق النافذة وحاول مجددًا'
+                        : allVideosCatalog.length === 0 ? 'لا توجد فيديوهات مرفوعة بعد'
+                        : '-- اختر الفيديو --'}
+                    </option>
                     {allVideosCatalog
                       .filter((v) => !catalogSearch || v.title?.toLowerCase().includes(catalogSearch.toLowerCase()))
                       .map((v) => (
@@ -4192,7 +4220,12 @@ export default function Lectures() {
                     onChange={(e) => setSelectedItemId(e.target.value)}
                     required
                   >
-                    <option value="">-- اختر الامتحان --</option>
+                    <option value="">
+                      {catalogLoading === 'loading' ? 'جاري تحميل الامتحانات...'
+                        : catalogLoading === 'error' ? 'تعذر تحميل الامتحانات، أغلق النافذة وحاول مجددًا'
+                        : allExamsCatalog.length === 0 ? 'لا توجد امتحانات بعد'
+                        : '-- اختر الامتحان --'}
+                    </option>
                     {allExamsCatalog
                       .filter((ex) => !catalogSearch || ex.title?.toLowerCase().includes(catalogSearch.toLowerCase()))
                       .map((ex) => (
@@ -4685,6 +4718,15 @@ export default function Lectures() {
       )}
 
       {/* ── PREREQUISITE LOCK MODAL ─────────────────────────────────── */}
+      {openingLink && (
+        <div className="lectures-modal-overlay lectures-opening-overlay">
+          <div className="lectures-state-card lectures-loading-card">
+            <i className="fas fa-circle-notch fa-spin lectures-spinner"></i>
+            <h3>جاري فتح المحاضرة...</h3>
+          </div>
+        </div>
+      )}
+
       {activeLockModal && (
         <PrerequisiteLockModal
           isOpen={!!activeLockModal}
