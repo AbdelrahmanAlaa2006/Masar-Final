@@ -14,7 +14,7 @@ import './Footer.css'
    ────────────────────────────────────────────────────────────── */
 
 const TICKER_ITEMS = [
-  { icon: 'fa-graduation-cap', text: 'منصة مسار التعليمية' },
+  { icon: 'fa-graduation-cap', text: 'منصة GitFekra التعليمية' },
   { icon: 'fa-book-open',      text: 'محاضرات شاملة' },
   { icon: 'fa-circle-play',    text: 'فيديوهات تفاعلية' },
   { icon: 'fa-file-pen',       text: 'امتحانات إلكترونية' },
@@ -69,7 +69,7 @@ export default function Footer() {
   const contact = tenant?.config?.contact || {}
 
   const tickerItems = TICKER_ITEMS.map(item => {
-    if (item.text === 'منصة مسار التعليمية') {
+    if (item.text === 'منصة GitFekra التعليمية') {
       return { ...item, text: brandName + ' التعليمية' }
     }
     return item

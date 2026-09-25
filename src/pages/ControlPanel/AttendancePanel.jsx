@@ -60,7 +60,7 @@ const mapArabicKeysToEnglish = (str) => {
 };
 
 export default function AttendancePanel({ onBack, flash }) {
-  const { tenantId, gradesList } = useTenant()
+  const { tenantId, gradesList, tenant } = useTenant()
   const { user: currentUser } = useAuth()
   
   // Scopes & Filters
@@ -1414,7 +1414,7 @@ export default function AttendancePanel({ onBack, flash }) {
           </style>
         </head>
         <body onload="window.print(); window.close();">
-          <h1>كشف حضور الطلاب - منصة مسار</h1>
+          <h1>كشف حضور الطلاب - ${tenant?.name || 'GitFekra'}</h1>
           <h2>${GRADE_LABEL[grade] || grade} | ${sessionTitle}</h2>
           <div class="stats-container">
             <div class="stat-box">إجمالي الطلاب<div class="stat-val">${historyStats.total}</div></div>

@@ -19,7 +19,7 @@ export default function Home() {
   const { user, role, hasPermission } = useAuth()
   const { tenant, tenantSlug, isFeatureEnabled, themeConfig } = useTenant()
   const username = user?.name || ''
-  const brandName = tenant?.name || 'مسار'
+  const brandName = tenant?.name || 'GitFekra'
   const canvasRef = useRef(null)
 
   const handleHeroClick = (e) => {

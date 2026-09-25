@@ -295,7 +295,7 @@ export default function PublicReport() {
 
     // Construct a rich WhatsApp report text
     const messageText = `📝 *التقرير الدراسي الشامل للطالب: ${data.student_name}*
-🏫 *منصة مسار التعليمية*
+🏫 *${tenant?.name || 'GitFekra'}*
 
 📊 *1. تقرير الأداء الإلكتروني (المنصة):*
 - الواجبات الإلكترونية: تم حل ${homeworks.homework_submitted} من أصل ${homeworks.homework_total} واجبات.

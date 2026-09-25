@@ -35,7 +35,7 @@ export const themeConfig = {
   },
   logoUrl: null,
   branding: {
-    brand_short: { ar: 'منصة مسار التعليمية', en: 'Masar Educational Platform' },
+    brand_short: { ar: 'GitFekra', en: 'GitFekra' },
     hero_title_a: { ar: 'اللغة العربية', en: 'Arabic Language' },
     hero_title_b: { ar: 'لغة الضاد بطعم جديد', en: 'made enjoyable' },
     hero_sub: {

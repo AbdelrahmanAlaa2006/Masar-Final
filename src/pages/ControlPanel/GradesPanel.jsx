@@ -15,7 +15,7 @@ import { supabase } from '@backend/supabase'
 
 export default function GradesPanel({ onBack, flash }) {
   const { user: currentUser } = useAuth()
-  const { gradesList, tenantId, isFeatureEnabled } = useTenant()
+  const { gradesList, tenantId, isFeatureEnabled, tenant } = useTenant()
   const [grade, setGrade] = useState(() => gradesList?.[0]?.id || 'first-sec')
   const [group, setGroup] = useState('')
   const [groupsList, setGroupsList] = useState([])
@@ -843,7 +843,7 @@ export default function GradesPanel({ onBack, flash }) {
           </style>
         </head>
         <body onload="window.print(); window.close();">
-          <h1>كشف درجات وتقييم الطلاب - منصة مسار</h1>
+          <h1>كشف درجات وتقييم الطلاب - ${tenant?.name || 'GitFekra'}</h1>
           <h2>${gradeText} | التقييم: ${title} (${typeText}) | ${groupText}</h2>
           
           <div class="stats-container">

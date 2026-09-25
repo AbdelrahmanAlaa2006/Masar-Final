@@ -47,11 +47,9 @@ export default function ExamAdd() {
     if (dbSelected && (gradesList || []).some(g => g.id === dbSelected)) {
       return selected
     }
-    if (gradesList && gradesList.length > 0) {
-      const dbFirst = gradesList[0].id
-      return dbToUiGrade(dbFirst) || dbFirst
-    }
-    return 'first'
+    // No remembered grade: make the teacher pick one instead of silently
+    // defaulting to the first grade in the list.
+    return ''
   })
   const [examType, setExamType] = useState(() => {
     if (initialDraft?.examType) return initialDraft.examType
@@ -94,11 +92,8 @@ export default function ExamAdd() {
   useEffect(() => {
     if (gradesList && gradesList.length > 0) {
       const dbSelected = uiToDbGrade(examGrade) || examGrade
-      const exists = gradesList.some(g => g.id === dbSelected)
-      if (!exists) {
-        const dbFirst = gradesList[0].id
-        setExamGrade(dbToUiGrade(dbFirst) || dbFirst)
-      }
+      const exists = examGrade === 'packages' || gradesList.some(g => g.id === dbSelected)
+      if (examGrade && !exists) setExamGrade('')
     }
   }, [gradesList])
 
@@ -592,6 +587,7 @@ export default function ExamAdd() {
             value={examGrade}
             onChange={(e) => setExamGrade(e.target.value)}
           >
+            <option value="" disabled>-- اختر الصف --</option>
             {(gradesList || []).map((g) => {
               const uiKey = dbToUiGrade(g.id) || g.id
               return <option key={g.id} value={uiKey}>{g.name}</option>

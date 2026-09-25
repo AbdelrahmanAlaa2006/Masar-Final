@@ -88,7 +88,7 @@ function App() {
 function PendingApprovalPage() {
   const { logout, refreshProfile } = useAuth()
   const { tenant } = useTenant()
-  const brandName = tenant?.name || 'مسار'
+  const brandName = tenant?.name || 'GitFekra'
   const [isChecking, setIsChecking] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [messageType, setMessageType] = useState('') // 'success' or 'info' or 'error'

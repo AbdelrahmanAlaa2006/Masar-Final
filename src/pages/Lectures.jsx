@@ -2221,7 +2221,7 @@ export default function Lectures() {
                     {/* Student ScreenGuard Watermark */}
                     <ScreenGuard
                       active={true}
-                      label={currentUser?.name ? `${currentUser.name} — ${currentUser.phone || ''}` : 'منصة مسار التعليمية'}
+                      label={currentUser?.name ? `${currentUser.name} — ${currentUser.phone || ''}` : 'GitFekra'}
                     />
 
                     {!isVideoStarted ? (

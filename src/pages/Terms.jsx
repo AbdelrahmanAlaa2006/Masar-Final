@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '../contexts/TenantContext'
 import './PolicyPage.css'
 
 const SECTIONS = [
   {
     icon: 'fa-circle-info',
     title: 'تعريف المنصّة',
-    body: 'منصة «مسار» هي منصة تعليمية إلكترونية موجّهة لطلاب المرحلة الإعدادية، تقدّم محاضرات وفيديوهات وامتحانات تحت إشراف المعلم. باستخدامك للمنصة فأنت توافق على الشروط الموضّحة في هذه الصفحة.',
+    body: 'منصة «{brand}» هي منصة تعليمية إلكترونية موجّهة للطلاب، تقدّم محاضرات وفيديوهات وامتحانات تحت إشراف المعلم. باستخدامك للمنصة فأنت توافق على الشروط الموضّحة في هذه الصفحة.',
     bullets: null,
   },
   {
@@ -32,7 +33,7 @@ const SECTIONS = [
   {
     icon: 'fa-copyright',
     title: 'الملكية الفكرية',
-    body: 'جميع المحتويات (فيديوهات، شروحات، أسئلة، تصاميم) ملك حصري لمنصّة مسار والمعلمين المتعاونين. لا يُسمح بإعادة نشرها أو توزيعها أو استخدامها تجارياً تحت أي ظرف. أي مخالفة قد تعرّض صاحبها للمساءلة القانونية.',
+    body: 'جميع المحتويات (فيديوهات، شروحات، أسئلة، تصاميم) ملك حصري لمنصّة {brand} والمعلمين المتعاونين. لا يُسمح بإعادة نشرها أو توزيعها أو استخدامها تجارياً تحت أي ظرف. أي مخالفة قد تعرّض صاحبها للمساءلة القانونية.',
     bullets: null,
   },
   {
@@ -51,6 +52,9 @@ const SECTIONS = [
 
 export default function Terms() {
   const navigate = useNavigate()
+  const { tenant } = useTenant()
+  // The texts say {brand}: the teacher's platform name, or GitFekra.
+  const brand = tenant?.name || 'GitFekra'
 
   return (
     <main className="pp-page" dir="rtl">
@@ -62,7 +66,7 @@ export default function Terms() {
         <div className="pp-hero">
           <div className="pp-hero-icon"><i className="fas fa-file-contract"></i></div>
           <h1>شروط الاستخدام</h1>
-          <p>الشروط التي تحكم استخدامك لمنصّة مسار التعليمية. يرجى قراءتها بعناية قبل استخدام المنصّة.</p>
+          <p>الشروط التي تحكم استخدامك لمنصّة {brand}. يرجى قراءتها بعناية قبل استخدام المنصّة.</p>
           <div className="pp-meta">آخر تحديث: يناير 2026</div>
         </div>
 
@@ -72,7 +76,7 @@ export default function Terms() {
               <span className="pp-num"><i className={`fas ${s.icon}`}></i></span>
               {s.title}
             </h2>
-            <p>{s.body}</p>
+            <p>{s.body.replaceAll('{brand}', brand)}</p>
             {s.bullets && (
               <ul>{s.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
             )}

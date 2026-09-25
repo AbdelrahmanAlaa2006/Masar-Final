@@ -185,7 +185,7 @@ export default function VideoComments({ videoId, currentUser }) {
           {renderAvatar(author, isReply ? 34 : 42)}
           <div className="comment-meta">
             <div className="comment-user-row">
-              <span className="comment-username">{author?.name || 'طالب مسار'}</span>
+              <span className="comment-username">{author?.name || 'طالب'}</span>
               {isTeacher && (
                 <span className="comment-badge">
                   <i className="fas fa-circle-check"></i> المعلم
