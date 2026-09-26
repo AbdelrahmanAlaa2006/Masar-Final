@@ -239,10 +239,17 @@ function useReveal() {
   })
 }
 
+// The GitFekra logo: the dot of the "i" is a glowing gold dot (the idea),
+// and the Arabic name sits between two thin gold rules underneath.
 function Wordmark() {
   return (
-    <span className="gf-wordmark" dir="ltr">
-      Git<em>Fekra</em>
+    <span className="gf-logo">
+      <span className="gf-wordmark" dir="ltr">
+        G<span className="gf-wm-i">ı</span>t<em>Fekra</em>
+      </span>
+      <span className="gf-logo-rule" aria-hidden="true">
+        <i></i><span className="gf-logo-ar">جِت فِكرة</span><i></i>
+      </span>
     </span>
   )
 }
@@ -427,7 +434,7 @@ export default function GitFekraLanding() {
     <div className={`gf-root ${dark ? 'gf-dark' : ''}`} dir={t.dir}>
       {/* Top bar */}
       <header className="gf-nav">
-        <a href="#top" className="gf-nav-brand"><Wordmark /><span className="gf-nav-ar">جِت فِكرة</span></a>
+        <a href="#top" className="gf-nav-brand" aria-label="GitFekra — جِت فِكرة"><Wordmark /></a>
         <nav className="gf-nav-links">
           <a href="#services">{t.nav.services}</a>
           <a href="#tour">{t.nav.tour}</a>

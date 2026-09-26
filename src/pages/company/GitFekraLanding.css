@@ -31,6 +31,7 @@
   --accent: #175e54;
   --accent-on-ink: #9fd0c7;
   --nav-bg: rgba(247, 245, 240, 0.94);
+  --logo-gold: #a8841f;
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
@@ -66,6 +67,7 @@
   --accent: #58b3a1;
   --accent-on-ink: #175e54;
   --nav-bg: rgba(20, 17, 14, 0.94);
+  --logo-gold: #d4af37;
 }
 
 .gf-root *,
@@ -111,6 +113,66 @@
 .gf-wordmark em {
   font-style: normal;
   color: var(--accent);
+}
+
+.gf-logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  line-height: 1;
+  font-size: 1.55rem;
+}
+
+.gf-logo .gf-wordmark {
+  font-size: 1em;
+  line-height: 1;
+}
+
+/* Dotless ı plus a glowing gold dot in place of the i's dot. */
+.gf-wm-i {
+  position: relative;
+  display: inline-block;
+}
+
+.gf-wm-i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0.02em;
+  width: 0.2em;
+  height: 0.2em;
+  margin-left: -0.1em;
+  border-radius: 50%;
+  background: var(--logo-gold);
+  box-shadow: 0 0 0.25em rgba(245, 200, 76, 0.75);
+}
+
+.gf-logo-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-top: 0.3em;
+  /* larger than the print logo's ratio so the Arabic stays readable at nav size */
+  font-size: 0.5em;
+}
+
+.gf-logo-rule i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--logo-gold));
+  opacity: 0.8;
+}
+
+.gf-logo-rule i:last-child {
+  background: linear-gradient(270deg, transparent, var(--logo-gold));
+}
+
+.gf-logo-ar {
+  font-family: 'El Messiri', 'Tajawal', sans-serif !important;
+  font-weight: 700;
+  color: var(--logo-gold) !important;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
@@ -1585,6 +1647,10 @@
   .gf-nav-brand {
     font-size: 1.15rem;
     gap: 6px;
+  }
+
+  .gf-logo {
+    font-size: 1.3rem;
   }
 
   .gf-nav-ar {
